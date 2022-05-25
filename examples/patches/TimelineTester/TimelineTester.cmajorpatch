@@ -1,0 +1,12 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.TimelineTester",
+    "version":          "0.1",
+    "name":             "TimelineTester",
+    "description":      "A patch that catches incoming timeline events and outputs them for logging",
+    "category":         "effect",
+    "manufacturer":     "Sound Stacks Ltd",
+    "isInstrument":     false,
+
+    "source":           [ "TimelineTester.cmajor" ]
+}

@@ -1,0 +1,284 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## expectError ("2:12: error: Struct members cannot be declared const")
+
+struct S { const int x; }
+
+## expectError ("2:12: error: Struct members cannot be references")
+
+struct S { int& x; }
+
+## expectError ("5:25: error: Struct members cannot be references")
+
+processor P
+{
+    output stream float<1> audioOut;
+    struct S { float a; int& x; }
+    void main() { advance(); }
+}
+
+## expectError ("3:12: error: Structure members cannot be void")
+
+using Void = void;
+struct S { Void v; }
+
+## expectError ("2:8: error: 'S' cannot refer to itself recursively")
+
+struct S { S s; }
+
+## expectError ("3:8: error: 'S2' and 'S3' reference each other recursively")
+
+struct S1 { S3 s; }
+struct S2 { S1 s; }
+struct S3 { S2 s; }
+
+## expectError ("9:8: error: 'S2' and 'S1' reference each other recursively")
+
+processor P
+{
+    output stream int out;
+    void main() { advance(); }
+    struct S1 { int i; S2 s; }
+}
+
+struct S2 { int i; P::S1 s; }
+
+## expectError ("2:12: error: A brace-enclosed declaration should not be followed by a semicolon")
+
+struct S {};
+
+## testFunction()
+
+struct S1 { int a; string s; string[2] as; int c; }
+
+const S1 global = (1, "aa", ("x", "aa"), 3);
+
+bool testStringsInAggregateConstants()
+{
+    return global.a == 1 && global.s == "aa" && global.as[0] == "x" && global.as[1] == "aa" && global.c == 3;
+}
+
+struct S2 { int a; float b; int<3> c; }
+
+bool test1() { let x = S2 (9, 8.0f, int<3> (7, 8, 9)); return x.a == 9 && x.b == 8.0f && x.c[1] == 8; }
+bool test2() { let x = S2 (9, 8.0f, (7, 8, 9)); return x.a == 9 && x.b == 8.0f && x.c[1] == 8; }
+bool test3() { let x = S2 (9, 8.0f, (8)); return x.a == 9 && x.b == 8.0f && x.c[1] == 8; }
+
+S2 getA1() { return    (2, 3.4f, (7, 8, 9)); }
+S2 getA2() { return S2 (2, 3.4f, (7, 8, 9)); }
+
+bool test4() { return getA1().a == 2 && getA1().b == 3.4f && getA2().c[1] == 8; }
+bool test5() { let x = getA1(); return x.a == 2 && x.b == 3.4f && x.c[1] == 8; }
+bool test6() { let x = getA2(); return x.a == 2 && x.b == 3.4f && x.c[1] == 8; }
+
+struct A { B b; int32 x; }
+struct B { complex32 x; }
+
+bool test7()
+{
+    var b = B (1.0f + 2.0fi);
+    var z = 3000;
+    b.x.real++;
+    ++z;
+    var a1 = A (B(1.0f + 3.0fi), z++);
+    var a2 = A (b, z);
+
+    return a1.x == 3001
+        && a2.x == 3002;
+}
+
+bool test8()
+{
+    let b1 = B (1.0f + 2.0fi);
+    let a1 = A (B(1.0f + 2.0fi), 654);
+    let a2 = A (b1, 654);
+
+    return a1.x == 654
+        && a2.x == 654
+        && A (b1, 765).x == 765
+        && A (B(1.0f + 2.0fi), 765).x == 765
+        && A (B(1.0f + 2.0fi), 765).b.x.imag == 2.0f;
+}
+
+struct C { int32<2> a; float64[3] b; }
+
+bool test9() { return C(int<2> (5, 6), float[](9, 8, 7)).b[1] == 8; }
+
+struct S3 { int a; }
+
+bool test10()
+{
+    S3 a, b, c;
+    b.a = 99;
+
+    S3[]  s1 = (a, b, c);
+    S3[3] s2 = (a, b, c);
+    var   s3 = S3[] (a, b, c);
+    let   s4 = S3[3] (a, b, c);
+
+    return s1[1].a == 99 && s2[1].a == 99 && s3[1].a == 99 && s4[1].a == 99;
+}
+
+int getMember1 (S1 s)        { return s.c; }
+int getMember2 (const S1& s) { return s.c; }
+
+bool test11()
+{
+    let s = global;
+
+    return getMember1 (global) == 3
+        && getMember1 (s) == 3
+        && getMember2 (global) == 3
+        && getMember2 (s) == 3
+        && getMember1 (S1(1, "aa", ("x", "aa"), 7)) == 7
+        && getMember2 (S1(1, "aa", ("x", "aa"), 7)) == 7;
+}
+
+## testFunction()
+
+struct S
+{
+    int x;
+    bool member() const  { return this.x == 123; }
+    int member2<T> (T x)   { return this.x + x; }
+
+    int overloaded()        { return 1; }
+    int overloaded() const  { return 2; }
+}
+
+bool test1()
+{
+    S s = (123);
+    return s.member() && s.member2 (7) == 130;
+}
+
+bool testOverload1()        { const S s; return s.overloaded() == 2; }
+
+namespace ns
+{
+    namespace n1 { struct S { int a; int get() const { return this.a; } } }
+    namespace n2 { struct S { bool<3> b; int a; int get() const { return this.a; } } }
+
+    int get<T> (T s)    { return s.get(); }
+
+    bool test()
+    {
+        n1::S s1 = (2);
+        n2::S s2 = ((), 3);
+        return get (s1) == 2 && get (s2) == 3;
+    }
+}
+
+struct S2
+{
+    int overloaded()        { return 1; }
+    int overloaded() const  { return 2; }
+}
+
+bool testOverload3()        { const S2 s; return s.overloaded() == 2; }
+bool testOverload4()        { S2 s; return s.overloaded() == 1; }
+bool testOverload5()        { return S2().overloaded() == 2; }
+
+## expectError ("2:17: error: This function has no implementation")
+
+struct S { void foo(); }
+
+## expectError ("2:23: error: Found \"int\" when expecting \"{\"")
+
+struct S { void foo() int s; }
+
+## expectError ("2:46: error: Found \";\" when expecting identifier")
+
+struct S { void f() {} int x; void foo() {} s; }
+
+## expectError ("2:14: error: Cannot find symbol 'this'")
+
+void foo() { this = 1; }
+
+## expectError ("2:39: error: Cannot convert 1 ('int32') to 'tests::S'")
+
+struct S { int x, y; int foo() { this = 1; } }
+
+## expectError ("3:22: error: Could not resolve function or cast")
+
+struct S { int foo() { return 1; } int x; }
+void f()  { let x = S.foo(); }
+
+## expectError ("5:23: error: Expected an assignable target on the left of the '=' operator")
+
+struct S
+{
+    int x;
+    void f() const  { this.x = 123; }
+}
+
+## expectError ("8:32: error: Cannot convert type 'const tests::S&' to 'tests::S&'")
+
+struct S
+{
+    int x;
+    bool f()  { this.x = 123; return true; }
+}
+
+bool foo (const S& s) { return s.f(); }
+
+## expectError ("2:12: error: Only struct member functions can be declared `const`")
+
+void foo() const {}
+
+## testProcessor()
+
+processor test
+{
+    output event int out;
+
+    struct S { int i; }
+    S s;
+
+    void main()
+    {
+        S s;
+
+        loop (3)
+        {
+            s.i = 1;
+            out <- s.i;
+        }
+
+        out <- -1; advance();
+    }
+}
+
+
+## testCompile()
+
+processor test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        if (params::voiceParamModulationRanges == params::Type::frequency)
+            out <- 1.0f;
+
+        advance();
+    }
+}
+
+namespace params
+{
+    let voiceParamModulationRanges = Type (Type::none);
+
+    enum Type
+    {
+        none, frequency
+    }
+}

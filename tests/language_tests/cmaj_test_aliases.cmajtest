@@ -1,0 +1,107 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## testFunction()
+
+namespace N { using A = float; }
+
+graph G
+{
+    input stream A in;
+    output stream N::A out;
+
+    using A = float;
+
+    node gain = std::levels::ConstantGain (A, 0.4f);
+    connection in -> gain -> out;
+}
+
+processor P
+{
+    input stream N::A in;
+    output stream A out;
+
+    using A = float;
+    using VoidTypeOK = void;
+
+    void main() { loop { out <- in * 0.4f; advance(); }}
+}
+
+namespace N2
+{
+    struct A { int x; D d; }
+    struct B { float x; }
+    using C = A;
+    using D = B;
+    const C a = (1, D(1.0f));
+}
+
+bool test() { return N2::a.x == 1; }
+
+## expectError ("2:21: error: Using declarations cannot be references")
+
+using CannotBeRef = float&;
+
+## expectError ("2:11: error: Array elements cannot be references")
+
+using T = int&[2];
+
+## expectError ("3:7: error: The name 'A' is already in use //// 2:8: note: See previous declaration")
+
+struct A { float x; }
+using A = int;
+
+## expectError ("2:6: error: The name 'A' is already in use //// 3:7: note: See previous declaration")
+
+void A() {}
+using A = int;
+
+## expectError ("3:7: error: The name 'A' is already in use //// 2:7: note: See previous declaration")
+
+using A = int;
+using A = int;
+
+## expectError ("3:7: error: 'C' and 'B' reference each other recursively")
+
+using A = B;
+using C = A;
+using B = C;
+
+## expectError ("3:8: error: 'A' and 'B' reference each other recursively")
+
+using D = A;
+struct A { B b; }
+using C = D;
+struct B { C c; }
+
+## expectError ("2:25: error: Expected an assignable target on the left of the '=' operator")
+
+void foo (const F& a) { a = 1; }
+using F = int;
+
+## expectError ("5:21: error: Cannot create a vector with elements that are not primitive types")
+
+namespace N
+{
+    using A = float<2>;
+    struct State { A<2> x; }
+}
+
+## expectError ("4:11: error: The name 'N' is already in use //// 2:11: note: See previous declaration")
+
+namespace N {}
+namespace M {}
+namespace N = M;
+
+## expectError ("3:11: error: The name 'std' is already in use", {"doNotWrapInTestNamespace":"true"})
+
+namespace N {}
+namespace std = N;
+graph G [[main]] { output stream int out; }

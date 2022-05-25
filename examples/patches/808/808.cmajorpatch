@@ -1,0 +1,35 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.808",
+    "version":          "1.0",
+    "name":             "808",
+    "description":      "A minimal implementation of a classic drum-machine",
+    "category":         "synth",
+    "manufacturer":     "Sound Stacks Ltd",
+    "isInstrument":     true,
+
+    "source":           "808.cmajor",
+
+    "externals":
+    {
+        "tr808::samples": [
+            { "source": "BD.ogg", "note": 36 },
+            { "source": "RS.ogg", "note": 37 },
+            { "source": "SD.ogg", "note": 38 },
+            { "source": "CP.ogg", "note": 39 },
+            { "source": "CH.ogg", "note": 40 },
+            { "source": "LT.ogg", "note": 41 },
+            { "source": "OH.ogg", "note": 42 },
+            { "source": "MT.ogg", "note": 43 },
+            { "source": "HT.ogg", "note": 44 },
+            { "source": "CY.ogg", "note": 45 },
+            { "source": "CB.ogg", "note": 46 },
+            { "source": "MC.ogg", "note": 47 },
+            { "source": "HC.ogg", "note": 48 },
+            { "source": "LC.ogg", "note": 49 },
+            { "source": "MA.ogg", "note": 50 },
+            { "source": "CL.ogg", "note": 51 }
+        ]
+    }
+}
+

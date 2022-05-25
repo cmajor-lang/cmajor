@@ -1,0 +1,110 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.audio_data
+
+/**
+    These structures are useful for representing chunks of audio data with a
+    known sample-rate. They're useful types when you're declaring an external
+    variable which is going to hold audio file data or generated waveform data.
+
+    Note that duck-typing is used for the types of externals which contain audio
+    data, so you can use your own classes as long as they contain a couple of
+    fields which can hold the frame data and a sample rate. If you need a struct
+    for audio data with more than 2 channels, you can just declare your own type
+    using an appropriately-sized vector for the frames.
+*/
+namespace std::audio_data
+{
+    /// Represents a chunk of mono floating-point audio data.
+    struct Mono
+    {
+        float[] frames;
+        float64 sampleRate;
+    }
+
+    /// Represents a chunk of stereo, interleaved floating-point audio data.
+    struct Stereo
+    {
+        float<2>[] frames;
+        float64 sampleRate;
+    }
+
+    //==============================================================================
+    /**
+        This processor will play chunks of audio sample data with a speed ratio applied.
+
+        It provides input events to set the audio data, speed ratio and other properties
+        to control playback.
+
+        The SampleContent type must be a struct containing a 'frames' member, which
+        is an array of audio frames, and a 'sampleRate' member with the original rate
+        of the audio data.
+    */
+    processor SamplePlayer (using SampleContent)
+    {
+        /// Provides the output frame data
+        output stream SampleContent::frames.elementType out;
+
+        /// Receives a new audio sample to play, and starts it playing from the beginning
+        /// at the current speed.
+        input event SampleContent content;
+        /// Changes the speed at which the sample is playing (send speed = 0 to stop playback)
+        input event float speedRatio;
+        /// Sets whether or not the sample should loop
+        input event bool shouldLoop;
+        /// Sets the position within the sample from which play will continue
+        input event float position;
+
+        //==============================================================================
+        SampleContent currentContent;
+        float currentSpeed = 1.0f;
+        float64 currentIndex, indexDelta;
+        bool isLooping = false;
+
+        event content (SampleContent newContent)
+        {
+            currentContent = newContent;
+            currentIndex = 0;
+            indexDelta = currentSpeed * currentContent.sampleRate * processor.period;
+        }
+
+        event speedRatio (float newSpeed)
+        {
+            currentSpeed = newSpeed;
+            indexDelta = newSpeed * currentContent.sampleRate * processor.period;
+        }
+
+        event position (float newPosition)      { currentIndex = newPosition; }
+        event shouldLoop (bool shouldLoop)      { isLooping = shouldLoop; }
+
+        void main()
+        {
+            loop
+            {
+                if (indexDelta != 0)
+                {
+                    out <- currentContent.frames.readLinearInterpolated (currentIndex);
+                    currentIndex += indexDelta;
+
+                    if (currentIndex >= currentContent.frames.size)
+                    {
+                        if (isLooping)
+                            currentIndex -= currentContent.frames.size;
+                        else
+                            indexDelta = 0;
+                    }
+                }
+
+                advance();
+            }
+        }
+    }
+}

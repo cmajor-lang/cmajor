@@ -1,0 +1,410 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/**
+    std.intrinsics
+
+    Built-in and low-level functions.
+*/
+
+/**
+    The `std` namespace is the root for all the built-in Cmajor library code.
+
+    It contains various child namespaces that group tasks into various sub-categories.
+*/
+namespace std
+{
+
+/**
+    This namespace contains placeholders and reference implementations of basic functions.
+
+    The compiler treats the `intrinsics` namespace as a special-case, allowing its
+    functions to act as if they're in the global namespace.
+
+    When running code, the JIT engines are free to replace the implementation of intrinsic
+    functions with optimised alternatives if possible, although many of the functions in here
+    also provide reference implementations to be used as a fallback when no native version
+    is available.
+*/
+namespace intrinsics
+{
+    /// Compares two scalar or vector values and returns the maximum. For vector operands, this returns a vector of results for each element.
+    T max<T> (T v1, T v2)     { static_assert (T.isScalar, "max() requires scalar arguments"); if const (v1.isVector) return internal::vec_max (v1, v2); else return v1 > v2 ? v1 : v2; }
+    /// Compares two scalar or vector values and returns the minimum. For vector operands, this returns a vector of results for each element.
+    T min<T> (T v1, T v2)     { static_assert (T.isScalar, "min() requires scalar arguments"); if const (v1.isVector) return internal::vec_min (v1, v2); else return v1 < v2 ? v1 : v2; }
+
+    /// Uses a boolean vector to determine which elements from two other vectors should be combined into the result.
+    T select<T> (bool<T.size> mask, T trueValues, T falseValues)
+    {
+        static_assert (T.isVector, "select() requires vector arguments");
+
+        T r;
+
+        for (wrap<T.size> i)
+            r[i] = mask[i] ? trueValues[i] : falseValues[i];
+
+        return r;
+    }
+
+    //==============================================================================
+    /// Returns a value which has been clamped to fit within the given range (inclusive of the top).
+    T clamp<T> (T value, T minimum, T maximum)      { static_assert (value.isScalar, "clamp() requires scalar arguments"); return value > maximum ? maximum : (value < minimum ? minimum : value); }
+    /// Wraps a value to fit within a range, using a negative-aware modulo operation, and returning zero if the size is zero.
+    T wrap<T> (T value, T size)                     { static_assert (value.isScalar, "wrap() requires scalar arguments");  if (size == 0) return 0; let n = value % size; if (n < 0) return n + size; return n; }
+    /// Wraps a value to fit within a range, using a negative-aware modulo operation, and returning zero if the size is zero.
+    int32 wrap (int32 value, int32 size)            { if (size == 0) return 0; let n = value % size; if (n < 0) return n + size; return n; }
+
+    /// Adds two floating-point values together, returning the result modulo 2*Pi.
+    /// This is a common operation for tasks like incrementing the phase of an oscillator.
+    T addModulo2Pi<T> (T startValue, T valueToAdd)
+    {
+        static_assert (T.isScalar && T.primitiveType.isFloat, "addModulo2Pi() requires floating point arguments");
+
+        let v = startValue + valueToAdd;
+
+        if (v < 0)             return v % T(twoPi) + T(twoPi);
+        if (v < T(twoPi))      return v;
+        if (v < T(twoPi * 2))  return v - T(twoPi);
+
+        return v % T(twoPi);
+    }
+
+    //==============================================================================
+    /// Returns the absolute value of a scalar or vector value.
+    T abs<T> (T n)                                  { static_assert (n.isScalar, "abs() requires a scalar argument"); if const (n.isVector) return internal::vec_abs (n); else return n < 0 ? -n : n; }
+    /// Returns the largest integer not greater than the argument. This follows the same rules as the standard C/C++ std::floor() function.
+    T floor<T> (T n)                                { static_assert (n.isScalar && n.primitiveType.isFloat, "floor() requires floating point arguments");  let rounded = T(int64(n)); if (rounded == n) return n; if (n >= 0) return rounded; return rounded - 1; }
+    /// Returns the smallest integer not less than the argument. This follows the same rules as the standard C/C++ std::ceil() function.
+    T ceil<T> (T n)                                 { static_assert (n.isScalar && n.primitiveType.isFloat, "ceil() requires floating point arguments");   let rounded = T(int64(n)); if (rounded == n) return n; if (n >= 0) return rounded + 1; return rounded; }
+    /// Rounds the argument to an integer value. This follows the same rules as the standard C/C++ std::rint() function.
+    T rint<T> (T n)                                 { static_assert (n.isScalar && n.primitiveType.isFloat, "rint() requires floating point arguments");   return T(roundToInt (n)); }
+    /// Returns the floating point modulo operation of its arguments. This follows the same rules as the standard C/C++ std::fmod() function.
+    T fmod<T> (T x, T y)                            { static_assert (x.isScalar && x.primitiveType.isFloat, "fmod() requires floating point arguments");      return x - (y * T(int64(x / y))); }
+    /// Returns the floating remainder of its arguments. This follows the same rules as the standard C/C++ std::remainder() function.
+    T remainder<T> (T x, T y)                       { static_assert (x.isScalar && x.primitiveType.isFloat, "remainder() requires floating point arguments"); return x - (y * T(int64(x / y + 0.5f))); }
+    /// Performs a linear-interpolation between a pair of scalar values.
+    T lerp<T> (T value1, T value2, T proportion)    { static_assert (value1.isScalar && value1.primitiveType.isFloat, "lerp() requires floating point arguments");   return value1 + (value2 - value1) * proportion; }
+    /// Returns the nearest integer to a floating point value.
+    int32 roundToInt (float32 value)                { return int32 (value + (value < 0 ? -0.5f : 0.5f)); }
+    /// Returns the nearest integer to a floating point value.
+    int64 roundToInt (float64 value)                { return int64 (value + (value < 0 ? -0.5 : 0.5)); }
+
+    //==============================================================================
+    /// Returns the square root of its argument.
+    T sqrt<T> (T n)                 { static_assert (T.isScalar && T.primitiveType.isFloat, "sqrt() requires floating point arguments");  if const (T.isVector) return internal::vec_sqrt (n); else return T(); }
+    /// Raises a value to the given power.
+    T pow<T> (T a, T b)             { static_assert (T.isScalar && T.primitiveType.isFloat, "pow() requires floating point arguments");   if const (T.isVector) return internal::vec_pow (n); else return T(); }
+    /// Returns the exponent of a scalar floating-point argument.
+    T exp<T> (T n)                  { static_assert (T.isScalar && T.primitiveType.isFloat, "exp() requires floating point arguments");   if const (T.isVector) return internal::vec_exp (n); else return T(); }
+    /// Returns the exponent of a complex number.
+    complex32 exp (complex32 n)     { let e = exp (n.real); return complex32 (e * cos (n.imag), e * sin (n.imag)); }
+    /// Returns the exponent of a complex number.
+    complex64 exp (complex64 n)     { let e = exp (n.real); return complex64 (e * cos (n.imag), e * sin (n.imag)); }
+    /// Returns the natural log of a scalar floating point argument.
+    T log<T> (T n)                  { static_assert (T.isScalar && T.primitiveType.isFloat, "log() requires floating point arguments");   if const (T.isVector) return internal::vec_log (n); else return T(); }
+    /// Returns the base-10 log of a scalar floating point argument.
+    T log10<T> (T n)                { static_assert (T.isScalar && T.primitiveType.isFloat, "log10() requires floating point arguments"); if const (T.isVector) return internal::vec_log10 (n); else return T(); }
+
+    //==============================================================================
+    /// Checks whether the supplied argument is a floating point INF.
+    bool isinf<FloatType> (FloatType value)         { static_assert (value.isPrimitive && value.primitiveType.isFloat, "isinf() requires a floating point argument"); return (); }
+    /// Checks whether the supplied argument is a floating point NaN.
+    bool isnan<FloatType> (FloatType value)         { static_assert (value.isPrimitive && value.primitiveType.isFloat, "isnan() requires a floating point argument"); return (); }
+
+    //==============================================================================
+    /// Calculates the sum of the elements in a vector or array.
+    ArrayType.elementType sum<ArrayType> (ArrayType array)
+    {
+        static_assert ((array.isArray || array.isVector) && array.elementType.isScalar, "sum() requires an array or vector of scalar values");
+
+        if const (array.isVector)
+        {
+            if const (array.size == 1)
+            {
+                return array[0];
+            }
+            else
+            {
+                let blockSize = array.size / 2;
+
+                let a = array[0:blockSize];
+                let b = array[blockSize: blockSize * 2];
+
+                if const (array.size % 2 == 0)
+                    return sum (a + b);
+                else
+                    return sum (a + b) + array[array.size - 1];
+            }
+        }
+        else if const (array.isFixedSizeArray)
+        {
+            var result = array[0];
+
+            if const (array.size > 1)
+                for (wrap<array.size> i = 1)
+                    result += array[i];
+
+            return result;
+        }
+        else
+        {
+            if (array.size == 0)
+                return ();
+
+            var result = array[0];
+
+            for (int i = 1; i < array.size; ++i)
+                result += array[i];
+
+            return result;
+        }
+    }
+
+    /// Multiplies all the elements of an array or vector of scalar values.
+    ArrayType.elementType product<ArrayType> (ArrayType array)
+    {
+        static_assert ((array.isArray || array.isVector) && array.elementType.isScalar, "product() requires an array or vector of scalar values");
+
+        if const (array.isVector && array.size >= 8)
+        {
+            let blockSize = array.size / 8;
+            array.elementType result;
+
+            if const (blockSize != 1)
+                result = product (array[blockSize * 0 : blockSize * 1] * array[blockSize * 1 : blockSize * 2]
+                                * array[blockSize * 2 : blockSize * 3] * array[blockSize * 3 : blockSize * 4]
+                                * array[blockSize * 4 : blockSize * 5] * array[blockSize * 5 : blockSize * 6]
+                                * array[blockSize * 6 : blockSize * 7] * array[blockSize * 7 : blockSize * 8]);
+            else
+                result = array[0] * array[1] * array[2] * array[3] * array[4] * array[5] * array[6] * array[7];
+
+            let leftover = array.size % 8;
+
+            if const (leftover == 0)        return result;
+            else if const (leftover == 1)   return result * array[8 * blockSize];
+            else                            return result * product (array[8 * blockSize:]);
+        }
+        else if const (array.isVector || array.isFixedSizeArray)
+        {
+            var result = array[0];
+
+            if const (array.size > 1)
+                for (wrap<array.size> i = 1)
+                    result *= array[i];
+
+            return result;
+        }
+        else
+        {
+            if (array.size == 0)
+                return ();
+
+            var result = array[0];
+
+            for (int i = 1; i < array.size; ++i)
+                result *= array[i];
+
+            return result;
+        }
+    }
+
+    /// Returns an element from an array.
+    /// The index is a generic parameter, and can be either an integer or a float value. If you
+    /// provide a float index, then it'll round it down to the nearest integer and use that.
+    /// If the index lies beyond the range of the array, it will be wrapped.
+    Array.elementType read<Array, IndexType> (const Array& array, IndexType index)
+    {
+        static_assert (array.isArray, "read() requires an array as its first argument");
+        static_assert (index.isPrimitive && (index.isInt || index.isFloat), "read() expects a floating point or integer value for its index argument");
+        return array.at (int32(index));
+    }
+
+    /// Linearly-interpolates a value at a position in an array.
+    /// The first argument must be an array of floating point (or vector float) values, and the
+    /// index provided should be a floating point value. This will interpolate between adjacent
+    /// elements in the array to calculate the return value.
+    /// If the index lies beyond the range of the array, it will be wrapped.
+    Array.elementType readLinearInterpolated<Array, IndexType> (const Array& array, IndexType index)
+    {
+        static_assert (array.isArray, "readLinearInterpolated() requires an array as its first argument");
+        static_assert ((array.elementType.isPrimitive || array.elementType.isVector) && Array.elementType.primitiveType.isFloat,
+                       "readLinearInterpolated() expects an array of floating point values which can be interpolated");
+        static_assert (index.isPrimitive && index.isFloat, "readLinearInterpolated() expects a floating point value for its index argument");
+
+        if (array.size != 0)
+        {
+            let firstIndex = floor (index);
+            let delta = array.elementType (index - firstIndex);
+            let i = int32(firstIndex);
+            let element1 = array.at (i);
+            let element2 = array.at (i + 1);
+            return element1 + delta * (element2 - element1);
+        }
+
+        return ();
+    }
+
+    //==============================================================================
+    /// Takes a bool vector, and returns true if any of its elements are true.
+    bool anyTrue<BoolVector> (BoolVector boolVector)
+    {
+        static_assert (BoolVector.isVector && BoolVector.elementType.isBool, "anyTrue() expects a bool vector for its argument");
+
+        for (wrap<BoolVector.size> i)
+            if (boolVector[i])
+                return true;
+
+        return false;
+    }
+
+    /// Takes a bool vector, and returns true if all of its elements are true.
+    bool allTrue<BoolVector> (BoolVector boolVector)
+    {
+        static_assert (BoolVector.isVector && BoolVector.elementType.isBool, "allTrue() expects a bool vector for its argument");
+
+        for (wrap<BoolVector.size> i)
+            if (! boolVector[i])
+                return false;
+
+        return true;
+    }
+
+    /// Takes two array or vector arguments, and returns true if all of the corresponding elements are equal.
+    bool allEqual<Array1, Array2> (const Array1& array1, const Array2& array2)
+    {
+        static_assert ((Array1.isVector || Array1.isArray) && (Array2.isVector || Array2.isArray),
+                       "allEqual() expects vectors or arrays for its arguments");
+
+        if const (array1.isFixedSizeArray && array2.isFixedSizeArray)
+        {
+            if const (array1.size != array2.size)
+                return false;
+            else
+                for (wrap<array1.size> i)
+                    if (array1[i] != array2[i])
+                        return false;
+        }
+        else
+        {
+            if (array1.size != array2.size)
+                return false;
+
+            for (int i = 0; i < array1.size; ++i)
+                if (array1.at(i) != array2.at(i))
+                    return false;
+        }
+
+        return true;
+    }
+
+    //==============================================================================
+    /// Sine of an angle.
+    T sin<T> (T n)         { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "sin() requires a floating point argument");   if const (T.isVector) return internal::vec_sin (n); else return T(); }
+    /// Cosine of an angle.
+    T cos<T> (T n)         { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "cos() requires a floating point argument");   if const (T.isVector) return internal::vec_cos (n); else return T(); }
+    /// Tangent of an angle.
+    T tan<T> (T n)         { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "tan() requires a floating point argument");   if const (T.isVector) return internal::vec_tan (n); else return sin(n) / cos(n); }
+    /// Arc tangent (inverse tangent) of x.
+    T atan<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "atan() requires a floating point argument");  if const (T.isVector) return internal::vec_atan (n); else return n < 0 ? -internal::atan_pos (-n) : internal::atan_pos (n); }
+
+    /// Hyperbolic sine of an angle.
+    T sinh<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "sinh() requires a floating point argument");  return 0.5f * (exp(n) - exp(-n)); }
+    /// Hyperbolic cosine of an angle.
+    T cosh<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "cosh() requires a floating point argument");  return 0.5f * (exp(n) + exp(-n)); }
+    /// Hyperbolic tangent of an angle.
+    T tanh<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "tanh() requires a floating point argument");  let e = exp (n * 2); return (e - 1) / (e + 1); }
+    /// Arc hyperbolic tangent.
+    T atanh<T> (T n)       { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "atanh() requires a floating point argument"); return 0.5f * log ((1 + n) / (1 - n)); }
+
+    /// Arc sine (inverse sine) of an angle.
+    T asin<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "asin() requires a floating point argument");  return atan (n / (sqrt (1 - (n * n)))); }
+    /// Arc cosine (inverse cosine) of an angle.
+    T acos<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "acos() requires a floating point argument");  return atan ((sqrt (1 - n * n)) / n); }
+    /// Arc hyperbolic sine.
+    T asinh<T> (T n)       { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "asinh() requires a floating point argument"); return log (n + sqrt(n * n + 1)); }
+    /// Arc hyperbolic cosine.
+    T acosh<T> (T n)       { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "acosh() requires a floating point argument"); return log (n + sqrt(n * n - 1)); }
+
+    /// Arc tangent of y/x.
+    T atan2<T> (T y, T x)  { static_assert ((y.isPrimitive || y.isVector) && y.primitiveType.isFloat, "atan2() requires a floating point argument"); if const (T.isVector) return internal::atan2_vec (y, x); else return internal::atan2_scalar (y, x); }
+
+    //==============================================================================
+    /// @internal
+    /// (Internal helper functions: not for public use)
+    namespace internal
+    {
+        T atan_pos<T> (T n)
+        {
+            return n > 1.0f ? (T(pi / 2) - atan_0to1 (1 / n)) : atan_0to1 (n);
+        }
+
+        T atan_0to1<T> (T n)
+        {
+            let sqrt3 = T(sqrt(3.0));
+
+            if (n < T(2 - sqrt3))
+                return atan_approx (n);
+
+            let x = (sqrt3 * n - 1) / (sqrt3 + n);
+
+            return x < 0 ? T(pi / 6) - atan_approx (-x)
+                         : T(pi / 6) + atan_approx (x);
+        }
+
+        T atan_approx<T> (T n)
+        {
+            let n2 = n * n;
+            let n3 = n2 * n;
+            return n - (n3 * T(1 / 3.0)) + (n3 * n2 * T(1 / 5.0));
+        }
+
+        T atan2_vec<T> (T y, T x)
+        {
+            T r;
+
+            for (wrap<T.size> i)
+                r[i] = atan2_scalar (y[i], x[i]);
+
+            return r;
+        }
+
+        T atan2_scalar<T> (T y, T x)
+        {
+            if (x != 0)
+            {
+                let yoverx = atan (y / x);
+
+                return x > 0 ? yoverx : (y >= 0 ? yoverx + T(pi)
+                                                : yoverx - T(pi));
+            }
+
+            if (y > 0) return T(pi /  2);
+            if (y < 0) return T(pi / -2);
+
+            return ();
+        }
+
+        T vec_min<T>   (T v1, T v2)  { return select (v1 < v2, v1, v2); }
+        T vec_max<T>   (T v1, T v2)  { return select (v1 > v2, v1, v2); }
+
+        T vec_abs<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = abs   (n[i]);  return r; }
+        T vec_sqrt<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = sqrt  (n[i]);  return r; }
+        T vec_pow<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = pow   (n[i]);  return r; }
+        T vec_exp<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = exp   (n[i]);  return r; }
+        T vec_log<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = log   (n[i]);  return r; }
+        T vec_log10<T> (T n)  { T r;  for (wrap<T.size> i) r[i] = log10 (n[i]);  return r; }
+        T vec_sin<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = sin   (n[i]);  return r; }
+        T vec_cos<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = cos   (n[i]);  return r; }
+        T vec_tan<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = tan   (n[i]);  return r; }
+        T vec_atan<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = atan  (n[i]);  return r; }
+    }
+
+} // namespace intrinsics
+} // namespace std

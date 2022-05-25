@@ -1,0 +1,89 @@
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+/**
+    A very simple drum machine example..
+*/
+namespace tr808
+{
+    graph TR808  [[ main ]]
+    {
+        output stream float out;
+        input event std::midi::Message midiIn;
+        input gain.volume;
+
+        const int numVoices = 8;
+
+        node gain = std::levels::SmoothedGain (float, 0.1f);
+        node voices = Voice[numVoices];
+
+        connection midiIn
+                    -> std::midi::MPEConverter
+                    -> std::voices::VoiceAllocator(numVoices)
+                    -> voices
+                    -> gain.in;
+
+        connection gain -> out;
+    }
+
+    //==============================================================================
+    graph Voice
+    {
+        output stream float out;
+        input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
+
+        node
+        {
+            envelope     = std::envelopes::FixedASR (0.0f, 0.3f);
+            attenuator   = std::levels::DynamicGain (float);
+            noteSelector = NoteSelector;
+            samplePlayer = std::audio_data::SamplePlayer (DrumSample::source);
+        }
+
+        connection
+        {
+            eventIn -> noteSelector -> samplePlayer.content;
+            samplePlayer -> attenuator.in;
+            eventIn -> envelope -> attenuator.gain;
+            attenuator -> out;
+        }
+    }
+
+    //==============================================================================
+    // Takes a NoteOn event, and emits an event to trigger the right drum sample in
+    // a downstream SamplePlayer
+    processor NoteSelector
+    {
+        input event std::notes::NoteOn eventIn;
+        output event DrumSample::source content;
+
+        event eventIn (std::notes::NoteOn e)
+        {
+            for (wrap<samples.size> i)
+            {
+                if (samples[i].note == roundToInt (e.pitch))
+                {
+                    content <- samples[i].source;
+                    break;
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    struct DrumSample
+    {
+        std::audio_data::Mono source;
+        int note;
+    }
+
+    external DrumSample[16] samples;
+}

@@ -1,0 +1,814 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## testFunction()
+
+bool check (float64 a, float64 b)
+{
+    return abs (cos(a) - b) < 1e-10
+        && (a < -1e20 || a > 1e20 || abs (cos(float (a)) - float (b)) < 1e-5);
+}
+
+bool test0()  { return check (0.0,  1.0); }
+bool test1()  { return check (-1e30,  -0.9999564608959665); }
+bool test2()  { return check (-10000000000.0,  0.873119622676856); }
+bool test3()  { return check (-100000.0,  -0.9993608074382124); }
+bool test4()  { return check (-1000.0,  0.562379076290703); }
+bool test5()  { return check (-100.0,  0.8623188722876839); }
+bool test6()  { return check (-5.0,  0.28366218546322627); }
+bool test7()  { return check (-4.9,  0.18651236942257577); }
+bool test8()  { return check (-4.800000000000001,  0.08749898343944727); }
+bool test9()  { return check (-4.700000000000001,  -0.012388663462889673); }
+bool test10()  { return check (-4.600000000000001,  -0.1121525269350531); }
+bool test11()  { return check (-4.500000000000002,  -0.21079579943077798); }
+bool test12()  { return check (-4.400000000000002,  -0.30733286997841766); }
+bool test13()  { return check (-4.3000000000000029,  -0.400799172079973); }
+bool test14()  { return check (-4.200000000000003,  -0.4902608213406971); }
+bool test15()  { return check (-4.100000000000003,  -0.5748239465332663); }
+bool test16()  { return check (-4.0000000000000039,  -0.6536436208636093); }
+bool test17()  { return check (-3.9000000000000036,  -0.7259323042001378); }
+bool test18()  { return check (-3.8000000000000035,  -0.7909677119144146); }
+bool test19()  { return check (-3.7000000000000035,  -0.8481000317104064); }
+bool test20()  { return check (-3.600000000000003,  -0.8967584163341456); }
+bool test21()  { return check (-3.500000000000003,  -0.9364566872907952); }
+bool test22()  { return check (-3.400000000000003,  -0.9667981925794602); }
+bool test23()  { return check (-3.300000000000003,  -0.9874797699088644); }
+bool test24()  { return check (-3.200000000000003,  -0.9982947757947529); }
+bool test25()  { return check (-3.1000000000000029,  -0.9991351502732796); }
+bool test26()  { return check (-3.0000000000000028,  -0.9899924966004459); }
+bool test27()  { return check (-2.9000000000000027,  -0.9709581651495911); }
+bool test28()  { return check (-2.8000000000000027,  -0.942222340668659); }
+bool test29()  { return check (-2.7000000000000026,  -0.9040721420170622); }
+bool test30()  { return check (-2.6000000000000025,  -0.8568887533689484); }
+bool test31()  { return check (-2.500000000000002,  -0.801143615546935); }
+bool test32()  { return check (-2.400000000000002,  -0.7373937155412469); }
+bool test33()  { return check (-2.300000000000002,  -0.6662760212798258); }
+bool test34()  { return check (-2.200000000000002,  -0.5885011172553473); }
+bool test35()  { return check (-2.100000000000002,  -0.5048461045998591); }
+bool test36()  { return check (-2.0000000000000019,  -0.416146836547144); }
+bool test37()  { return check (-1.9000000000000017,  -0.323289566863505); }
+bool test38()  { return check (-1.8000000000000017,  -0.2272020946930886); }
+bool test39()  { return check (-1.7000000000000016,  -0.1288444942955262); }
+bool test40()  { return check (-1.6000000000000015,  -0.029199522301290149); }
+bool test41()  { return check (-1.5000000000000014,  0.07073720166770159); }
+bool test42()  { return check (-1.4000000000000013,  0.1699671429002397); }
+bool test43()  { return check (-1.3000000000000012,  0.2674988286245863); }
+bool test44()  { return check (-1.200000000000001,  0.36235775447667259); }
+bool test45()  { return check (-1.100000000000001,  0.45359612142557656); }
+bool test46()  { return check (-1.0000000000000009,  0.540302305868139); }
+bool test47()  { return check (-0.9000000000000009,  0.6216099682706637); }
+bool test48()  { return check (-0.8000000000000009,  0.6967067093471647); }
+bool test49()  { return check (-0.700000000000001,  0.7648421872844878); }
+bool test50()  { return check (-0.600000000000001,  0.8253356149096778); }
+bool test51()  { return check (-0.500000000000001,  0.8775825618903722); }
+bool test52()  { return check (-0.400000000000001,  0.9210609940028847); }
+bool test53()  { return check (-0.30000000000000107,  0.9553364891256058); }
+bool test54()  { return check (-0.20000000000000105,  0.9800665778412414); }
+bool test55()  { return check (-0.10000000000000103,  0.9950041652780257); }
+bool test56()  { return check (-1.0269562977782698e-15,  1.0); }
+bool test57()  { return check (0.09999999999999898,  0.9950041652780258); }
+bool test58()  { return check (0.19999999999999899,  0.9800665778412419); }
+bool test59()  { return check (0.299999999999999,  0.9553364891256063); }
+bool test60()  { return check (0.399999999999999,  0.9210609940028854); }
+bool test61()  { return check (0.499999999999999,  0.8775825618903732); }
+bool test62()  { return check (0.599999999999999,  0.8253356149096789); }
+bool test63()  { return check (0.699999999999999,  0.764842187284489); }
+bool test64()  { return check (0.7999999999999989,  0.6967067093471662); }
+bool test65()  { return check (0.8999999999999989,  0.6216099682706653); }
+bool test66()  { return check (0.9999999999999989,  0.5403023058681407); }
+bool test67()  { return check (1.099999999999999,  0.4535961214255783); }
+bool test68()  { return check (1.199999999999999,  0.36235775447667448); }
+bool test69()  { return check (1.2999999999999992,  0.26749882862458826); }
+bool test70()  { return check (1.3999999999999993,  0.16996714290024168); }
+bool test71()  { return check (1.4999999999999994,  0.07073720166770357); }
+bool test72()  { return check (1.5999999999999995,  -0.02919952230128815); }
+bool test73()  { return check (1.6999999999999996,  -0.1288444942955242); }
+bool test74()  { return check (1.7999999999999997,  -0.22720209469308667); }
+bool test75()  { return check (1.8999999999999997,  -0.32328956686350315); }
+bool test76()  { return check (1.9999999999999998,  -0.4161468365471422); }
+bool test77()  { return check (2.0999999999999998,  -0.5048461045998571); }
+bool test78()  { return check (2.1999999999999999,  -0.5885011172553455); }
+bool test79()  { return check (2.3,  -0.6662760212798241); }
+bool test80()  { return check (2.4,  -0.7373937155412454); }
+bool test81()  { return check (2.5,  -0.8011436155469337); }
+bool test82()  { return check (2.6,  -0.8568887533689473); }
+bool test83()  { return check (2.7,  -0.9040721420170612); }
+bool test84()  { return check (2.8000000000000004,  -0.9422223406686583); }
+bool test85()  { return check (2.9000000000000005,  -0.9709581651495907); }
+bool test86()  { return check (3.0000000000000006,  -0.9899924966004455); }
+bool test87()  { return check (3.1000000000000007,  -0.9991351502732795); }
+bool test88()  { return check (3.2000000000000008,  -0.998294775794753); }
+bool test89()  { return check (3.3000000000000009,  -0.9874797699088648); }
+bool test90()  { return check (3.400000000000001,  -0.9667981925794608); }
+bool test91()  { return check (3.500000000000001,  -0.936456687290796); }
+bool test92()  { return check (3.600000000000001,  -0.8967584163341466); }
+bool test93()  { return check (3.700000000000001,  -0.8481000317104076); }
+bool test94()  { return check (3.800000000000001,  -0.790967711914416); }
+bool test95()  { return check (3.9000000000000014,  -0.7259323042001393); }
+bool test96()  { return check (4.000000000000001,  -0.6536436208636113); }
+bool test97()  { return check (4.1000000000000009,  -0.5748239465332685); }
+bool test98()  { return check (4.2,  -0.4902608213406994); }
+bool test99()  { return check (4.3,  -0.40079917207997547); }
+bool test100()  { return check (4.3999999999999999,  -0.3073328699784202); }
+bool test101()  { return check (4.499999999999999,  -0.21079579943078059); }
+bool test102()  { return check (4.599999999999999,  -0.11215252693505576); }
+bool test103()  { return check (4.699999999999998,  -0.012388663462892335); }
+bool test104()  { return check (4.799999999999998,  0.08749898343944462); }
+bool test105()  { return check (4.899999999999998,  0.18651236942257314); }
+bool test106()  { return check (4.999999999999997,  0.2836621854632237); }
+bool test107()  { return check (-0.50123475,  0.8769899223725814); }
+bool test108()  { return check (-0.48688254,  0.8837957261174668); }
+bool test109()  { return check (-0.47253033,  0.8904194835010607); }
+bool test110()  { return check (-0.45817812,  0.8968598301459463); }
+bool test111()  { return check (-0.44382591000000007,  0.9031154394540901); }
+bool test112()  { return check (-0.42947370000000009,  0.9091850228800983); }
+bool test113()  { return check (-0.4151214900000001,  0.9150673301966336); }
+bool test114()  { return check (-0.4007692800000001,  0.9207611497519405); }
+bool test115()  { return check (-0.38641707000000016,  0.9262653087194243); }
+bool test116()  { return check (-0.37206486000000019,  0.9315786733392326); }
+bool test117()  { return check (-0.3577126500000002,  0.9367001491517901); }
+bool test118()  { return check (-0.3433604400000002,  0.9416286812232373); }
+bool test119()  { return check (-0.32900823000000026,  0.9463632543627292); }
+bool test120()  { return check (-0.31465602000000028,  0.9509028933315461); }
+bool test121()  { return check (-0.3003038100000003,  0.9552466630439761); }
+bool test122()  { return check (-0.2859516000000003,  0.9593936687599259); }
+bool test123()  { return check (-0.27159939000000035,  0.9633430562692217); }
+bool test124()  { return check (-0.25724718000000038,  0.9670940120675612); }
+bool test125()  { return check (-0.24289497000000036,  0.9706457635240816); }
+bool test126()  { return check (-0.22854276000000035,  0.9739975790405078); }
+bool test127()  { return check (-0.21419055000000035,  0.9771487682018485); }
+bool test128()  { return check (-0.19983834000000035,  0.9800986819186098); }
+bool test129()  { return check (-0.18548613000000034,  0.9828467125604963); }
+bool test130()  { return check (-0.17113392000000034,  0.9853922940815717); }
+bool test131()  { return check (-0.15678171000000033,  0.9877349021368551); }
+bool test132()  { return check (-0.14242950000000033,  0.9898740541903262); }
+bool test133()  { return check (-0.12807729000000032,  0.9918093096143195); }
+bool test134()  { return check (-0.11372508000000031,  0.9935402697802858); }
+bool test135()  { return check (-0.09937287000000031,  0.9950665781409025); }
+bool test136()  { return check (-0.0850206600000003,  0.9963879203035165); }
+bool test137()  { return check (-0.0706684500000003,  0.9975040240949032); }
+bool test138()  { return check (-0.056316240000000298,  0.9984146596173293); }
+bool test139()  { return check (-0.04196403000000029,  0.9991196392959079); }
+bool test140()  { return check (-0.02761182000000029,  0.9996188179172357); }
+bool test141()  { return check (-0.01325961000000029,  0.9999120926593043); }
+bool test142()  { return check (0.0010925999999997112,  0.9999994031126794); }
+bool test143()  { return check (0.015444809999999712,  0.9998807312929448); }
+bool test144()  { return check (0.029797019999999714,  0.9995561016444062); }
+bool test145()  { return check (0.04414922999999971,  0.9990255810350565); }
+bool test146()  { return check (0.05850143999999971,  0.9982892787428018); }
+bool test147()  { return check (0.07285364999999972,  0.9973473464329528); }
+bool test148()  { return check (0.08720585999999972,  0.9961999781269834); }
+bool test149()  { return check (0.10155806999999972,  0.9948474101625663); }
+bool test150()  { return check (0.11591027999999973,  0.9932899211448919); }
+bool test151()  { return check (0.13026248999999974,  0.9915278318892797); }
+bool test152()  { return check (0.14461469999999974,  0.9895615053550968); }
+bool test153()  { return check (0.15896690999999975,  0.987391346570994); }
+bool test154()  { return check (0.17331911999999975,  0.9850178025514775); }
+bool test155()  { return check (0.18767132999999976,  0.9824413622048318); }
+bool test156()  { return check (0.20202353999999976,  0.9796625562324125); }
+bool test157()  { return check (0.21637574999999976,  0.9766819570193321); }
+bool test158()  { return check (0.23072795999999977,  0.9735001785165582); }
+bool test159()  { return check (0.24508016999999977,  0.9701178761144507); }
+bool test160()  { return check (0.25943237999999976,  0.9665357465077622); }
+bool test161()  { return check (0.2737845899999997,  0.9627545275521324); }
+bool test162()  { return check (0.2881367999999997,  0.9587749981121018); }
+bool test163()  { return check (0.30248900999999969,  0.9545979779006794); }
+bool test164()  { return check (0.31684121999999967,  0.9502243273104968); }
+bool test165()  { return check (0.3311934299999996,  0.9456549472365823); }
+bool test166()  { return check (0.3455456399999996,  0.9408907788907918); }
+bool test167()  { return check (0.3598978499999996,  0.9359328036079364); }
+bool test168()  { return check (0.37425005999999957,  0.9307820426436446); }
+bool test169()  { return check (0.38860226999999955,  0.9254395569640014); }
+bool test170()  { return check (0.4029544799999995,  0.9199064470270076); }
+bool test171()  { return check (0.4173066899999995,  0.9141838525559062); }
+bool test172()  { return check (0.43165889999999948,  0.9082729523044176); }
+bool test173()  { return check (0.44601110999999946,  0.9021749638139387); }
+bool test174()  { return check (0.4603633199999994,  0.8958911431627499); }
+bool test175()  { return check (0.4747155299999994,  0.8894227847072852); }
+bool test176()  { return check (0.48906773999999939,  0.8827712208155178); }
+bool test177()  { return check (1e30,  -0.9999564608959665); }
+bool test178()  { return check (10000000000.0,  0.873119622676856); }
+bool test179()  { return check (100000.0,  -0.9993608074382124); }
+bool test180()  { return check (1000.0,  0.562379076290703); }
+bool test181()  { return check (100.0,  0.8623188722876839); }
+
+## testFunction()
+
+bool check (float64 a, float64 b)
+{
+    return abs (sin(a) - b) < 1e-10
+        && (a < -1e20 || a > 1e20 || abs (sin(float (a)) - float (b)) < 1e-5);
+}
+
+bool test0()  { return check (0.0,  0.0); }
+bool test1()  { return check (-1e30,  -0.009331468931175825); }
+bool test2()  { return check (-10000000000.0,  0.4875060250875107); }
+bool test3()  { return check (-100000.0,  -0.03574879797201651); }
+bool test4()  { return check (-1000.0,  -0.8268795405320025); }
+bool test5()  { return check (-100.0,  0.5063656411097588); }
+bool test6()  { return check (-5.0,  0.9589242746631385); }
+bool test7()  { return check (-4.9,  0.9824526126243325); }
+bool test8()  { return check (-4.800000000000001,  0.9961646088358406); }
+bool test9()  { return check (-4.700000000000001,  0.9999232575641009); }
+bool test10()  { return check (-4.600000000000001,  0.9936910036334646); }
+bool test11()  { return check (-4.500000000000002,  0.9775301176650975); }
+bool test12()  { return check (-4.400000000000002,  0.9516020738895166); }
+bool test13()  { return check (-4.3000000000000029,  0.916165936749456); }
+bool test14()  { return check (-4.200000000000003,  0.8715757724135894); }
+bool test15()  { return check (-4.100000000000003,  0.8182771110644124); }
+bool test16()  { return check (-4.0000000000000039,  0.7568024953079305); }
+bool test17()  { return check (-3.9000000000000036,  0.6877661591839763); }
+bool test18()  { return check (-3.8000000000000035,  0.6118578909427217); }
+bool test19()  { return check (-3.7000000000000035,  0.529836140908496); }
+bool test20()  { return check (-3.600000000000003,  0.44252044329485526); }
+bool test21()  { return check (-3.500000000000003,  0.3507832276896228); }
+bool test22()  { return check (-3.400000000000003,  0.2555411020268342); }
+bool test23()  { return check (-3.300000000000003,  0.15774569414325127); }
+bool test24()  { return check (-3.200000000000003,  0.05837414342758274); }
+bool test25()  { return check (-3.1000000000000029,  -0.04158066243328783); }
+bool test26()  { return check (-3.0000000000000028,  -0.14112000805986459); }
+bool test27()  { return check (-2.9000000000000027,  -0.23924932921397983); }
+bool test28()  { return check (-2.8000000000000027,  -0.33498815015590258); }
+bool test29()  { return check (-2.7000000000000026,  -0.4273798802338278); }
+bool test30()  { return check (-2.6000000000000025,  -0.5155013718214623); }
+bool test31()  { return check (-2.500000000000002,  -0.5984721441039547); }
+bool test32()  { return check (-2.400000000000002,  -0.6754631805511494); }
+bool test33()  { return check (-2.300000000000002,  -0.7457052121767188); }
+bool test34()  { return check (-2.200000000000002,  -0.808496403819589); }
+bool test35()  { return check (-2.100000000000002,  -0.8632093666488728); }
+bool test36()  { return check (-2.0000000000000019,  -0.9092974268256809); }
+bool test37()  { return check (-1.9000000000000017,  -0.9463000876874139); }
+bool test38()  { return check (-1.8000000000000017,  -0.9738476308781948); }
+bool test39()  { return check (-1.7000000000000016,  -0.9916648104524685); }
+bool test40()  { return check (-1.6000000000000015,  -0.9995736030415051); }
+bool test41()  { return check (-1.5000000000000014,  -0.9974949866040546); }
+bool test42()  { return check (-1.4000000000000013,  -0.9854497299884604); }
+bool test43()  { return check (-1.3000000000000012,  -0.9635581854171933); }
+bool test44()  { return check (-1.200000000000001,  -0.9320390859672267); }
+bool test45()  { return check (-1.100000000000001,  -0.8912073600614358); }
+bool test46()  { return check (-1.0000000000000009,  -0.841470984807897); }
+bool test47()  { return check (-0.9000000000000009,  -0.783326909627484); }
+bool test48()  { return check (-0.8000000000000009,  -0.7173560908995235); }
+bool test49()  { return check (-0.700000000000001,  -0.6442176872376918); }
+bool test50()  { return check (-0.600000000000001,  -0.5646424733950362); }
+bool test51()  { return check (-0.500000000000001,  -0.4794255386042039); }
+bool test52()  { return check (-0.400000000000001,  -0.3894183423086514); }
+bool test53()  { return check (-0.30000000000000107,  -0.29552020666134057); }
+bool test54()  { return check (-0.20000000000000105,  -0.19866933079506225); }
+bool test55()  { return check (-0.10000000000000103,  -0.09983341664682918); }
+bool test56()  { return check (-1.0269562977782698e-15,  -1.0269562977782698e-15); }
+bool test57()  { return check (0.09999999999999898,  0.09983341664682714); }
+bool test58()  { return check (0.19999999999999899,  0.19866933079506023); }
+bool test59()  { return check (0.299999999999999,  0.2955202066613386); }
+bool test60()  { return check (0.399999999999999,  0.3894183423086496); }
+bool test61()  { return check (0.499999999999999,  0.4794255386042021); }
+bool test62()  { return check (0.599999999999999,  0.5646424733950345); }
+bool test63()  { return check (0.699999999999999,  0.6442176872376902); }
+bool test64()  { return check (0.7999999999999989,  0.717356090899522); }
+bool test65()  { return check (0.8999999999999989,  0.7833269096274828); }
+bool test66()  { return check (0.9999999999999989,  0.841470984807896); }
+bool test67()  { return check (1.099999999999999,  0.8912073600614349); }
+bool test68()  { return check (1.199999999999999,  0.9320390859672261); }
+bool test69()  { return check (1.2999999999999992,  0.9635581854171927); }
+bool test70()  { return check (1.3999999999999993,  0.98544972998846); }
+bool test71()  { return check (1.4999999999999994,  0.9974949866040543); }
+bool test72()  { return check (1.5999999999999995,  0.9995736030415052); }
+bool test73()  { return check (1.6999999999999996,  0.9916648104524687); }
+bool test74()  { return check (1.7999999999999997,  0.9738476308781953); }
+bool test75()  { return check (1.8999999999999997,  0.9463000876874146); }
+bool test76()  { return check (1.9999999999999998,  0.9092974268256818); }
+bool test77()  { return check (2.0999999999999998,  0.8632093666488739); }
+bool test78()  { return check (2.1999999999999999,  0.8084964038195903); }
+bool test79()  { return check (2.3,  0.7457052121767204); }
+bool test80()  { return check (2.4,  0.6754631805511511); }
+bool test81()  { return check (2.5,  0.5984721441039564); }
+bool test82()  { return check (2.6,  0.5155013718214642); }
+bool test83()  { return check (2.7,  0.4273798802338298); }
+bool test84()  { return check (2.8000000000000004,  0.33498815015590469); }
+bool test85()  { return check (2.9000000000000005,  0.23924932921398199); }
+bool test86()  { return check (3.0000000000000006,  0.14112000805986678); }
+bool test87()  { return check (3.1000000000000007,  0.04158066243329005); }
+bool test88()  { return check (3.2000000000000008,  -0.05837414342758053); }
+bool test89()  { return check (3.3000000000000009,  -0.15774569414324908); }
+bool test90()  { return check (3.400000000000001,  -0.2555411020268321); }
+bool test91()  { return check (3.500000000000001,  -0.35078322768962069); }
+bool test92()  { return check (3.600000000000001,  -0.44252044329485326); }
+bool test93()  { return check (3.700000000000001,  -0.5298361409084941); }
+bool test94()  { return check (3.800000000000001,  -0.61185789094272); }
+bool test95()  { return check (3.9000000000000014,  -0.6877661591839748); }
+bool test96()  { return check (4.000000000000001,  -0.7568024953079289); }
+bool test97()  { return check (4.1000000000000009,  -0.8182771110644108); }
+bool test98()  { return check (4.2,  -0.8715757724135882); }
+bool test99()  { return check (4.3,  -0.9161659367494549); }
+bool test100()  { return check (4.3999999999999999,  -0.9516020738895158); }
+bool test101()  { return check (4.499999999999999,  -0.9775301176650969); }
+bool test102()  { return check (4.599999999999999,  -0.9936910036334643); }
+bool test103()  { return check (4.699999999999998,  -0.9999232575641008); }
+bool test104()  { return check (4.799999999999998,  -0.9961646088358408); }
+bool test105()  { return check (4.899999999999998,  -0.9824526126243329); }
+bool test106()  { return check (4.999999999999997,  -0.9589242746631392); }
+bool test107()  { return check (-0.50123475,  -0.48050876792929977); }
+bool test108()  { return check (-0.48688254,  -0.4678729683327512); }
+bool test109()  { return check (-0.47253033,  -0.4551407951411347); }
+bool test110()  { return check (-0.45817812,  -0.44231487095799129); }
+bool test111()  { return check (-0.44382591000000007,  -0.4293978376979158); }
+bool test112()  { return check (-0.42947370000000009,  -0.4163923560423692); }
+bool test113()  { return check (-0.4151214900000001,  -0.4033011048916247); }
+bool test114()  { return check (-0.4007692800000001,  -0.3901267808129618); }
+bool test115()  { return check (-0.38641707000000016,  -0.3768720974852206); }
+bool test116()  { return check (-0.37206486000000019,  -0.36353978513983206); }
+bool test117()  { return check (-0.3577126500000002,  -0.35013258999843796); }
+bool test118()  { return check (-0.3433604400000002,  -0.3366532737072179); }
+bool test119()  { return check (-0.32900823000000026,  -0.3231046127680389); }
+bool test120()  { return check (-0.31465602000000028,  -0.30948939796654459); }
+bool test121()  { return check (-0.3003038100000003,  -0.2958104337973025); }
+bool test122()  { return check (-0.2859516000000003,  -0.2820705378861279); }
+bool test123()  { return check (-0.27159939000000035,  -0.26827254040970219); }
+bool test124()  { return check (-0.25724718000000038,  -0.25441928351260625); }
+bool test125()  { return check (-0.24289497000000036,  -0.24051362072188899); }
+bool test126()  { return check (-0.22854276000000035,  -0.22655841635929084); }
+bool test127()  { return check (-0.21419055000000035,  -0.2125565449512439); }
+bool test128()  { return check (-0.19983834000000035,  -0.1985108906367701); }
+bool test129()  { return check (-0.18548613000000034,  -0.18442434657339933); }
+bool test130()  { return check (-0.17113392000000034,  -0.1702998143412299); }
+bool test131()  { return check (-0.15678171000000033,  -0.15614020334525426); }
+bool test132()  { return check (-0.14242950000000033,  -0.14194843021607254); }
+bool test133()  { return check (-0.12807729000000032,  -0.12772741820911827); }
+bool test134()  { return check (-0.11372508000000031,  -0.11348009660251897); }
+bool test135()  { return check (-0.09937287000000031,  -0.09920940009371658); }
+bool test136()  { return check (-0.0850206600000003,  -0.0849182681949714); }
+bool test137()  { return check (-0.0706684500000003,  -0.07060964462787434); }
+bool test138()  { return check (-0.056316240000000298,  -0.056286476716992); }
+bool test139()  { return check (-0.04196403000000029,  -0.04195171478276985); }
+bool test140()  { return check (-0.02761182000000029,  -0.027608311533817998); }
+bool test141()  { return check (-0.01325961000000029,  -0.013259221458705293); }
+bool test142()  { return check (0.0010925999999997112,  0.0010925997826133404); }
+bool test143()  { return check (0.015444809999999712,  0.015444195967610817); }
+bool test144()  { return check (0.029797019999999714,  0.029792610920117699); }
+bool test145()  { return check (0.04414922999999971,  0.044134889119242428); }
+bool test146()  { return check (0.05850143999999971,  0.05846807630815661); }
+bool test147()  { return check (0.07285364999999972,  0.07278922010261996); }
+bool test148()  { return check (0.08720585999999972,  0.08709537059911936); }
+bool test149()  { return check (0.10155806999999972,  0.10138358098249718); }
+bool test150()  { return check (0.11591027999999973,  0.1156509081329433); }
+bool test151()  { return check (0.13026248999999974,  0.12989441323222593); }
+bool test152()  { return check (0.14461469999999974,  0.1441111623690364); }
+bool test153()  { return check (0.15896690999999975,  0.1582982271433234); }
+bool test154()  { return check (0.17331911999999975,  0.17245268526949165); }
+bool test155()  { return check (0.18767132999999976,  0.18657162117834148); }
+bool test156()  { return check (0.20202353999999976,  0.20065212661762456); }
+bool test157()  { return check (0.21637574999999976,  0.2146913012510928); }
+bool test158()  { return check (0.23072795999999977,  0.22868625325591653); }
+bool test159()  { return check (0.24508016999999977,  0.24263409991834906); }
+bool test160()  { return check (0.25943237999999976,  0.256531968227515); }
+bool test161()  { return check (0.2737845899999997,  0.27037699546719998); }
+bool test162()  { return check (0.2881367999999997,  0.2841663298055196); }
+bool test163()  { return check (0.30248900999999969,  0.29789713088234689); }
+bool test164()  { return check (0.31684121999999967,  0.31156657039437626); }
+bool test165()  { return check (0.3311934299999996,  0.3251718326777041); }
+bool test166()  { return check (0.3455456399999996,  0.33871011528780656); }
+bool test167()  { return check (0.3598978499999996,  0.3521786295767928); }
+bool test168()  { return check (0.37425005999999957,  0.3655746012678185); }
+bool test169()  { return check (0.38860226999999955,  0.378895271026537); }
+bool test170()  { return check (0.4029544799999995,  0.39213789502947446); }
+bool test171()  { return check (0.4173066899999995,  0.40529974552920858); }
+bool test172()  { return check (0.43165889999999948,  0.4183781114162368); }
+bool test173()  { return check (0.44601110999999946,  0.4313702987774174); }
+bool test174()  { return check (0.4603633199999994,  0.44427363145086748); }
+bool test175()  { return check (0.4747155299999994,  0.4570854515772059); }
+bool test176()  { return check (0.48906773999999939,  0.46980312014702527); }
+bool test177()  { return check (1e30,  0.009331468931175825); }
+bool test178()  { return check (10000000000.0,  -0.4875060250875107); }
+bool test179()  { return check (100000.0,  0.03574879797201651); }
+bool test180()  { return check (1000.0,  0.8268795405320025); }
+bool test181()  { return check (100.0,  -0.5063656411097588); }
+
+## testFunction()
+
+bool test_abs()
+{
+    return  abs(5) == 5 && abs(-3) == 3
+         && abs(0x1200000000L) == 0x1200000000L && abs (-0x1200000000L) == 0x1200000000L
+         && abs(4.0f) == 4.0f && abs(-8.0f) == 8.0f
+         && abs (5.0e16) == 5.0e16 && abs (-4.0e8) == 4.0e8;
+}
+
+bool test_max()
+{
+    return max (2, 3) == 3 && max (-3, -5) == -3 && max (2, max (3, 1)) == 3
+        && max (2.0f, 3.0f) == 3.0f && max (-3.0f, -5.0f) == -3.0f && max (2.0f, max (3.0f, 1.0f)) == 3.0f
+        && max (2.0, 3.0) == 3.0 && max (-3.0, -5.0) == -3.0 && max (2.0, max (3.0, 1.0)) == 3.0;
+}
+
+bool test_min1()
+{
+    return min (2, 3) == 2 && min (-15, 1) == -15 && min (1, min (2, 3)) == 1
+        && min (1.2f, 3.4f) == 1.2f && min (-15.0f, 4.0f) == -15.0f && min (1.0f, min (-2.0f, 3.0f)) == -2.0f
+        && min (1.2, 3.4) == 1.2 && min (-15.0, 4.0) == -15.0 && min (1.0, min (-2.0, 3.0)) == -2.0;
+}
+
+bool test_minvec<V, T> (V vec, T target)
+{
+    var n = vec[0];
+
+    for (wrap<vec.size> i = 1)
+        n = min (vec[i], n);
+
+    return near (n, target);
+}
+
+bool test_min2()
+{
+    return test_minvec (float32[4] (3.0f, -2.2f, 7.0, -0.5f), -2.2f)
+        && test_minvec (float32<4> (3.0f, -2.2f, 7.0, -0.5f), -2.2f)
+        && test_minvec (float64[4] (3.0, -2.2, 7.0, -0.5), -2.2)
+        && test_minvec (float64<4> (3.0, -2.2, 7.0, -0.5), -2.2);
+}
+
+bool test_min3()
+{
+    let a = min (float<3> (4, 2, 6), float<3> (1, 5, 3));
+    let b = max (float<3> (4, 2, 6), float<3> (1, 5, 3));
+
+    let c = min (int<3> (4, 2, 6), int<3> (1, 5, 3));
+    let d = max (int<3> (4, 2, 6), int<3> (1, 5, 3));
+
+    return a[0] == 1 && a[1] == 2 && a[2] == 3
+        && b[0] == 4 && b[1] == 5 && b[2] == 6
+        && c[0] == 1 && c[1] == 2 && c[2] == 3
+        && d[0] == 4 && d[1] == 5 && d[2] == 6;
+}
+
+bool test_select_float()
+{
+    let a = float<3> (1, 2, 3);
+    let b = float<3> (4, 5, 6);
+    let c = bool<3> (true, false, true);
+
+    let d = select (c, a, b);
+    let e = select (c, b, a);
+
+    return d[0] == 1 && d[1] == 5 && d[2] == 3
+        && e[0] == 4 && e[1] == 2 && e[2] == 6;
+}
+
+bool test_select_int()
+{
+    let a = int<3> (1, 2, 3);
+    let b = int<3> (4, 5, 6);
+    let c = bool<3> (true, false, true);
+
+    let d = select (c, a, b);
+    let e = select (c, b, a);
+
+    return d[0] == 1 && d[1] == 5 && d[2] == 3
+        && e[0] == 4 && e[1] == 2 && e[2] == 6;
+}
+
+bool allEqual()
+{
+    let a = float<3> (1, 7, 10);
+    let b = float<3> (2, 3, 12);
+    let c = a < b;
+    let d = select (c, a, b);
+
+    return allEqual (d, float<3> (1, 3, 10));
+}
+
+bool allTrue()
+{
+    let a = float<3> (1, 7, 10);
+    let b = float<3> (2, 3, 12);
+    let c = a < b;
+    let d = select (c, a, b);
+
+    return allTrue (d == float<3> (1, 3, 10));
+}
+
+bool near<T> (T a, T b) { return abs (a - b) < T(0.00001f); }
+
+bool test_wrap()
+{
+    return wrap (3, 4) == 3 && wrap (11, 11) == 0 && wrap (1003, 10) == 3 && wrap (-21, 10) == 9 && wrap (1, 1) == 0
+        && wrap (3.0f, 4.0f) == 3.0f && wrap (11.0f, 11.0f) == 0 && near (wrap (103.1f, 10.0f), 3.1f) && near (wrap (-21.1f, 10.0f), 8.9f) && near (wrap (1.0f, 1.0f), 0.0f)
+        && wrap (3.0, 4.0) == 3.0 && wrap (11.0, 11.0) == 0 && near (wrap (1003.1, 10.0), 3.1) && near (wrap (-21.1, 10.0), 8.9) && near (wrap (1.0, 1.0), 0.0);
+}
+
+bool test_clamp()
+{
+    return clamp (5, -3, 3) == 3 && clamp (-5, -3, 3) == -3 && clamp (2, 1, 3) == 2 && clamp (1, 1, 1) == 1
+        && clamp (5.0f, -3.0f, 3.0f) == 3.0f && clamp (-5.0f, -3.0f, 3.0f) == -3.0f && clamp (2.0f, 1.0f, 3.0f) == 2.0f && clamp (1.0f, 1.0f, 1.0f) == 1.0f
+        && clamp (5.0, -3.0, 3.0) == 3.0 && clamp (-5.0, -3.0, 3.0) == -3.0 && clamp (2.0, 1.0, 3.0) == 2.0 && clamp (1.0, 1.0, 1.0) == 1.0;
+}
+
+bool test_lerp()
+{
+    return near (lerp (100.0f, 200.0f, 0.2f), 120.0f);
+}
+
+bool test_remainder()
+{
+    return near (remainder (-5.1f, 3.0f), 0.9f)
+        && near (remainder (-5.1, 3.0), 0.9)
+        && near (remainder (5.1, 3.0), -0.9);
+}
+
+bool test_roundToInt()
+{
+    return roundToInt (-1.7f) == -2  && roundToInt (-1.7)  == -2
+        && roundToInt (-1.1f) == -1  && roundToInt (-1.1)  == -1
+        && roundToInt (-0.7f) == -1  && roundToInt (-0.4f) == 0
+        && roundToInt (-0.4)  == 0   && roundToInt (-0.0f) == 0
+        && roundToInt (-0.0)  == 0   && roundToInt (0.0)   == 0
+        && roundToInt (0.0f)  == 0   && roundToInt (0.4f)  == 0
+        && roundToInt (0.49f) == 0   && roundToInt (0.5f)  == 1
+        && roundToInt (0.75f) == 1   && roundToInt (0.75)  == 1
+        && roundToInt (1.5f)  == 2   && roundToInt (1.1f)  == 1;
+}
+
+bool test_mod()
+{
+    return near (fmod (11.5f, 2.0f), 1.5f)
+        && near (fmod (11.5, 2.0), 1.5);
+}
+
+bool test_readLinearInterpolatedIndex<Array> (const Array& linearValues, float index)
+{
+    return near (linearValues.readLinearInterpolated (index), index)
+        && near (linearValues.readLinearInterpolated (float64 (index)), index);
+}
+
+bool test_readLinearInterpolated<Array> (Array data)
+{
+    return test_readLinearInterpolatedIndex (data, 0.5f)
+        && test_readLinearInterpolatedIndex (data, 1.1f)
+        && test_readLinearInterpolatedIndex (data, 4.5f)
+        && test_readLinearInterpolatedIndex (data, 5.0f)
+        && test_readLinearInterpolatedIndex (data, 4.9f);
+}
+
+const float[] linearValues = (0, 1, 2, 3, 4, 5);
+
+bool test_readLinearInterpolated()
+{
+    float[] slice = linearValues;
+
+    return test_readLinearInterpolated (slice)
+        && test_readLinearInterpolated (linearValues)
+        && test_readLinearInterpolated (float[] (0, 1, 2, 3, 4, 5));
+}
+
+T apply_sqrt<T> (T x)
+{
+    T r;
+
+    for (wrap<x.size> i)
+        r[i] = sqrt (x[i]);
+
+    return r;
+}
+
+bool test_sqrt()
+{
+    float<4> a = (1.0f, 4.0f, 9.0f, 16.0f);
+    let b = a.sqrt();
+    let c = a.apply_sqrt();
+
+    float[4] asArray = (a[0], a[1], a[2], a[3]);
+    let d = asArray.apply_sqrt();
+
+    return near (sqrt(a[0]), b[0])
+        && near (sqrt(a[1]), b[1])
+        && near (sqrt(a[2]), b[2])
+        && near (sqrt(a[3]), b[3])
+        && near (sqrt(a[0]), c[0])
+        && near (sqrt(a[1]), c[1])
+        && near (sqrt(a[2]), c[2])
+        && near (sqrt(a[3]), c[3])
+        && near (sqrt(a[0]), d[0])
+        && near (sqrt(a[1]), d[1])
+        && near (sqrt(a[2]), d[2])
+        && near (sqrt(a[3]), d[3]);
+}
+
+T apply_sin<T> (T x)
+{
+    T r;
+
+    for (wrap<x.size> i)
+        r[i] = sin (x[i]);
+
+    return r;
+}
+
+bool test_sin()
+{
+    float<4> a = (0.1f, 0.2f, 0.3f, 0.4f);
+    let b = a.sin();
+    let c = a.apply_sin();
+
+    float[4] asArray = (a[0], a[1], a[2], a[3]);
+    let d = asArray.apply_sin();
+
+    return near (sin(a[0]), b[0])
+        && near (sin(a[1]), b[1])
+        && near (sin(a[2]), b[2])
+        && near (sin(a[3]), b[3])
+        && near (sin(a[0]), c[0])
+        && near (sin(a[1]), c[1])
+        && near (sin(a[2]), c[2])
+        && near (sin(a[3]), c[3])
+        && near (sin(a[0]), d[0])
+        && near (sin(a[1]), d[1])
+        && near (sin(a[2]), d[2])
+        && near (sin(a[3]), d[3]);
+}
+
+bool test_inverse_trig()
+{
+    let a = 0.11;
+    let b = 0.22f;
+
+    return near (a, asin (sin (a)))
+        && near (a, acos (cos (a)))
+        && near (a, atan (tan (a)))
+        && near (a, asinh (sinh (a)))
+        && near (a, acosh (cosh (a)))
+        && near (a, atanh (tanh (a)))
+        && near (b, asin (sin (b)))
+        && near (b, acos (cos (b)))
+        && near (b, atan (tan (b)))
+        && near (b, asinh (sinh (b)))
+        && near (b, acosh (cosh (b)))
+        && near (b, atanh (tanh (b)));
+}
+
+bool test_atan2()
+{
+    return near (atan2 (0.0f, 0.0f), 0.0f)
+        && near (atan2 (0.0, 0.0), 0.0)
+        && near (atan2 (0.0, -0.0), pi)
+        && near (atan2 (0.0f, -0.0f), float32 (pi))
+        && near (atan2 (7.0, 0.0), 1.57079632);
+}
+
+bool test_floor_dynamic()
+{
+    var a =  2.8f; a += 0.0f;
+    var b = -2.8f; b += 0.0f;
+    var c = -1.0f; c += 0.0f;
+    var d =  1.0f; d += 0.0f;
+
+    return near (floor (a),  2.0f)
+        && near (floor (b), -3.0f)
+        && near (floor (c), -1.0f)
+        && near (floor (d),  1.0f)
+        && near (ceil (a),   3.0f)
+        && near (ceil (b),  -2.0f)
+        && near (ceil (c),  -1.0f)
+        && near (ceil (d),   1.0f)
+        && near (rint (a),   3.0f)
+        && near (rint (b),  -3.0f)
+        && near (rint (c),  -1.0f)
+        && near (rint (d),   1.0f);
+}
+
+bool test_floor_folded()
+{
+    return near (floor ( 2.8f),  2.0f)
+        && near (floor (-2.8f), -3.0f)
+        && near (floor (-1.0f), -1.0f)
+        && near (floor ( 1.0f),  1.0f)
+        && near (ceil ( 2.8f),   3.0f)
+        && near (ceil (-2.8f),  -2.0f)
+        && near (ceil (-1.0f),  -1.0f)
+        && near (ceil ( 1.0f),   1.0f)
+        && near (rint ( 2.8f),   3.0f)
+        && near (rint (-2.8f),  -3.0f)
+        && near (rint (-1.0f),  -1.0f)
+        && near (rint ( 1.0f),   1.0f);
+}
+
+bool test_logs()
+{
+    return near (pow (8.0f, 1.0f / 3.0f), 2.0f)
+        && near (pow (2.0f, 3.0f), 8.0f)
+        && near (pow (4.0, 2.0), 16.0)
+        && near (exp (1.0), 2.7182818)
+        && near (exp (1.0f), 2.71828f)
+        && near (exp (2.0f), 7.3890560989f)
+        && near (exp (2.0), 7.3890560989)
+        && near (log10 (1000.0f), 3.0f)
+        && near (log10 (1000.0), 3.0)
+        && near (log10 (0.0001), -4.0)
+        && near (log(2.71828), 0.99999933)
+        && near (log(7.390000), 2.000128)
+        && near (log(1.0f), 0.0f);
+}
+
+bool test_sum_and_product_result<T> (const T& v)
+{
+    T.elementType total;
+
+    for (int i = 0; i < v.size; ++i)
+        total += T.elementType (i);
+
+    var product = v[0];
+
+    for (int i = 1; i < v.size; ++i)
+        product *= T.elementType (i);
+
+    return total == v.sum() && product == v.product();
+}
+
+bool test_sum_and_product_result_as_slice<T> (T[] v)
+{
+    return test_sum_and_product_result (v);
+}
+
+bool test_sum_and_product<T> (T dummy)
+{
+    T v;
+
+    for (int i = 0; i < v.size; ++i)
+        v.at(i) = T.elementType (i);
+
+    if const (T.isArray)
+        return test_sum_and_product_result_as_slice (v)
+                && test_sum_and_product_result (v);
+
+    return test_sum_and_product_result (v);
+}
+
+bool test_sum_and_product()
+{
+    return test_sum_and_product (float<1>())
+        && test_sum_and_product (float<4>())
+        && test_sum_and_product (float<5>())
+        && test_sum_and_product (float<8>())
+        && test_sum_and_product (float<17>())
+        && test_sum_and_product (float<18>())
+
+        && test_sum_and_product (float[1]())
+        && test_sum_and_product (float[4]())
+        && test_sum_and_product (float[5]())
+        && test_sum_and_product (float[8]())
+        && test_sum_and_product (float[17]())
+        && test_sum_and_product (float[18]())
+
+        && test_sum_and_product (int64[1]())
+        && test_sum_and_product (int64[4]())
+        && test_sum_and_product (int64[5]())
+        && test_sum_and_product (int64[8]())
+        && test_sum_and_product (int64[17]())
+        && test_sum_and_product (int64[18]());
+}
+
+## expectError ("2:20: error: product() requires an array or vector of scalar values")
+
+void f() { let a = product (123); }
+
+## expectError ("2:20: error: fmod() requires floating point arguments")
+
+void f() { let a = fmod (5, 4); }
+
+## expectError ("2:20: error: sum() requires an array or vector of scalar values")
+
+void f() { let a = sum (123.0i); }
+
+## expectError ("2:20: error: lerp() requires floating point arguments")
+
+void f() { let a = lerp (1, 2, 3); }
+
+## expectError ("2:20: error: sqrt() requires floating point arguments")
+
+void f() { let x = sqrt (int32()); }
+
+## expectError ("3:26: error: sqrt() requires floating point arguments")
+
+struct S { int n; }
+void f() { S s; let a = s.sqrt(); }
+
+## expectError ("3:25: error: sin() requires a floating point argument")
+
+struct S { int n; }
+void f() { S s; let a = sin (s); }
+
+## expectError ("2:35: error: Could not resolve argument types for function call pow(float32, int32)")
+
+void f()  { let c = 1.0f; let p = pow (c, 2); }
+
+## expectError ("2:37: error: Could not resolve argument types for function call pow(float32, int32)")
+
+void f()  { float c = 1.0f; let p = pow (c, 2); }
+
+## expectError ("2:43: error: Could not resolve argument types for function call pow(const float32, int32)")
+
+void f()  { const float c = 1.0f; let p = pow (c, 2); }

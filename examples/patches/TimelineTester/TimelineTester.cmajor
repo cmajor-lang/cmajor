@@ -1,0 +1,58 @@
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+/// Title: Timeline example
+///
+/// This example demonstrates the timeline structures and how to access them.
+/// It simply copies the input events to output events so they can be logged.
+
+processor TimelineTester
+{
+    input
+    {
+        event std::timeline::TimeSignature     timeSigIn;
+        event std::timeline::Tempo             tempoIn;
+        event std::timeline::TransportState    transportStateIn;
+        event std::timeline::Position          positionIn;
+    }
+
+    output
+    {
+        event int numeratorOut, denominatorOut;
+        event float tempoOut;
+        event int stateOut;
+        event int64 currentFrameOut;
+        event float64 currentQuarterNoteOut, lastBarStartQuarterNoteOut;
+    }
+
+    event timeSigIn (std::timeline::TimeSignature t)
+    {
+        numeratorOut <- t.numerator;
+        denominatorOut <- t.denominator;
+    }
+
+    event tempoIn (std::timeline::Tempo t)
+    {
+        tempoOut <- t.bpm;
+    }
+
+    event transportStateIn (std::timeline::TransportState t)
+    {
+        stateOut <- t.flags;
+    }
+
+    event positionIn (std::timeline::Position p)
+    {
+        currentFrameOut <- p.frameIndex;
+        currentQuarterNoteOut <- p.quarterNote;
+        lastBarStartQuarterNoteOut <- p.barStartQuarterNote;
+    }
+}

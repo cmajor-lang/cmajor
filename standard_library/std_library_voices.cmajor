@@ -1,0 +1,214 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.voices
+
+/**
+    This module demonstrates a simple voice-allocation algorithm.
+
+    The way it's structured is that you pass an incoming stream of note events to
+    the voice allocator processor, and it redirects them to an array of destination
+    processors which each handle a single voice.
+
+    The voice allocators use the channel property of the incoming events to group
+    them together, and take care of ensuring that each target voice only receives
+    the events from one channel at a time.
+*/
+namespace std::voices
+{
+    /** A basic least-recently-used voice allocator.
+
+        If there's an inactive voice, then a new note will be assigned to it,
+        otherwise it will steal the least-recently-used active voice. For more
+        fancy note-stealing algorithms, you can use this as an example and add
+        your own logic!
+    */
+    processor VoiceAllocator (int numVoices,
+                              int MPEMasterChannel = 0)
+    {
+        //==============================================================================
+        input event (std::notes::NoteOn,
+                     std::notes::NoteOff,
+                     std::notes::PitchBend,
+                     std::notes::Slide,
+                     std::notes::Pressure,
+                     std::notes::Control)    eventIn;
+
+        output event (std::notes::NoteOn,
+                      std::notes::NoteOff,
+                      std::notes::PitchBend,
+                      std::notes::Slide,
+                      std::notes::Pressure,
+                      std::notes::Control)   voiceEventOut[numVoices];
+
+        //==============================================================================
+        event eventIn (std::notes::NoteOn noteOn)
+        {
+            let oldest = findOldestIndex();
+
+            // send a note-off when stealing a voice
+            if (voiceState[oldest].isActive)
+                voiceEventOut[oldest] <- std::notes::NoteOff (voiceState[oldest].channel,
+                                                              voiceState[oldest].pitch,
+                                                              0.0f);
+
+            voiceState[oldest].start (noteOn.channel, noteOn.pitch);
+
+            voiceEventOut[oldest] <- noteOn;
+        }
+
+        event eventIn (std::notes::NoteOff noteOff)
+        {
+            for (wrap<numVoices> i)
+            {
+                if (voiceState[i].channel == noteOff.channel
+                     && voiceState[i].pitch == noteOff.pitch)
+                {
+                    if (isSustainActive (noteOff.channel))
+                    {
+                        voiceState[i].isReleasing = true;
+                    }
+                    else
+                    {
+                        voiceEventOut[i] <- noteOff;
+                        voiceState[i].free();
+                    }
+                }
+            }
+        }
+
+        event eventIn (std::notes::PitchBend bend)
+        {
+            for (wrap<numVoices> i)
+                if (voiceState[i].channel == bend.channel)
+                    voiceEventOut[i] <- bend;
+        }
+
+        event eventIn (std::notes::Pressure pressure)
+        {
+            for (wrap<numVoices> i)
+                if (voiceState[i].channel == pressure.channel)
+                    voiceEventOut[i] <- pressure;
+        }
+
+        event eventIn (std::notes::Slide slide)
+        {
+            for (wrap<numVoices> i)
+                if (voiceState[i].channel == slide.channel)
+                    voiceEventOut[i] <- slide;
+        }
+
+        event eventIn (std::notes::Control control)
+        {
+            if (control.control == 64) // 64 = sustain
+            {
+                bool isMPEMasterChannel = control.channel == MPEMasterChannel;
+                bool sustainActive = control.value >= 0.5f;
+
+                setChannelSustain (control.channel, sustainActive);
+
+                if (isMPEMasterChannel)
+                    mpeMasterSustainActive = sustainActive;
+
+                if (! sustainActive)
+                {
+                    for (wrap<numVoices> i)
+                    {
+                        if ((isMPEMasterChannel || voiceState[i].channel == control.channel)
+                             && voiceState[i].isActive
+                             && voiceState[i].isReleasing)
+                        {
+                            voiceEventOut[i] <- std::notes::NoteOff (voiceState[i].channel,
+                                                                     voiceState[i].pitch,
+                                                                     0.0f);
+                            voiceState[i].free();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (wrap<numVoices> i)
+                    if (voiceState[i].channel == control.channel)
+                        voiceEventOut[i] <- control;
+            }
+        }
+
+        //==============================================================================
+        struct VoiceState
+        {
+            bool isActive, isReleasing;
+            int32 channel, age;
+            float32 pitch;
+
+            void start (int32 channel, float32 pitch)
+            {
+                this.isActive     = true;
+                this.isReleasing  = false;
+                this.channel      = channel;
+                this.pitch        = pitch;
+                this.age          = ++nextActiveTime;
+            }
+
+            void free()
+            {
+                this.isActive  = false;
+                this.age       = ++nextInactiveTime;
+            }
+        }
+
+        static_assert (numVoices > 0);
+        VoiceState[numVoices] voiceState;
+
+        int32 nextActiveTime = 0x70000000, nextInactiveTime = 1;
+
+        bool mpeMasterSustainActive;
+        int64 perChannelSustainActive; // one per bit (assumes that channel IDs are <64, and could be made more general)
+
+        bool isSustainActive (int32 channel)
+        {
+            return mpeMasterSustainActive || (perChannelSustainActive & (1L << channel)) != 0;
+        }
+
+        void setChannelSustain (int32 channel, bool active)
+        {
+            if (active)
+                perChannelSustainActive |= (1L << channel);
+            else
+                perChannelSustainActive &= ~(1L << channel);
+        }
+
+        wrap<numVoices> findOldestIndex()
+        {
+            if const (numVoices == 1)
+            {
+                return 0;
+            }
+            else
+            {
+                wrap<numVoices> index;
+                var oldest = voiceState[0].age;
+
+                for (wrap<numVoices> i = 1)
+                {
+                    let age = voiceState[i].age;
+
+                    if (age < oldest)
+                    {
+                        index = i;
+                        oldest = age;
+                    }
+                }
+
+                return index;
+            }
+        }
+    }
+}

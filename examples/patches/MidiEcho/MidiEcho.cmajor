@@ -1,0 +1,13 @@
+/**
+    This processor simply takes MIDI messages and emits them unchanged.
+*/
+processor MidiEcho
+{
+    input event std::midi::Message midiIn;
+    output event std::midi::Message midiOut;
+
+    event midiIn (std::midi::Message m)
+    {
+        midiOut <- m;
+    }
+}

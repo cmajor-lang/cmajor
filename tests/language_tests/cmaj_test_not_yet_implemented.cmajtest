@@ -1,0 +1,192 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## expectError ("4:2: error: Language feature not yet implemented: import statements!")
+
+import "abcdefg";
+
+## expectError ("4:2: error: Language feature not yet implemented: import statements!")
+
+import a.b.c;
+
+## expectError ("2:29: error: Language feature not yet implemented: import statements!")
+
+namespace N { import "xyz"; }
+
+## expectError ("2:9: error: Language feature not yet implemented: Fixed point support!")
+
+void f (fixed v) {}
+
+## expectError ("2:10: error: Language feature not yet implemented: Specialisation parameters for structures!")
+
+struct S (int x) { int y; }
+
+## expectError ("5:17: error: Language feature not yet implemented: slices of complex vectors!")
+
+bool test()
+{
+    complex64<4> a = (1 + 4.i, 2 + 5.i, 6 + 8.i, 3 + 8.i);
+    let slice = a[1:3];
+    return (slice == complex64<2> (2 + 5.i, 6 + 8.i))[0];
+}
+
+## expectError ("10:14: error: Language feature not yet implemented: Exposing child endpoints which use processor arrays!")
+
+processor P
+{
+    output stream float out;
+    void main() { advance(); }
+}
+
+graph G
+{
+    output p[0].out;
+    node p = P[2];
+}
+
+## expectError ("4:19: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
+
+processor P
+{
+    output stream StreamType out;
+    using StreamType = string;
+    void main() { out <- 1; advance(); }
+}
+
+## expectError ("5:18: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
+
+processor P
+{
+    output stream float out;
+    input stream bool in;
+    void main() { advance(); }
+}
+
+## expectError ("4:23: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
+
+processor P
+{
+    output stream bool<3> out;
+    input stream bool in;
+    void main() { advance(); }
+}
+
+## expectError ("4:19: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
+
+processor P
+{
+    output stream string out;
+    input stream int<3> in;
+    void main() { advance(); }
+}
+
+## expectError ("5:18: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
+
+processor P
+{
+    output stream float<5> out;
+    input stream string in;
+    void main() { advance(); }
+}
+
+## expectError ("5:25: error: Language feature not yet implemented: top-level arrays of inputs!")
+
+processor P
+{
+    output stream int out;
+    input stream int in[3];
+    void main() { let x = in[2]; loop advance(); }
+}
+
+## expectError ("4:27: error: Language feature not yet implemented: top-level arrays of outputs!")
+
+processor P
+{
+    output stream int out[4];
+    input stream int in;
+    void main() { out[1] <- 0; loop advance(); }
+}
+
+## expectError ("6:23: error: Language feature not yet implemented: Many-to-many connections are not currently supported!")
+
+graph G
+{
+    output stream int32 o1, o2;
+    input stream int32 i1, i2;
+    connection i1, i2 -> o2, o1;
+}
+
+## expectError ("2:1: error: Language feature not yet implemented: Multi-dimensional arrays!")
+
+float[3][4] x;
+void f() { x[1][2] = 10.0f; }
+
+## expectError ("2:12: error: Language feature not yet implemented: Multi-dimensional arrays!")
+
+void f() { float[3][4] x; x[1][2] = 10.0f; }
+
+## expectError ("2:12: error: Language feature not yet implemented: Multi-dimensional arrays!")
+
+struct S { float[3][4] x; }
+void f() { S s; s.x[1][2] = 10.0f; }
+
+## expectError ("5:23: error: Language feature not yet implemented: Dynamic slice indexes!")
+
+void f (int i)
+{
+    var array = int[] (1, 2, 3, 4, 5);
+    let b = array[1 : i];
+}
+
+## expectError ("5:19: error: Language feature not yet implemented: Dynamic slice indexes!")
+
+void f (int i)
+{
+    var array = int[](1, 2, 3, 4, 5);
+    let b = array[i:];
+}
+
+## expectError ("4:46: error: Language feature not yet implemented: Slices of slices!")
+
+const int[10] data = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+int[] getSlice()         { return data; }
+int[] getSliceOfSlice()  { return getSlice()[2:]; }
+
+bool testSliceOfSlice()
+{
+    var s = getSliceOfSlice();
+    s[3] = 10;
+    return s[2] == 5 && s[3] == 10;
+}
+
+## expectError ("16:21: error: Language feature not yet implemented: Slices of slices!")
+
+processor test
+{
+    output event int results;
+    external float[] data [[ squarewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+
+    void main()
+    {
+        results <- (test() ? 1 : 0);
+        advance();
+        loop { results <- -1; advance(); }
+    }
+
+    bool test()
+    {
+        return data[1:3] == float[3] (1.0f, 1.0f, 1.0f);
+    }
+}
+
+## expectError ("2:22: error: Language feature not yet implemented: Writing to the console from a free function!")
+
+void foo() { console <- "bang"; }
+

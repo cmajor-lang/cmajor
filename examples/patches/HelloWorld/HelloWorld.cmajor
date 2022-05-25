@@ -1,0 +1,50 @@
+/**
+    The "hello world" of audio programming!
+
+    A snippet of "Gran Vals" by the great classical guitar
+    composer Francisco Tarrega, performed here using a vintage
+    sine-wave instrument.
+*/
+processor HelloWorld
+{
+    output stream float out;
+
+    // This simple struct holds a note + duration for our melody
+    struct Note
+    {
+        int pitch, length;
+
+        void play() const
+        {
+            let numFrames = this.length * framesPerQuarterNote;
+            let frequency  = std::notes::noteToFrequency (this.pitch);
+            let phaseDelta = float (frequency * processor.period * twoPi);
+
+            loop (numFrames)
+            {
+                out <- volume * sin (phase);
+                phase = addModulo2Pi (phase, phaseDelta);
+                advance();
+            }
+        }
+    }
+
+    // This is our processor's entry-point function, which is invoked
+    // by the system
+    void main()
+    {
+        let melody = Note[] ( (79, 1),  (77, 1),  (69, 2),  (71, 2),
+                              (76, 1),  (74, 1),  (65, 2),  (67, 2),
+                              (74, 1),  (72, 1),  (64, 2),  (67, 2),
+                              (72, 4) );
+
+        for (wrap<melody.size> i)
+            melody[i].play();
+    }
+
+    // We'll define a couple of constants here to set the volume and tempo
+    let volume = 0.15f;
+    let framesPerQuarterNote = int (processor.frequency / 7);
+
+    float phase;
+}

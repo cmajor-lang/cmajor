@@ -1,0 +1,902 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## expectError ("6:5: error: A function declaration cannot be marked 'external'")
+
+processor P
+{
+    output stream int out;
+    void main() { advance(); }
+    external void blah() {}
+}
+
+## expectError ("2:17: error: Function parameters cannot be void")
+
+void nope (void nope) {}
+
+## expectError ("2:18: error: Function parameters cannot be void")
+
+void nope (void& nope) {}
+
+## expectError ("2:12: error: Expected a type")
+
+void nope (var nope) {}
+
+## expectError ("2:1: error: Function return type cannot be const")
+
+const void nope() {}
+
+## expectError ("2:1: error: Function return type cannot be const")
+
+const int nope() { return 1; }
+
+## expectError ("2:19: error: A void function cannot return a value")
+
+void f() { return 123; }
+
+## expectError ("2:19: error: A void function cannot return a value")
+
+void f() { return void(); }
+
+## expectError ("2:18: error: Cannot cast to a void type")
+
+int f() { return void(); }
+
+## expectError ("3:21: error: A void function cannot return a value")
+
+int  f1() { return (); }
+void f2() { return (); }
+
+## expectError ("3:21: error: A void function cannot return a value")
+
+int  f1() { return (1); }
+void f2() { return (1); }
+
+## expectError ("2:7: error: Not all control paths in the function 'f' return a value")
+
+float f() {}
+
+## expectError ("2:7: error: Not all control paths in the function 'f' return a value")
+
+float f (bool b) { if (! b) return 1.0f; }
+
+## expectError ("3:7: error: Not all control paths in the function 'f2' return a value")
+
+float f1() { loop { return 0; } }
+float f2() {}
+float f3() { loop { return 0; } }
+
+## expectError ("3:6: error: Not all control paths in the function 'f2' return a value")
+
+bool f1() { loop { return false; } {} }
+bool f2() { loop (99) { return false; } }
+bool f3() { loop { return false; } }
+
+## expectError ("3:6: error: Not all control paths in the function 'f2' return a value")
+
+bool f1() { loop { return false; } }
+bool f2 (bool b) { loop { if (! b) break; return false; } }
+
+## expectError ("5:35: error: The function 'fail' contains at least one infinite loop")
+
+bool f1 (int n)  { return n == 10; }
+void ok2() { int count = 0; loop { if (f1 (count++)) break; }}
+void ok3() { int count = 0; loop { if (f1 (count++)) return; }}
+void fail() { int count = 0; loop { f1 (count++); }}
+
+## expectError ("2:6: error: The functions 'f1' and 'f2' call each other recursively")
+
+void f1 (float64 a)   { f2 (a); }
+void f2 (float64 a)   { f1 (a); }
+
+## expectError ("2:6: error: Recursive call sequence via functions: 'f1', 'f2', 'f3'")
+
+void f1 (int a)     { f2 (float32 (a)); }
+void f2 (float a)   { f3 (a); }
+void f3 (float64 a) { f1 (int (a)); }
+
+## expectError ("2:6: error: The function 'f1' calls itself recursively")
+
+void f1 (int x)   { f1 (x); }
+
+## expectError ("2:5: error: The function 'f1' calls itself recursively")
+
+int f1<T> (T x) { return f1 (x); }
+void f() { f1(0); }
+
+## expectError ("5:9: error: The main() function must return 'void'")
+
+processor P
+{
+    output stream int out;
+    int main() { advance(); }
+}
+
+## expectError ("2:12: error: Unknown function: 'uncion3' (did you mean 'tests::function3'?)")
+
+void f() { uncion3(); }
+void function1() {}
+void function2() {}
+void function3() {}
+
+## expectError ("2:20: error: Unknown function: 'noSuchFunction'")
+
+void f() { let v = noSuchFunction (0); }
+
+## expectError ("2:20: error: Unknown function: 'gainTodB' (did you mean 'std::levels::gainTodB'?)")
+
+void f() { let v = gainTodB (0); }
+
+## expectError ("3:21: error: Cannot find symbol 'blah::cos'")
+
+void f1() { let v = cos (1.0); }
+void f2() { let v = blah::cos (1.0); }
+
+## expectError ("3:21: error: Unknown function: 'std::tanx' (did you mean 'tan'?)")
+
+void f1() { let v = tan (1.0); }
+void f2() { let v = std::tanx (1.0); }
+
+## expectError ("5:21: error: Unknown function: 'foo' (did you mean 'floor'?)")
+
+processor P
+{
+    output event int out;
+    void main() { x.foo(); advance(); }
+    let x = 1;
+}
+
+## expectError ("6:13: error: Cannot find symbol 'y'")
+
+processor P
+{
+    output event int out;
+    void main() { x.foo(); advance(); }
+    let x = y;
+}
+
+## expectError ("6:13: error: Unknown function: 'y' (did you mean 'std::filters::tpt::svf::Processor::q'?)")
+
+processor P
+{
+    output event int out;
+    void main() { x.foo(); advance(); }
+    let x = y (1);
+}
+
+## expectError ("2:28: error: Cannot find symbol 'undefined'")
+
+void undefinedFunction() { undefined.type(); }
+
+## expectError ("4:6: error: A function with matching parameters has already been defined")
+
+void f() { f (123); }
+void f (int32 n) {}
+void f (int32 n) {}
+
+## expectError ("3:20: error: A function with matching parameters has already been defined")
+
+namespace N { void f1() {} }
+namespace N { void f1() {} }
+
+## expectError ("4:27: error: A function with matching parameters has already been defined")
+
+namespace N::M  { float64 f3() { return f2(); } }
+namespace N::M  { float64 f2() { return 1L; } }
+namespace N::M  { float64 f2() { return f3(); } }
+
+## expectError ("4:7: error: A function with matching parameters has already been defined")
+
+float function (float f)            { return f; }
+float function (float &f, bool b)   { return f; }
+float function (float &f)           { return f; }
+
+## expectError ("4:7: error: A function with matching parameters has already been defined")
+
+float function (float f)            { return f; }
+float function (float &f, bool b)   { return f; }
+float function (const float& f)     { return f; }
+float function (const float f)      { return f; }
+
+## expectError ("4:7: error: A function with matching parameters has already been defined")
+
+float function (float f)            { return f; }
+float function (float &f, bool b)   { return f; }
+float function (const float f)      { return f; }
+
+## expectError ("4:7: error: A function with matching parameters has already been defined")
+
+float function (float<1> f)         { return f; }
+float function (float &f, bool b)   { return f; }
+float function (const float f)      { return f; }
+
+## expectError ("3:22: error: The namespace 'ns' cannot be used without providing arguments for its parameters")
+
+namespace ns (using Type) { bool foo (int a, int b)  { return true; } }
+bool test() { return ns::foo (1, 2); }
+
+## expectError ("3:22: error: Wrong number of arguments to instantiate namespace 'ns'")
+
+namespace ns (using Type, using Type2) { bool foo (int a, int b)  { return true; } }
+bool test() { return ns(int)::foo (1, 2); }
+
+## expectError ("3:33: error: Wrong number of arguments to instantiate namespace 'ns'")
+
+namespace ns (using Type, using Type2) { bool foo (int a, int b)  { return true; } }
+bool test() { return ns(int, 1, 2)::foo (1, 2); }
+
+## expectError ("3:22: error: The namespace 'ns' cannot be used without providing arguments for its parameters")
+
+namespace ns (using Type) { bool foo (Type a, int b)  { return true; } }
+bool test() { return ns::foo (1, 2); }
+
+## expectError ("3:22: error: The namespace 'ns1' cannot be used without providing arguments for its parameters")
+
+namespace ns1 (using Type) { bool test() { return true; } }
+bool test() { return ns1::test(); }
+
+## expectError ("2:51: error: When a default parameter has been declared, all subsequent parameters must also have default values")
+
+namespace Parameterised (using X = float32, using Y)  {}
+
+## expectError ("2:43: error: When a default parameter has been declared, all subsequent parameters must also have default values")
+
+namespace Parameterised (int x = 1, using Y)  {}
+
+## expectError ("2:52: error: When a default parameter has been declared, all subsequent parameters must also have default values")
+
+namespace Parameterised (using X, int x = 1, using Y)  {}
+
+## expectError ("2:6: error: This function has no implementation")
+
+bool f (int i);
+bool test() { return f(8); }
+
+## testFunction()
+
+namespace n1     { int f() { return n1::n2::f(); } }
+namespace n1::n2 { int f() { return f2(); }     int f2() { return 1; } }
+namespace n1     { namespace n1::n2 { int f() { return 2; } } }
+namespace n2::n1 { namespace n2     { int f() { return 3; } } }
+
+bool test()
+{
+    return n1::f() == 2
+        && n1::n2::f() == 1
+        && n1::n1::n2::f() == 2
+        && n2::n1::n2::f() == 3;
+}
+
+## expectError ("3:25: error: Cannot pass a const value as a non-const reference")
+
+void f (int& x) { x = 1; }
+void f() { let i = 5; f(i); }
+
+## expectError ("3:31: error: Cannot convert 5 ('const int32') to 'int32&'")
+
+void f (int& x) { x = 1; }
+void f() { const int i = 5; f(i); }
+
+## expectError ("3:14: error: Cannot pass a const value as a non-const reference")
+
+void f (int& x) { x = 1; }
+void f() { f(3); }
+
+## expectError ("4:15: error: Cannot pass a const value as a non-const reference")
+
+void f (int& x) { x = 9; }
+void f<T> (T& i) {}
+void f2() { f(7); }
+
+## expectError ("3:42: error: Cannot pass a const value as a non-const reference")
+
+void f<T> (T& x) {}
+void f() { let a = int<4> (1); let b = f(a); }
+
+## expectError ("3:25: error: Cannot pass a const value as a non-const reference")
+
+void f<T> (T& x) {}
+void f() { let a = f(int<4> (1, 2, 3, 4)); }
+
+## expectError ("3:25: error: Cannot pass a const value as a non-const reference")
+
+void f<T> (T& x) {}
+void f() { let a = f(int<4> (1)); }
+
+## expectError ("3:31: error: Cannot convert 3 ('const int32') to 'int32&'")
+
+void f (int& x) { x = 1; }
+void f() { const int n = 3; f(n); }
+
+## expectError ("3:44: error: Cannot convert type 'const std::midi::Message&' to 'std::midi::Message&'")
+
+void f1 (std::midi::Message& m) {}
+void f2 (const std::midi::Message& m) { f1(m); }
+
+## expectError ("3:46: error: Cannot pass a const value as a non-const reference")
+
+void f1 (std::midi::Message& m) {}
+void f2() { let m = std::midi::Message(); f1(m); }
+
+## expectError ("2:9: error: Cannot find symbol 'XX'")
+
+void f (XX& x) {}
+
+## expectError ("5:48: error: Ambiguous function call: f(int32, float64)")
+
+bool f (int a, int b)           { return true; }
+bool f (float64 a, float64 b)   { return true; }
+
+void f() { let x = f(1.2, 3.0) && f(1.1, 2) && f(1, 2.0); }
+
+## expectError ("5:48: error: Ambiguous function call: f(float32, float32)")
+
+bool f (int a, int b)           { return true; }
+bool f (float64 a, float64 b)   { return true; }
+
+void f() { let x = f(1.2, 3.0) && f(1.1, 2) && f(1.0f, 2.0f); }
+
+## expectError ("5:48: error: Ambiguous function call: f(float64, float32)")
+
+bool f (int a, int b)           { return true; }
+bool f (float64 a, float64 b)   { return true; }
+
+void f() { let x = f(1.2, 3.0) && f(1.1, 2) && f(float64 (1.0f), float32 (2)); }
+
+## expectError ("5:21: error: Ambiguous function call: f(bool<2>)")
+
+bool f<T> (T a)          { return true; }
+T.elementType f<T> (T a) { return false; }
+
+void f2() { let x = f(bool<2> (true, false)); }
+
+## testFunction()
+
+namespace ns0
+{
+    bool greaterThan<Type> (Type v1, Type v2) { return v1 > v2; }
+}
+
+namespace ns1
+{
+    using Type = float;
+    bool greaterThan (Type v1, Type v2)     { return v1 > v2; }
+}
+
+namespace ns2
+{
+    using Type = float32;
+    bool greaterThan (Type v1, Type v2)     { return v1 > v2; }
+}
+
+namespace ns3 = ns2;
+
+namespace ns4 (using Type)
+{
+    bool greaterThan (Type v1, Type v2)     { return v1 > v2; }
+}
+
+namespace ns5 = ns4 (float32);
+namespace ns6 = ns4 (float32);
+
+bool test0()   { return ns0::greaterThan (4.0f, 3.0f); }
+bool test1()   { return ns1::greaterThan (4.0f, 3.0f); }
+bool test2()   { return ns3::greaterThan (4.0f, 3.0f); }
+bool test3()   { return ns5::greaterThan (4.0f, 3.0f); }
+bool test4()   { return ns6::greaterThan (4.0f, 3.0f); }
+bool test5()   { return ns4(float32)::greaterThan (4.0f, 3.0f); }
+bool test6()   { return ns4(float64)::greaterThan (4.0, 3.0); }
+
+namespace X::Y
+{
+    struct S { int n; }
+    int get (const S& s) { return s.n; }
+}
+
+int getKoenig1 (X::Y::S& s)           { return s.get(); }
+int getKoenig2 (const X::Y::S& s)     { return s.get(); }
+int getKoenig3 (X::Y::S s)            { return s.get(); }
+
+bool testKoenig1()   { let s = X::Y::S(123); return s.get() == 123; }
+bool testKoenig2()   { var s = X::Y::S(123); return getKoenig1 (s) == 123; }
+bool testKoenig3()   { let s = X::Y::S(123); return getKoenig2 (s) == 123; }
+bool testKoenig4()   { let s = X::Y::S(123); return getKoenig3 (s) == 123; }
+bool testKoenig5()   { X::Y::S s = (123);    return getKoenig1 (s) == 123; }
+
+## testFunction()
+
+struct S1
+{
+    float f;
+    int[4] a;
+    int<4> v;
+}
+
+struct S2
+{
+    int[3] a;
+    S1 s1, s2;
+    int i;
+    float f;
+}
+
+void passPrimitiveValue (const int arg) {}
+void passPrimitiveValue (float arg) {}
+
+void passPrimitiveRef (int& arg)
+{
+    arg.type.removeReference a = arg;
+    let b = arg;
+    var c = arg;
+    passPrimitiveValue (arg);
+    --arg;
+    arg++;
+}
+
+void passConstArrayRef (const int[4]& arg)
+{
+    arg.type.removeReference a = arg;
+    let b = arg;
+    var c = arg;
+    passPrimitiveValue (arg[1]);
+}
+
+void passArrayRef (int[4]& arg)
+{
+    arg.type.removeReference a = arg;
+    let b = arg;
+    var c = arg;
+    passPrimitiveRef (arg[2]);
+    passPrimitiveValue (arg[1]);
+    arg[3]--;
+}
+
+void passConstStructRef (const S1& arg)
+{
+    arg.type.removeReference a = arg;
+    let c = arg;
+    var b = arg;
+    int d = arg.a[2];
+    var e = arg.a[2];
+    let f = arg.a[2];
+    passPrimitiveValue (arg.f);
+    passPrimitiveValue (arg.v[1]);
+    passPrimitiveValue (arg.a[2]);
+}
+
+void passStructRef (S1& arg)
+{
+    arg.type.removeReference a = arg;
+    var b = arg;
+    let c = arg;
+    int d = arg.a[2];
+    var e = arg.a[2];
+    let f = arg.a[2];
+    passPrimitiveValue (arg.f);
+    passPrimitiveValue (arg.v[1]);
+    passPrimitiveValue (arg.a[2]);
+    arg.v = ();
+    arg.a[1]--;
+    ++(arg.a[1]);
+}
+
+void test2()
+{
+    int i;
+    int[4] a;
+    S1 s1;
+    S2 s2;
+
+    passPrimitiveRef (i);
+    passPrimitiveRef (s1.a[2]);
+    passPrimitiveRef (s2.s1.a[2]);
+    passPrimitiveRef (s1.v[1]);
+    passPrimitiveRef (s2.s1.v[1]);
+    passPrimitiveRef (s2.i);
+    passStructRef (s1);
+    passStructRef (s2.s1);
+    passConstStructRef (S1());
+    passConstStructRef (s1);
+    passConstStructRef (s2.s1);
+    passArrayRef (a);
+    passArrayRef (s2.s1.a);
+    passArrayRef (s1.a);
+    passConstArrayRef (a);
+    passConstArrayRef (int[4]());
+    passConstArrayRef (s2.s1.a);
+    passConstArrayRef (s1.a);
+}
+
+bool f1 (std::midi::Message m)         { return true; }
+bool f2 (const std::midi::Message& m)  { return true; }
+bool f3 (std::midi::Message& m)        { return true; }
+
+bool test_arg_refs()
+{
+    std::midi::Message m1;
+    let m2 = std::midi::Message (123);
+
+    return f1 (m1) && f2 (m1) && f3 (m1) && f1 (m2) && f2 (m2)
+        && f1 (std::midi::Message (123)) && f2 (std::midi::Message (123));
+}
+
+float readSample (float[8192]& buffer, float pos) { return buffer.readLinearInterpolated(pos); }
+
+bool testReadSample()
+{
+    float[8192] buffer;
+    let v = readSample (buffer, 100.0f);
+    return v == 0.0f;
+}
+
+namespace overloads
+{
+    int foo (const float a)       { return 1; }
+    int foo<T> (T a)              { return 2; }
+    int foo<T> (T a, bool b)      { return 3; }
+    int foo<T> (T a, const int b) { return 4; }
+    int foo<T> (T a, float32 f)   { return 5; }
+
+    bool test()
+    {
+        float[3] f;
+
+        return foo (f[0]) == 1
+            && foo (f) == 2
+            && foo (f, true) == 3
+            && foo (f, 2) == 4
+            && foo (f, 1.0f) == 5;
+    }
+}
+
+bool modifyLargeByValParam (int64[128] x) { let old = x[1]; x[1] = 123; return old == 234 && x[1] == 123; }
+
+bool testLargeByValParam()
+{
+    int64[128] x;
+    x[1] = 234;
+    if (! modifyLargeByValParam (x)) return false;
+    return x[1] == 234;
+}
+
+## expectError ("2:13: error: Function is not visible from this scope")
+
+void f() { P::f(); }
+
+processor P
+{
+    output stream int out;
+    void f() { out <- 3; }
+    void main() { f(); advance(); }
+}
+
+## expectError ("6:27: error: Event inputs must be handled in event callback functions, they cannot be read as expressions")
+
+processor P
+{
+    output stream int out;
+    input event int in;
+    void main() { let a = in; advance(); }
+}
+
+## testProcessor()
+
+processor P
+{
+    output stream int out;
+
+    void f1()  { loop (3) { out <- 1; advance(); } }
+    void f2()  { loop { out <- -1; advance(); } }
+    void f3()  { out <- 1; advance(); f1(); f2(); }
+    void main() { f3(); }
+}
+
+## testProcessor()
+
+processor test
+{
+    output event int out;
+    int v = 1;
+
+    int functionCalledWithinTernary()
+    {
+        out <- 1;
+        advance();
+        return 1;
+    }
+
+    void main()
+    {
+        ++v;
+        out <- (v == 2 ? functionCalledWithinTernary() : 0);
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+## expectError ("2:37: error: This function must return a value of type 'int32'")
+
+int doesntReturnRightType() { return; }
+
+## expectError ("2:1: error: Cannot return reference type")
+
+int& tryAndReturnReferenceToLocal() { int i; return i; }
+
+## expectError ("5:10: error: The main() function must call advance()")
+
+processor P
+{
+    output stream int out;
+    void main() { loop { out <- 1; } }
+}
+
+## testProcessor()
+
+processor P
+{
+    output stream int out;
+
+    void main()
+    {
+        let list = S[] (S(1), S(1), S(1), S(-1));
+
+        for (wrap<list.size> i)
+            write (list[i]);
+
+        for (wrap<list.size> i)
+            list[i].write();
+    }
+
+    struct S
+    {
+        int n;
+        void write() const { out <- this.n; advance(); }
+    }
+}
+
+## testProcessor()
+
+processor P
+{
+    output stream int out;
+
+    void main()
+    {
+        var s1 = S(1);
+        inlinedWithRefParams (s1, S(1 + 3));
+        out <- -1; advance();
+    }
+
+    void inlinedWithRefParams (S& s1, const S& s2)
+    {
+        out <- s1.n; advance();
+        out <- s2.n; advance();
+    }
+
+    struct S { int n; }
+}
+
+## testFunction()
+
+float<2> getNext (float& nextVal)
+{
+    nextVal++;
+    return nextVal;
+}
+
+bool test()
+{
+    float<2> r;
+    float nextVal;
+    r += getNext (nextVal);
+    return r[0] == 1 && r[1] == 1;
+}
+
+## testFunction()
+
+struct S
+{
+    float f;
+    float getValue() { return this.f; }
+    float getValue() const { return this.f; }
+}
+
+bool test()
+{
+    S v = (1);
+    return v.getValue() == 1;
+}
+
+## testFunction()
+
+int nan() { return 4; }
+void f() { let x = nan; int nan = 1; ++nan; }
+bool test1() { return nan() != 5 && nan != 5; }
+bool test2() { var nan = 4; --nan; return nan == 3; }
+bool test3() { let x = nan; let nan = x; return isnan (x) && isnan (nan); }
+
+## expectError ("12:16: error: Function is not visible from this scope")
+
+processor Test
+{
+    output event int out;
+
+    bool func() { return true; }
+
+}
+
+bool test()
+{
+    return Test::func();
+}
+
+## expectError ("18:13: error: Function is not visible from this scope")
+
+processor Test
+{
+    output event int out;
+
+    struct S
+    {
+        bool func() const { return true; }
+    }
+
+    bool func2 (const S& s) { return true; }
+}
+
+bool test()
+{
+    var s = Test::S();
+
+    return s.func();
+}
+
+## expectError ("18:13: error: Function is not visible from this scope")
+
+processor Test
+{
+    output event int out;
+
+    struct S
+    {
+        bool func() const { return true; }
+    }
+
+    bool func2 (const S& s) { return true; }
+}
+
+bool test()
+{
+    var s = Test::S();
+
+    return s.func2();
+}
+
+## expectError ("19:13: error: Function is not visible from this scope")
+
+processor Test
+{
+    output event int out;
+
+    int i;
+
+    struct S
+    {
+    }
+
+    bool usesStateVariable(const S& s) { return i == 0; }
+}
+
+bool test()
+{
+    var s = Test::S();
+
+    return s.usesStateVariable();
+}
+
+bool test2()
+{
+    return Test::S().usesStateVariable();
+}
+
+## expectError ("25:21: error: Function is not visible from this scope")
+
+processor Test1
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        advance();
+    }
+
+    float leaksInputStream()
+    {
+        return in;
+    }
+}
+
+processor Test2
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        out <- Test1::leaksInputStream();
+        advance();
+    }
+}
+
+
+## expectError ("20:21: error: Function is not visible from this scope")
+
+graph Test1
+{
+    input stream float in;
+    output stream float out;
+
+    float graphFunction()
+    {
+        return 1.0f;
+    }
+}
+
+processor Test2
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        out <- Test1::graphFunction();
+        advance();
+    }
+}
+
+## testFunction()
+
+namespace T (int size)
+{
+    float calcSum (float<size * 2> v)
+    {
+        return sum(v);
+    }
+}
+
+bool test()
+{
+    let v = float<8> (0, 1, 2, 3, 4, 5, 6, 7);
+
+    let x = T (4)::calcSum (v);
+
+    return x == 28;
+}
+
+## testFunction()
+
+bool test()
+{
+    float<2> x;
+
+    return calc (x);
+}
+
+bool calc<T> (T t)
+{
+    return false;
+}
+
+bool calc (float<1 + 1> f)
+{
+    return true;
+}

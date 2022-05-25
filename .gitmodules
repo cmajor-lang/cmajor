@@ -1,0 +1,3 @@
+[submodule "3rdParty/choc"]
+	path = include/choc
+	url = git@github.com:Tracktion/choc.git

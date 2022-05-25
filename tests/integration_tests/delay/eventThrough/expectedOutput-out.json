@@ -1,0 +1,50 @@
+[
+    {
+        "frameOffset": 20,
+        "event": 1.5
+    },
+    {
+        "frameOffset": 20,
+        "event": 1.5
+    },
+    {
+        "frameOffset": 20,
+        "event": 1
+    },
+    {
+        "frameOffset": 20,
+        "event": 1
+    },
+    {
+        "frameOffset": 30,
+        "event": 2.5
+    },
+    {
+        "frameOffset": 30,
+        "event": 2.5
+    },
+    {
+        "frameOffset": 30,
+        "event": 2
+    },
+    {
+        "frameOffset": 30,
+        "event": 2
+    },
+    {
+        "frameOffset": 40,
+        "event": 3.5
+    },
+    {
+        "frameOffset": 40,
+        "event": 3.5
+    },
+    {
+        "frameOffset": 40,
+        "event": 3
+    },
+    {
+        "frameOffset": 40,
+        "event": 3
+    }
+]

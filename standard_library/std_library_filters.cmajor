@@ -1,0 +1,779 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/**
+    std.filters
+
+    This module contains standard filter types, using implementations which allow for
+    the filter parameters to be modulated.
+*/
+
+/**
+    The `std::filters` namespace is parameterised, allowing both the `FrameType` and the
+    `CoefficientType` to be modified. By default the filters are `float32`, and hence use
+    32 bit precision, and filter frames of a single channel. `FrameType` can be specified as
+    a vector to support more channels (e.g. `float<2>` for a stereo filter).
+
+    For efficiency reasons, modulated parameters are not applied every frame, and the
+    `parameterUpdateRate` can be used to tune the frequency of updates
+
+    Each filter type is provided as both a Processor, which can be included in graphs, and
+    as an `Implementation` structure, suitable for being composed into a user processor.
+
+    The filter processors are parameterised with these parameters setting the initial state of
+    the filter. Parameter modulation is provided by input events.
+
+    The filter `Implementation` structure provides the following functions:
+    - `create()` functions which construct an `Implementation` with the specified initial
+      properties - this is the typical way that the structs are constructed
+    - `process()` which generates an output frame from an input frame
+    - `setFrequency()`/`setMode()` functions for filter parameters to allow the filter to be
+      modified post construction.
+    - `reset()` which clears out any internal state, returning it to the state post creation
+*/
+namespace std::filters (using FrameType = float32,
+                        using CoefficientType = float32,
+                        int parameterUpdateRate = 32)
+{
+    // Default values if not specified
+    let defaultFrequency = 1000.0f;
+    let defaultQ         = 0.707107f;
+    let defaultGain      = 0;
+
+    //==============================================================================
+    /// These filters are based on the designs outlined in The Art of VA Filter Design
+    /// by Vadim Zavalishin, with help from Will Pirkle in Virtual Analog Filter Implementation.
+    /// The topology-preserving transform approach leads to designs where parameter
+    /// modulation can be applied with minimal instability.
+    ///
+    /// Parameter changes are applied at a lower rate than processor.frequency to reduce
+    /// computational cost, and the frames between updates can be altered using the
+    /// parameterUpdateRate, smaller being more frequent.
+    ///
+    namespace tpt
+    {
+        /// One pole filter implementation providing low and high pass options.
+        /// The frequency and mode can be modulated at the parameterUpdateRate
+        namespace onepole
+        {
+            namespace Mode
+            {
+                let lowPass = 0;
+                let highpass = 1;
+            }
+
+            Implementation create (int mode, float64 processorFrequency, float64 filterFrequency)
+            {
+                Implementation filter;
+
+                filter.setMode (mode);
+                filter.setFrequency (processorFrequency, filterFrequency);
+
+                return filter;
+            }
+
+            struct Implementation
+            {
+                CoefficientType b;
+                FrameType z1;
+                int mode;
+
+                void setFrequency (float64 processorFrequency, float64 filterFrequency)
+                {
+                    filterFrequency = clamp (filterFrequency, 0.0, processorFrequency * 0.48);
+
+                    let period = 0.5 / processorFrequency;
+                    let f = (2.0 * processorFrequency) * tan (twoPi * filterFrequency * period) * period;
+                    this.b = CoefficientType (f / (1.0 + f));
+                }
+
+                void reset()                { this.z1 = (); }
+                void setMode (int mode)     { this.mode = mode; }
+
+                FrameType process (FrameType x)
+                {
+                    let a = FrameType (this.b) * (x - this.z1);
+                    let f = a + this.z1;
+                    this.z1 = a + f;
+
+                    if (this.mode == Mode::lowPass)
+                        return f;
+
+                    return x - f;
+                }
+            }
+
+            processor Processor (int initialMode = Mode::lowPass,
+                                float initialFrequency = defaultFrequency)
+            {
+                input stream FrameType in;
+                output stream FrameType out;
+
+                input event
+                {
+                    int   mode      [[ name: "Mode",        min: 0, max: 2, init: 0, text: "Lowpass|Highpass" ]];
+                    float frequency [[ name: "Frequency",   min: 0, max: 20000, init: 1000, unit: "Hz"]];
+                }
+
+                event mode (int m)                {  updateFilter = true; filterMode = m; }
+                event frequency (float f)         {  updateFilter = true; filterFrequency = f; }
+
+                var filter = create (initialMode, processor.frequency, initialFrequency);
+
+                bool updateFilter = false;
+                float filterFrequency = initialFrequency;
+                int filterMode = initialMode;
+
+                void main()
+                {
+                    loop
+                    {
+                        if (updateFilter)
+                        {
+                            filter.setMode (filterMode);
+                            filter.setFrequency (processor.frequency, filterFrequency);
+                            updateFilter = false;
+                        }
+
+                        loop (parameterUpdateRate)
+                        {
+                            out <- filter.process (in);
+                            advance();
+                        }
+                    }
+                }
+            }
+        }
+
+        /// State variable filter implementation, suitable for modulation.
+        namespace svf
+        {
+            namespace Mode
+            {
+                let lowPass = 0;
+                let highPass = 1;
+                let bandPass = 2;
+            }
+
+            Implementation create (int mode, float64 processorFrequency, float64 filterFrequency, float64 Q)
+            {
+                Implementation filter;
+
+                filter.setMode (mode);
+                filter.setFrequency (processorFrequency, filterFrequency, Q);
+
+                return filter;
+            }
+
+            struct Implementation
+            {
+                CoefficientType d, a, g1;
+                FrameType[2] z;
+                int mode;
+
+                void setFrequency (float64 processorFrequency, float64 filterFrequency, float64 Q)
+                {
+                    filterFrequency = clamp (filterFrequency, 0.0, processorFrequency * 0.48);
+
+                    let period  = 0.5 / processorFrequency;
+                    let f = (2.0 * processorFrequency) * tan (twoPi * filterFrequency * period) * period;
+                    let invQ = 1.0 / Q;
+                    this.d = CoefficientType (1.0 / (1.0 + invQ * f + f * f));
+                    this.a = CoefficientType (f);
+                    this.g1 = CoefficientType (f + invQ);
+                }
+
+                void reset()                { this.z = 0; }
+                void setMode (int mode)     { this.mode = mode; }
+
+                FrameType[3] processMultimode (FrameType x)
+                {
+                    let highValue = FrameType ((x - this.g1 * this.z[0] - this.z[1]) * this.d);
+                    let bandValue = FrameType (this.a * highValue + this.z[0]);
+                    let lowValue  = FrameType (this.a * bandValue + this.z[1]);
+
+                    this.z[0] = FrameType (this.a * highValue + bandValue);
+                    this.z[1] = FrameType (this.a * bandValue + lowValue);
+
+                    return (lowValue, highValue, bandValue);
+                }
+
+                FrameType process (FrameType x)
+                {
+                    let result = this.processMultimode (x);
+
+                    if (this.mode == Mode::lowPass)
+                        return result[0];
+
+                    if (this.mode == Mode::highPass)
+                        return result[1];
+
+                    return result[2];
+                }
+            }
+
+            processor Processor (int initialMode = Mode::lowPass,
+                                float initialFrequency = defaultFrequency,
+                                float initialQ = defaultQ)
+            {
+                input stream FrameType in;
+                output stream FrameType out;
+
+                input event
+                {
+                    int   mode      [[ name: "Mode",        min: 0, max: 2, init: 0, text: "Lowpass|Highpass|Bandpass" ]];
+                    float frequency [[ name: "Frequency",   min: 0, max: 20000, init: 1000, unit: "Hz"]];
+                    float q         [[ name: "Q",           min: 0.01, max: 100.0, init: 0.707107]];
+                }
+
+                event mode (int m)                {  updateFilter = true; filterMode = m; }
+                event frequency (float f)         {  updateFilter = true; filterFrequency = f; }
+                event q (float q)                 {  updateFilter = true; filterQ = q; }
+
+                var filter = create (initialMode, processor.frequency, initialFrequency, initialQ);
+
+                bool updateFilter = false;
+                float filterFrequency = initialFrequency;
+                int filterMode = initialMode;
+                float filterQ = initialQ;
+
+                void main()
+                {
+                    loop
+                    {
+                        if (updateFilter)
+                        {
+                            filter.setMode (filterMode);
+                            filter.setFrequency (processor.frequency, filterFrequency, filterQ);
+                            updateFilter = false;
+                        }
+
+                        loop (parameterUpdateRate)
+                        {
+                            out <- filter.process (in);
+                            advance();
+                        }
+                    }
+                }
+            }
+
+            processor MultimodeProcessor (float initialFrequency = defaultFrequency,
+                                          float initialQ = defaultQ)
+            {
+                input stream FrameType in;
+                output stream FrameType lowOut, highOut, bandOut;
+
+                input event
+                {
+                    float frequency [[ name: "Frequency",   min: 0, max: 20000, init: 1000, unit: "Hz"]];
+                    float q         [[ name: "Q",           min: 0.01, max: 100.0, init: 0.707107]];
+                }
+
+                event frequency (float f)         {  updateFilter = true; filterFrequency = f; }
+                event q (float q)                 {  updateFilter = true; filterQ = q; }
+
+                var filter = create (Mode::lowPass, processor.frequency, initialFrequency, initialQ);
+
+                bool updateFilter = true;
+                float filterFrequency = initialFrequency;
+                float filterQ = initialQ;
+
+                void main()
+                {
+                    loop
+                    {
+                        if (updateFilter)
+                        {
+                            filter.setFrequency (processor.frequency, filterFrequency, filterQ);
+                            updateFilter = false;
+                        }
+
+                        loop (parameterUpdateRate)
+                        {
+                            let result = filter.processMultimode (in);
+
+                            lowOut <- result[0];
+                            highOut <- result[1];
+                            bandOut <- result[2];
+
+                            advance();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /// Highpass filter for blocking DC.
+    /// An implementation of https://ccrma.stanford.edu/~jos/fp/DC_Blocker.html
+    ///
+    /// The DC blocker is a small recursive filter specified by the difference equation:
+    ///
+    /// ```math
+    /// y(n) = x(n) - x(n-1) + Ry(n-1)
+    /// ```
+    ///  ..where R is a parameter that is typically somewhere between 0.9 and 1
+    ///
+    namespace dcblocker
+    {
+        Implementation create()
+        {
+            return Implementation();
+        }
+
+        struct Implementation
+        {
+            FrameType x1, y1;
+
+            void reset()
+            {
+                this.x1 = 0;
+                this.y1 = 0;
+            }
+
+            FrameType process (FrameType x)
+            {
+                let R = FrameType (0.996);
+                let y = x - this.x1 + (R * this.y1);
+                this.y1 = y;
+                this.x1 = x;
+                return y;
+            }
+        }
+
+        processor Processor
+        {
+            input stream FrameType in;
+            output stream FrameType out;
+
+            var filter = create();
+
+            void main()
+            {
+                loop
+                {
+                    out <- filter.process (in);
+                    advance();
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /// Butterworth filter, built from cascaded tpt filters.
+    ///
+    /// The order is set at compile time, but the type and frequency can be modulated
+    /// at runtime.
+    ///
+    namespace butterworth (int order = 2)
+    {
+        namespace Mode
+        {
+            let lowPass = 0;
+            let highPass = 1;
+        }
+
+        Implementation create (int mode, float64 processorFrequency, float64 filterFrequency)
+        {
+            Implementation filter;
+
+            filter.setMode (mode);
+            filter.setFrequency (processorFrequency, filterFrequency);
+
+            return filter;
+        }
+
+        struct Implementation
+        {
+            tpt::onepole::Implementation onePole;
+            tpt::svf::Implementation [order / 2] twoPole;
+
+            void setMode (int mode)
+            {
+                for (wrap<order / 2> i)
+                    this.twoPole[i].setMode (mode);
+
+                if (order % 2 == 1)
+                    this.onePole.setMode (mode);
+            }
+
+            void setFrequency (float64 processorFrequency, float64 filterFrequency)
+            {
+                filterFrequency = clamp (filterFrequency, 0.0, processorFrequency * 0.48);
+
+                if (order % 2 == 1)
+                {
+                    this.onePole.setFrequency (processorFrequency, filterFrequency);
+
+                    for (wrap<order / 2> i)
+                    {
+                        let Q = 1.0 / (2.0 * cos ((int (i) + 1.0) * pi / order));
+                        this.twoPole[i].setFrequency (processorFrequency, filterFrequency, Q);
+                    }
+                }
+                else
+                {
+                    for (wrap<order / 2> i)
+                    {
+                        let Q = 1.0 / (2.0 * cos ((2.0 * int (i) + 1.0) * pi / (order * 2.0)));
+                        this.twoPole[i].setFrequency (processorFrequency, filterFrequency, Q);
+                    }
+                }
+            }
+
+            void reset()
+            {
+                for (wrap<order / 2> i)
+                    this.twoPole[i].reset();
+
+                if (order % 2 == 1)
+                    this.onePole.reset();
+            }
+
+            FrameType process (FrameType x)
+            {
+                for (wrap<order / 2> i)
+                    x = this.twoPole[i].process (x);
+
+                if (order % 2 == 1)
+                    x = this.onePole.process (x);
+
+                return x;
+            }
+        }
+
+        processor Processor (int initialMode = Mode::lowPass,
+                            float initialFrequency = defaultFrequency)
+        {
+            input stream FrameType in;
+            output stream FrameType out;
+
+            input event
+            {
+                int   mode      [[ name: "Mode",        min: 0, max: 2, init: 0, text: "Lowpass|Highpass" ]];
+                float frequency [[ name: "Frequency",   min: 0, max: 20000, init: 1000, unit: "Hz"]];
+            }
+
+            event mode (int m)                {  updateFilter = true; filterMode = m; }
+            event frequency (float f)         {  updateFilter = true; filterFrequency = f; }
+
+            var filter = create (initialMode, processor.frequency, initialFrequency);
+
+            bool updateFilter = true;
+            float filterFrequency = initialFrequency;
+            int filterMode = initialMode;
+
+            void main()
+            {
+                loop
+                {
+                    if (updateFilter)
+                    {
+                        filter.setMode (filterMode);
+                        filter.setFrequency (processor.frequency, filterFrequency);
+                        updateFilter = false;
+                    }
+
+                    loop (parameterUpdateRate)
+                    {
+                        out <- filter.process (in);
+
+                        advance();
+                    }
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /// 4th Order two band crossover filter
+    ///
+    /// This filter is implemented using the StateVariableFilter and outputs two streams which can be
+    /// summed to produce a flat response. The crossover frequency can be modulated
+    ///
+    namespace crossover
+    {
+        Implementation create (float64 processorFrequency, float64 filterFrequency)
+        {
+            Implementation filter;
+
+            filter.setFrequency (processorFrequency, filterFrequency);
+
+            return filter;
+        }
+
+        struct Implementation
+        {
+            tpt::svf::Implementation[2] filters;
+
+            void setFrequency (float64 processorFrequency, float64 filterFrequency)
+            {
+                filterFrequency = clamp (filterFrequency, 0.0, processorFrequency * 0.48);
+
+                this.filters[0].setFrequency (processorFrequency, filterFrequency, defaultQ);
+                this.filters[1].setFrequency (processorFrequency, filterFrequency, defaultQ);
+            }
+
+            void reset()
+            {
+                this.filters[0].reset();
+                this.filters[1].reset();
+            }
+
+            FrameType[2] process (FrameType x)
+            {
+                let out1 = this.filters[0].processMultimode (x);
+                let out2 = this.filters[1].processMultimode (out1[0]);
+
+                let allpass = out1[0] - sqrt (2.0f) * out1[2] + out1[1];
+
+                return (out2[0], allpass - out2[0]);
+            }
+        }
+
+        processor Processor (float initialFrequency = defaultFrequency)
+        {
+            input stream FrameType in;
+            output stream FrameType lowOut, highOut;
+
+            input event
+            {
+                float frequency [[ name: "Frequency",   min: 0, max: 20000, init: 1000, unit: "Hz"]];
+            }
+
+            event frequency (float f)         {  updateFilter = true; filterFrequency = f; }
+
+            var filter = create (processor.frequency, initialFrequency);
+
+            bool updateFilter = true;
+            float filterFrequency = initialFrequency;
+
+            void main()
+            {
+                loop
+                {
+                    if (updateFilter)
+                    {
+                        filter.setFrequency (processor.frequency, filterFrequency);
+                        updateFilter = false;
+                    }
+
+                    loop (parameterUpdateRate)
+                    {
+                        let result = filter.process (in);
+
+                        lowOut <- result[0];
+                        highOut <- result[1];
+
+                        advance();
+                    }
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /// Simper filter
+    ///
+    /// This filter is based on the design by Andy Simper, and is an implementation
+    /// of the State Variable filter providing many different operational modes.
+    /// It is documented here:
+    /// https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
+    ///
+    namespace simper
+    {
+        namespace Mode
+        {
+            let lowPass = 0;
+            let highPass = 1;
+            let bandPass = 2;
+            let notchPass = 3;
+            let peakPass = 4;
+            let allPass= 5;
+
+            let lowShelf = 6;
+            let highShelf = 7;
+            let bell = 8;
+        }
+
+        Implementation create (int mode, float64 processorFrequency, float64 filterFrequency, float64 Q, float64 gain)
+        {
+            Implementation filter;
+
+            filter.setMode (mode);
+            filter.setFrequency (processorFrequency, filterFrequency, Q, gain);
+
+            return filter;
+        }
+
+        struct Implementation
+        {
+            FrameType ic1eq, ic2eq;
+            CoefficientType a1, a2, a3;
+            CoefficientType f0, f1, f2;
+            int mode;
+
+            void setMode (int m)
+            {
+                this.mode = m;
+            }
+
+            void reset()
+            {
+                this.ic1eq = 0;
+                this.ic2eq = 0;
+            }
+
+            void setFrequency (float64 processorFrequency, float64 filterFrequency, float64 Q, float64 gain)
+            {
+                filterFrequency = clamp (filterFrequency, 0.0, processorFrequency * 0.48);
+
+                var g = CoefficientType (tan (pi * filterFrequency / processorFrequency));
+                let k = CoefficientType (1.0 / Q);
+
+                if (this.mode == Mode::lowShelf || this.mode == Mode::highShelf || this.mode == Mode::bell)
+                {
+                    let A = CoefficientType (pow (10.0, gain / 40.0));
+                    g = CoefficientType (g / sqrt (A));
+
+                    this.a1 = CoefficientType (1.0 / (1.0 + g * (g + k)));
+                    this.a2 = CoefficientType (g * this.a1);
+                    this.a3 = CoefficientType (g * this.a2);
+
+                    if (this.mode == Mode::lowShelf)
+                    {
+                        this.f0 = 1;
+                        this.f1 = k * (A - 1);
+                        this.f2 = (A * A) - 1;
+                    }
+                    else if (this.mode == Mode::bell)
+                    {
+                        this.f0 = 1;
+                        this.f1 = k * ((A * A) - 1);
+                        this.f2 = 0;
+                    }
+                    else if (this.mode == Mode::highShelf)
+                    {
+                        this.f0 = A * A;
+                        this.f1 = k * (1 - A) * A;
+                        this.f2 = 1 - (A * A);
+                    }
+                }
+                else
+                {
+                    this.a1 = CoefficientType (1.0 / (1.0 + g * (g + k)));
+                    this.a2 = CoefficientType (g * this.a1);
+                    this.a3 = CoefficientType (g * this.a2);
+
+                    if (this.mode == Mode::lowPass)
+                    {
+                        this.f0 = 0;
+                        this.f1 = 0;
+                        this.f2 = 1;
+                    }
+                    else if (this.mode == Mode::highPass)
+                    {
+                        this.f0 = 1;
+                        this.f1 = -k;
+                        this.f2 = -1;
+                    }
+                    else if (this.mode == Mode::bandPass)
+                    {
+                        this.f0 = 0;
+                        this.f1 = 1;
+                        this.f2 = 0;
+                    }
+                    else if (this.mode == Mode::notchPass)
+                    {
+                        // low + high
+                        this.f0 = 1;
+                        this.f1 = -k;
+                        this.f2 = 0;
+                    }
+                    else if (this.mode == Mode::peakPass)
+                    {
+                        // high - low
+                        this.f0 = 1;
+                        this.f1 = -k;
+                        this.f2 = -2;
+                    }
+                    else if (this.mode == Mode::allPass)
+                    {
+                        // low + high - k * band
+                        this.f0 = 1;
+                        this.f1 = -2 * k;
+                        this.f2 = 0;
+                    }
+                }
+            }
+
+            FrameType process (FrameType v0)
+            {
+                let v3 = v0 - this.ic2eq;
+                let v1 = this.a1 * this.ic1eq + this.a2 * v3;
+                let v2 = this.ic2eq + this.a2 * this.ic1eq + this.a3 * v3;
+                this.ic1eq = FrameType (2 * v1 - this.ic1eq);
+                this.ic2eq = FrameType (2 * v2 - this.ic2eq);
+
+                return FrameType ((this.f0 * v0) + (this.f1 * v1) + (this.f2 * v2));
+            }
+        }
+
+        processor Processor (int initialMode = Mode::lowPass,
+                            float initialFrequency = defaultFrequency,
+                            float initialQ = defaultQ,
+                            float initialGain = defaultGain)
+        {
+            input stream FrameType in;
+            output stream FrameType out;
+
+            input event
+            {
+                int   mode      [[ name: "Mode",        min: 0, max: 2, init: 0, text: "Lowpass|Highpass|Bandpass" ]];
+                float frequency [[ name: "Frequency",   min: 0, max: 20000, init: 1000, unit: "Hz"]];
+                float q         [[ name: "Q",           min: 0.01, max: 100.0, init: 0.707107]];
+                float gain      [[ name: "Gain",        min: -100, max: 100.0, init: 0]];
+            }
+
+            event mode (int m)                { updateFilter = true; filterMode = m; }
+            event frequency (float f)         { updateFilter = true; filterFrequency = f; }
+            event q (float q)                 { updateFilter = true; filterQ = q; }
+            event gain (float f)              { updateFilter = true; filterGain = f; }
+
+            var filter = create (initialMode, processor.frequency, initialFrequency, initialQ, initialGain);
+
+            bool updateFilter = false;
+            float filterFrequency = initialFrequency;
+            int filterMode = initialMode;
+            float filterQ = initialQ;
+            float filterGain = initialGain;
+
+            void main()
+            {
+                loop
+                {
+                    if (updateFilter)
+                    {
+                        filter.setMode (filterMode);
+                        filter.setFrequency (processor.frequency, filterFrequency, filterQ, filterGain);
+                        updateFilter = false;
+                    }
+
+                    loop (parameterUpdateRate)
+                    {
+                        out <- filter.process (in);
+                        advance();
+                    }
+                }
+            }
+        }
+    }
+}

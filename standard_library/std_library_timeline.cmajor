@@ -1,0 +1,80 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.timeline
+
+/**
+    This namespace contains various types and functions for dealing with tempos,
+    positions and events that describe DAW-style timelines.
+*/
+namespace std::timeline
+{
+    //==============================================================================
+    struct Tempo
+    {
+        // BPM = beats per minute :)
+        float32 bpm;
+
+        float32 secondsPerBeat() const                                                       { return this.bpm <= 0 ? 0.0f : (60.0f / this.bpm); }
+        float64 framesPerBeat (float64 framesPerSecond) const                                { return this.secondsPerBeat() * framesPerSecond; }
+
+        float32 secondsPerQuarterNote (TimeSignature timeSig) const                          { return this.secondsPerBeat() * timeSig.beatsPerQuarterNote(); }
+        float64 framesPerQuarterNote (TimeSignature timeSig, float64 framesPerSecond) const  { return this.secondsPerQuarterNote (timeSig) * framesPerSecond; }
+
+    }
+
+    //==============================================================================
+    struct TimeSignature
+    {
+        int32 numerator;
+        int32 denominator;
+
+        float32 beatsPerQuarterNote() const       { return this.denominator / 4.0f; }
+        float32 quarterNotesPerBeat() const       { return 4.0f / this.denominator; }
+    }
+
+    //==============================================================================
+    /// Indicates whether a host is currently playing or recording.
+    /// This struct is intended for purposes like sending as an event into a plugin
+    /// to tell it when the host's playback state changes.
+    struct TransportState
+    {
+        /// This is used as a bit-field, where
+        /// bit 0 = playing
+        /// bit 1 = recording
+        /// bit 2 = looping
+        int32 flags;
+
+        bool isStopped() const            { return (this.flags & 3) == 0; }
+        bool isPlaying() const            { return (this.flags & 3) != 0; }
+        bool isRecording() const          { return (this.flags & 2) != 0; }
+        bool isLooping() const            { return (this.flags & 4) != 0; }
+    }
+
+    //==============================================================================
+    /// This struct holds data that a host may want to send as an event to a plugin to
+    /// update it with various measurements of positions along its timeline.
+    struct Position
+    {
+        /// The frame index, from the start of the host's timeline.
+        int64 frameIndex;
+
+        /// A floating-point count of quarter-notes from the start of the host's timeline.
+        /// If a host doesn't count time in terms of beats, then this could be left as 0.
+        float64 quarterNote;
+
+        /// The position of the start of the current bar, measured as the number of
+        /// quarter-notes from the start of the host's timeline.
+        /// If a host doesn't count time in terms of beats, then this could be left as 0.
+        /// This is useful in conjunction with quarterNote if you need to know e.g. how many
+        /// beats you are into the current bar.
+        float64 barStartQuarterNote;
+    }
+}

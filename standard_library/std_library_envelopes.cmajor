@@ -1,0 +1,83 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.envelopes
+
+/**
+    Utilities for calculating and applying static and dynamic gain levels.
+*/
+namespace std::envelopes
+{
+    /** A very minimal, fixed-length, attack-sustain-release envelope generator.
+
+        This has fixed-length attach and release times. Given input events of NoteOn
+        and NoteOff objects, it will emit a stream of output gain levels that can
+        be used to attenuate a voice.
+    */
+    processor FixedASR (float32 attackSeconds,
+                        float32 releaseSeconds)
+    {
+        input event (std::notes::NoteOn,
+                     std::notes::NoteOff) eventIn;
+
+        output stream float gainOut;
+
+        //==============================================================================
+        float keyDownVelocity, currentLevel;
+
+        event eventIn (std::notes::NoteOn noteOn)        { keyDownVelocity = noteOn.velocity; }
+        event eventIn (std::notes::NoteOff noteOff)      { keyDownVelocity = 0; }
+
+        void main()
+        {
+            loop
+            {
+                while (keyDownVelocity == 0)
+                    advance();
+
+                if const (attackSeconds > 0)
+                {
+                    let attackExponent = 1.0f / int32 (attackSeconds * float32 (processor.frequency));
+                    let attackMultiplier = 2.0f ** -attackExponent
+                                           * (2.0f + keyDownVelocity) ** attackExponent;
+
+                    while (currentLevel < keyDownVelocity)
+                    {
+                        gainOut <- currentLevel;
+                        currentLevel = attackMultiplier * (currentLevel + 2.0f) - 2.0f;
+                        advance();
+                    }
+                }
+                else
+                {
+                    currentLevel = keyDownVelocity;
+                }
+
+                while (keyDownVelocity != 0)
+                {
+                    gainOut <- currentLevel;
+                    advance();
+                }
+
+                if const (releaseSeconds > 0)
+                {
+                    let decayFactor = pow (0.0001f, float32 (processor.period) / releaseSeconds);
+
+                    while (keyDownVelocity == 0 && currentLevel > 0.0001f)
+                    {
+                        gainOut <- currentLevel;
+                        currentLevel *= decayFactor;
+                        advance();
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,134 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/**
+    std.midi
+
+    Various utilities for handling raw MIDI data.
+*/
+
+/**
+    The classes in the standard library which deal with synthesisers have been designed
+    to avoid raw MIDI messages, and instead to work with strongly-typed event objects
+    for note-ons/offs, pitch-bends, etc, which are vastly more usable than a 3-byte
+    code that was designed for a 1980s serial link.
+*/
+namespace std::midi
+{
+    /// Holds a short (3-byte) MIDI message.
+    struct Message
+    {
+        /// This contains 3 packed bytes, arranged as (byte2 | (byte1 << 8) | (byte0 << 16)).
+        /// This layout means that when you view the value in hex in your debugger, it reads in
+        /// the natural order for a MIDI message.
+        int32 message;
+
+        int32 getByte1() const                              { return (this.message >> 16) & 0xff; }
+        int32 getByte2() const                              { return (this.message >> 8) & 0xff; }
+        int32 getByte3() const                              { return this.message & 0xff; }
+
+        int32 getMessageType() const                        { return (this.message >> 16) & 0xf0; }
+        int32 getChannel0to15() const                       { return (this.message >> 16) & 0x0f; }
+        int32 getChannel1to16() const                       { return this.getChannel0to15() + 1; }
+        int32 get14BitValue() const                         { return ((this.message >> 8) & 0x7f) | ((this.message & 0x7f) << 7); }
+
+        bool isNoteOn() const                               { return (this.message & 0xf00000) == 0x900000 && (this.message & 0xff) != 0; }
+        bool isNoteOff() const                              { return (this.message & 0xf00000) == 0x800000 || (this.message & 0xf000ff) == 0x900000; }
+        int32 getNoteNumber() const                         { return (this.message >> 8) & 0x7f; }
+        float32 getPitch() const                            { return float32 (this.getNoteNumber()); }
+        int32 getVelocity() const                           { return this.message & 0x7f; }
+        float32 getFloatVelocity() const                    { return float32 (this.message & 0x7f) * (1.0f / 127.0f); }
+
+        bool isProgramChange() const                        { return (this.message & 0xf00000) == 0xc00000; }
+        int32 getProgramChangeNumber() const                { return (this.message >> 8) & 0x7f; }
+
+        bool isPitchWheel() const                           { return (this.message & 0xf00000) == 0xe00000; }
+        int32 getPitchWheelValue() const                    { return this.get14BitValue(); }
+
+        bool isAftertouch() const                           { return (this.message & 0xf00000) == 0xa00000; }
+        int32 getAfterTouchValue() const                    { return this.message & 0x7f; }
+
+        bool isChannelPressure() const                      { return (this.message & 0xf00000) == 0xd00000; }
+        int32 getChannelPressureValue() const               { return (this.message >> 8) & 0x7f; }
+        float32 getFloatChannelPressureValue() const        { return float32 ((this.message >> 8) & 0x7f) * (1.0f / 127.0f); }
+
+        bool isController() const                           { return (this.message & 0xf00000) == 0xb00000; }
+        bool isControllerNumber (int32 number) const        { return (this.message & 0xf0ff00) == (0xb00000 | (number << 8)); }
+        int32 getControllerNumber() const                   { return (this.message >> 8) & 0x7f; }
+        int32 getControllerValue() const                    { return this.message & 0x7f; }
+        float32 getFloatControllerValue() const             { return float32 (this.message & 0x7f) * (1.0f / 127.0f); }
+        bool isAllNotesOff() const                          { return this.isControllerNumber (123); }
+        bool isAllSoundOff() const                          { return this.isControllerNumber (120); }
+
+        bool isQuarterFrame() const                         { return (this.message >> 16) == 0xf1; }
+        bool isClock() const                                { return (this.message >> 16) == 0xf8; }
+        bool isStart() const                                { return (this.message >> 16) == 0xfa; }
+        bool isContinue() const                             { return (this.message >> 16) == 0xfb; }
+        bool isStop() const                                 { return (this.message >> 16) == 0xfc; }
+        bool isActiveSense() const                          { return (this.message >> 16) == 0xfe; }
+        bool isMetaEvent() const                            { return (this.message >> 16) == 0xff; }
+
+        bool isSongPositionPointer() const                  { return (this.message >> 16) == 0xf2; }
+        int32 getSongPositionPointerValue() const           { return this.get14BitValue(); }
+    }
+
+    //==============================================================================
+    /// Accepts an input stream of raw MIDI MPE events and converts them to a stream
+    /// of note event objects which can be more easily used by synthesiser classes.
+    processor MPEConverter
+    {
+        input event Message parseMIDI;
+
+        output event (std::notes::NoteOn,
+                      std::notes::NoteOff,
+                      std::notes::PitchBend,
+                      std::notes::Slide,
+                      std::notes::Pressure,
+                      std::notes::Control) eventOut;
+
+        event parseMIDI (Message message)
+        {
+            if (message.isNoteOn())
+            {
+                eventOut <- std::notes::NoteOn (message.getChannel0to15(),
+                                                message.getPitch(),
+                                                message.getFloatVelocity());
+            }
+            else if (message.isNoteOff())
+            {
+                eventOut <- std::notes::NoteOff (message.getChannel0to15(),
+                                                 message.getPitch(),
+                                                 message.getFloatVelocity());
+            }
+            else if (message.isPitchWheel())
+            {
+                let semitoneBendRange = 48.0f; // standard MPE range of 48 semitones
+
+                eventOut <- std::notes::PitchBend (message.getChannel0to15(),
+                                                   (semitoneBendRange / 8192.0f) * float32 (message.get14BitValue() - 8192));
+            }
+            else if (message.isChannelPressure())
+            {
+                eventOut <- notes::Pressure (message.getChannel0to15(),
+                                             message.getFloatChannelPressureValue());
+            }
+            else if (message.isController())
+            {
+                if (message.getControllerNumber() == 74) // 74 = MPE slide
+                    eventOut <- notes::Slide (message.getChannel0to15(),
+                                              message.getFloatControllerValue());
+                else
+                    eventOut <- std::notes::Control (message.getChannel0to15(),
+                                                     message.getControllerNumber(),
+                                                     message.getFloatControllerValue());
+            }
+        }
+    }
+}

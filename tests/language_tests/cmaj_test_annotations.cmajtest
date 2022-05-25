@@ -1,0 +1,177 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+function testInputEndpoints (expectedInputEndpoints)
+{
+    var sampleCount = 10;
+    var testSection = getCurrentTestSection();
+    var sourceToCompile = testSection.source + testSection.globalSource;
+    var program = new Program();
+    var error = program.parse (sourceToCompile);
+
+    if (isError (error))
+    {
+        testSection.reportFail (error);
+        return;
+    }
+
+    var engine = new Engine();
+
+    updateBuildSettings (engine, 44100, sampleCount, true);
+
+    error = engine.load (program);
+
+    if (isError (error))
+    {
+        testSection.reportFail (error);
+        return;
+    }
+
+    var inputs = engine.getInputEndpoints();
+
+    if (expectedInputEndpoints !== JSON.stringify (inputs))
+    {
+        testSection.logMessage ("Expected " + expectedInputEndpoints);
+        testSection.logMessage ("Got      " + JSON.stringify (inputs));
+        testSection.reportFail ("Input endpoints do not match");
+        return;
+    }
+
+    testSection.reportSuccess();
+}
+
+## expectError ("5:45: error: Cannot resolve annotation value as a compile-time constant")
+
+processor P
+{
+    // endpoint annotations need to be constant folded at load time, when procrssor values aren't ready
+    output stream int out [[ a: 123, b: 123 + processor.id ]];
+    void main() { advance(); }
+}
+
+## expectError ("4:34: error: Cannot resolve annotation value as a compile-time constant")
+
+processor P
+{
+    output event int out [[ xyz: x ]];
+    complex x;
+    void main() { advance(); }
+}
+
+## testCompile (false)
+
+processor P
+{
+    output stream int out;
+    void main() { advance(); }
+    // function annotations are checked after link, when processor values are available
+    void f() [[ a: "1234", b: 1234.0f, c: processor.period ]] {}
+}
+
+## expectError ("4:32: error: Found \"=\" when expecting \":\"")
+
+processor P
+{
+    output stream int out [[ a = 123, b = 1.0f ]];
+    void main() { advance(); }
+}
+
+## expectError ("error: The wave-generation annotation must provide a property 'numFrames'")
+
+namespace n
+{
+    external float[] data [[ squarewave, rate: 1000, frequency: 10 ]];
+}
+
+## expectError ("4:27: error: The wave-generation annotation must provide a property 'frequency'")
+
+namespace n
+{
+    external float[] data [[ square, rate: 1000, numFrames: 1000 ]];
+}
+
+## expectError ("4:27: error: The wave-generation annotation must provide a property 'rate'")
+
+namespace n
+{
+    external float[] data [[ sine, frequency: 10, numFrames: 1000 ]];
+}
+
+## expectError ("4:80: error: The value of annotation property 'numFrames' on variable 'data' was out of range")
+
+namespace n
+{
+    external float[] data [[ squarewave, rate: 1000, frequency: 10, numFrames: -1 ]];
+}
+
+## expectError ("4:58: error: The value of annotation property 'frequency' on variable 'data' was out of range")
+
+namespace n
+{
+    external float[] data [[ saw, rate: 1000, frequency: -1, numFrames: 1000 ]];
+}
+
+## expectError ("5:46: error: The value of annotation property 'rate' on variable 'data' was out of range")
+
+namespace n
+{
+    external float[] data1;
+    external float[] data [[ triangle, rate: 0, frequency: 10, numFrames: 1000 ]];
+}
+
+## testProcessor()
+
+processor X (int intConstant, string stringConstant)  [[ s: "s", i32: 123, i64: 1234L, f32: 1.0f, f64: 1.0,
+                                                         xyz: intConstant, foo: stringConstant ]]
+{
+    output stream int out;
+    external int[4] foo [[ default: int[](1, 2, 3, 4) ]];
+
+    void main()  { out <- foo[0]; advance(); out <- -1; loop advance(); }
+}
+
+graph G
+{
+    output stream int out;
+    node x = X(234, "hello");
+    connection x->out;
+}
+
+## testInputEndpoints ('[{"endpointID":"in","endpointType":"stream","dataType":{"type":"int32"},"annotation":{"name":"Input","min":0,"max":100,"init":50,"unit":"%","step":1},"purpose":"parameter"}]')
+
+processor test
+{
+    input stream int in [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
+    output stream int out;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+## testInputEndpoints ("[{\"endpointID\":\"in\",\"endpointType\":\"stream\",\"dataType\":{\"type\":\"int32\"},\"annotation\":{\"extra\":1,\"min\":5,\"name\":\"Input\",\"max\":100,\"init\":50,\"unit\":\"%\",\"step\":1},\"purpose\":\"parameter\"}]")
+
+graph test
+{
+    input WrappedProcessor.in [[ extra: 1, min: 5 ]];
+    output stream int out;
+}
+
+processor WrappedProcessor
+{
+    input stream int in [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
+    output stream int out;
+
+    void main()
+    {
+        advance();
+    }
+}

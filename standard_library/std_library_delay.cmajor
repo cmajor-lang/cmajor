@@ -1,0 +1,113 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.delay
+
+/**
+    Utilities and processors for implementing delays. Note that you
+    graph connections allow a delay to be added without needing to use
+    an explicit processor - see the language guide for more details.
+*/
+/// @internal
+namespace std::delay
+{
+    /// A delay that acts on a pair of input/output streams
+    processor StreamDelay (using StreamType, int delayLength)
+    {
+        input stream StreamType in;
+        output stream StreamType out;
+
+        StreamType[delayLength] buffer;
+        wrap<delayLength> pos;
+
+        void main()
+        {
+            loop
+            {
+                out <- buffer[pos];
+                advance();
+                buffer[pos] = in;
+                ++pos;
+                advance();
+            }
+        }
+    }
+
+    /// A delay that acts on a pair of input/output values
+    processor ValueDelay (using StreamType, int delayLength)
+    {
+        input value StreamType in;
+        output value StreamType out;
+
+        StreamType[delayLength] buffer;
+        wrap<delayLength> pos;
+
+        void main()
+        {
+            loop
+            {
+                out <- buffer[pos];
+                advance();
+                buffer[pos] = in;
+                ++pos;
+                advance();
+            }
+        }
+    }
+
+    /// A delay that acts on a pair of input/output event endpoints
+    processor EventDelay (using EventType, int delayLength, int bufferSize)
+    {
+        input event EventType in;
+        output event EventType out;
+
+        event in (EventType e)
+        {
+            if (bufferEntries < bufferSize)
+            {
+                eventBuffer[writePos].e = e;
+                eventBuffer[writePos].eventTime = currentTime + delayLength;
+                ++writePos;
+                ++bufferEntries;
+            }
+        }
+
+        struct DelayedEvent
+        {
+            EventType e;
+            int eventTime;
+        }
+
+        DelayedEvent[bufferSize] eventBuffer;
+        wrap<bufferSize> readPos, writePos;
+        int bufferEntries, currentTime;
+
+        void emitEvents()
+        {
+            while (bufferEntries > 0 && eventBuffer[readPos].eventTime == currentTime)
+            {
+                out <- eventBuffer[readPos].e;
+                ++readPos;
+                --bufferEntries;
+            }
+        }
+
+        void main()
+        {
+            loop
+            {
+                advance();
+                emitEvents();
+                ++currentTime;
+                advance();
+            }
+        }
+    }
+}

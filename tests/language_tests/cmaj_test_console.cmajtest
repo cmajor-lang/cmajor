@@ -1,0 +1,127 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## testConsole ("Writing multiple types including structs 1 2.5 [object Object] [object Object]")
+
+processor test
+{
+    output stream float32 out;
+
+    struct S
+    {
+        int i;
+        float f;
+    }
+
+    void main()
+    {
+        let s = S (1, 2.0f);
+
+        console <- "Writing multiple types including structs ";
+        console <- 1 <- " ";
+        console <- 2.5f <- " ";
+        console <- s <- " " <- complex32 (1, 2);
+        advance();
+    }
+}
+
+## testConsole ("100", { sessionID : 100 })
+
+processor test
+{
+    output stream int32 out;
+
+    void main()
+    {
+        console <- processor.session;
+        advance();
+    }
+}
+
+## testConsole ("hello_world")
+
+processor P
+{
+    output stream int out;
+    void main()  { console <- "hello_world"; loop { out <- -1; advance(); } }
+}
+
+## testConsole ("1234abcd1893_9999.9_1234.5")
+
+processor P
+{
+    output stream int out;
+
+    void main()
+    {
+        write();
+        loop { out <- -1; advance(); }
+    }
+
+    void write()  { console <- 1234 <- "abcd" <- 0x765 <- "_" <- 9999.9 <- "_" <- 1234.5f; }
+}
+
+## testConsole ("hello_world")
+
+graph test [[main]]
+{
+    output stream int out;
+    connection P.out -> out;
+}
+
+processor P
+{
+    output stream int out;
+    void main()  { console <- "hello_world"; loop { out <- -1; advance(); } }
+}
+
+## testConsole ("hello_world")
+
+graph test [[main]]
+{
+    output stream int out;
+    connection G1 -> out;
+}
+
+graph G1
+{
+    output stream int out;
+    connection P -> out;
+}
+
+processor P
+{
+    output stream int out;
+    void main()  { console <- "hello_world"; loop { out <- -1; advance(); } }
+}
+
+## testConsole ("1234")
+
+graph G [[ main ]]
+{
+    output stream int out;
+
+    node p = P;
+    connection p -> out;
+}
+
+processor P
+{
+    output stream int out;
+
+    void main()
+    {
+        write();
+        loop { out <- -1; advance(); }
+    }
+
+    void write()  { console <- getVal(); }
+    int getVal() { return 1234; }
+}

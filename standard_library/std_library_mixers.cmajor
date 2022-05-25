@@ -1,0 +1,129 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.mixers
+
+/**
+    These processors can be used to mix various combinations of audio streams
+    together with static or dynamic gains.
+*/
+namespace std::mixers
+{
+    //==============================================================================
+    /// Simple utility processor that takes a vector size 2 and outputs the sum of
+    /// its elements.
+    processor StereoToMono (using SampleType)
+    {
+        input stream SampleType<2> in;
+        output stream SampleType out;
+
+        void main()
+        {
+            loop
+            {
+                out <- in[0] + in[1];
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    /// Simple utility processor that takes a scalar input and outputs a vector
+    /// size 2 which contains two copies of the input value
+    processor MonoToStereo (using SampleType)
+    {
+        input stream SampleType in;
+        output stream SampleType<2> out;
+
+        void main()
+        {
+            loop
+            {
+                out <- out.type (in);
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    /// Takes two input streams and two gain streams which it uses to attenuate the
+    /// inputs. Their result is then emitted.
+    /// FrameType can be a float or float vector type.
+    processor DynamicSum (using FrameType)
+    {
+        /// These two input streams will be added together after being multiplied by
+        /// their corresponding gain input streams.
+        input stream FrameType in1, in2;
+        input stream float32 gain1, gain2;
+
+        output stream FrameType out;
+
+        void main()
+        {
+            loop
+            {
+                out <- (in1 * gain1) + (in2 * gain2);
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    /// Takes two input streams which it adds together after applying some optional
+    /// constant gains.
+    /// FrameType can be a float or float vector type.
+    processor ConstantSum (using FrameType,
+                           float32 inputGain1 = 1.0f,
+                           float32 inputGain2 = 1.0f)
+    {
+        /// These two input streams will be added together after being multiplied by
+        /// the gains applied.
+        input stream FrameType in1, in2;
+
+        output stream FrameType out;
+
+        void main()
+        {
+            loop
+            {
+                out <- (in1 * inputGain1) + (in2 * inputGain2);
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    /// Takes two input streams and outputs a dynamic mix of their values, using a third
+    /// stream to control the mix.
+    ///
+    /// mixRange determines the range of values that the mix stream will take. So the
+    /// mix input is expected to be between 0 and mixRange, where mix = 0 will cause 100% of
+    /// in1 to be emitted, and mix = mixRange will cause 100% of in2 to be emitted.
+    ///
+    /// This processor is handy as a wet/dry mixer - for example you could connect a dry
+    /// stream to in1, a wet stream to in2, and set mixRange to 100. Then, the mix input
+    /// will act as a "percentage wet" control.
+    processor Interpolator (using FrameType,
+                            float32 mixRange)
+    {
+        input  stream FrameType in1, in2;
+        input  stream float mix;
+        output stream FrameType out;
+
+        void main()
+        {
+            loop
+            {
+                out <- lerp (in1, in2, mix * (1.0f / mixRange));
+                advance();
+            }
+        }
+    }
+}

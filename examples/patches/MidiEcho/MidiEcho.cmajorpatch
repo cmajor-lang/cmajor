@@ -1,0 +1,12 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.MidiEcho",
+    "version":          "1.0",
+    "name":             "MidiEcho",
+    "description":      "A processor that just receives and emits MIDI messages",
+    "category":         "midi",
+    "manufacturer":     "Sound Stacks Ltd",
+    "isInstrument":     false,
+
+    "source":           "MidiEcho.cmajor"
+}

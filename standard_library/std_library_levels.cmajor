@@ -1,0 +1,238 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.levels
+
+/**
+    Utilities for calculating and applying smoothing ramps and gain levels.
+*/
+namespace std::smoothing
+{
+    //==============================================================================
+    /// Utilities for smoothing non-audio signals, such as control parameters.
+    /// Holds a float value and is given a target to move towards over a given time.
+    /// Call setTarget() to tell the object where to go and how many steps to take
+    /// to get there, then repeatedly call getNext() to iterate to the target.
+    struct SmoothedValue
+    {
+        /// Immediately resets the value to the given argument
+        void reset (float32 newValue)
+        {
+            this.value = newValue;
+            this.target = newValue;
+            this.increment = 0;
+            this.remainingSteps = 0;
+        }
+
+        /// Gives the object a target value and the number of steps it should take
+        /// to reach it.
+        void setTarget (float32 targetValue, int32 numStepsToReachTarget)
+        {
+            this.target = targetValue;
+            this.increment = (targetValue - this.value) / numStepsToReachTarget;
+            this.remainingSteps = numStepsToReachTarget;
+        }
+
+        /// Returns the current value and increments it towards the current target.
+        float32 getNext()
+        {
+            let remaining = this.remainingSteps;
+
+            if (remaining != 0)
+            {
+                if (remaining == 1)
+                    this.value = this.target;
+                else
+                    this.value += this.increment;
+
+                this.remainingSteps = remaining - 1;
+            }
+
+            return this.value;
+        }
+
+        float32 value, target, increment;
+        int32 remainingSteps;
+    }
+
+    //==============================================================================
+    /// Takes an input that receives floating point events, and produces a continuous
+    /// output stream of floats which are smoothed by a specified amount.
+    /// This is handy for smoothing plugin parameters
+    processor SmoothedValueStream (float32 smoothingTimeSeconds = 0.2f, float32 initialValue = 0.0f)
+    {
+        /// Receives a new desired value. The processor's output will ramp towards
+        /// this target level over the length of time specified by smoothingTimeSeconds.
+        input event float32 in;
+        /// This is the stream of smoothed output values
+        output stream float32 out;
+
+        event in (float32 newTarget)
+        {
+            smoothedValue.setTarget (newTarget, max (1, int32 (smoothingTimeSeconds / float32 (processor.period))));
+        }
+
+        void main()
+        {
+            loop
+            {
+                out <- smoothedValue.getNext();
+                advance();
+            }
+        }
+
+        void init()
+        {
+            smoothedValue.reset (initialValue);
+        }
+
+        SmoothedValue smoothedValue;
+    }
+}
+
+//==============================================================================
+/// Utilities relating to gain levels
+namespace std::levels
+{
+    /// Converts a relative gain in decibels to a gain.
+    T dBtoGain<T> (T decibels)
+    {
+        static_assert (T.isPrimitive && T.primitiveType.isFloat, "dbToGain() requires a floating point argument");
+        return decibels > T(-100) ? T(10) ** (decibels * T(0.05)) : T();
+    }
+
+    /// Converts a gain to a relative number of decibels.
+    T gainTodB<T> (T gainFactor)
+    {
+        static_assert (T.isPrimitive && T.primitiveType.isFloat, "gainTodB() requires a floating point argument");
+        return gainFactor > 0 ? log10(gainFactor) * T(20) : T(-100);
+    }
+
+    //==============================================================================
+    /// This helper processor simply passes its input through to its output with a
+    /// constant gain applied.
+    /// The FrameType parameter could be a float, or a vector of floats.
+    /// See: DynamicGain, SmoothedGain
+    processor ConstantGain (using FrameType, float32 gain)
+    {
+        input  stream FrameType  in;
+        output stream FrameType  out;
+
+        void main()
+        {
+            loop
+            {
+                out <- in * gain;
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    /// This helper processor takes two input streams - one for data and the other
+    /// for a gain level, and emits the input signal with the gain applied.
+    /// The FrameType parameter could be a float, or a vector of floats.
+    /// See: ConstantGain, SmoothedGain
+    processor DynamicGain (using FrameType)
+    {
+        input  stream float32    gain;
+        input  stream FrameType  in;
+        output stream FrameType  out;
+
+        void main()
+        {
+            loop
+            {
+                out <- in * gain;
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    /// Takes an input stream of the given FrameType, and passes it through using
+    /// a SmoothedGainParameter processor to apply a smoothed gain to it. The gain
+    /// level is exposed via the 'volume' input.
+    graph SmoothedGain (using FrameType, float32 smoothingTimeSeconds = 0.2f)
+    {
+        input  gainParameter.volume  volume;
+        input  stream FrameType      in;
+        output stream FrameType      out;
+
+        node
+        {
+            gainProcessor = std::levels::DynamicGain (FrameType);
+            gainParameter = std::levels::SmoothedGainParameter (smoothingTimeSeconds);
+        }
+
+        connection
+        {
+            gainParameter.gain -> gainProcessor.gain;
+            in -> gainProcessor.in;
+            gainProcessor.out -> out;
+        }
+    }
+
+    //==============================================================================
+    /// Takes input events which change the level in decibels, and produces an
+    /// output stream of smoothed gain factors which can be applied to a signal.
+    processor SmoothedGainParameter (float32 smoothingTimeSeconds = 0.2f)
+    {
+        /// This input is used to set a new desired level in dB. The output gain will ramp towards
+        /// this target level over the length of time specified by smoothingTimeSeconds.
+        input  event  float32 volume   [[ name: "Volume", unit: "dB", min: -85, max: 6, init: 0 ]];
+        /// This output is the stream of smoothed gain levels.
+        output stream float32 gain;
+
+        event volume (float32 newVolumeDecibels)
+        {
+            smoothedGain.setTarget (std::levels::dBtoGain (newVolumeDecibels),
+                                    max (1, int32 (smoothingTimeSeconds / float32 (processor.period))));
+        }
+
+        void main()
+        {
+            loop
+            {
+                gain <- smoothedGain.getNext();
+                advance();
+            }
+        }
+
+        std::smoothing::SmoothedValue smoothedGain;
+    }
+}
+
+//==============================================================================
+/**
+    Functions for calculating the per-channel gains to use when panning a stereo signal.
+*/
+namespace std::pan_law
+{
+    /// Takes a pan position between -1 and 1 and returns a vector pair of left/right gains
+    /// using a linear pan-law.
+    T<2> linear<T> (T panPosition)
+    {
+        static_assert (T.isPrimitive && T.primitiveType.isFloat, "linear() requires a floating point argument");
+
+        return (T(1) - panPosition,
+                T(1) + panPosition);
+    }
+
+    /// Takes a pan position between -1 and 1 and returns a vector pair of left/right gains
+    /// using a 3dB-centre pan-law.
+    T<2> centre3dB<T> (T panPosition)
+    {
+        static_assert (T.isPrimitive && T.primitiveType.isFloat, "centre3dB() requires a floating point argument");
+
+        return (sin ((T(1) - panPosition) * T(pi / 4)),
+                sin ((T(1) + panPosition) * T(pi / 4)));
+    }
+}

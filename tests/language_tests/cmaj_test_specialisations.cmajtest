@@ -1,0 +1,787 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## expectError ("2:24: error: Processor specialisations may only be used in graphs")
+
+processor P (processor p) { output event float out; }
+
+## expectError ("2:24: error: Processor specialisations may only be used in graphs")
+
+namespace n (processor p) {}
+
+## expectError ("6:18: error: Expected a processor name")
+
+graph G
+{
+    output stream int out;
+    connection P(G) -> out;
+    connection P(2) -> out;
+}
+
+graph P (processor x)
+{
+    output stream int out;
+}
+
+## expectError ("3:20: error: Expected a value")
+
+namespace n1 (int x) {}
+namespace n2 = n1 (int64);
+
+## expectError ("3:20: error: Expected a type")
+
+namespace n1 (using x) {}
+namespace n2 = n1 (2);
+
+## expectError ("3:25: error: Wrong number of arguments to instantiate namespace 'n1'")
+
+namespace n1 (using x) {}
+namespace n2 = n1 (int, 2);
+
+## expectError ("3:15: error: Wrong number of arguments to instantiate namespace 'n'")
+
+namespace n (using T1, using T2) {}
+namespace m = n(int[]);
+
+## expectError ("8:26: error: The namespace 'n3' cannot be used without providing arguments for its parameters")
+
+namespace n
+{
+    namespace n (using T) { bool test() { return true; } }
+    namespace n2 { namespace n3 = n; }
+}
+
+bool f() { return n::n2::n3::test(); }
+
+## expectError ("8:26: error: The namespace 'n3' cannot be used without providing arguments for its parameters")
+
+namespace n
+{
+    namespace n (using T) { bool test() { return true; } }
+    namespace n2::n3 = n;
+}
+
+bool f() { return n::n2::n3::test(); }
+
+## expectError ("3:27: error: The namespace 'n2' cannot be used without providing arguments for its parameters")
+
+namespace n1 (using T1) { namespace n2 (using T2) { namespace n3 {} } }
+namespace n = n1(bool[])::n2::n3(bool<2>);
+
+## expectError ("3:45: error: Wrong number of arguments to instantiate namespace 'n3'")
+
+namespace n1 (using T1) { namespace n2 (using T2) { namespace n3 {} } }
+namespace n = n1(bool[])::n2(int64)::n3(bool<2>);
+
+## expectError ("5:26: error: The processor 'P' cannot be used without providing arguments for its parameters")
+
+graph G
+{
+    output stream int out;
+    node { a = P(5); p = P; }
+    connection p -> out;
+}
+
+processor P (int x)
+{
+    output stream int out;
+    void main() { advance(); }
+}
+
+## expectError ("8:11: error: The processor 'P' cannot be used without providing arguments for its parameters")
+
+graph G
+{
+    output stream int out;
+    connection P -> out;
+}
+
+processor P (int x)
+{
+    output stream int out;
+    void main() { advance(); }
+}
+
+## expectError ("6:14: error: The processor 'P' cannot be used without providing arguments for its parameters")
+
+graph G
+{
+    output stream int out;
+    node a = P(1);
+    node p = P();
+    connection Q -> out;
+    connection p -> out;
+}
+
+processor P (int x)
+{
+    output stream int out;
+    void main() { advance(); }
+}
+
+processor Q()
+{
+    output stream int out;
+    void main() { advance(); }
+}
+
+## expectError ("12:5: error: test")
+
+graph G
+{
+    output stream int out;
+    connection P(3) -> out;
+}
+
+processor P (int x)
+{
+    output stream int out;
+    void main() { advance(); }
+    static_assert (x != 3, "test");
+}
+
+## expectError ("11:30: error: test")
+
+graph G
+{
+    output stream int out;
+    connection P(1.0f) -> out;
+}
+
+processor P (float x)
+{
+    output stream int out;
+    void main() { advance(); static_assert (x == 2, "test"); }
+}
+
+## expectError ("6:18: error: Expected a type")
+
+graph G
+{
+    output stream int out;
+    connection P(const int) -> out;
+    connection P(2) -> out;
+}
+
+processor P (using x)
+{
+    output stream int out;
+    void main() { advance(); }
+    static_assert (x.isConst, "test");
+}
+
+## expectError ("5:11: error: The name 'n2' is already in use //// 4:11: note: See previous declaration")
+
+namespace n (using x) { const x i = 1; }
+
+namespace n2 = n (float);
+namespace n2 = n (float32);
+
+## expectError ("2:7: error: 'G' cannot refer to itself recursively")
+
+graph G (processor GG)
+{
+    output stream int out;
+    node x = GG;
+}
+
+graph G2
+{
+    output stream int out;
+    node g = G (G2);
+}
+
+## expectError ("4:30: error: 'n1' cannot refer to itself recursively")
+
+namespace n
+{
+    namespace n2 { namespace n1 = n1; }
+    namespace n1 {}
+}
+
+## expectError ("4:30: error: 'n1' cannot refer to itself recursively")
+
+namespace n
+{
+    namespace n2 { namespace n1 = n::n2::n1; }
+    namespace n1 {}
+}
+
+## testProcessor()
+
+graph G
+{
+    output event int out;
+    connection P(P2(c::c::c)) -> out;
+}
+
+namespace c::c
+{
+    let c = int<2>[2] ((1, -1), (1, -1));
+}
+
+graph P (processor P)
+{
+    output event int out;
+    node p = P;
+    connection p->out;
+}
+
+processor P2 (int<2>[2] x)
+{
+    output event int out;
+    void main() { out <- x[0][0] <- x[0][1]; advance(); }
+}
+
+## testProcessor()
+
+graph G
+{
+    output event int out;
+    connection P(P2(c::c, c::c.size)) -> out;
+}
+
+namespace c { let c = int<2>[2] ((1, -1), (1, -1)); }
+
+graph P (processor P)
+{
+    output event int out;
+    node p = P;
+    connection p->out;
+}
+
+processor P2 (int<num>[num] x, int num)
+{
+    output event int out;
+    void main() { out <- x[0][0] <- x[0][1]; advance(); }
+}
+
+## expectError ("3:1: error: If you're trying to declare an alias for a graph, use the 'processor' keyword")
+
+processor P { output event int out; void main() { advance(); } }
+graph G = P;
+
+## testProcessor()
+
+graph G
+{
+    output event int out;
+    connection A2 -> out;
+}
+
+processor A1 = P2(c::c, c::c.size);
+processor A2 = P(A1);
+
+namespace c { let c = int<2>[2] ((1, -1), (1, -1)); }
+
+graph P (processor P)
+{
+    output event int out;
+    node p = P;
+    connection p->out;
+}
+
+processor P2 (int<num>[num] x, int num)
+{
+    output event int out;
+    void main() { out <- x[0][0] <- x[0][1]; advance(); }
+}
+
+## expectError ("7:30: error: Expected a value")
+
+namespace n (using T, int n)
+{
+    processor P
+    {
+        output event T out;
+        void main() { out <- x.size <- -1; advance(); }
+        let x = int64<n>;
+    }
+}
+
+graph G
+{
+    output event float out;
+    namespace n2 = n (out.type, 1);
+    connection n2::P -> out;
+}
+
+## expectError ("9:35: error: Expected a type")
+
+namespace n (using T)
+{
+    processor P
+    {
+        output stream int out;
+        void main() { out <- b[0] <- -1; advance(); }
+        const T[3] a = (int[3] (1, 2, 3));
+        const T[3] b = (const int[3] (1, 2, 3));
+    }
+}
+
+graph test
+{
+    output event int out;
+    connection n(int)::P -> out;
+}
+
+## testCompile()
+
+graph G [[main]]
+{
+    output stream { float32 out32; float64 out64; }
+
+    connection n(float32)::G.out -> out32;
+    connection n(float64)::G.out -> out64;
+}
+
+namespace n (using OutType)
+{
+    graph G { output stream OutType out; }
+}
+
+## testProcessor()
+
+namespace n (using T = int)
+{
+    processor P (T result)
+    {
+        output event T out;
+        void main() { out <- result <- -1; advance(); }
+    }
+}
+
+graph G (processor P)
+{
+    output event int out;
+    connection P -> out;
+}
+
+graph test
+{
+    output event int out;
+    connection G (n::P(1)) -> out;
+}
+
+## testFunction()
+
+namespace n1
+{
+    using T1 = int;
+
+    namespace n2 { bool test<T2> (T2 x)  { return T1(x) != 0; } }
+    namespace n3 (using T3)
+    {
+        bool test<T2> (T2 x)  { return T3(x) != 0; }
+        namespace inner { bool test<T2> (T2 x)  { return T3(x) != 0; } }
+    }
+
+    namespace n4 (namespace n) {}
+}
+
+namespace n2 (bool value = true) { bool get() { return value; } }
+namespace n1n3 = n1::n3;
+
+bool test1()
+{
+    return n1::n2::test (1)
+        && n1::n2::test (2.0f)
+        && n1::n3 (n1::T1)::test (5.0)
+        && n1::n3 (n1::T1)::inner::test (5.0)
+        && n1n3 (n1::T1)::test (5.0)
+        && n1n3 (n1::T1)::inner::test (5.0)
+        && n1::n4 (n1n3 (n1::T1))::n::test (10);
+}
+
+bool test2()
+{
+    return n2::get()
+        && n2(true)::get()
+        && ! n2(false)::get();
+}
+
+namespace n3
+{
+    struct S { int x; }
+    namespace n3 (S s) { int get() { return s.x; } }
+}
+
+namespace n4 = n3::n3 (n3::S(1));
+bool test3()   { return n4::get() == 1 && n3::n3 (n3::S(2))::get() == 2; }
+
+namespace n5
+{
+    namespace t { bool get() { return true; } }
+    namespace f { bool get() { return false; } }
+    namespace n (namespace n = f) {}
+
+    namespace t1 = n(t);
+    namespace f1 = n;
+    namespace f2 = n(f);
+
+    bool test4() { return t1::n::get() && ! f1::n::get() && ! f2::n::get(); }
+
+    bool test5()
+    {
+        namespace lt1 = n(t);
+        namespace lf1 = n;
+        namespace lf2 = n(f);
+
+        return lt1::n::get() && ! lf1::n::get() && ! lf2::n::get();
+    }
+}
+
+struct SameName { bool x; }
+SameName f<SameName> (const SameName& a) { return (true); }
+bool test5() { return f (SameName()).x; }
+
+int get1<T> (T[3] a)  { return a[1]; }
+int get1<T> (T[4] a)  { return a[1]; }
+int get1s<T> (T[] a)   { return a.at (1); }
+int get1c<T> (const T[] a)  { return a.at (1); }
+void setVar<T> (T& a, T b)  { a = b; }
+
+bool test6()   { int32 a = 1; setVar (a, 3); return a == 3; }
+bool test7()   { int64[1] a = 1; setVar (a, int64[] (5)); return a[0] == 5; }
+bool test8()   { int[3] a = (3, 4, 5); return get1s(a) == 4 && get1(a) == 4; }
+bool test9()   { int[4] a = (3, 4, 5, 6); return get1s(a) == 4 && get1(a) == 4; }
+
+let global = int[] (3, 4, 5, 6);
+bool test10()   { return get1s (global) == 4 && get1c (global) == 4; }
+
+Type.elementType getFirstElement<Type> (Type array)  { return array[0]; }
+bool test11()   { return getFirstElement (int[] (2, 3, 4)) == 2; }
+
+## expectError ("2:11: error: Exceeded the maximum number of specialised namespace instances (100) - possible namespace recursion")
+
+namespace n1 (using T)
+{
+    struct S { T[3] x; }
+    namespace n2 = n1 (S);
+}
+
+namespace n = n1 (int);
+
+## expectError ("2:18: error: Exceeded the maximum number of specialised namespace instances (100) - possible namespace recursion")
+
+namespace outer::n1 (using T)
+{
+    struct S { T[3] x; }
+    namespace n2 = outer::n2 (S);
+}
+
+namespace outer::n2 (using T)
+{
+    struct S { T[4] x; }
+    namespace n2 = n1 (S);
+}
+
+namespace n = outer::n1 (int);
+
+## expectError ("2:43: error: Found \"{\" when expecting \"=\"")
+
+bool f() { namespace n = std; namespace q {}; }
+
+## expectError ("9:40: error: Cannot implicitly convert 'int32' to 'tests::n::T'")
+
+namespace n
+{
+    struct T { int x; }
+
+    processor P (T result)
+    {
+        output event T out;
+        void main() { out <- result <- -1; advance(); }
+    }
+
+    graph G { output event int out; connection P(1) -> out; }
+}
+
+## expectError ("8:22: error: Cannot use a processor name as a type")
+
+namespace n
+{
+    graph T { output event int out; }
+
+    processor P (T result)
+    {
+        output event T out;
+        void main() { out <- result <- -1; advance(); }
+    }
+
+    graph G { output event int out; connection P(1) -> out; }
+}
+
+## expectError ("7:40: error: Cannot implicitly convert 'int32' to 'tests::n::P::T'")
+
+namespace n
+{
+    processor P (T result)
+    {
+        output event T out;
+        void main() { out <- result <- -1; advance(); }
+        struct T { int x; }
+    }
+
+    graph G { output event int out; connection P(1) -> out; }
+}
+
+## expectError ("2:8: error: Expected a generic function wildcard name")
+
+void f<float> (int x) {}
+
+## expectError ("3:21: error: Failed to resolve generic function call f(float64) //// 2:2: error: 'elementType' can only be applied to an array or vector type")
+
+T.elementType f<T> (T a) { return (); }
+void f1() { let a = f(2.0); }
+
+## expectError ("3:21: error: Failed to resolve generic function call f(float64) //// 2:28: error: fail")
+
+T.elementType f<T> (T a) { static_assert (T.isArray, "fail"); return (); }
+void f1() { let a = f(2.0); }
+
+## expectError ("3:13: error: Failed to resolve generic function call f(int32) //// 2:8: error: Could not resolve generic parameter 'T'")
+
+void f<T> (int x) {}
+void f2() { f (1); }
+
+## expectError ("2:8: error: Expected a generic function wildcard name")
+
+void f<int T> (T x) {}
+
+## expectError ("2:9: error: This identifier cannot have a namespace qualifier")
+
+void f<x::y> (x::y x) {}
+
+## expectError ("3:13: error: Failed to resolve generic function call f(int32, int32) //// 2:32: error: Expected an assignable target on the left of the '=' operator")
+
+void f<T> (const T& a, T b)  { a = b; }
+void f1() { f (1, 2); }
+
+## expectError ("3:34: error: Failed to resolve generic function call f(complex64) //// 2:5: error: Could not resolve generic parameter 'T'")
+
+T f<T> (T[4] a)  { return a[3]; }
+void f() { let b = f(int[4]()) + f(100.0i); }
+
+## expectError ("3:30: error: Failed to resolve generic function call f(int32[5]) //// 2:5: error: Could not resolve generic parameter 'T'")
+
+T f<T> (T[4] a)  { return a[3]; }
+void f() { int[5] a; let b = f(a); }
+
+## expectError ("3:20: error: Failed to resolve generic function call f(string[3]) //// 2:26: error: Index is out of range")
+
+T f<T> (T a)  { return a[3]; }
+void f() { let b = f(string[] ("x", "y", "z")); }
+
+## expectError ("3:30: error: Failed to resolve generic function call f(int32<4>) //// 2:5: error: Could not resolve generic parameter 'T'")
+
+T f<T> (T[4] a)  { return a[3]; }
+void f() { int<4> a; let b = f(a); }
+
+## expectError ("2:37: error: Failed to resolve generic function call f(int32<3>) //// 2:32: error: Index is out of range")
+
+int<4> f<T> (T a) { return a[0:4] + f(a[:3]); }
+void f() { int<8> a; let b = f(a); }
+
+## expectError ("2:8: error: The function 'f' calls itself recursively")
+
+int<4> f<T> (T a) { return a[0:4] + f(a[:4]); }
+void f() { int<8> a; let b = f(a); }
+
+## expectError ("4:21: error: Failed to resolve generic function call f(int32, int64) //// 2:5: error: Could not find a value for 'T' that satisfies all argument types")
+
+T f<T> (const T& a, const T& b) { return a > b ? a : b; }
+void f1() { let a = f(2, 3); }
+void f2() { let a = f(2, 3L); }
+
+## expectError ("3:21: error: Failed to resolve generic function call f(int32, int32) //// 2:28: error: 'elementType' can only be applied to an array or vector type")
+
+T f<T> (const T& a, const T.elementType b) { return a > b ? a : b; }
+void f1() { let a = f(2, 3); }
+void f2() { let a = f(2, 3L); }
+
+## expectError ("3:28: error: Multiple matches found when looking for 'f' //// 2:8: note: See possible candidate //// 3:8: note: See possible candidate")
+
+int<4> f (int<4> n) { return n; }
+int<4> f<T> (T n) { return f (n[4:]); }
+void f1() { f (int<9>()); }
+
+## expectError ("4:41: error: Ambiguous function call: f(int32[3])")
+
+int f<T> (T a)    { return (); }
+int f<T> (T[3] a) { return (); }
+void f1()  { let x = int[3](1); let y = f(x); }
+
+## expectError ("6:43: error: Ambiguous function call: f(int32<3>)")
+
+T<4> f<T> (T<1> a) { return (); }
+T<4> f<T> (T<2> a) { return (); }
+T<4> f<T> (T<3> a) { return (); }
+T.elementType<4> f<T> (T t) { return (); }
+void f1() { let a = f (int<6>()); let b = f (int<3>()); }
+
+## expectError ("4:45: error: Ambiguous function call: f(int32[3])")
+
+int f<T> (T a)    { return (); }
+int f<T> (T[3] a) { return (); }
+void f1()  { let x = f (int[2](1)); let x = f (int[3](1)); }
+
+## expectError ("4:45: error: No suitable override found for function call: f(int32<4>)")
+
+int f<T> (T<2> a) { return (); }
+int f<T> (T<3> a) { return (); }
+void f1()  { let x = f (int<2>(1)); let x = f (int<4>(1)); }
+
+## expectError ("4:45: error: Ambiguous function call: f(int32<3>)")
+
+int f<T> (T a)    { return (); }
+int f<T> (T<3> a) { return (); }
+void f1()  { let x = f (int<2>(1)); let x = f (int<3>(1)); }
+
+## expectError ("8:13: error: Ambiguous function call: f(int32)")
+
+T xf<T> (T& a)       { return a; }
+T xf<T> (const T& a) { return a; }
+void xf1() { xf(123); }
+
+T f<T> (T a)        { return a; }
+T f<T> (const T& a) { return a; }
+void f1() { f(123); }
+
+## expectError ("2:46: error: Language feature not yet implemented: Multi-dimensional arrays!")
+
+namespace P2 (using SampleType) { struct S { SampleType[] x; } }
+
+graph G [[main]]
+{
+    output event P2 (int[4])::S out;     // Array of arrays
+}
+
+## expectError ("2:56: error: Cannot create a vector with elements that are not primitive types")
+
+namespace P2 (using SampleType) { struct S { SampleType<3> x; } }
+
+graph G [[main]]
+{
+    output event P2 (int[4])::S out;     // vector of arrays
+}
+
+## expectError ("6:18: error: The namespace 'P2' cannot be used without providing arguments for its parameters")
+
+namespace P2 (using SampleType) { struct S { int[] x; } }
+
+graph G [[main]]
+{
+    output event P2::S out;     // P2 specialisation arg missing
+}
+
+
+## expectError ("6:18: error: The namespace 'P2' cannot be used without providing arguments for its parameters")
+
+namespace P2 (using SampleType) { struct S { SampleType[] x; } }
+
+graph G [[main]]
+{
+    output event P2::S out;     // P2 specialisation arg missing
+}
+
+
+## testCompile()
+
+namespace P2 (using SampleType = float) { struct S { SampleType[] x; } }
+
+graph G [[main]]
+{
+    output event P2::S out;     // P2 specialisation arg missing, should use default of float
+}
+
+
+## expectError ("4:12: error: Endpoint type not yet resolved")
+
+namespace P2
+{
+    struct S { SampleType[] x; }
+}
+
+graph G [[main]]
+{
+    output event P2::S out;     // P2::S refers to an unresolved type
+}
+
+## expectError ("4:16: error: Cannot find symbol 'SampleType'")
+
+namespace P2
+{
+    struct S { SampleType[] x; }
+}
+
+processor Test
+{
+    output stream float out;
+
+    void main()
+    {
+        out <- 0.0f;
+        advance();
+    }
+}
+
+## expectError ("18:14: error: The processor 'T' cannot be used without providing arguments for its parameters")
+
+processor T (using V)
+{
+    output stream float out;
+
+    SampleType s;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+graph Test [[ main ]]
+{
+    output stream float out;
+
+    node t = T;
+
+    connection t.out -> out;
+}
+
+
+## expectError ("4:18: error: Endpoint type not yet resolved")
+
+graph G [[main]]
+{
+    output event float[processor.frequency] out;
+}
+
+## expectError ("2:24: error: Cannot find symbol 'unknownType'")
+
+processor P (using T = unknownType)
+{
+    output stream float32 out;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+graph Test [[ main ]]
+{
+    output stream float32 out;
+
+    node p = P;
+
+    connection
+        p.out -> out;
+}

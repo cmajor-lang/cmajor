@@ -1,0 +1,245 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## global
+
+namespace helpers
+{
+    bool near<T> (T n1, T n2)      { return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.0001f; }
+    bool nearish<T> (T n1, T n2)   { return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.01f; }
+
+    bool all_near<T> (const T& array1, const T& array2)
+    {
+        for (wrap<T.size> i)
+            if (! near (array1[i], array2[i]))
+                return false;
+
+        return true;
+    }
+}
+
+## testFunction()
+
+bool testHelpers()
+{
+    return helpers::near (10.0f, 10.00001f) && helpers::near (-10.0f, -9.999999f) && ! helpers::near (123.0f, 123.003f);
+}
+
+bool testRatioCalculation()
+{
+    return helpers::near (std::notes::getSpeedRatioBetween (44100.0f, 69.0f, 44100.0f, 69.0f),       1.0)
+        && helpers::near (std::notes::getSpeedRatioBetween (44100.0f, 69.0f, 44100.0f, 70.0f),       1.059463)
+        && helpers::near (std::notes::getSpeedRatioBetween (44100.0f, 69.0f, 44100.0f, 69.0f - 12),  0.5)
+        && helpers::near (std::notes::getSpeedRatioBetween (44100.0f, 69.0f, 44100.0f, 69.0f + 12),  2.0)
+        && helpers::near (std::notes::getSpeedRatioBetween (44100.0f, 69.0f, 48000.0f, 69.0f + 1),   1.059463 * 44100.0 / 48000.0);
+}
+
+bool testFreqConversion()
+{
+    for (float f = -5.0f; f < 200.0f; f += 7.63f)
+        if (! helpers::near (std::notes::frequencyToNote (std::notes::noteToFrequency (f)), f))
+            return false;
+
+    return helpers::near (std::notes::noteToFrequency (69),            440.0f)
+        && helpers::near (std::notes::noteToFrequency (69.0f),         440.0f)
+        && helpers::near (std::notes::noteToFrequency (69, 442),       442.0f)
+        && helpers::near (std::notes::noteToFrequency (69 + 12),       880.0f)
+        && helpers::near (std::notes::noteToFrequency (69.0f + 12),    880.0f)
+        && helpers::near (std::notes::noteToFrequency (69 + 24),       1760.0f)
+        && helpers::near (std::notes::noteToFrequency (69 - 36),       55.0f)
+        && helpers::near (std::notes::noteToFrequency (69.0f - 36),    55.0f);
+}
+
+bool testPanLaws1()
+{
+    let c = std::pan_law::linear (0.0f);
+    let l = std::pan_law::linear (-1.0f);
+    let r = std::pan_law::linear (1.0f);
+
+    return l[0] == 2.0f && l[1] == 0.0f
+        && c[0] == 1.0f && c[1] == 1.0f
+        && r[0] == 0.0f && r[1] == 2.0f;
+}
+
+bool testPanLaws2()
+{
+    let minus3db = std::levels::dBtoGain (-3.0f);
+
+    let c = std::pan_law::centre3dB (0.0f);
+    let l = std::pan_law::centre3dB (-1.0f);
+    let r = std::pan_law::centre3dB (1.0f);
+
+    return l[0] == 1.0f && l[1] == 0.0f
+        && r[0] == 0.0f && r[1] == 1.0f
+            && helpers::nearish (c[0], minus3db)
+            && helpers::nearish (c[1], minus3db);
+}
+
+bool testDecibelConversions()
+{
+    return std::levels::gainTodB (0.0f)    == -100.0f
+        && std::levels::gainTodB (0.0)     == -100.0f
+        && std::levels::gainTodB (-2.0f)   == -100.0f
+        && std::levels::gainTodB (-2.0)    == -100.0f
+        && std::levels::dBtoGain (-110.0f) == 0.0f
+        && std::levels::dBtoGain (-110.0)  == 0.0
+        && helpers::nearish (std::levels::dBtoGain (-6.02f),  0.5f)
+        && helpers::nearish (std::levels::dBtoGain (-6.02),   0.5)
+        && helpers::nearish (std::levels::dBtoGain (0.0f),    1.0f)
+        && helpers::nearish (std::levels::dBtoGain (0.0),     1.0)
+        && helpers::nearish (std::levels::dBtoGain (6.02f),   2.0f)
+        && helpers::nearish (std::levels::dBtoGain (6.02),    2.0)
+        && helpers::nearish (std::levels::gainTodB (0.25f),   -12.04f)
+        && helpers::nearish (std::levels::gainTodB (0.25),    -12.04)
+        && helpers::nearish (std::levels::gainTodB (1.0f),    0.0f)
+        && helpers::nearish (std::levels::gainTodB (1.0),     0.0)
+        && helpers::nearish (std::levels::gainTodB (2.0f),    6.02f)
+        && helpers::nearish (std::levels::gainTodB (2.0),     6.02);
+}
+
+bool testFFT32()
+{
+    float32[16] data = ( 4, 1, -1, 1, -1, 1, -1, 1, -7, -1, 1, -1, -1, 1, 1, -1 ), fft, ifft;
+
+    std::frequency::realOnlyForwardFFT (data, fft);
+    std::frequency::realOnlyInverseFFT (fft, ifft);
+
+    for (wrap<16> i)
+        if (abs (data[i] - ifft[i]) > 0.0001f)
+            return false;
+
+    return true;
+}
+
+bool testFFT64()
+{
+    float64[32] data, fft, ifft;
+
+    data[0] = 123.456;
+    data[4] = 1025.675;
+
+    std::frequency::realOnlyForwardFFT (data, fft);
+    std::frequency::realOnlyInverseFFT (fft, ifft);
+
+    for (wrap<16> i)
+        if (abs (data[i] - ifft[i]) > 0.0001f)
+            return false;
+
+    return true;
+}
+
+## expectError ("5:19: error: The arrays passed to realOnlyForwardFFT() must have a size which is a power of 2")
+
+bool testFFT32()
+{
+    float32[15] data, fft;
+    std::frequency::realOnlyForwardFFT (data, fft);
+}
+
+## expectError ("5:19: error: The arrays passed to realOnlyInverseFFT() must have a size which is a power of 2")
+
+bool testFFT32()
+{
+    float32[15] data, fft;
+    std::frequency::realOnlyInverseFFT (data, fft);
+}
+
+## expectError ("5:19: error: realOnlyForwardFFT() requires arguments which are float arrays")
+
+bool testFFT32()
+{
+    int32[15] data, fft;
+    std::frequency::realOnlyForwardFFT (data, fft);
+}
+
+## testProcessor()
+
+processor P
+{
+    output event int out;
+
+    void main()
+    {
+        out <- rng1.getInt32()    != 0 ? 1 : 0
+            <- rng2.getInt32()    != 0 ? 1 : 0
+            <- rng3.getUnipolar() != 0 ? 1 : 0
+            <- rng4.getBipolar()  != 0 ? 1 : 0
+            <- -1;
+
+        advance();
+    }
+
+    std::random::RNG rng1 = (processor.session),
+                      rng2 = (processor.id),
+                      rng3 = (int32 (processor.frequency)),
+                      rng4 = (int32 (processor.period * 48000));
+}
+
+## testCompile()
+
+graph G [[main]]
+{
+    output stream
+    {
+        float32 out32;
+        float64 out64;
+        float32<2> out32_2;
+        float64<3> out64_3;
+    }
+
+    node t1 = Test (float32, float64)::G;
+    node t2 = Test (float64, float64)::G;
+    node t3 = Test (float32, float32)::G;
+    node t4 = Test (float64, float32)::G;
+
+    node t5 = Test (float32<2>, float64)::G;
+    node t6 = Test (float64<3>, float64)::G;
+    node t7 = Test (float32<2>, float32)::G;
+    node t8 = Test (float64<3>, float32)::G;
+
+    connection t1, t3 -> out32;
+    connection t2, t4 -> out64;
+
+    connection t5, t7 -> out32_2;
+    connection t6, t8 -> out64_3;
+}
+
+namespace Test (using SampleType, using CoeffType)
+{
+    graph G
+    {
+        input stream SampleType in;
+        output stream SampleType out;
+        input event int mode;
+        input event float32 frequency;
+        input event float32 quality;
+        input event float32 gain;
+
+        node f1  = std::filters (SampleType, CoeffType)::tpt::onepole::Processor;
+        node f2  = std::filters (SampleType, CoeffType)::tpt::svf::Processor;
+        node f3  = std::filters (SampleType, CoeffType)::dcblocker::Processor;
+        node f4  = std::filters (SampleType, CoeffType)::butterworth::Processor (3);
+        node f5  = std::filters (SampleType, CoeffType)::butterworth::Processor (4);
+        node f6  = std::filters (SampleType, CoeffType)::tpt::svf::MultimodeProcessor;
+        node f7  = std::filters (SampleType, CoeffType)::crossover::Processor;
+        node f8  = std::filters (SampleType, CoeffType)::simper::Processor;
+
+        connection
+        {
+            mode -> f1.mode, f2.mode, f4.mode, f5.mode, f8.mode;
+            frequency -> f1.frequency, f2.frequency, f4.frequency, f5.frequency, f6.frequency, f7.frequency, f8.frequency;
+            quality -> f2.q, f6.q, f8.q;
+            gain -> f8.gain;
+
+            in -> f1.in, f2.in, f3.in, f4.in, f5.in, f6.in, f7.in, f8.in;
+            f1.out, f2.out, f3.out, f4.out, f5.out, f6.lowOut, f6.highOut, f6.bandOut, f7.lowOut, f7.highOut, f8.out -> out;
+        }
+    }
+}

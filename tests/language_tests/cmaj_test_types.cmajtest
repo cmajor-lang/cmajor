@@ -1,0 +1,1536 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## testFunction()
+
+static_assert (float.isFloat && float32.isFloat && float64.isFloat && ! int.isFloat && ! bool.isFloat);
+static_assert (float32.isFloat32 && ! float64.isFloat32 && ! int.isFloat32);
+static_assert (! float32.isFloat64 && float64.isFloat64 && ! int64.isFloat64);
+static_assert (bool.isBool && ! bool.isFloat && ! bool.isInt);
+static_assert (! bool.isArray && float64[3].isArray && ! bool<4>.isArray && ! float[2].isStruct);
+static_assert (complex32.isComplex && complex32.elementType.isFloat32 && ! complex32.isArray && ! complex32.isStruct);
+static_assert (complex64.isComplex && complex64.elementType.isFloat64 && ! complex64.isArray && ! complex64.isStruct);
+
+bool test() { return true; }
+
+## expectError ("3:14: error: Array elements cannot be void")
+
+using Void = void;
+void foo() { Void[2] v; }
+
+## expectError ("3:7: error: The name 'Void' is already in use //// 2:7: note: See previous declaration")
+
+using Void = void;
+using Void = int;
+void foo() { Void[2] v; }
+
+## expectError ("3:22: error: Array elements cannot be void")
+
+using Void = void;
+void foo() { var v = Void[2](); }
+
+## expectError ("2:41: error: Array elements cannot be void")
+
+void foo() { using Void = void; var v = Void[2](); }
+
+## expectError ("3:16: error: Vector elements cannot be void")
+
+using Void = void;
+struct S { Void<2> v; }
+
+## expectError ("3:18: error: Cannot create a vector with elements that are not primitive types")
+
+using I = int; using W = wrap<10>;
+struct S { I i; W<2> v; }
+
+## expectError ("2:20: error: Cannot create a vector with elements that are not primitive types")
+
+struct S { clamp<4><2> v; }
+
+## expectError ("3:12: error: Array elements cannot be void")
+
+using Void = void;
+struct S { Void[2] v; }
+
+## expectError ("2:29: error: The name 'X' is already in use //// 2:8: note: See previous declaration")
+
+void f<X> (X x)     { using X = int; }
+void f2() { f(123); }
+
+## expectError ("2:1: error: The 'const' keyword cannot be applied to a type that is already const")
+
+const const float x = 1.2f;
+
+## expectError ("2:14: error: Array elements cannot be references")
+
+void foo() { int&[2] v; }
+
+## expectError ("2:22: error: Expected a value")
+
+void foo() { var x = int[10]; }
+
+## expectError ("2:18: error: Only parameter variables can be given reference types")
+
+void foo() { int[2]& v; }
+
+## expectError ("2:17: error: Cannot create a vector with elements that are not primitive types")
+
+using T = int<4><2>;
+
+## expectError ("2:18: error: Cannot create a vector with elements that are not primitive types")
+
+using T = wrap<4><2>;
+
+## expectError ("2:12: error: Struct members cannot be references")
+
+struct S { int& x; }
+
+## expectError ("2:24: error: An array size must be a constant")
+
+void f (int n) { float[n] v; }
+
+## expectError ("2:24: error: Expected a value")
+
+void f (int n) { float[bool] v; }
+
+## expectError ("2:40: error: Expected a value")
+
+void f (int n) { float[2] v; let x = v[bool]; }
+
+## expectError ("2:13: error: Illegal vector size")
+
+void f (int<1024>& tooBig) {}
+
+## expectError ("2:9: error: 'double' is not a type name in Cmaj - did you mean `float64`?")
+
+void f (double x) {}
+
+## expectError ("5:13: error: Cannot convert type 'bool<3>' to 'bool'")
+
+bool f()
+{
+    bool<3> a = (true, true, true), b = (false, false, false);
+    return (a && b)[2] == false;
+}
+
+## expectError ("2:31: error: sin() requires a floating point argument")
+
+bool f() { complex c; let d = sin (c); return true; }
+
+## expectError ("5:5: error: Only parameter variables can be given reference types")
+
+processor P
+{
+    output stream float out;
+    int& i;
+    void main()  { advance(); }
+}
+
+## expectError ("5:13: error: Only parameter variables can be given reference types")
+
+processor P
+{
+    output stream float out;
+    out.type.makeReference i;
+    void main()  { advance(); }
+}
+
+## expectError ("2:14: error: Processor parameter types cannot be references")
+
+processor P (int& i)
+{
+    output stream int out;
+    void main() { advance(); }
+}
+
+## expectError ("9:16: error: Expected a type")
+
+struct TypeWithMetaFunctionNames    { int type, removeConst; }
+
+namespace N
+{
+    let a = TypeWithMetaFunctionNames (0, 1);
+    using x = a.type.type;
+    let z = (x.type.isInt && a.type == 1);
+    using y = a.type;
+}
+
+## expectError ("3:34: error: Wrong number of values to create a type 'int32[2]'")
+
+struct X { int a, b; }
+void test() { int[2] x1;    x1 = (1, 2, 3); }
+
+## expectError ("3:34: error: Wrong number of values to create a type 'int32<2>'")
+
+struct X { int a, b; }
+void test() { int<2> x1;    x1 = (1, 2, 3); }
+
+## expectError ("3:30: error: Wrong number of values to create a type 'tests::X[2]'")
+
+struct X { int a, b; }
+void test() { X[2] x3;  x3 = ((1, 2), (3, 4), (5, 6)); }
+
+## expectError ("3:32: error: Cannot convert 1 ('int32') to 'tests::X'")
+
+struct X { int a, b; }
+void test() { X[2] x3;  x3 = ((1, 2)); }
+
+## expectError ("2:35: error: Cannot implicitly convert 'float64' to 'float32'")
+
+float32 cast (float64 f) { return f; }
+
+## expectError ("2:38: error: Cannot implicitly convert 'float64<1>' to 'float32'")
+
+float32 cast (float64<1> f) { return f; }
+
+## expectError ("2:38: error: Cannot implicitly convert 'float64' to 'float32<1>'")
+
+float32<1> cast (float64 f) { return f; }
+
+## expectError ("2:41: error: Cannot implicitly convert 'float64<1>' to 'float32<1>'")
+
+float32<1> cast (float64<1> f) { return f; }
+
+## expectError ("2:31: error: Cannot implicitly convert 'float32' to 'int32'")
+
+int cast (float32 f) { return f; }
+
+## expectError ("2:33: error: Cannot implicitly convert 'float32' to 'int32'")
+
+int cast (float32 f) { int i; i = f; return i; }
+
+## expectError ("2:32: error: Cannot implicitly convert 'float32' to 'int32'")
+
+int cast (float32 f) { int i = f; return i; }
+
+## expectError ("2:28: error: Cannot implicitly convert 'bool' to 'int32'")
+
+int cast (bool b) { return b; }
+
+## expectError ("3:33: error: Cannot implicitly convert 1.23456 ('float64') to 'float32'")
+
+void f (float32 f) {}
+void f2() { let n = 1.23456; f (n); }
+
+## expectError ("2:31: error: Cannot implicitly convert 1.23456 ('float64') to 'const float32'")
+
+namespace N { const float c = 1.23456; }
+
+## expectError ("5:26: error: Cannot implicitly convert 'float64' to 'float32'")
+
+processor P
+{
+    output stream float32 out;
+    void main() { out <- 1.23456; advance(); }
+}
+
+## expectError ("2:34: error: Cannot implicitly convert true ('bool') to 'int32'")
+
+void f() { let b = true; int i = b; }
+
+## expectError ("3:20: error: A variable type cannot be 'void'")
+
+void voidFn() {}
+void f() { int i = voidFn(); }
+
+## expectError ("3:20: error: A variable type cannot be 'void'")
+
+void voidFn() {}
+void f() { var i = voidFn(); ++i; }
+
+## expectError ("3:9: error: A variable type cannot be 'void'")
+
+void voidFn() {}
+let i = voidFn();
+
+## expectError ("3:29: error: Illegal types for binary operator '+' ('void' and 'int32')")
+
+void voidFn() {}
+void f() { let i = voidFn() + 1; }
+
+## expectError ("3:26: error: Cannot implicitly convert false ('bool') to 'float32'")
+
+struct S { int a; float b; }
+void f() { let s = S (2, false); }
+
+## expectError ("3:26: error: Cannot implicitly convert 1.234 ('float64') to 'float32'")
+
+struct S { int a; float b; }
+void f() { let s = S (2, 1.234); }
+
+## expectError ("7:15: error: Cannot convert type 'int32[2]' to 'int32[1]'")
+
+struct S { int[1] x; }
+
+void f()
+{
+    var a = int[2](2, 3);
+    let b = S(a);
+}
+
+## expectError ("3:26: error: Cannot convert int32[2] (2, 3) ('int32[2]') to 'int32[1]'")
+
+struct S { int[1] x; }
+void f() { let b = S(int[2](2, 3)); }
+
+## expectError ("3:21: error: Cannot implicitly convert 'float64' to 'int32'")
+
+float64 f() { return 5.2; }
+void f2() { int x = f(); }
+
+## expectError ("3:31: error: Cannot implicitly convert 16274673652.76 ('const float64') to 'float32'")
+
+const float64 f = 1.627467365276e10;
+void f2() { float x = 1.0f; x = f; }
+
+## expectError ("2:35: error: The name 'AAA' is already in use //// 2:18: note: See previous declaration")
+
+void f() { using AAA = int; using AAA = bool; }
+
+## expectError ("8:44: error: This endpoint has more than one type")
+
+graph G
+{
+    output stream float out;
+    input event (int, float) in1;
+    input stream float in2;
+
+    node g = std::levels::ConstantGain (in1.type, 1.0f);
+    connection in2 -> g -> out;
+}
+
+## testFunction()
+
+struct TypeWithMetaFunctionNames { int type, removeConst; }
+
+bool test()
+{
+    using A = TypeWithMetaFunctionNames;
+    let a = A (0, 1);
+    return (a.type == 0 && a.removeConst == 1);
+}
+
+namespace N
+{
+    let a = TypeWithMetaFunctionNames (0, 1);
+    using b = a.type.type;
+}
+
+bool f1() { return N::a.removeConst == 1; }
+bool f2() { return N::b.removeConst.isInt; }
+
+int getByRef1 (const int& b2) { return b2; }
+int getByRef2 (int b1) { return getByRef1 (b1); }
+bool testByRef() { return getByRef2 (123) == 123; }
+
+bool test_wrap1()
+{
+    wrap<16> i;
+    wrap<1> j; ++j;
+    return i == 0 && j == 0;
+}
+
+bool test_wrap2()
+{
+    wrap<5> a = 2;
+    int count = 0;
+
+    for (var i = a++; i != 1; ++i)
+        ++count;
+
+    return count == 4;
+}
+
+bool testClampType()
+{
+    clamp<10> clamp = clamp (2, 3, 4);
+    return clamp == 3 && takeClamp2 (2);
+}
+
+bool takeClamp2 (clamp<2> x) { return x != 0; }
+
+float<2> convert (int i)  { return float<2> (i); }
+int convert (float f)     { let a = int32 (f); return a; }
+
+bool testConvert()
+{
+    let a = convert (12);
+    float f = 8.0f;
+    f += 0.0f;
+    return a[0] == a[1] && convert (f) == 8;
+}
+
+float convert1 (float64 f)          { return float (f); }
+float convert2 (float64<1> f)       { return float (f); }
+float<1> convert3 (float64 f)       { return float (f); }
+float<1> convert4 (float64<1> f)    { return float (f); }
+
+bool testConvert64() { return convert1 (1.0) == convert2 (1.0) && convert3 (2.0) == convert4 (2.0); }
+
+float64 convert1 (float32 f)        { return float64 (f); }
+float64 convert2 (float32<1> f)     { return float64 (f); }
+float64<1> convert3 (float32 f)     { return float64 (f); }
+float64<1> convert4 (float32<1> f)  { return float64 (f); }
+
+bool testConvert32() { return convert1 (1.0f) == convert2 (1.0f) && convert3 (2.0f) == convert4 (2.0f); }
+
+struct C  { int[3] a, b; }
+
+bool testSize()
+{
+    C[2] c;
+    let i = c.size - 1;
+    c.at(i).a[1] = 1;
+    return c.at(i).a[1] == 1;
+}
+
+void update (int& i) { i = 3; }
+bool testRef1()  { var i = 5; update (i); return (i == 3); }
+
+struct S0 { int x, y; }
+void update (S0& i) { update (i.y); }
+bool testRef2()  { var i = S0(); update (i); return (i.y == 3); }
+bool testRef3()  { var i = S0(); update (i.y); return (i.y == 3); }
+
+void increment (int& x) { x++; }
+bool testIncrementRef() { int x = 2; increment (x); return x == 3; }
+
+struct S1 { int a; }
+struct S2 { S1 s; }
+
+int f1 (const S1& s)   { return s.a; }
+int f2 (S2 s)          { return f1 (s.s); }
+
+bool testPassingStructMemberAsRef() { return f2 (S2()) == 0; }
+
+bool castFloat32ToBool (float32 n)  { return bool (n); }
+bool castFloat64ToBool (float64 n)  { return bool (n); }
+bool testCastFloatToBool()          { return castFloat32ToBool (2.345f) && castFloat64ToBool (-1.345); }
+bool testCastBoolToInt()            { let f = int(false); let t = int(true); return f == 0 && t == 1; }
+bool testCastBoolToF32()            { let f = float32(false); let t = float32(true); return f == 0 && t == 1; }
+
+namespace N { const int[2] i = int[2](3); const int[] j = int[2](3); }
+bool testConstInit() { return N::i[1] == 3 && N::j[1] == 3; }
+
+bool testVectorCast1()  { let v = float<3> (int<3> (1, 2, 4)); return v[2] == 4.0f; }
+bool testVectorCast2()  { var x = int<3> (1, 2, 4); let v = float<3> (x); return allTrue (v == float<3> (1, 2, 4)); }
+
+## testProcessor()
+
+processor test
+{
+    output event int results;
+
+    external float[] data [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+    external int ten [[ default: 10 ]];
+    external float32 two [[ default: 2.0 ]];
+    external float64 four [[ default: 4.0 ]];
+
+    void main()
+    {
+        results <- test (data) ? 1 : 0;
+        advance();
+
+        loop { results <- -1; advance(); }
+    }
+
+    struct X { float[] data; }
+
+    float getIndirect1 (float[] x, int i) { return x.at (i) ;}
+    float getIndirect3 (const float[] x, int i) { return x.at (i) ;}
+    float getIndirect4 (const float[]& x, int i) { return x.at (i) ;}
+    float getIndirect5 (float[] x, int i) { X[2] xx; xx[0].data = x; return xx[0].data.at (i); }
+
+    bool test (float[] paramData)
+    {
+        let localData = data;
+
+        return data.at(25) > 0
+            && data.at(75) < 0
+            && data.read(25) > 0
+            && data.read(75) < 0
+            && getIndirect1 (data, 25) > 0
+            && getIndirect1 (data, 75) < 0
+            && getIndirect3 (data, 25) > 0
+            && getIndirect3 (data, 75) < 0
+            && getIndirect4 (data, 25) > 0
+            && getIndirect4 (data, 75) < 0
+            && getIndirect5 (data, 25) > 0
+            && getIndirect5 (data, 75) < 0
+            && data.readLinearInterpolated(25.2) > 0
+            && data.readLinearInterpolated(75.3) < 0
+            && localData.at(25) > 0
+            && localData.at(75) < 0
+            && paramData.at(25) > 0
+            && paramData.at(75) < 0
+            && ten == 10
+            && two == 2.0f
+            && four == 4.0;
+    }
+}
+
+## testProcessor()
+
+namespace Parameterised (int length)
+{
+    using ArrayType = int[length];
+}
+
+processor P
+{
+    input event Parameterised (5)::ArrayType in1;
+    input event (XX, YY) in2;
+    output event int out;
+
+    using XX = Parameterised (5)::ArrayType;
+    using YY = Parameterised (6)::ArrayType;
+
+    void main() { out <- 1; advance(); out <- -1; advance(); }
+}
+
+## testProcessor()
+
+processor test
+{
+    output event int results;
+
+    external float[] data [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+    float[] emptyState;
+
+    void main()
+    {
+        results <- test (data) ? 1 : 0;
+        advance();
+
+        loop { results <- -1; advance(); }
+    }
+
+    bool test (float[] paramData)
+    {
+        let localData = data;
+        float[] empty;
+
+        return data.size == 1000
+            && localData.size == 1000
+            && empty.size == 0
+            && emptyState.size == 0;
+    }
+}
+
+## expectError ("2:25: error: External variables cannot be given an initialiser value")
+
+external float sample = 5.0f;
+bool test1() { return true; }
+
+## expectError ("2:17: error: The 'external' flag can only be applied to state variables")
+
+processor test (external float f)
+{
+    output stream float out;
+    void main() { advance(); }
+}
+
+## expectError ("4:5: error: External constants cannot be declared inside a function")
+
+bool test1()
+{
+    external float[] sample [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+
+    return sample[25] > 0
+        && sample[75] < 0;
+}
+
+## testCompile()
+
+namespace NameClash { using Type = int; }
+
+processor test
+{
+    output stream float32 out;
+
+    NameClash::Type i;
+    int NameClash; // Clashes with namespace
+
+    void main() { i = 1; advance(); }
+}
+
+## testFunction()
+
+let b1 = true;
+namespace ns { let b1 = true; }
+namespace ns2 { let b1 = true; }
+
+bool test() { return b1 && ns::b1; }
+
+## testFunction()
+
+external float[] sample1 [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+namespace ns { external float[] sample [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]]; }
+
+bool test1()
+{
+    return sample1[25] > 0
+        && sample1[75] < 0
+        && ns::sample[25] > 0
+        && ns::sample[75] < 0;
+}
+
+## testFunction()
+
+bool f1<T> (const T& x) { wrap<x.size> i; return x[i]; }
+bool f2<T> (T x) { wrap<x.size> i; return x[i]; }
+bool test() { return f1 (int[] (1, 0, 0, 0, 0)) && f2 (int[] (1, 0)); }
+
+## expectError ("6:22: error: Failed to resolve external variable 'sample'")
+
+processor X
+{
+    output stream float out;
+
+    external float[] sample;
+    int index;
+
+    void main()  { loop { out <- getSample (sample); advance(); } }
+
+    float getSample (float[] s)     { let result = s.read(index) + s.at (index); ++index; return result; }
+}
+
+## testCompile()
+
+processor test
+{
+    output stream float out;
+
+    void foo (int[] x)      { var y = x; }
+    void foo2 (int[] x)     { int[] y; y = x; }
+
+    void main() { advance(); }
+}
+
+## expectError ("2:29: error: Expected an assignable target on the left of the '=' operator")
+
+void foo (int[] x)       { x.read (1.5) = 2; }
+
+## expectError ("2:47: error: read() expects a floating point or integer value for its index argument")
+
+int foo (int[] x)       { float<2> n; return x.read (n); }
+
+## expectError ("2:31: error: Expected an assignable target on the left of the '=' operator")
+
+void f() { const float x = 1; x = x / 0.0f; }
+
+## expectError ("2:5: error: Expected an array size, not a range")
+
+int[2:3] i;
+
+## expectError ("2:16: error: Expected an array size, not a range")
+
+void f() { int[1:2] i; }
+
+## testFunction()
+
+bool test()
+{
+    int[3] x = (2, 3, 4);
+    var x2 = x;
+    x2[1] = 5;
+    var x3 = int[] (2, 3, 4);
+    x3[1] = 5;
+    return x2[1] == 5 && x3[1] == 5;
+}
+
+## testCompile()
+
+namespace test
+{
+    int foo (const int[] x)       { return x.read (1); }
+
+    processor DummyProcessor { output stream int x; void main() { loop advance(); }}
+}
+
+## testCompile()
+
+processor X
+{
+    output stream float out;
+    float[] foo;
+
+    void main()  { loop advance(); }
+}
+
+## testCompile()
+
+processor X
+{
+    output stream float out;
+
+    void main()
+    {
+        float[] x;
+        loop advance();
+    }
+}
+
+## testProcessor()
+
+processor test
+{
+    output event int results;
+
+    struct Sample
+    {
+        float[] channelData;
+        float64 sampleRate;
+    }
+
+    external Sample sample [[ sinewave, rate: 44100, frequency: 440, numFrames: 1000 ]];
+    int index;
+
+    void main()
+    {
+        results <- getSample (sample.channelData) != 0 ? 1 : 0; advance();
+        loop { results <- -1; advance(); }
+    }
+
+    float getSample (float[] s)     { index += 10; return s.read(index) + s.at (index); }
+}
+
+## expectError ("5:18: error: Cannot apply value of type 'string' to external variable 'foo'")
+
+processor X
+{
+    output stream float out;
+    external int foo [[ default: "xx" ]];
+
+    void main()  { loop advance(); }
+}
+
+## expectError ("5:19: error: Cannot apply value of type 'float64' to external variable 'foo'")
+
+processor X
+{
+    output stream float out;
+    external bool foo [[ default: 123.0 ]];
+
+    void main()  { loop advance(); }
+}
+
+## expectError ("5:21: error: Failed to resolve external variable 'foo'")
+
+processor X
+{
+    output stream float out;
+    external int[4] foo;
+
+    void main()  { loop advance(); }
+}
+
+## expectError ("5:21: error: Failed to resolve external variable 'foo1'")
+
+processor X
+{
+    output stream float out;
+    external int[4] foo1, foo2, foo3;
+
+    void main()  { loop advance(); }
+}
+
+## expectError ("5:21: error: Failed to resolve external variable 'foo1'")
+
+processor X
+{
+    output stream float out;
+    external int[4] foo1, foo2, foo3, foo4, foo5;
+
+    void main()  { loop advance(); }
+}
+
+## expectError ("6:20: error: Expected a type")
+
+namespace A { let x = 1; }
+
+processor test
+{
+    input event A::x in;
+    output event int out;
+
+    void main() { loop advance(); }
+}
+
+## testCompile()
+
+processor X
+{
+    output stream float out;
+    external int foo1 [[ default: 123 ]];
+    external float32 foo2 [[ default: 123 ]];
+    external float64 foo3 [[ default: 123 ]];
+    external bool foo4 [[ default: true ]];
+
+    void main()  { loop advance(); }
+}
+
+## expectError ("4:47: error: readLinearInterpolated() expects an array of floating point values which can be interpolated")
+
+int test1 (int[] a, int i)          { return a.at (i); }
+int test2 (int[] a, float64 i)      { return a.read (i); }
+int test3 (int[] a, float64 i)      { return a.readLinearInterpolated (i); }
+
+## testFunction()
+
+const int vectorSize = 32;
+
+Type rotate<Type> (Type old, float v)
+{
+    Type result;
+    result[0] = v;
+    result[1 : Type.size] = old[0 : Type.size - 1];
+    return result;
+}
+
+bool testShuffle()
+{
+    float<vectorSize> value;
+
+    value = rotate (value, 1);
+    value = rotate (value, 2);
+    value = rotate (value, 3);
+
+    return value[2] == 1 && value[1] == 2 && value[0] == 3;
+}
+
+struct S2 { int x; }
+
+struct S
+{
+    float x, y;
+    S2[5] z;
+
+    void reset1() { this.x = this.x.type(); this.y = this.y.type(); }
+    void reset2() { this.x = (); this.y = (); }
+    void reset3() { this.z = (); }
+}
+
+bool testZeroInit()
+{
+    S s1 = (1, 2, ()), s2 = (2, 3, ());
+    s1.z[2].x = 3;
+    s1.reset1();
+    s1.reset3();
+    s2.reset2();
+    return s1.x == 0 && s1.y == 0 && s1.z[2].x == 0 && s2.x == 0 && s2.y == 0;
+}
+
+namespace complicatedInitialiser
+{
+    struct S { int[1] x; bool ok() const { return this.x[0] == 7; } }
+    const S[1] s = S[1](S(int[1](7)));
+}
+
+bool test_complicatedInitialiser() { return complicatedInitialiser::s[0].x[0] == 7 && complicatedInitialiser::s[0].ok(); }
+
+## expectError ("2:37: error: Cannot convert type 'int32[]' to 'float32[]'")
+
+void test (int[] x) { let y = float[] (x); }
+
+## expectError ("3:32: error: Cannot convert type 'int32[]' to 'float64[]'")
+
+void test1 (float64[] x) {}
+void test2 (int[] x)  { test1 (x); }
+
+## expectError ("3:40: error: Cannot convert type 'int32[]' to 'float64[]'")
+
+void test1 (float64[] x) {}
+void test2 (int[] x)  { test1 (float64[] (x)); }
+
+## expectError ("4:50: error: Cannot convert type 'tests::S' to 'bool'")
+
+struct S { bool a; }
+bool test1 (bool x) { return x; }
+void test() { S s; let b = test1 (s.a) && test1 (bool(s)); }
+
+## expectError ("11:21: error: Failed to resolve generic function call f(float32<1>) //// 4:6: error: Cannot create a vector with elements that are not primitive types")
+
+bool f<T> (T x)
+{
+    T<1> a = T(2);
+    a += T<1>();
+    var b = T(2);
+    b += 0;
+    return a == a && a == b && a == 2 && a[0] == b;
+}
+
+void f2() { let b = f (float<1>()); }
+
+## testProcessor()
+
+processor P
+{
+    output event int out;
+
+    struct S { int[1] a; }
+
+    let a1 = int[1](8);
+    let a2 = S(a1);
+    const S[1] s1 = S[1](a2);
+    let s2 = S[2](a2);
+    const S[1] s3 = S[1](S(int[1](3)));
+    let s4 = S[3](S(int[1](4)));
+
+    void init() {}
+
+    void main()
+    {
+        out <- s1[0].a[0]
+            <- s2[1].a[0]
+            <- s3[0].a[0]
+            <- s4[1].a[0];
+
+        out <- -1;
+        advance();
+    }
+}
+
+## testProcessor()
+
+processor P [[main]]
+{
+    output event int out;
+
+    void main()
+    {
+        const S[1] s = S[1](S(int[1](6)));
+        out <- complicated::s[0].a[0];
+
+        {
+            let a = complicated::s[0].a;
+            out <- a[0];
+        }
+
+        let a = s[0].a;
+        out <- s[0].a[0] <- a[0];
+
+        out <- -1;
+        advance();
+    }
+
+    struct S { int[1] a; }
+}
+
+namespace complicated
+{
+    struct S { int[1] a; }
+    const S[] s = S[1](S(int[](7)));
+}
+
+## testFunction()
+
+bool test_vectors1()
+{
+    let v1 = float<2> (0.1f, 0.2f);
+    let v2 = float<2> (0.2f);
+
+    int i;
+    i++;
+    let v3 = int<2> (3, i + 3);
+    let v4 = int<4>(0, i, 2, 3);
+    var v5 = int<2>();
+    v5 = v3;
+
+    return v1[0] == 0.1f && v1[1] == 0.2f
+        && allTrue (v1 == float<2> (0.1f, 0.2f))
+        && allTrue (v2 == float<2> (0.2f, 0.2f))
+        && v3[0] == 3 && v3[1] == 4
+        && v5[0] == 3 && v5[1] == 4
+        && v4[0] == 0 && v4[1] == 1 && v4[2] == 2 && v4[3] == 3;
+}
+
+bool test_vectors<T> (T x)
+{
+    T<1> a = T(2);
+    a += T<1>();
+    var b = T(2);
+    b += 0;
+    return a == a && a == b && a == 2 && a[0] == b
+        && castAwayVec1 (a) == 2
+        && castAwayVec1 (a) == b
+        && createVec1 (b)[0] == b
+        && createVec1 (b) == a;
+}
+
+T castAwayVec1<T> (T<1> v) { return v; }
+T<1> createVec1<T> (T v)   { return v; }
+
+bool test_vectors_f32() { return test_vectors (float32()); }
+bool test_vectors_f64() { return test_vectors (float64()); }
+bool test_vectors_i32() { return test_vectors (int32()); }
+bool test_vectors_i64() { return test_vectors (int64()); }
+
+bool test_vector3()
+{
+    bool<3> b;
+    b[0] = true;
+    b[1] = false;
+    b[2] = true;
+    return b[0] && ! b[1] && b[2]
+        && anyTrue (b)
+        && allTrue (b == bool<3> (true, false, true));
+}
+
+bool compareArrays<T> (const T& a, const T& b)
+{
+    for (wrap<a.size> i)
+    {
+        if const (a.elementType.isVector)
+        {
+            for (wrap<a.elementType.size> j)
+                if (a[i][j] != b[i][j])
+                    return false;
+        }
+        else
+        {
+            if (a[i] != b[i])
+                return false;
+        }
+    }
+
+    return true;
+}
+
+bool test_vector4()
+{
+    let       v1 = float[] (1, 2);
+    let       v2 = float[] (1, 2);
+    float[2]  v3 = float[] (1, 2);
+    float[2]  v4 = float[2] (1, 2);
+    var       v5 = int<2>[] ((1, 2), (3, 4));
+    int<2>[2] v6 = ((1, 2), (3, 4));
+
+    return compareArrays (v1, float[] (1, 2))
+        && compareArrays (v2, float[] (1, 2))
+        && compareArrays (v3, float[] (1, 2))
+        && compareArrays (v4, float[] (1, 2))
+        && compareArrays (v5, int<2>[] ((1, 2), (3, 4)))
+        && compareArrays (v6, int<2>[] ((1, 2), (3, 4)));
+}
+
+bool test_vector5()
+{
+    int<4> v = (1, 2, 3, 4);
+    var x = v;
+    x = x * 2;
+    x *= 2;
+
+    let y = v * 4; // should be folded
+
+    return allTrue (x == int<4> (4, 8, 12, 16))
+        && allTrue (y == int<4> (4, 8, 12, 16))
+        && allTrue (x == y);
+}
+
+struct S1 { float64<2> x; }
+struct S2 { float64[2] x; }
+
+bool test_vector6()
+{
+    var v = float64<2> (1, 2);
+    v += 1;
+    let x = float32<2> (v);
+
+    S1 s = (v);
+    let y = float32<2> (s.x);
+
+    return allTrue (x == float32<2> (2, 3))
+        && allTrue (y == float32<2> (2, 3));
+}
+
+bool test_array()
+{
+    var v = float64[2] (1, 2);
+    ++v[0]; ++v[1];
+    let x = float32[2] (v);
+
+    S2 s = (v);
+    let y = float32[2] (s.x);
+
+    return x[0] == 2 && x[1] == 3
+        && y[0] == 2 && y[1] == 3;
+}
+
+## expectError ("2:12: error: 'primitiveType' can only be applied to a vector or primitive type")
+
+void f() { primitiveType(int[3]) a = 1; }
+
+## expectError ("2:35: error: 'elementType' can only be applied to an array or vector type")
+
+void f() { complex.elementType a; elementType(float) b = 1; }
+
+## expectError ("2:7: error: 'elementType' can only be applied to an array or vector type")
+
+const elementType(bool) a = true;
+
+## expectError ("2:22: error: Cannot find symbol 'elementType'")
+
+void f() { std::midi.elementType b = 1; }
+
+## expectError ("2:30: error: 'elementType' can only be applied to an array or vector type")
+
+void f() { std::midi::Message.elementType b = 1; }
+
+## expectError ("2:15: error: Expected a value")
+
+primitiveType(c.type<3>) a;
+primitiveType(a.type<3>) b;
+primitiveType(b.type<3>) c;
+
+## expectError ("2:11: error: 'A' cannot refer to itself recursively")
+
+using A = primitiveType(C<3>);
+using B = primitiveType(A<3>);
+using C = primitiveType(B<3>);
+
+## expectError ("4:1: error: 'primitiveType' can only be applied to a vector or primitive type")
+
+primitiveType(float) a;
+primitiveType(a.type<4>) b;
+primitiveType(int[]) z;
+
+## expectError ("2:38: error: Cannot cast to a void type")
+
+void foo() { primitiveType(void) x = 0; }
+
+## expectError ("2:28: error: Array elements cannot be void")
+
+void foo() { primitiveType(void[3]) x = 0; }
+
+## expectError ("2:32: error: Vector elements cannot be void")
+
+void foo() { primitiveType(void<3>) x = 0; }
+
+## expectError ("3:19: error: 'size' cannot be applied to this type")
+
+struct S { int x; }
+bool f() { return S.size == 1; }
+
+## expectError ("3:9: error: 'size' cannot be applied to this type")
+
+struct S { int x; }
+bool f (const S& s) { return s.size == 1; }
+
+## expectError ("3:36: error: Cannot find symbol 'tests::S::y'")
+
+bool f() { return ! S.isScalar && S::x.isScalar; }
+bool f2() { return ! S.isScalar && S::y.isScalar; }
+struct S { int32 x; }
+
+## expectError ("2:31: error: Expected a type")
+
+bool f() { return const int<3>.isConst; }
+
+## testFunction()
+
+bool test_type_metafunctions()
+{
+    int32 i32;
+    int64 i64;
+    float32 f32;
+    float64 f64;
+    complex[4] a;
+    int<7> v;
+    S s;
+
+    return isArray (a)
+        && a.isArray
+        && isArray (int[])
+        && int64[].isArray
+        && isArray (int[2])
+        && int[2].isArray
+        && isArray (S[2])
+        && S[2].isArray
+
+        && isFixedSizeArray (bool[2])
+        && float[1].isFixedSizeArray
+        && isFixedSizeArray (a)
+
+        && isVector (v)
+        && v.isVector
+        && isVector (int<3>)
+        && int<3>.isVector
+        && isVector (int<1>)
+        && int<1>.isVector
+
+        && isInt32 (i32)
+        && i32.isInt32
+        && isInt32 (I32)
+        && I32.isInt32
+        && ! isInt32 (F32)
+        && ! isInt32 (F64)
+        && ! F32.isInt32
+
+        && isInt64 (int64)
+        && isInt64 (i64)
+        && int64.isInt64
+        && i64.isInt64
+        && isInt64 (I64)
+        && I64.isInt64
+        && ! isInt64 (F64)
+        && ! float64.isInt64
+
+        && isInt (s.x)
+        && s.x.isInt
+        && isInt (I32)
+        && I32.isInt
+        && isInt (i32)
+        && isInt (int32)
+        && int32.isInt
+        && i32.isInt
+        && isInt (int[].elementType)
+        && int[3].elementType.isInt
+        && ! isInt (F32)
+        && ! F32.isInt
+
+        && isFloat (F32)
+        && F32.isFloat
+        && ! isFloat (complex32)
+        && ! isFloat (complex64)
+        && ! isFloat (complex32)
+        && ! I32.isFloat
+
+        && isFloat32 (F32)
+        && F32.isFloat32
+        && isFloat32 (f32)
+        && f32.isFloat32
+        && float32.isFloat32
+        && ! I32.isFloat32
+        && ! isFloat32 (I32)
+
+        && isFloat64 (F64)
+        && isFloat64 (f64)
+        && F64.isFloat64
+        && f64.isFloat64
+        && isFloat64 (float64)
+        && ! isFloat64 (complex64)
+        && ! i64.isFloat64
+        && ! isFloat64 (I64)
+        && ! a[0].elementType.isFloat64
+
+        && isComplex (a[0])
+        && a[0].isComplex
+        && a[0].elementType.isFloat32
+
+        && isStruct (s)
+        && isStruct (S)
+        && s.isStruct
+        && S.isStruct
+
+        && isSlice (float[])
+        && bool[].isSlice
+        && ! isSlice (complex64[1])
+        && ! bool[2].isSlice
+        && ! v.isSlice;
+}
+
+struct S { int32 x; }
+using I32 = int32;
+using I64 = int64;
+using F32 = float32;
+using F64 = float64;
+
+const elementType (float[]) ff = 4;
+
+bool test1()
+{
+    (int) i;
+
+    int<4>.elementType[3]   a = (4, 5, ++i);
+    int<4>.primitiveType[3] b = (4, 5, ++i);
+    elementType (int[])[]   c = (6, 7, ++i);
+    int[4].elementType<3>   d = (6, 7, ++i);
+    elementType (int[4])<3> e = (6, 7, ++i);
+    elementType (S[3])      f = (++i);
+
+    return a[-1] == 1 && b[-1] == 2 && c[-1] == 3 && d[-1] == 4 && e[-1] == 5 && f.x == 6;
+}
+
+bool test2()
+{
+    int i;
+
+    let a = int<4>.elementType[3]   (4, 5, ++i);
+    let b = int<4>.primitiveType[3] (4, 5, ++i);
+    let c = elementType (int[])[]   (6, 7, ++i);
+    let d = int[4].elementType<3>   (6, 7, ++i);
+    let e = elementType (int[4])<3> (6, 7, ++i);
+    let f = elementType (S[3])      (++i);
+
+    return a[-1] == 1 && b[-1] == 2 && c[-1] == 3 && d[-1] == 4 && e[-1] == 5 && f.x == 6;
+}
+
+bool test3()
+{
+    return int<3>[4].elementType.size == 3
+        && int[7][2].elementType.size == 7
+        && ! int[].isConst
+        && (const int<3>).isConst
+        && int64.isScalar
+        && complex64.isScalar
+        && float64.isScalar
+        && ! bool.isScalar
+        && ! int[].isScalar;
+}
+
+bool testTernaryType<T, X> (T t, X x)
+{
+    using T2 = T.isInt ? int : int64;
+    T2 y = 134;
+
+    using T3 = (T.isInt ? int : int64);
+    T3 yy = 134;
+
+    (T.isInt ? int : int64) x = 123;
+    return isBool (T.isInt ? X : bool);
+}
+
+bool test4() { return ! testTernaryType (1, 2) && testTernaryType (2.0, 2); }
+
+struct N1 { N2 n; }
+struct N2 { complex[] x; }
+using N3 = N1;
+
+bool test5() { return isComplex (N1::n::x.elementType) && N3::n::x.elementType.isComplex; }
+
+## expectError ("3:25: error: Failed to resolve generic function call testTernaryType(int32, int32) //// 2:66: error: Expected a value")
+
+bool testTernaryType<T, X> (T t, X x) { return isBool (T.isInt ? X : 3); }
+bool test4() { return ! testTernaryType (1, 2) && testTernaryType (2.0, 2); }
+
+## expectError ("3:9: error: An enum declaration must contain at least one item")
+
+enum X { a, b, c }
+enum Y {}
+
+## expectError ("3:6: error: The name 'X' is already in use //// 2:6: note: See previous declaration")
+
+enum X { a, b, c }
+enum X { a }
+
+## expectError ("2:16: error: The name 'a' is already in use //// 2:10: note: See previous declaration")
+
+enum X { a, b, a }
+
+## expectError ("3:6: error: The name 'X' is already in use //// 2:8: note: See previous declaration")
+
+struct X {}
+enum X { a }
+
+## expectError ("4:33: error: Cannot convert type 'enum A' to 'enum B'")
+
+enum A { a, b }
+enum B { a, b }
+void f (A a) { let x = a; B b = a; }
+
+## expectError ("4:40: error: Cannot convert type 'const enum A&' to 'enum B'")
+
+enum A { a, b }
+enum B { a, b }
+void f (const A& a) { let x = a; B b = a; }
+
+## expectError ("3:18: error: Cannot convert 0 ('int32') to 'enum A'")
+
+enum A { a, b }
+void f() { A a = 0; }
+
+## expectError ("3:25: error: Illegal types for binary operator '+' ('enum A' and 'int32')")
+
+enum A { a, b }
+void f() { let x = A::a + 1; }
+
+## expectError ("3:25: error: Illegal types for binary operator '+' ('enum A' and 'enum A')")
+
+enum A { a, b }
+void f() { let x = A::a + A::b; }
+
+## expectError ("3:25: error: Illegal types for binary operator '<' ('enum A' and 'enum A')")
+
+enum A { a, b }
+void f() { let x = A::a < A::b; }
+
+## expectError ("3:25: error: Illegal types for binary operator '||' ('enum A' and 'enum A')")
+
+enum A { a, b }
+void f() { let x = A::a || A::b; }
+
+## expectError ("3:22: error: Illegal types for binary operator '==' ('int32' and 'enum A')")
+
+enum A { a, b }
+void f() { let x = 0 == A::a; }
+
+## expectError ("4:24: error: Illegal types for binary operator '==' ('enum A' and 'enum B')")
+
+enum A { a, b }
+enum B { a, b }
+bool f() { return A::a == B::a; }
+
+## expectError ("4:17: error: Cannot convert enum A::a ('enum A') to 'bool'")
+
+enum A { a, b }
+void f1 (bool n) {}
+void f() { f1 (A::a); }
+
+## expectError ("5:17: error: Cannot convert enum A::a ('enum A') to 'const enum B&'")
+
+enum A { a, b }
+enum B { a, b }
+void f1 (const B& n) {}
+void f() { f1 (A::a); }
+
+## expectError ("4:17: error: Cannot pass a const value as a non-const reference")
+
+enum A { a, b }
+void f1 (A& n) {}
+void f() { f1 (A::a); }
+
+## expectError ("4:25: error: Illegal types for binary operator '+' ('enum A' and 'enum B')")
+
+enum A { a, b }
+enum B { a, b }
+void f() { let x = A::a + B::a; }
+
+## expectError ("3:6: error: The name 'X' is already in use //// 2:11: note: See previous declaration")
+
+namespace X { const int x = 1; }
+enum X { x }
+
+void f() { let x = X::x; }
+
+## testFunction()
+
+enum A { a, b }
+
+bool f1 (A a) { return a == A::a && a != A::b; }
+bool f2 (const A& a) { return a == A::a && a != A::b; }
+bool f3 (A& a) { let x = a; a = A::b; return f2(x); }
+
+using B = A;
+
+bool f4 (B a) { return a == B::a && a != A::b; }
+bool f5 (const B& a) { return a == A::a && a != B::b; }
+bool f6 (B& a) { let x = a; a = A::b; return f2(x); }
+
+bool test1()
+{
+    A a;
+    let c = f3 (a);
+    return f1 (A::a) && ! f1 (A::b)
+        && f2 (A::a) && ! f2 (A::b)
+        && c && a == A::b;
+}
+
+bool test2()
+{
+    B a;
+    let c = f6 (a);
+    return f4 (A::a) && ! f4 (A::b)
+        && f5 (A::a) && ! f5 (A::b)
+        && c && a == A::b;
+}
+
+struct S
+{
+    A a1, a2;
+    bool ok() const { return this.a1 == A::a && this.a2 == A::b; }
+}
+
+bool test3()
+{
+    S s = (A::a, B::b);
+    bool ok = s.ok();
+    S s2;
+    s2 = s;
+    ok = ok && s2.ok();
+    S s3;
+    s3.a2 = A::b;
+    return ok && s3.ok();
+}
+
+bool test4() { return A::a != A::b; }
+bool test5() { return A::b == A::b; }
+bool test6() { return B::a != B::b; }
+bool test7() { return B::b == B::b; }
+
+## testProcessor()
+
+processor X (E e = E::b)
+{
+    output stream int out;
+    void main()
+    {
+        out <- (e == E::b ? 1 : 0); advance();
+        loop { out <- (e == E::b ? -1 : 0); advance(); }
+    }
+
+    enum E { a, b, c }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+    node x1 = X;
+    node x2 = X(X::E::a);
+    connection x1, x2 -> out;
+}
+
+
+## testFunction()
+
+bool test()
+{
+    wrap<100> a,b;
+    let i = (a - b);
+    return true;
+}
+
+## expectError ("14:20: error: Cannot convert type 'tests::Test2::Type' to 'tests::Test1::Type'")
+
+namespace Test1 { struct Type { int a; } }
+namespace Test2 { struct Type { int a; } }
+
+bool equals (Test1::Type t, int v)
+{
+    return t.a == v;
+}
+
+bool test()
+{
+    Test2::Type t2 = (2);
+
+    return equals (t2, 2);
+}
+
+
+## expectError ("15:7: error: Cannot convert type 'tests::Type::S' to 'tests::Type::S'")
+
+namespace Type (using T)
+{
+    struct S
+    {
+        T element;
+    }
+}
+
+bool test()
+{
+    Type (float)::S f;
+    Type (int)::S i;
+
+    f = i;
+
+    return true;
+}

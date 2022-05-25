@@ -1,0 +1,157 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.notes
+
+/**
+    These structs are used for events that model the start/stop/control of notes
+    that are playing in synthesisers.
+
+    Unlike sending raw MIDI around, these are strongly typed and use floating point
+    data so are far nicer to work with.
+
+    The objects include a channel ID field, so that a multi-channel input device can
+    indicate which events should be applied to each of the active notes that are
+    being played.
+*/
+namespace std::notes
+{
+    struct NoteOn
+    {
+        /// This channel ID is used to associate events which act on a particular voice.
+        /// When a NoteOn object is sent, the sender will create a unique ID, and
+        /// use the same ID for any subsequent pitch and control events, and for the
+        /// final matching NoteOff event.
+        int32 channel;
+
+        /// The pitch uses the same semitone scale as MIDI note numbers, between
+        /// 0 and 127, where middle C = 60.
+        float32 pitch;
+
+        /// Velocity is between 0 and 1
+        float32 velocity;
+    }
+
+    struct NoteOff
+    {
+        /// This channel ID can be used to associate this NoteOff event with the earlier
+        /// NoteOn to which it applies.
+        int32 channel;
+
+        /// You may not care exactly what the pitch is when a note is released, but
+        /// in case it's needed, it's included here.
+        float32 pitch;
+
+        /// Indicates how quickly the key was released: range is 0 to 1.
+        float32 velocity;
+    }
+
+    struct PitchBend
+    {
+        /// This channel ID can be used to associate this event with the earlier
+        /// NoteOn to which it applies.
+        int32 channel;
+
+        /// The number of semitones to bend up from the original note-on pitch.
+        float32 bendSemitones;
+    }
+
+    struct Pressure
+    {
+        /// This channel ID can be used to associate this event with the earlier
+        /// NoteOn to which it applies.
+        int32 channel;
+
+        /// Key pressure is in the range 0 to 1
+        float32 pressure;
+    }
+
+    /// "Slide" refers to a Y-axis controller parameter.
+    /// (In MPE input devices, this is a MIDI controller number 74)
+    struct Slide
+    {
+        /// This channel ID can be used to associate this event with the earlier
+        /// NoteOn to which it applies.
+        int32 channel;
+
+        /// The slide position ranges from 0 to 1. Exactly what you choose to do
+        /// with it depends on the instrument.
+        float32 slide;
+    }
+
+    struct Control
+    {
+        /// This channel ID can be used to associate this event with the earlier
+        /// NoteOn to which it applies.
+        int32 channel;
+
+        /// This could be used for any kind of controller index, but is probably
+        /// best used for MIDI controller numbers.
+        int32 control;
+
+        /// The normalised value of the controller, between 0 and 1
+        float32 value;
+    }
+
+    //==============================================================================
+    /// Returns the MIDI note equivalent for a frequency in Hz.
+    /// This uses the standard A = 440Hz reference tuning.
+    /// See: noteToFrequency
+    float32 frequencyToNote (float32 frequency)
+    {
+        return (12.0f / log (2.0f)) * log (frequency * (1.0f / 440.0f)) + 69.0f;
+    }
+
+    /// Returns the MIDI note equivalent for a frequency in Hz.
+    /// The frequencyOfA parameter lets you use non-standard tunings if you need to.
+    /// See: noteToFrequency
+    float32 frequencyToNote (float32 frequency, float32 frequencyOfA)
+    {
+        return (12.0f / log (2.0f)) * log (frequency * (1.0f / frequencyOfA)) + 69.0f;
+    }
+
+    /// Returns the frequency in Hz for a MIDI note number.
+    /// You can provide either an integer or floating point argument - the MIDI
+    /// note scale is in semitone units from 0 to 127, where middle C = 60.
+    /// This uses the standard A = 440Hz reference tuning.
+    /// See: frequencyToNote
+    float32 noteToFrequency<T> (T midiNoteNumber)
+    {
+        static_assert (T.isPrimitive && (T.isFloat || T.isInt), "noteToFrequency() requires an integer or floating point argument");
+        return 440.0f * 2.0f ** ((1.0f / 12.0f) * float32 (midiNoteNumber - 69));
+    }
+
+    /// Returns the frequency in Hz for a MIDI note number.
+    /// You can provide either an integer or floating point argument - the MIDI
+    /// note scale is in semitone units from 0 to 127, where middle C = 60.
+    /// The frequencyOfA parameter lets you use non-standard tunings if you need to.
+    /// See: frequencyToNote
+    float32 noteToFrequency<T> (T midiNoteNumber, float32 frequencyOfA)
+    {
+        static_assert (T.isPrimitive && (T.isFloat || T.isInt), "noteToFrequency() requires an integer or floating point argument");
+        return frequencyOfA * 2.0f ** ((1.0f / 12.0f) * float32 (midiNoteNumber - 69));
+    }
+
+    /// Calculates the speed ratio by which playback must be changed to re-pitch a given
+    /// source note to a target note.
+    float32 getSpeedRatioBetween (float32 sourceMIDINote, float32 targetMIDINote)
+    {
+        return 2.0f ** ((targetMIDINote - sourceMIDINote) * (1.0f / 12.0f));
+    }
+
+    /// Given a source with a known sample rate and pitch, this calculates the ratio at which
+    /// it would need to be sped-up in order to achieve a target pitch and sample-rate.
+    float64 getSpeedRatioBetween (float64 sourceSampleRate, float32 sourceMIDINote,
+                                  float64 targetSampleRate, float32 targetMIDINote)
+    {
+        return (sourceSampleRate / targetSampleRate)
+                 * getSpeedRatioBetween (sourceMIDINote, targetMIDINote);
+    }
+}

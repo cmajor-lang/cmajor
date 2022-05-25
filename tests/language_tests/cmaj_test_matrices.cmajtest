@@ -1,0 +1,119 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## testFunction()
+
+namespace matrix (int32 rows, int32 cols)
+{
+    using Data = float<cols>[rows];
+
+    Data add (const Data& lhs, const Data& rhs)
+    {
+        Data result;
+
+        for (wrap<rows> i)
+            result[i] = lhs[i] + rhs[i];
+
+        return result;
+    }
+
+    Data sub (const Data& lhs, const Data& rhs)
+    {
+        Data result;
+
+        for (wrap<rows> i)
+            result[i] = lhs[i] - rhs[i];
+
+        return result;
+    }
+}
+
+namespace dotProduct (int32 lhsRows, int32 lhsColumns, int rhsRows, int rhsColumns)
+{
+    namespace lhsType = matrix (lhsRows, lhsColumns);
+    namespace rhsType = matrix (rhsRows, rhsColumns);
+    namespace resultType = matrix (lhsRows, rhsColumns);
+
+    resultType::Data product (const lhsType::Data& lhs, const rhsType::Data& rhs)
+    {
+        resultType::Data result;
+
+        for (wrap<rhs[0].size> col)
+        {
+            float<rhs.size> v;
+
+            for (wrap<rhs.size> i)
+                v[i] = rhs[i][col];
+
+            for (wrap<lhs.size> row)
+                result[row][col] = sum (lhs[row] * v);
+        }
+
+        return result;
+    }
+}
+
+
+bool testAdd()
+{
+    let m1 = matrix (2, 3)::Data ((1.0f, 2.0f, 3.0f),
+                                  (4.0f, 5.0f, 6.0f));
+
+    let m2 = matrix (2, 3)::Data ((2.0f, 3.0f, 4.0f),
+                                  (5.0f, 6.0f, 7.0f));
+
+    let m3 = matrix (2, 3)::add (m1, m2);
+
+    return m3[0][0] == 3.0f &&
+           m3[0][1] == 5.0f &&
+           m3[0][2] == 7.0f &&
+           m3[1][0] == 9.0f &&
+           m3[1][1] == 11.0f &&
+           m3[1][2] == 13.0f;
+}
+
+bool testSub()
+{
+    let m1 = matrix (2, 3)::Data ((1.0f, 2.0f, 3.0f),
+                                  (4.0f, 5.0f, 6.0f));
+
+    let m2 = matrix (2, 3)::Data ((2.0f, 3.0f, 4.0f),
+                                  (5.0f, 6.0f, 7.0f));
+
+    let m3 = matrix (2, 3)::sub (m1, m2);
+
+    return m3[0][0] == -1.0f &&
+           m3[0][1] == -1.0f &&
+           m3[0][2] == -1.0f &&
+           m3[1][0] == -1.0f &&
+           m3[1][1] == -1.0f &&
+           m3[1][2] == -1.0f;
+}
+
+bool testProduct()
+{
+    let m1 = matrix (2, 3)::Data ((1.0f, 2.0f, 3.0f),
+                                  (4.0f, 5.0f, 6.0f));
+
+    let m2 = matrix (3, 4)::Data ((1.0f,  2.0f,  3.0f,  4.0f),
+                                  (5.0f,  6.0f,  7.0f,  8.0f),
+                                  (9.0f, 10.0f, 11.0f, 12.0f));
+
+    let result = dotProduct (2, 3, 3, 4)::product (m1, m2);
+
+    return result[0][0] == 38 &&
+           result[0][1] == 44 &&
+           result[0][2] == 50 &&
+           result[0][3] == 56 &&
+           result[1][0] == 83 &&
+           result[1][1] == 98 &&
+           result[1][2] == 113 &&
+           result[1][3] == 128;
+}

@@ -1,0 +1,294 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"onepole" })
+
+graph test
+{
+    output stream float low, high;
+    input event int mode;
+    input event float frequency;
+
+    node source = std::noise::White;
+    node lowPass  = std::filters::tpt::onepole::Processor (0, 2000);
+    node highPass = std::filters::tpt::onepole::Processor (1, 2000);
+
+    connection
+    {
+        mode -> lowPass.mode, highPass.mode;
+        frequency -> lowPass.frequency, highPass.frequency;
+        source -> lowPass.in, highPass.in;
+        lowPass.out   -> low;
+        highPass.out  -> high;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"svf" })
+
+graph test
+{
+    output stream float low, high, band;
+    input event int mode;
+    input event float frequency;
+
+    node source = std::noise::White;
+    node lowPass  = std::filters::tpt::svf::Processor (0, 2000);
+    node highPass = std::filters::tpt::svf::Processor (1, 2000);
+    node bandPass = std::filters::tpt::svf::Processor (2, 2000);
+
+    connection
+    {
+        mode -> lowPass.mode, highPass.mode, bandPass.mode;
+        frequency -> lowPass.frequency, highPass.frequency, bandPass.frequency;
+        source -> lowPass.in, highPass.in, bandPass.in;
+        lowPass.out   -> low;
+        highPass.out  -> high;
+        bandPass.out -> band;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"multimode" })
+
+graph test
+{
+    output stream float low, high, band;
+    input event float frequency;
+
+    node source = std::noise::White;
+    node lowPass  = std::filters::tpt::svf::Processor (0, 2000);
+    node highPass = std::filters::tpt::svf::Processor (1, 2000);
+    node bandPass = std::filters::tpt::svf::Processor (2, 2000);
+
+    connection
+    {
+        frequency -> lowPass.frequency, highPass.frequency, bandPass.frequency;
+        source    -> lowPass.in, highPass.in, bandPass.in;
+
+        lowPass.out  -> low;
+        highPass.out -> high;
+        bandPass.out -> band;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"multimode" })
+
+graph test
+{
+    output stream float low, high, band;
+    input event float frequency;
+
+    node source = std::noise::White;
+    node multimode = std::filters::tpt::svf::MultimodeProcessor (2000);
+
+    connection
+    {
+        frequency -> multimode.frequency;
+        source    -> multimode.in;
+
+        multimode.lowOut  -> low;
+        multimode.highOut -> high;
+        multimode.bandOut -> band;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"dc" })
+
+processor offset
+{
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- 2.0f;
+            advance();
+        }
+    }
+}
+
+graph test [[ main ]]
+{
+    output stream float out;
+
+    node source = std::noise::White;
+    node dcblocker = std::filters::dcblocker::Processor;
+
+    connection
+    {
+       source -> dcblocker.in;
+       offset -> dcblocker.in;
+       dcblocker.out -> out;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"butterworth" })
+
+processor WideNoise (int channels)
+{
+    output stream float<channels> out;
+
+    std::random::RNG rng;
+
+    void main()
+    {
+        loop
+        {
+            float<channels> v;
+
+            for (wrap<channels> i)
+                v[i] = rng.getBipolar();
+
+            out <- v;
+
+            advance();
+        }
+    }
+}
+
+graph filters [[ main ]]
+{
+    output stream float<2> low2, low3, low6, high4, high8;
+
+    node noiseSource = WideNoise(2);
+    node l2 = std::filters (float<2>)::butterworth (2)::Processor (0, 1000);
+    node l3 = std::filters (float<2>)::butterworth (3)::Processor (0, 1000);
+    node l6 = std::filters (float<2>)::butterworth (6)::Processor (0, 1000);
+    node h4 = std::filters (float<2>)::butterworth (4)::Processor (1, 1000);
+    node h8 = std::filters (float<2>)::butterworth (8)::Processor (1, 1000);
+
+    connection
+    {
+        noiseSource -> l2.in, l3.in, l6.in, h4.in, h8.in;
+
+        l2.out -> low2;
+        l3.out -> low3;
+        l6.out -> low6;
+        h4.out -> high4;
+        h8.out -> high8;
+    }
+}
+
+
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"crossover" })
+
+graph filters [[ main ]]
+{
+    output stream float in, low, high, combined;
+
+    node source = std::noise::White;
+    node crossover = std::filters::crossover::Processor;
+
+    connection
+    {
+        source -> crossover.in, in;
+        crossover.lowOut -> low, combined;
+        crossover.highOut -> high, combined;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"simper" })
+
+graph filters [[ main ]]
+{
+    output stream float in, band, notch, peak, all, lowShelf, highShelf, bell;
+    output stream float<2> low;
+    output stream float64<2> high;
+
+    node source    = std::noise::White;
+    node source2   = WideNoise (float, 2);
+    node source3   = WideNoise (float64, 2);
+
+    node lowPassNode   = std::filters (float<2>)::simper::Processor (std::filters (float<2>)::simper::Mode::lowPass,   1000.0, 1, 10);
+    node highPassNode  = std::filters (float64<2>)::simper::Processor (std::filters (float64<2>)::simper::Mode::highPass,  1000.0, 1, 10);
+    node bandPassNode  = std::filters::simper::Processor (std::filters::simper::Mode::bandPass,  1000.0, 1, 10);
+    node notchPassNode = std::filters::simper::Processor (std::filters::simper::Mode::notchPass, 1000.0, 1, 10);
+    node peakPassNode  = std::filters::simper::Processor (std::filters::simper::Mode::peakPass,  1000.0, 1, 10);
+    node allPassNode   = std::filters::simper::Processor (std::filters::simper::Mode::allPass,   1000.0, 1, 10);
+    node lowShelfNode  = std::filters::simper::Processor (std::filters::simper::Mode::lowShelf,  1000.0, 1, 10);
+    node highShelfNode = std::filters::simper::Processor (std::filters::simper::Mode::highShelf, 1000.0, 1, 10);
+    node bellNode      = std::filters::simper::Processor (std::filters::simper::Mode::bell,      1000.0, 1, 10);
+
+    connection
+    {
+        source -> in, bandPassNode.in, notchPassNode.in, peakPassNode.in, allPassNode.in, lowShelfNode.in, highShelfNode.in, bellNode.in;
+        source2 -> lowPassNode.in;
+        source3 -> highPassNode.in;
+
+        lowPassNode.out -> low;
+        highPassNode.out -> high;
+        bandPassNode.out -> band;
+        notchPassNode.out -> notch;
+        peakPassNode.out -> peak;
+        allPassNode.out -> all;
+        lowShelfNode.out -> lowShelf;
+        highShelfNode.out -> highShelf;
+        bellNode.out -> bell;
+    }
+}
+
+processor WideNoise (using FrameType, int channels)
+{
+    output stream FrameType<channels> out;
+
+    std::random::RNG rng;
+
+    void main()
+    {
+        loop
+        {
+            FrameType<channels> v;
+
+            for (wrap<channels> i)
+                v[i] = rng.getBipolar();
+
+            out <- v;
+
+            advance();
+        }
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"composed" })
+
+graph filter [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node lp = std::filters (float)::butterworth (2)::Processor (0, 1000);
+
+    connection
+    {
+        in -> lp.in;
+        lp.out -> out;
+    }
+}
+
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"composed" })
+
+processor filter [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        var lp = std::filters (float)::butterworth (2)::create (0, processor.frequency, 1000);
+
+        loop
+        {
+            out <- lp.process (in);
+            advance();
+        }
+    }
+}

@@ -1,0 +1,1261 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## expectError ("2:24: error: Illegal types for binary operator '&' ('int32' and 'bool')")
+
+void f() { let x = (99 & 1 == 2); }
+
+## expectError ("2:28: error: Illegal types for binary operator '&' ('bool' and 'int32')")
+
+void f() { let x = (1 == 2 & 99); }
+
+## expectError ("2:18: error: Assignment is not allowed inside an expression")
+
+void f() { 1 + 2 = 3; }
+
+## expectError ("2:34: error: Assignment is not allowed inside an expression")
+
+void f() { int i = 1; int j = (i = 2); }
+
+## expectError ("2:23: error: Illegal type for the '++' operator")
+
+void f()  { bool i; ++i; }
+
+## expectError ("2:24: error: Found \"--\" when expecting \";\"")
+
+void f()  { int i; i-- --; }
+
+## expectError ("2:23: error: Found \"++\" when expecting identifier")
+
+void f()  { int i; ++ ++i; }
+
+## expectError ("2:20: error: Found \"+\" when expecting identifier")
+
+void f()  { int i; + +i; }
+
+## expectError ("2:20: error: The result of the '-' operator is unused")
+
+void f()  { int i; - -i; }
+
+## expectError ("2:20: error: The result of the '-' operator is unused")
+
+void f()  { int i; -++i; }
+
+## expectError ("2:22: error: Found \"+\" when expecting identifier")
+
+void f()  { int i; --+i; }
+
+## expectError ("2:22: error: Found \"++\" when expecting identifier")
+
+void f()  { int i; ++++i; }
+
+## expectError ("2:22: error: Found \"+\" when expecting identifier")
+
+void f()  { int i; +++i; }
+
+## expectError ("2:25: error: The '++' operator must be given an assignable variable")
+
+void f()  { int i; ++(++i); }
+
+## expectError ("2:22: error: The '++' operator must be given an assignable variable")
+
+void f()  { int i; ++i--; }
+
+## expectError ("4:29: error: The '++' operator must be given an assignable variable")
+
+struct S { int i; }
+S getS() { return (); }
+void f()  { let s = getS(); s.i++; }
+
+## expectError ("5:19: error: The '++' operator must be given an assignable variable")
+
+processor P (int f)
+{
+    output event int out;
+    void main() { f++; }
+}
+
+graph G
+{
+    output event int out;
+    node p = P(2);
+}
+
+## expectError ("2:24: error: Found \"--\" when expecting \";\"")
+
+void f()  { int i; i-- --; }
+
+## expectError ("2:23: error: Found \"++\" when expecting \";\"")
+
+void f()  { int i; i--++; }
+
+## expectError ("2:21: error: The '--' operator must be given an assignable variable")
+
+void f()  { int i; (i--)--; }
+
+## expectError ("2:13: error: The '++' operator must be given an assignable variable")
+
+void f()  { float++; }
+
+## expectError ("2:21: error: The '--' operator must be given an assignable variable")
+
+void f()  { int i; (i + 1)--; }
+
+## expectError ("3:13: error: The '--' operator must be given an assignable variable")
+
+int x() { return 0; }
+void f()  { x()--; }
+
+## expectError ("3:15: error: The '++' operator must be given an assignable variable")
+
+int x() { return 0; }
+void f()  { ++x(); }
+
+## expectError ("2:14: error: The '++' operator must be given an assignable variable")
+
+void f() { ++nan; }
+
+## expectError ("2:26: error: Variables which have the ++ or -- operator applied can not be used twice within the same statement")
+
+void f()  { int i; i+= ++i; }
+
+## expectError ("2:24: error: Variables which have the ++ or -- operator applied can not be used twice within the same statement")
+
+void f()  { int i; i*= i--; }
+
+## expectError ("2:32: error: Variables which have the ++ or -- operator applied can not be used twice within the same statement")
+
+void f()  { int i; let x = i + i--; }
+
+## expectError ("3:25: error: Variables which have the ++ or -- operator applied can not be used twice within the same statement")
+
+struct S { int a, b; }
+bool f() { S s; return s.a++ + ++(s.a) == 4; }
+
+## expectError ("3:28: error: Variables which have the ++ or -- operator applied can not be used twice within the same statement")
+
+struct S { int a, b; }
+bool f() { S s; return ++(s.a) == s.a; }
+
+## expectError ("3:24: error: Variables which have the ++ or -- operator applied can not be used twice within the same statement")
+
+struct S { int a, b; }
+void f() { S s; s.a = s.a--; }
+
+## expectError ("3:26: error: Found \"++\" when expecting identifier")
+
+struct S { int x; }
+void f() { S s; S.x++; s.++x; }
+
+## expectError ("2:30: error: The in-place operator '\"+=\"' must be used as a statement, not an expression")
+
+void f()  { int i; let j = i += 3; }
+
+## expectError ("2:27: error: The in-place operator '\"+=\"' must be used as a statement, not an expression")
+
+void f()  { int i; i -= i += 1; }
+
+## expectError ("2:30: error: The in-place operator '\"-=\"' must be used as a statement, not an expression")
+
+void f()  { int i; let j = i -= i += 1; }
+
+## expectError ("2:21: error: The in-place operator '\"*=\"' must be used as a statement, not an expression")
+
+int f()  { return 2 *= 3; }
+
+## expectError ("2:20: error: The result of this cast is unused")
+
+void f()  { int i; float(i); }
+
+## expectError ("2:19: error: This constant expression will have no effect")
+
+void f()  { 0x100 + 0x200; }
+
+## expectError ("2:16: error: This constant expression will have no effect")
+
+void f()  { -3 == -4; }
+
+## expectError ("2:36: error: The '-' operator can be applied to vector types, but not arrays")
+
+void f()  { int[2] a, b; var c = a - b; }
+
+## expectError ("2:21: error: Cannot implicitly convert true ('bool') to 'int32'")
+
+void f()  { int a = true; a += false; }
+
+## expectError ("2:25: error: Cannot implicitly convert true ('bool') to 'int64'")
+
+void f()  { int64 a = 3 && 4; }
+
+## expectError ("2:23: error: Illegal types for binary operator '**' ('int32' and 'bool')")
+
+void f()  { let x = 3 ** true; }
+
+## expectError ("2:27: error: Illegal types for binary operator '+' ('string' and 'int32')")
+
+void f()  { let a = "xyz" + 10; }
+
+## expectError ("2:33: error: Illegal types for binary operator '+=' ('string' and 'int32')")
+
+void f()  { string a = "xyz"; a += 10; }
+
+## expectError ("2:33: error: Illegal types for binary operator '+=' ('string' and 'string')")
+
+void f()  { string a = "xyz"; a += "xyz"; }
+
+## expectError ("2:27: error: Illegal types for binary operator '-' ('string' and 'string')")
+
+void f()  { let a = "abc" - "xyz"; }
+
+## expectError ("2:50: error: Illegal types for binary operator '*' ('float32<3>' and 'float32<4>')")
+
+void f() { float<3> v1; float<4> v2; let x = (v1 * v2).product(); }
+
+## expectError ("2:39: error: Illegal types for binary operator '%' ('complex32' and 'complex32')")
+
+void f() { complex c1, c2; let x = c1 % c2; }
+
+## expectError ("2:42: error: Illegal types for binary operator '%' ('complex32<2>' and 'float32')")
+
+void f() { complex<2> c1, c2; let x = c1 % 2.0f; }
+
+## expectError ("2:39: error: Illegal types for binary operator '^' ('complex32' and 'complex32')")
+
+void f() { complex c1, c2; let x = c1 ^ c2; }
+
+## expectError ("2:39: error: Illegal types for binary operator '>' ('complex32' and 'complex32')")
+
+void f() { complex c1, c2; let x = c1 > c2; }
+
+## expectError ("2:39: error: Illegal types for binary operator '>>' ('complex32' and 'int32')")
+
+void f() { complex c1, c2; let x = c1 >> 1; }
+
+## expectError ("2:29: error: Illegal types for binary operator '+=' ('bool' and 'bool')")
+
+void f()  { var a = true; a += false; }
+
+## expectError ("2:44: error: Illegal types for binary operator '/' ('bool' and 'int64')")
+
+void f()  { var a = true && true, b = true / 2L; }
+
+## expectError ("2:44: error: Illegal types for binary operator '/' ('bool' and 'bool')")
+
+void f()  { var a = true && true, b = true / true; }
+
+## expectError ("2:26: error: Illegal types for binary operator '+' ('float64' and 'bool')")
+
+void f()  { var a = 10.0 + true; }
+
+## expectError ("2:24: error: Illegal types for binary operator '<<' ('float32' and 'float32')")
+
+void f()  { float f; f << 2.1f; }
+
+## expectError ("2:33: error: Cannot implicitly convert 'bool' to 'int64'")
+
+void f()  { var a = 1L; a |= 2; a ||= false; }
+
+## expectError ("2:41: error: Illegal types for binary operator '|=' ('bool' and 'int32')")
+
+void f()  { var a = true; a ||= true; a |= 1; }
+
+## expectError ("2:29: error: Illegal types for binary operator '&=' ('bool' and 'bool')")
+
+void f()  { var a = true; a &= true; }
+
+## expectError ("2:29: error: Illegal types for binary operator '|=' ('bool' and 'bool')")
+
+void f()  { var a = true; a |= true; }
+
+## expectError ("2:29: error: Illegal types for binary operator '^=' ('bool' and 'bool')")
+
+void f()  { var a = true; a ^= true; }
+
+## expectError ("2:22: error: Illegal type for unary operator")
+
+void f()  { let x = -true; }
+
+## expectError ("2:46: error: Illegal type for unary operator")
+
+void f()  { int<2> v; v = -v; int[2] a; a = -a; }
+
+## expectError ("2:46: error: Illegal type for unary operator")
+
+void f()  { int<2> v; v = ~v; int[2] a; a = ~a; }
+
+## expectError ("2:49: error: Illegal type for unary operator")
+
+void f()  { bool<2> v; v = ! v; int[2] a; a = ! a; }
+
+## expectError ("2:29: error: Illegal type for unary operator")
+
+void f() { complex v; v = ! v; }
+
+## expectError ("2:37: error: Illegal type for unary operator")
+
+void f()  { let s = "string"; s = ! s; }
+
+## expectError ("2:36: error: Illegal type for unary operator")
+
+void f()  { let s = "string"; s = ~s; }
+
+## expectError ("2:22: error: Illegal type for unary operator")
+
+void f()  { let s = -"string"; }
+
+## expectError ("2:26: error: Illegal types for binary operator '<<' ('float32' and 'float32')")
+
+void f() { let y = (1.5f << 3.3f); }
+
+## expectError ("2:31: error: Cannot convert type 'bool<3>' to 'bool'")
+
+bool f()  { bool<3> v; return ! (v == true); }
+
+## testFunction()
+
+bool test_literals()
+{
+    let a = 0x200000000L;
+    let b = 0b10000000000000000_i64;
+    let c = 123456789123456L;
+    let d = 1.0e80;
+
+    return 0.1f == .1_f
+        && 0.1 == .1
+        && 0.7f32  > 0.6
+        && 0.7_f32 > 0.6
+        && 0.7f64  > 0.6
+        && 0.7_f64 > 0.6
+        && 101i32  > 100
+        && 101_i32 > 100
+        && 101i64  > 100
+        && 101_i64 > 100
+        && a > b
+        && b < 0xffffffff_i64
+        && 0b10000000000000000_i64 < 0xffffffff_i64
+        && c > -1
+        && d > -100;
+}
+
+float32 getNormal32() { return -100.0f; }
+float64 getNormal64() { return 100.0; }
+float32 getInf32()    { return inf; }
+float64 getInf64()    { return inf; }
+float32 getNan32()    { return nan; }
+float64 getNan64()    { return nan; }
+
+bool test_inf()
+{
+    return isinf (getInf32())
+        && isinf (getInf64())
+        && isinf (-getInf32())
+        && isinf (-getInf64())
+        && ! isinf (float32 (nan))
+        && ! isinf (float64 (nan))
+        && ! isinf (getNormal32())
+        && ! isinf (getNormal64())
+        && ! isinf (0.0f)
+        && ! isinf (0.0)
+        && ! isinf (-1.0f)
+        && ! isinf (10.0f)
+        && ! isinf (1000.0);
+}
+
+bool test_nan()
+{
+    return isnan (float32 (nan))
+        && isnan (float64 (nan))
+        && isnan (getNan32())
+        && isnan (getNan64())
+        && isnan (float32 (-nan))
+        && isnan (float64 (-nan))
+        && ! isnan (getNormal32())
+        && ! isnan (getNormal64())
+        && ! isnan (getInf32())
+        && ! isnan (getInf64())
+        && ! isnan (float32 (-inf))
+        && ! isnan (float64 (-inf))
+        && ! isnan (0.0f)
+        && ! isnan (0.0)
+        && ! isnan (-1.0f)
+        && ! isnan (10.0f)
+        && ! isnan (1000.0);
+}
+
+bool test_multiply1() { int32 a = 999999; a++; int32 b = 1000000; return a * b < 0; }
+bool test_multiply2() { int64 a = 999999; a++; int64 b = 1000000; return a * b > 0; }
+bool test_multiply3() { int32 a = 1000000; int32 b = 1000000; return a * b == -727379968; }
+bool test_multiply4() { int64 a = 1000000; int64 b = 1000000; return a * b == 1000000000000L; }
+
+string a1()  { return "string1"; }
+string a2()  { return "string1"; }
+string b()   { return "string"; }
+string c1()  { return "string\n"; }
+string c2()  { return "string\n"; }
+string e1()  { return ""; }
+string e2()  { return ""; }
+string g1()  { return "a\""; }
+string g2()  { return "a\u0022"; }
+
+bool checkStringCompare()
+{
+    string empty;
+
+    string a = "123";
+    string b = a1();
+
+    return a1() == a2()
+        && c1() == c2()
+        && e1() == e2()
+        && g1() == g2()
+        && a1() == "string1"
+        && a2() != b()
+        && a1() != e2()
+        && e2() == ""
+        && e2() == empty
+        && empty == ""
+        && e2() != "\u0000"
+        && b() != "";
+}
+
+## expectError ("2:25: error: Illegal types for binary operator '+' ('string' and 'string')")
+
+void f()  { let s = "x" + "y"; }
+
+## expectError ("2:21: error: Expected a struct type to the left of the dot operator")
+
+void f()  { let s = "x".x; }
+
+## expectError ("4:27: error: Cannot implicitly convert 8.7654 ('float64') to 'float32'")
+
+bool fail()
+{
+    let c = complex32 (2, 8.7654);
+    return true;
+}
+
+## expectError ("4:30: error: Too many initialisers for complex number")
+
+bool fail()
+{
+    let c = complex32 (4, 5, 6);
+    return true;
+}
+
+## expectError ("6:7: error: Cannot convert type 'complex32' to 'int32'")
+
+bool fail()
+{
+    complex c;
+    int i;
+    i = 2 + c;
+    return true;
+}
+
+## expectError ("5:17: error: complex32 has no member called 'dodgy'")
+
+bool fail()
+{
+    complex c;
+    float f = c.dodgy;
+    return f == 0.0f;
+}
+
+## expectError ("5:15: error: Cannot implicitly convert 'float32' to 'int32'")
+
+bool fail()
+{
+    complex c;
+    int i = 4 + c.real;
+    return true;
+}
+
+## expectError ("5:16: error: Illegal types for binary operator '==' ('complex32' and 'float64')")
+
+bool fail()
+{
+    complex c;
+    let x = (c == 3.0);
+    return true;
+}
+
+## expectError ("5:14: error: Illegal types for binary operator '==' ('complex32' and 'float64')")
+
+bool fail()
+{
+    complex c;
+    return c == 2.0;
+}
+
+## expectError ("6:13: error: Illegal types for binary operator '+' ('complex32<3>' and 'complex32<2>')")
+
+bool test()
+{
+    complex32<3> c1;
+    complex32<2> c2;
+    c1 = c1 + c2;
+    return true;
+}
+
+## expectError ("5:15: error: Illegal types for binary operator '<' ('complex32<2>' and 'complex32<2>')")
+
+bool test()
+{
+    complex32<2> c1, c2;
+    return c1 < c2;
+}
+
+## expectError ("2:33: error: The 'i' suffix for complex numbers requires a floating-point literal")
+
+void foo() { complex64 n = 2 + 3i; }
+
+## testFunction()
+
+bool testComplex32Operators()
+{
+    complex zero = 0;
+    zero = 0.0f;
+
+    let v1 =  complex32 (1.0f) / zero;
+    let v2 =  complex32 (1.0f) / 0.0f;
+    let v3 =  complex32 (-1.0f) / zero;
+    let v4 =  complex32 (-1.0f) / 0.0f;
+
+    return v1.real.isnan() && v1.imag.isnan() && (v2.real == inf || v2.real.isnan()) && v2.imag.isnan()
+        && v3.real.isnan() && v3.imag.isnan() && (v4.real == -inf || v4.real.isnan())&& v4.imag.isnan();
+}
+
+bool allElementsTrue<T> (T a)
+{
+    if const (a.isVector)
+    {
+        for (int i = 0; i < a.size; ++i)
+            if (! a[i])
+                return false;
+
+        return true;
+    }
+    else
+    {
+        return bool (a);
+    }
+}
+
+bool testNegateForType<T> (T a)
+{
+    a = a.type(1);
+    let b = -a;
+    return allElementsTrue (b == T(-1))
+         && allElementsTrue (-a == T(-1));
+}
+
+bool testVectorComparisonOperators()
+{
+    int<2> i = (1, 2);
+    int<2> j = (3, 4);
+    int<2> k = (3, 5);
+
+    return allElementsTrue (i < j) &&
+           allElementsTrue (j <= k) &&
+           allElementsTrue (j > i) &&
+           allElementsTrue (k >= j);
+}
+
+bool testNegate()
+{
+    return testNegateForType (1)
+        && testNegateForType (1.0f)
+        && testNegateForType (1.0)
+        && testNegateForType (int<3> (1))
+        && testNegateForType (float<3> (1))
+        && testNegateForType (float64<3> (1));
+}
+
+bool testBitwiseNotForType<T> (T a)
+{
+    a = a.type(123);
+    let b = ~a;
+    return allElementsTrue (b == ~T(123))
+        && allElementsTrue (~a == ~T(123));
+}
+
+bool testBitwiseNot()
+{
+    return testBitwiseNotForType (1)
+        && testBitwiseNotForType (int<3> (1));
+}
+
+bool testLogicalNotForType<T> (T a)
+{
+    a = a.type(false);
+    let b = ! a;
+    return allElementsTrue (b == true)
+        && allElementsTrue (! a);
+}
+
+bool testLogicalNot()
+{
+    return testLogicalNotForType (true)
+        && testLogicalNotForType (bool<3> (false));
+}
+
+bool testVectorUnary()
+{
+    int<5> a = (1, 2, 3, 4, 5);
+    a = -a;
+    return allElementsTrue (a == int<5> (-1, -2, -3, -4, -5))
+        && ! allElementsTrue (a == int<5> (-1, -2, -4, -4, -5));
+}
+
+
+bool testFloat32Operators()
+{
+    float zero = 0;
+    zero = 0.0f;
+
+    return (1.0f / zero == inf) &&
+           (1.0f / 0.0f == inf) &&
+           (-1.0f / zero == -inf) &&
+           (-1.0f / 0.0f == -inf);
+}
+
+bool testPreIncrement()
+{
+    int i = 0;
+    int j = ++i;
+
+    return (i == 1 && j == 1);
+}
+
+bool testPostIncrement()
+{
+    int i = 0;
+    int j = i++;
+
+    return (i == 1 && j == 0);
+}
+
+bool testArrayAccess()
+{
+    int[3] i = (1, 2, 3);
+    wrap<3> index;
+
+    return i[index++] == 1;
+}
+
+bool testVectorSize1LogicalOp()
+{
+    int<1> a = 1;
+    int b = 1;
+
+    return a == b && b == a;
+}
+
+bool wrapTest1()
+{
+    wrap<5> a = 1;
+    loop (12) ++a;
+    loop (6) --a;
+    return a == 2;
+}
+
+bool wrapTest2()
+{
+    wrap<5> a = 1;
+    loop (12) a++;
+    loop (6) a--;
+    return a == 2;
+}
+
+bool wrapTest3()
+{
+    wrap<5> a = 1;
+    loop (12) { var c = a++; }
+    loop (6) { var c = a--; }
+    return a == 2;
+}
+
+bool wrapTest4()
+{
+    wrap<5> a = 1;
+    loop (12) { for (var i = a++; i == a; ++i) {} }
+    loop (6) { var c = a--; }
+    return a == 2;
+}
+
+bool takeWrap (wrap<99> w) { return true; }
+
+bool wrapTest5()
+{
+    wrap<98> w;
+    return takeWrap (w) && takeWrap (wrap<97>());
+}
+
+bool testClamp()
+{
+    clamp<5> a = 3, b = 3, c = 3, d = 3;
+    ++a; ++a; ++a;
+    b += 4;
+    --c; --c; --c; --c;
+    d -= 5;
+    return a == a.size && b == b.size && c == 0 && d == 0;
+}
+
+bool simpleCast()
+{
+    let x = int (1.2f);
+    var y = int (1.2f);
+    return x == 1 && y == 1;
+}
+
+bool vectorFloatConstantComparison()
+{
+    float<1> f1 = 3.0f;
+    float f2 = 3.0f;
+
+    return (f1 == f2);
+}
+
+complex32 mul (complex32 a, complex32 b) { return a * b; }
+complex64 mul (complex64 a, complex64 b) { return a * b; }
+complex32 div (complex32 a, complex32 b) { return a / b; }
+complex64 div (complex64 a, complex64 b) { return a / b; }
+complex32 add (complex32 a, complex32 b) { return a + b; }
+complex64 add (complex64 a, complex64 b) { return a + b; }
+complex32 sub (complex32 a, complex32 b) { return a - b; }
+complex64 sub (complex64 a, complex64 b) { return a - b; }
+
+bool compare<T> (T t1, T t2)
+{
+    return abs (t1.real - t2.real) < 0.00001f
+        && abs (t1.imag - t2.imag) < 0.00001f;
+}
+
+bool testBinaryOperatorsVsConstantFolding()
+{
+    let f1 = complex32 (3, 4);
+    let d1 = complex64 (3, 4);
+    let f2 = complex32 (5, 6);
+    let d2 = complex64 (5, 6);
+
+    return compare ((f1 * f2), mul (f1, f2))
+        && compare ((f1 / f2), div (f1, f2))
+        && compare ((f1 + f2), add (f1, f2))
+        && compare ((f1 - f2), sub (f1, f2))
+        && compare ((d1 * d2), mul (d1, d2))
+        && compare ((d1 / d2), div (d1, d2))
+        && compare ((d1 + d2), add (d1, d2))
+        && compare ((d1 - d2), sub (d1, d2));
+}
+
+complex32<3> mul (complex32<3> a, complex32<3> b) { return a * b; }
+complex64<3> mul (complex64<3> a, complex64<3> b) { return a * b; }
+complex32<3> div (complex32<3> a, complex32<3> b) { return a / b; }
+complex64<3> div (complex64<3> a, complex64<3> b) { return a / b; }
+complex32<3> add (complex32<3> a, complex32<3> b) { return a + b; }
+complex64<3> add (complex64<3> a, complex64<3> b) { return a + b; }
+complex32<3> sub (complex32<3> a, complex32<3> b) { return a - b; }
+complex64<3> sub (complex64<3> a, complex64<3> b) { return a - b; }
+
+bool compareVec3<T> (T t1, T t2)
+{
+    for (wrap<T.size> i)
+        if (! compare (t1[i], t2[i]))
+            return false;
+
+    return true;
+}
+
+bool testBinaryOperatorsVsConstantFoldingVectors()
+{
+    let f1 = complex32<3> (3 + 4.0fi);
+    let d1 = complex64<3> (3 + 4.0i);
+    let f2 = complex32<3> (5 + 6.0fi);
+    let d2 = complex64<3> (5 + 6.0i);
+
+    return compareVec3 ((f1 * f2), mul (f1, f2))
+        && compareVec3 ((f1 / f2), div (f1, f2))
+        && compareVec3 ((f1 + f2), add (f1, f2))
+        && compareVec3 ((f1 - f2), sub (f1, f2))
+        && compareVec3 ((d1 * d2), mul (d1, d2))
+        && compareVec3 ((d1 / d2), div (d1, d2))
+        && compareVec3 ((d1 + d2), add (d1, d2))
+        && compareVec3 ((d1 - d2), sub (d1, d2));
+}
+
+bool testExpOp()
+{
+    return -(2 ** 2) == -4 && -2.0f ** 2.0f == 4.0f
+            && 3 * 2 ** 2 == 12;
+}
+
+void setComplex (complex& c)    { c = 1.0f; }
+
+bool testComplex1()
+{
+    complex<10> e;
+    setComplex (e[4]);
+    return e[4] == 1.0f;
+}
+
+bool testComplex2()
+{
+    complex a = 2 + 3.0fi;
+    complex b = 4 + 5.0fi;
+    complex<3> c;
+    c = (a, b, 1 + 2.0fi);
+    return allTrue (c == complex<3> (2 + 3.0fi, 4 + 5.0fi, 1 + 2.fi));
+}
+
+bool testComplex3()
+{
+    complex64<3> a = (1, 2, 3 + 2.i);
+    return allTrue (a == complex64<3> (complex64 (1, 0), complex64 (2), complex64 (3, 2)));
+}
+
+bool testComplex4()
+{
+    var c = complex<2> ((1.0f, 2.0f), (3.0f, 4.0f));
+    return allTrue (c == complex<2> (1.0f + 2.0fi, 3.0f + 4.0fi));
+}
+
+bool testComplex5()
+{
+    let c = complex<2> ((1.0f, 2.0f), (3.0f, 4.0f));
+    let b = c == complex<2> (1.0f + 2.0fi, 3.0f + 4.0fi);
+    return allTrue (b);
+}
+
+bool textComplex6()
+{
+    complex64 c1 = -3 + -2.0i;
+    return -c1 == 3 + 2.0i;
+}
+
+bool testSetVector0()
+{
+    complex<2> c;
+    c[0] = (2, 1);
+    c[1] = (2, 1);
+    return c[0] == complex (2, 1) && c[1] == complex (2, 1);
+}
+
+bool testSetVector1()
+{
+    complex<2> c = (2 + 1.0i);
+    return c[0] == complex (2, 1) && c[1] == complex (2, 1);
+}
+
+bool testSetVector2()
+{
+    var c = complex<2> (1 + 4.0i);
+    c[0].real = 2;
+    c[1].real = 2;
+    return c[0].real == 2 && c[1].real == 2 && c[0].imag == 4 && c[1].imag == 4;
+}
+
+bool testSetVector3()
+{
+    complex<2> c = 1 + 3.i;
+    c.real = 2;
+    return c[0].real == 2 && c[1].real == 2 && c[0].imag == 3 && c[1].imag == 3;
+}
+
+bool testSetVector4()
+{
+    complex<2> c = 1 + 1.i;
+    c.real = 2;
+    return c[0] == complex (2, 1) && c[1] == complex (2, 1);
+}
+
+void takeVecRef (float<2>& c) { c = float<2> (3, 4); }
+
+bool testSetVector5()
+{
+    complex<2> c = 2 + 1.i;
+    takeVecRef (c.real);
+    return c[0] == complex (3, 1) && c[1] == complex (4, 1);
+}
+
+bool testBoolCasts()
+{
+    bool t = true, f = false;
+
+    return float32 (t) == 1.0f
+        && float32 (f) == 0.0f
+        && float64 (t) == 1.0
+        && float64 (f) == 0.0
+        && int32 (t) == 1
+        && int32 (f) == 0
+        && int64 (t) == 1
+        && int64 (f) == 0;
+}
+
+bool testWrapCasts()
+{
+    const int x = 2;
+    wrap<3> i = 2;
+    wrap<3> i = wrap<3> (x);
+    wrap<3> j = x;
+    return j == x;
+}
+
+struct S { int a, b; }
+
+bool testIncDecOfStructMembers()
+{
+    S s = (1, 7);
+    s.b = s.a++ + 1;
+    return s.a++ + ++(s.b) == 5;
+}
+
+bool testFloatPostIncrement1()
+{
+    float f1, f2;
+    return (f1++ == 0.0f) && (++f2 == 1.0f);
+}
+
+bool testFloatPostIncrement2()
+{
+    float64 f1, f2;
+    return (f1++ == 0) && (++f2 == 1);
+}
+
+bool testVectorPostIncrement()
+{
+    float64<3> f1, f2;
+    return allElementsTrue (f1++ == float64<3> (0))
+            && allElementsTrue (++f2 == float64<3> (1));
+}
+
+bool testBoolOps1()
+{
+    bool b = false;
+    b = ! b;
+    return b != false && b == true && b && !! b;
+}
+
+bool testBoolOps2()
+{
+    int b1 = 0;
+    float b2 = 0;
+    b1 = 1 - b1;
+    b2 = 1.23f - b2;
+    return b1 && 2 && (b2 && 2.0f);
+}
+
+bool testAbsVec()
+{
+    int<3> x = (-1, 2, -3);
+    let a = abs (x);
+    return a[0] == 1 && a[1] == 2 && a[2] == 3;
+}
+
+struct TestStruct
+{
+    float<2>[32] a;
+    wrap<64> b;
+
+    bool test (float<2> a, float<2> b, int c)
+    {
+        float<2> d = float<2> (c);
+        float<2> e = a / d;
+        a += e;
+        this.a = a;
+        this.b--;
+        return this.b == 63;
+    }
+}
+
+bool test()
+{
+    TestStruct s;
+    float<2> a, b;
+    return s.test (1, 2, 3);
+}
+
+## expectError ("2:23: error: Divide-by zero is undefined behaviour")
+
+void f()  { let x = 2 / 0; }
+
+## expectError ("2:41: error: Divide-by zero is undefined behaviour")
+
+void f()  { var x = 1; ++x; let y = x / 0; }
+
+## expectError ("2:23: error: Modulo zero is undefined behaviour")
+
+void f()  { let x = 2 % 0; }
+
+## expectError ("2:41: error: Modulo zero is undefined behaviour")
+
+void f()  { var x = 1; ++x; let y = x % 0; }
+
+## expectError ("2:33: error: Comparison is always true")
+
+void f() { wrap<4> x = 1; if (x >= 0) ++x; }
+
+## expectError ("2:33: error: Comparison is always false")
+
+void f() { wrap<4> x = 1; if (x < 0) ++x; }
+
+## expectError ("2:33: error: Comparison is always true")
+
+void f() { wrap<4> x = 1; if (x < 4) ++x; }
+
+## expectError ("2:33: error: Comparison is always false")
+
+void f() { wrap<4> x = 1; if (x > 4) ++x; }
+
+## testFunction()
+
+bool test_inplace()
+{
+    bool b = true; b &&= true;
+    bool ok = b;
+    b &&= false;
+    ok &&= ! b;
+    b ||= false;
+    ok &&= ! b;
+    b ||= true;
+    ok &&= b;
+
+    int i  = 2;
+    i += 4;
+    ok &&= i == 6;
+    i -= 3;
+    ok &&= i == 3;
+    i *= 3;
+    ok &&= i == 9;
+    i /= 2;
+    ok &&= i == 4;
+    i %= 3;
+    ok &&= i == 1;
+
+    i = 0x02; i |= 0x20;
+    ok &&= i == 0x22;
+    i = 0x10; i &= 0x33;
+    ok &&= i == 0x10;
+    i = 0x02; i <<= 2;
+    ok &&= i == 8;
+    i = -32; i >>= 2;
+    ok &&= i == -8;
+    i = 0x02; i ^= 0x22;
+    ok &&= i == 0x20;
+    i = -32; i >>>= 2;
+    ok &&= i == 1073741816;
+
+    return ok;
+}
+
+bool test_binary_op_folding()
+{
+    return 1 == 1
+        && 2 >= 2
+        && 2 <= 2
+        && ! (1 != 1)
+        && ! (2 < 2)
+        && ! (2 > 2)
+        && bool (1)
+        && bool (2)
+        && ! bool()
+        && ! bool (0)
+        && bool (1.0f)
+        && 4 + 16           ==  20
+        && 4 - 16           == -12
+        && 4 + -16          == -12
+        && 4 - -16          ==  20
+        && 4 * 16           ==  64
+        && 4 * -16          == -64
+        && 17 / 4           ==  4
+        && -17 / 4          == -4
+        && 17 / -4          == -4
+        && 16 % 4           ==  0
+        && 19 % 4           ==  3
+        && (0x02 | 0x20)    == 0x22
+        && (0x10 & 0x33)    == 0x10
+        && (0x10 ^ 0x33)    == 0x23
+        && (0x02L | 0x20)   == 0x22
+        && (0x10L & 0x33)   == 0x10
+        && (0x10L ^ 0x33)   == 0x23
+        && ~0x10            == -17
+        && ~0x10L           == -17
+        && (0x10 >> 2)      == 4
+        && (0x10 << 2)      == 64
+        && (0x10 >> -2)     == 0
+        && (0x10 << -2)     == 0
+        && (0x10 >>> 2)     == 4
+        && (0x10 >>> -2)    == 0
+        && (-0x10 >> 2)     == -4
+        && (-0x10 >> -2)    == -1
+        && (-0x10 << 2)     == -64
+        && (-0x10 << -2)    == 0
+        && (-0x10 >>> 2)    == 0x3ffffffc
+        && (-0x10L >>> 2)   == 0x3ffffffffffffffcL;
+}
+
+bool test_precedence()
+{
+    return (true && false || true)
+        && (true || true && false)
+        && (true || ! false && false)
+        && ! (false && (true || true))
+        && (7 - 3 - 1) == 3
+        && (5 / 2 * 4) == 8
+        && (3 + 8 / 4) == 5
+        && (9 + 7 % 3) == 10
+        && (6 + 2 * 3) == 12
+        && (16 == 64 >> 2)
+        && (64 >> 2 == 16)
+        && (64 >> 1 >> 1) == 16
+        && (12 * 2 / 3) == 8;
+}
+
+bool test_minus_syntax()
+{
+    int x = 3; x = x -1 -1;
+    return x == 1;
+}
+
+bool test_ternery()
+{
+    var a = 1, b = 2;
+    ++a; --a; ++b; --b;
+
+    return (a < b ? a == 1 : a == 10)
+        && (a > b ? true && false : true && true)
+        && (a < b ? true && true : true && false)
+        && (a == 1 ? b == 2 ? true : false : false)
+        && (a == 1 ? b != 2 ? false : true : false);
+}
+
+bool test_bitcomplement()
+{
+    int32 a = 4;
+    int64 b = 4;
+
+    return ~a == ~4
+        && ~a == -5
+        && ~b == ~4L
+        && ~b == -5L;
+}
+
+bool test_bitops1()
+{
+    let a = 0b010101010101;
+    let b = 0b101010101011;
+    let c = 0b111111111111;
+    let d = 0b111111111110;
+
+    return (a | b) == c && (a ^ b) == d && (a & b) == 1;
+}
+
+bool test_bitops2()
+{
+    let a = 0b010101010101L;
+    let b = 0b101010101011L;
+    let c = 0b111111111111L;
+    let d = 0b111111111110L;
+
+    return (a | b) == c && (a ^ b) == d && (a & b) == 1;
+}
+
+bool test_wrap()
+{
+    wrap<5> a = 3;
+    a += 4;
+    var b = a;
+    b += 4;
+
+    int c = 4;
+    c += a;
+
+    var d = a;
+    loop (9) ++d;
+    loop (3) d--;
+
+    return a == 2
+        && b == 1
+        && c == 6
+        && d == 3
+        && a + 4 == 6
+        && a - 4 == -2
+        && 6 - a == 4;
+}
+
+bool test_wrap_0()
+{
+    var x = 2; x -= 2;
+    return wrap (1, 0) == 0 && wrap (x, 0) == 0 && wrap (2, x) == 0;
+}
+
+
+## testProcessor()
+
+processor P
+{
+    output event int out;
+    void main() { out <- 1 & 3 <- 3 & 1 <- 1 << 1 >> 1 <- -1; advance(); }
+}
+
+## expectError ("5:31: error: Cannot read from an output")
+
+processor P
+{
+    output stream int out;
+    void main() { let x = 1 & out; advance(); }
+}
+
+## expectError ("4:12: error: isnan() requires a floating point argument")
+
+bool test()
+{
+    return isnan (float<2> (1, 2));
+}
+
+## expectError ("4:12: error: isinf() requires a floating point argument")
+
+bool test()
+{
+    return isinf (float<2> (1, 2));
+}
+
+## expectError ("4:15: error: Ternary operator branches have different types ('float32' and 'bool')")
+
+bool ternaryDifferentTypes(bool b)
+{
+    let v = b ? 1.0f : false;
+    return true;
+}
+
+## testFunction()
+
+bool resultIsFloat64()
+{
+    let v1 = true ? 1.0f : 2.0;
+    static_assert (v1.isFloat64);
+
+    let v2 = true ? 1.0 : 2.0f;
+    static_assert (v2.isFloat64);
+
+    float32 f1;
+    float64 f2;
+
+    let v3 = true ? f1 : f2;
+    static_assert (v3.isFloat64);
+
+    return true;
+}
+
+bool resultIsBool()
+{
+    let v = true ? false : 1;
+    static_assert (v.isBool);
+    return true;
+}

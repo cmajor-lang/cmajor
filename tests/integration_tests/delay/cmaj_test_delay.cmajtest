@@ -1,0 +1,721 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"stream" })
+
+processor Source
+{
+    output stream float32 out;
+
+    void main()
+    {
+        out <- 1.0f;
+        advance();
+    }
+}
+
+processor StreamDelay (using StreamType, int delayLength)
+{
+    input stream StreamType in;
+    output stream StreamType out;
+
+    StreamType[delayLength] buffer;
+    wrap<delayLength> pos;
+
+    void main()
+    {
+        loop
+        {
+            out <- buffer[pos];
+            buffer[pos] = in;
+            pos++;
+            advance();
+        }
+    }
+}
+
+graph test [[ main ]]
+{
+    output stream float32 noDelay, delay10;
+
+    node source = Source;
+    node streamDelay = StreamDelay (float32, 10);
+
+    connection
+    {
+        source -> noDelay;
+        source -> streamDelay;
+        streamDelay -> delay10;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"stream" })
+
+processor Source
+{
+    output stream float32 out;
+
+    void main()
+    {
+        out <- 1.0f;
+        advance();
+    }
+}
+
+processor StreamDelay (using StreamType, int delayLength)
+{
+    input stream StreamType in;
+    output stream StreamType out;
+
+    StreamType[delayLength] buffer;
+    wrap<delayLength> pos;
+
+    void main()
+    {
+        loop
+        {
+            out <- buffer[pos];
+            buffer[pos++] = in;
+            advance();
+        }
+    }
+}
+
+graph test [[ main ]]
+{
+    output stream float32 noDelay, delay10;
+
+    node source = Source;
+    node streamDelay = StreamDelay (float32, 10);
+
+    connection
+    {
+        source -> noDelay;
+        source -> streamDelay;
+        streamDelay -> delay10;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"stream" })
+
+processor Source
+{
+    output stream float32 out;
+
+    void main()
+    {
+        out <- 1.0f;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output stream float32 noDelay, delay10;
+
+    node source = Source;
+
+    connection
+    {
+        source.out -> noDelay;
+        source.out -> [10] -> delay10;
+    }
+}
+
+
+## runScript ({ sampleRate:44100, blockSize:1, samplesToRender:20, subDir:"value" })
+
+processor Source
+{
+    output value float32 out;
+
+    void main()
+    {
+        float value = 1.0f;
+        loop
+        {
+            out <- value++;
+            advance();
+
+            loop (4)
+            {
+                out <- 0.0f;
+                advance();
+            }
+        }
+    }
+}
+
+processor ValueDelay (using StreamType, int delayLength)
+{
+    input value StreamType in;
+    output value StreamType out;
+
+    StreamType[delayLength] buffer;
+    wrap<delayLength> pos;
+
+    void main()
+    {
+        loop
+        {
+            out <- buffer[pos];
+            buffer[pos] = in;
+            pos++;
+            advance();
+        }
+    }
+}
+
+
+graph test [[ main ]]
+{
+    output value float32 noDelay, delay10;
+
+    node source = Source;
+    node streamDelay = ValueDelay (float32, 10);
+
+    connection
+    {
+        source -> noDelay;
+        source -> streamDelay;
+        streamDelay -> delay10;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:1, samplesToRender:20, subDir:"value" })
+
+processor Source
+{
+    output value float32 out;
+
+    void main()
+    {
+        float value = 1.0f;
+        loop
+        {
+            out <- value++;
+            advance();
+
+            loop (4)
+            {
+                out <- 0.0f;
+                advance();
+            }
+        }
+    }
+}
+
+graph test [[ main ]]
+{
+    output value float32 noDelay, delay10;
+
+    node source = Source;
+
+    connection
+    {
+        source.out -> noDelay;
+        source.out -> [10] -> delay10;
+    }
+}
+
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"event" })
+
+processor EventDelay (using EventType, int delayLength, int bufferSize)
+{
+    input event EventType in;
+    output event EventType out;
+
+    event in (EventType e)
+    {
+        if (bufferEntries < bufferSize)
+        {
+            eventBuffer[writePos].e = e;
+            eventBuffer[writePos].eventTime = currentTime + delayLength;
+            writePos++;
+            bufferEntries++;
+        }
+    }
+
+    struct DelayedEvent
+    {
+        EventType e;
+        int eventTime;
+    }
+
+    DelayedEvent[bufferSize] eventBuffer;
+    wrap<bufferSize> readPos, writePos;
+    int bufferEntries;
+    int currentTime;
+
+    void emitEvents()
+    {
+        while (bufferEntries > 0 && eventBuffer[readPos].eventTime == currentTime)
+        {
+            out <- eventBuffer[readPos].e;
+            readPos++;
+            bufferEntries--;
+        }
+    }
+
+    void main()
+    {
+        loop
+        {
+            emitEvents();
+            currentTime++;
+            advance();
+        }
+    }
+}
+
+processor Source
+{
+    output event float64 out;
+
+    void main()
+    {
+        out <- 1.0;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output event float64 noDelay;
+    output event float64 delay10;
+
+    node source = Source;
+    node delay = EventDelay (float64, 10, 100);
+
+    connection
+    {
+        source -> noDelay;
+        source -> delay -> delay10;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"event" })
+
+processor Source
+{
+    output event float64 out;
+
+    void main()
+    {
+        out <- 1.0;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output event float64 noDelay;
+    output event float64 delay10;
+
+    node source = Source;
+
+    connection
+    {
+        source -> noDelay;
+        source -> [10] -> delay10;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"multipleEventTypes" })
+
+processor EventDelay (using EventType, int delayLength, int bufferSize)
+{
+    input event EventType in;
+    output event EventType out;
+
+    event in (EventType e)
+    {
+        if (bufferEntries < bufferSize)
+        {
+            eventBuffer[writePos].e = e;
+            eventBuffer[writePos].eventTime = currentTime + delayLength;
+            writePos++;
+            bufferEntries++;
+        }
+    }
+
+    struct DelayedEvent
+    {
+        EventType e;
+        int eventTime;
+    }
+
+    DelayedEvent[bufferSize] eventBuffer;
+    wrap<bufferSize> readPos, writePos;
+    int bufferEntries;
+    int currentTime;
+
+    void emitEvents()
+    {
+        while (bufferEntries > 0 && eventBuffer[readPos].eventTime == currentTime)
+        {
+            out <- eventBuffer[readPos].e;
+            readPos++;
+            bufferEntries--;
+        }
+    }
+
+    void main()
+    {
+        loop
+        {
+            emitEvents();
+            currentTime++;
+            advance();
+        }
+    }
+}
+
+processor Source
+{
+    output event (int, float64) out;
+
+    void main()
+    {
+        out <- 1.0;
+        advance();
+        out <- 2;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output event (int, float64) noDelay;
+    output event (int, float64) delay10;
+
+    node source = Source;
+    node intDelay = EventDelay (int, 10, 100);
+    node float64Delay = EventDelay (float64, 10, 100);
+
+    connection
+    {
+        source -> noDelay;
+        source -> intDelay -> delay10;
+        source -> float64Delay -> delay10;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"multipleEventTypes" })
+
+processor Source
+{
+    output event (int, float64) out;
+
+    void main()
+    {
+        out <- 1.0;
+        advance();
+        out <- 2;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output event (int, float64) noDelay;
+    output event (int, float64) delay10;
+
+    node source = Source;
+
+    connection
+    {
+        source -> noDelay;
+        source -> [10] -> delay10;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"multipleEventTypes" })
+
+processor Source
+{
+    output event (int, float64) out;
+
+    void main()
+    {
+        out <- 1.0;
+        advance();
+        out <- 2;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output event (int, float64) noDelay;
+    output event (int, float64) delay10;
+
+    node source = Source;
+    node eventDelay = EventDelay (10, 100);
+
+    connection
+    {
+        source -> noDelay;
+        source -> eventDelay -> delay10;
+    }
+}
+
+processor EventDelay (int delayLength, int bufferSize)
+{
+    input event (int, float64) in;
+    output event (int, float64) out;
+
+    struct QueuedEvent
+    {
+        int eventTime;
+        int eventType;
+        int v0;
+        float64 v1;
+    }
+
+    event in (int v)
+    {
+       enqueue (QueuedEvent (currentTime + delayLength, 0, v, 0));
+    }
+
+    event in (float64 v)
+    {
+       enqueue (QueuedEvent (currentTime + delayLength, 1, 0, v));
+    }
+
+    void emitEvent (QueuedEvent v)
+    {
+        if (v.eventType == 0)
+            out <- v.v0;
+
+        if (v.eventType == 1)
+            out <- v.v1;
+    }
+
+    void enqueue (QueuedEvent v)
+    {
+        if (bufferEntries < bufferSize)
+        {
+            eventBuffer[writePos] = v;
+            writePos++;
+            bufferEntries++;
+        }
+    }
+
+    QueuedEvent[bufferSize] eventBuffer;
+    wrap<bufferSize> readPos, writePos;
+    int bufferEntries;
+    int currentTime;
+
+    void emitEvents()
+    {
+        while (bufferEntries > 0 && eventBuffer[readPos].eventTime == currentTime)
+        {
+            emitEvent (eventBuffer[readPos]);
+            readPos++;
+            bufferEntries--;
+        }
+    }
+
+    void main()
+    {
+        loop
+        {
+            emitEvents();
+            currentTime++;
+            advance();
+        }
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"eventThrough" })
+
+processor EventHandler
+{
+    input event float in;
+    output event (float32, float64, int32, int64) out;
+
+    event in (float f)
+    {
+        out <- f;
+        out <- float64 (f);
+        out <- int32 (f);
+        out <- int64 (f);
+    }
+}
+
+graph test [[ main ]]
+{
+    input event float in;
+    output event (float32, float64, int32, int64) out;
+
+    connection
+    {
+        in -> EventHandler -> [10] -> out;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"eventThrough" })
+
+processor EventHandler
+{
+    input event float in;
+    output event (float32, float64, int32, int64) out;
+
+    event in (float f)
+    {
+        out <- f
+            <- float64 (f)
+            <- int32 (f)
+            <- int64 (f);
+    }
+}
+
+graph test [[ main ]]
+{
+    input event float in;
+    output event (float32, float64, int32, int64) out;
+
+    connection
+    {
+        in -> [10] -> EventHandler -> out;
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"feedback" })
+
+processor StreamFeedback [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        float[20] buffer;
+        wrap<20> index;
+
+        loop
+        {
+            out <- in;
+            out <- buffer[index];
+
+            buffer[index] = (in + buffer[index]) *0.5f;
+            index++;
+            advance();
+        }
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"feedback" })
+
+graph StreamFeedback [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+    {
+        in -> out;
+        in -> FixedGain.in;
+
+        FixedGain.out -> [20] -> out, FixedGain.in;
+    }
+}
+
+processor FixedGain
+{
+    input  stream float  in;
+    output stream float  out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * 0.5f;
+            advance();
+        }
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:1, samplesToRender:100, subDir:"valueFeedback" })
+
+processor ValueFeedback [[ main ]]
+{
+    input value float in;
+    output value float out;
+
+    void main()
+    {
+        float[20] buffer;
+        wrap<20> index;
+
+        loop
+        {
+            out <- in + buffer[index];
+
+            buffer[index] = (in + buffer[index]) *0.5f;
+            index++;
+            advance();
+        }
+    }
+}
+
+## runScript ({ sampleRate:44100, blockSize:1, samplesToRender:100, subDir:"valueFeedback" })
+
+graph ValueFeeback [[ main ]]
+{
+    input value float in;
+    output value float out;
+
+    node inputSum = ValueSum;
+    node outputSum = ValueSum;
+
+    connection
+    {
+        in -> outputSum.in1;
+        in -> inputSum.in1;
+
+        inputSum.out -> FixedGain.in;
+        FixedGain.out -> [20] -> outputSum.in2, inputSum.in2;
+
+        outputSum.out -> out;
+    }
+}
+
+processor FixedGain
+{
+    input  value float  in;
+    output value float  out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * 0.5f;
+            advance();
+        }
+    }
+}
+
+processor ValueSum
+{
+    input value float in1, in2;
+    output value float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- (in1 + in2);
+            advance();
+        }
+    }
+}

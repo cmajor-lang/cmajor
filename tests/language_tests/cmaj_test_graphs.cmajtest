@@ -1,0 +1,4345 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## global
+
+processor DummyProcessor
+{
+    output stream int out;
+    input stream int in;
+    void main() { advance(); }
+}
+
+processor Signal
+{
+    output stream int out;
+
+    void main() { loop { out <- i++; advance(); } }
+    int i = 0;
+}
+
+processor SquareWave (int length)
+{
+    output stream int out;
+
+    wrap<length> index;
+
+    void main()
+    {
+        loop
+        {
+            out <- index++ < length / 2 ? 1 : -1;
+            advance();
+        }
+    }
+}
+
+processor EmitOne
+{
+    output stream int out;
+    input stream int in;
+    void main() { loop { out <- 1; advance(); } }
+}
+
+processor EmitZero
+{
+    output stream int out;
+    input stream int in;
+    void main() { loop advance(); }
+}
+
+graph DelayGraph (int length)
+{
+    output stream int out;
+    input stream int in;
+
+    node d = DelayProcessor (length);
+    connection in -> d -> out;
+}
+
+processor DelayProcessor (int length)
+{
+    output stream int out;
+    input stream int in;
+
+    int[length] buffer;
+    wrap<length> index;
+    processor.latency = length;
+
+    void main()
+    {
+        loop
+        {
+            out <- buffer[index];
+            buffer[index++] = in;
+            advance();
+        }
+    }
+}
+
+processor Expect (int numToTest, int expected)
+{
+    output stream int out;
+    input stream int in;
+
+    void main()
+    {
+        loop (numToTest)    { out <- in == expected ? 1 : 0; advance(); }
+        loop                { out <- -1; advance(); }
+    }
+}
+
+processor ExpectAbs (int numToSkip, int numToCheck, int expected)
+{
+    output stream int out;
+    input stream int in;
+
+    void main()
+    {
+        loop (numToSkip)    { out <- 1; advance(); }
+        loop (numToCheck)   { out <- in == expected || in == -expected ? 1 : 0; advance(); }
+        loop                { out <- -1; advance(); }
+    }
+}
+
+## expectError ("2:21: error: Expected a stream type specifier or endpoint")
+
+graph test { output xx; }
+
+## expectError ("2:21: error: Expected a stream type specifier")
+
+graph test { output const stream float out; }
+
+## expectError ("2:20: error: Expected a stream type specifier")
+
+graph test { output; }
+
+## expectError ("2:43: error: This identifier cannot have a namespace qualifier")
+
+graph test { output stream int out; node p::p = something; }
+
+## expectError ("2:45: error: This identifier cannot have a namespace qualifier")
+
+graph test { output stream int out; node { p::p = something; } }
+
+## expectError ("2:48: error: Cannot find symbol 'a'")
+
+graph test { output stream int out; connection a::b -> out; }
+
+## expectError ("2:7: error: 'G' cannot refer to itself recursively")
+
+graph G
+{
+    output stream int out;
+    node x = G;
+}
+
+## expectError ("14:7: error: 'C' cannot refer to itself recursively")
+
+graph A
+{
+    output stream int out;
+    node x = B;
+}
+
+graph B
+{
+    output stream int out;
+    node x = C;
+}
+
+graph C
+{
+    output stream int out;
+    node x = A;
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output stream float32 out;
+    connection Source.out -> out;
+}
+
+processor Source
+{
+    output stream float out;
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output stream float32 out;
+
+    connection
+    {
+        Source.out -> Through.in;
+        Through.out -> out;
+    }
+}
+
+processor Source
+{
+    output stream float out;
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+processor Through
+{
+    input stream float in;
+    output stream float out;
+
+    void main() { loop { out <- in; advance(); } }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event float32 out;
+    connection Source.out -> out;
+}
+
+processor Source
+{
+    output event float out;
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event float32 out;
+
+    connection
+    {
+        Source.out -> Through.in;
+        Through.out -> out;
+    }
+}
+
+processor Source
+{
+    output event float out;
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+processor Through
+{
+    input event float in;
+    output event float out;
+
+    event in (float f)    { out <- f; }
+    void main() { advance(); }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event float32 out;
+
+    connection
+    {
+        Source.out -> Through.in;
+        Through.out -> out;
+    }
+}
+
+processor Source
+{
+    output event float out;
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+processor Through
+{
+    input event float in;
+    output event float out;
+
+    event in (float f)
+    {
+        out <- f;
+    }
+}
+
+## testProcessor (false)
+
+graph test [[main]]
+{
+    output event int out;
+    node source = Source (5, 3);
+    connection source.out[2] -> out;
+}
+
+processor Source (int channels, int indexSending1)
+{
+    output event int out[channels];
+
+    void main()
+    {
+        loop
+        {
+            for (wrap<channels> i)
+                out[i] <- i == indexSending1 ? 1 : -1;
+
+            advance();
+        }
+    }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event int out;
+
+    node source = Source (5, 3);
+
+    connection
+    {
+        source.out[3] -> out;
+    }
+}
+
+processor Source (int channels, int indexSending1)
+{
+    output event int out[channels];
+
+    void main()
+    {
+        loop
+        {
+            for (wrap<channels> i)
+                out[i] <- i == indexSending1 ? 1 : -1;
+
+            advance();
+        }
+    }
+}
+
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event int out;
+
+    node source0 = Source (-1);
+    node source1 = Source (1);
+    node source2 = Source (-1);
+    node merge = Merge (3);
+
+    connection
+    {
+        source0 -> merge.in[0];
+        source1 -> merge.in[1];
+        source2 -> merge.in[2];
+
+        merge.out[1] -> out;
+    }
+}
+
+processor Source (int value)
+{
+    output event int out;
+
+    void main()
+    {
+        loop
+        {
+            out <- value;
+            advance();
+        }
+    }
+}
+
+processor Merge (int channels)
+{
+    input event int in[channels];
+    output event int out[channels];
+
+    event in (int index, int value)
+    {
+        out[index] <- value;
+    }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event float out;
+
+    connection Source.out[0] -> out;
+}
+
+processor Source
+{
+    output event float out[1];
+
+    void main()
+    {
+        out[0] <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event float out;
+
+    connection Source.out[1] -> out;
+}
+
+processor Source
+{
+    output event float out[3];
+
+    void main()
+    {
+        out[1] <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+## testProcessor (false)
+
+graph test [[main]]
+{
+    output event float out;
+
+    connection Source.out[2] -> out;
+}
+
+processor Source
+{
+    output event float out[3];
+
+    void main()
+    {
+        out[1] <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event float32 out;
+
+    connection
+    {
+        Source.out -> Through.in;
+        Through.out -> out;
+    }
+}
+
+processor Source
+{
+    output event float out;
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+graph Through
+{
+    input event float in;
+    output event float out;
+    connection in -> out;
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event int out;
+
+    connection test1 -> test2.in;
+    connection test2.out -> out;
+}
+
+processor test1
+{
+    output stream float out;
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+processor test2
+{
+    input stream float in;
+    output event int out;
+
+   int f() { return int (in); }
+    void main() { loop { out <- f(); advance(); } }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event int out;
+    connection Source.out -> IgnoreEvent.in, out;
+}
+
+processor Source
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        loop { out <- -1; advance(); }
+    }
+}
+
+processor IgnoreEvent
+{
+    input event int in;
+    output event int out;
+
+    event in (int m) {}
+}
+
+## expectError ("2:11: error: A processor must declare at least one output")
+
+processor P
+{
+    void main() { advance(); }
+}
+
+## expectError ("2:11: error: A processor must declare at least one output")
+
+processor P
+{
+    input event int in;
+}
+
+## expectError ("2:11: error: A processor must contain a main() function")
+
+processor P
+{
+    output stream int out;
+}
+
+## expectError ("4:11: error: Cannot expose a child's output endpoint as an input")
+
+graph Parent
+{
+    input child.out out2;
+    output stream int out;
+    node child = Child;
+}
+
+processor Child
+{
+    output stream int out;
+    input stream int in;
+
+    void main() { loop advance(); }
+}
+
+## expectError ("4:12: error: Cannot expose a child's input endpoint as an output")
+
+graph Parent
+{
+    output child.in;
+    node child = Child;
+}
+
+processor Child
+{
+    output stream int out;
+    input stream int in;
+
+    void main() { loop advance(); }
+}
+
+## testProcessor (false)
+
+processor Fail
+{
+    output event int out;
+}
+
+## testProcessor (false)
+
+processor Fail
+{
+    output event int out;
+    void main() { out <- 0 <- 1 <- -1; advance(); }
+}
+
+## testProcessor()
+
+processor AreAllValuesDifferent (int numInputs)
+{
+    input event int addID;
+    output event int out;
+
+    int[numInputs] values;
+    int numValues;
+
+    event addID (int value)    { values.at (numValues++) = value; }
+
+    void main()
+    {
+        loop
+        {
+            if (numValues == values.size)
+            {
+                out <- areAllDifferent() ? 1 : 0 <- -1;
+                break;
+            }
+
+            out <- 0;
+            advance();
+        }
+
+        loop advance();
+    }
+
+    bool areAllDifferent()
+    {
+        for (int i = 0; i < values.size; ++i)
+            for (int j = i + 1; j < values.size; ++j)
+                if (values.at(i) == values.at(j))
+                    return false;
+
+        return true;
+    }
+}
+
+processor AreAllDifferent3 = AreAllValuesDifferent (3);
+
+graph test [[main]]
+{
+    output event int out;
+
+    node
+    {
+        getID1 = GetProcessorID,
+        getID2 = GetProcessorID,
+        getID3 = GetProcessorID;
+    }
+
+    node checker = AreAllDifferent3;
+
+    connection getID1, getID2, getID3 -> checker -> out;
+}
+
+processor GetProcessorID
+{
+    output event int out;
+    void main() { loop { out <- processor.id; advance(); } }
+}
+
+## testProcessor()
+
+namespace N
+{
+    processor AreAllValuesDifferent (int numInputs)
+    {
+        input event int addID;
+        output event int out;
+
+        int[numInputs] values;
+        int numValues;
+
+        event addID (int value)    { values.at (numValues++) = value; }
+
+        void main()
+        {
+            loop
+            {
+                if (numValues == values.size)
+                {
+                    out <- areAllDifferent() ? 1 : 0 <- -1;
+                    break;
+                }
+
+                out <- 0;
+                advance();
+            }
+
+            loop advance();
+        }
+
+        bool areAllDifferent()
+        {
+            for (int i = 0; i < values.size; ++i)
+                for (int j = i + 1; j < values.size; ++j)
+                    if (values.at(i) == values.at(j))
+                        return false;
+
+            return true;
+        }
+    }
+
+    processor AreDiff = AreAllValuesDifferent (3);
+}
+
+processor g1 = GetProcessorID (1),
+          g2 = GetProcessorID (2),
+          a1 = N::AreDiff;
+
+graph test [[main]]
+{
+    output event int out;
+
+    node getID1 = g1, getID2 = g2;
+    node getID3 = GetProcessorID (3);
+    node checker = a1;
+
+    connection getID1, getID2, getID3 -> checker -> out;
+}
+
+processor GetProcessorID (int i)
+{
+    output event int out;
+    void main() { loop { out <- processor.id; advance(); } }
+}
+
+## testProcessor()
+
+processor AreAllValuesDifferent (int numInputs)
+{
+    input event int addID;
+    output event int out;
+
+    int[numInputs] values;
+    int numValues;
+
+    event addID (int value)    { values.at (numValues++) = value; }
+
+    void main()
+    {
+        loop
+        {
+            if (numValues == values.size)
+            {
+                out <- (areAllDifferent() ? 1 : 0) <- -1;
+                break;
+            }
+
+            out <- 0;
+            advance();
+        }
+
+        loop advance();
+    }
+
+    bool areAllDifferent()
+    {
+        for (int i = 0; i < values.size; ++i)
+            for (int j = i + 1; j < values.size; ++j)
+                if (values.at(i) == values.at(j))
+                    return false;
+
+        return true;
+    }
+}
+
+graph test [[main]]
+{
+    output event int out;
+
+    node getIDs = GetProcessorID[4];
+    node checker = AreAllValuesDifferent (4);
+
+    connection getIDs -> checker -> out;
+}
+
+processor GetProcessorID
+{
+    output event int out;
+    void main() { loop { out <- processor.id; advance(); } }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event int out;
+    connection StringEventGenerator -> StringEventReceiver -> out;
+}
+
+processor StringEventGenerator
+{
+    output event string out;
+
+    void main()
+    {
+        out <- "xyz" <- "xyz\u0000" <- "" <- "" <- "😀";
+        loop advance();
+    }
+}
+
+processor StringEventReceiver
+{
+    output event int out;
+    input event string in;
+
+    void main()
+    {
+        loop
+        {
+            if (fails != 0)    { out <- 0; break; }
+            if (counter == 5)  { out <- 1; break; }
+
+            advance();
+        }
+
+        loop { advance(); out <- -1; }
+    }
+
+    int counter, fails;
+
+    event in (string received)
+    {
+        string expected;
+
+        if (counter == 0)  expected = "xyz";
+        if (counter == 1)  expected = "xyz\u0000";
+        if (counter == 2)  expected = "";
+        if (counter == 3)  expected = "";
+        if (counter == 4)  expected = "😀";
+
+        ++counter;
+
+        if (expected != received)
+            ++fails;
+    }
+}
+
+## testProcessor()
+
+processor Output1
+{
+    output stream float32 out;
+
+    float value = 1;
+
+    void main()
+    {
+        out <- value;
+        advance();
+    }
+}
+
+processor Output2
+{
+    output stream float32 out;
+
+    void main()
+    {
+        advance();
+
+        loop
+        {
+            out <- -1;
+            advance();
+        }
+    }
+}
+
+graph test [[main]]
+{
+    output stream float32 out;
+
+    connection Output1.out -> out;
+    connection Output2.out -> out;
+}
+
+## testProcessor()
+
+graph test
+{
+    output stream float32 out;
+
+    node sourceArray = Source[2];
+    connection sourceArray.out -> ModifyValue -> out;
+}
+
+processor Source
+{
+    output stream float out;
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+processor ModifyValue
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            if (in > 1.0f)
+                out <- in;
+            else
+                out <- -1;
+
+            advance();
+        }
+    }
+}
+
+## testProcessor()
+
+graph test
+{
+    output stream float32 out;
+
+    node sourceArray = Sources;
+    connection sourceArray.out -> ModifyValue -> out;
+}
+
+processor Sources
+{
+    output stream float out[2];
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+processor ModifyValue
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            if (in > 1.0f)
+                out <- in;
+            else
+                out <- -1;
+
+            advance();
+        }
+    }
+}
+
+
+## testProcessor()
+
+graph test
+{
+    output stream float32 out;
+
+    node sourceArray = Sources;
+    connection sourceArray.out -> ModifyValue -> out;
+}
+
+graph Sources
+{
+    output stream float32 out[2];
+
+    node sourceArray = Source[2];
+    connection sourceArray.out -> out;
+}
+
+processor Source
+{
+    output stream float out;
+
+    void main()
+    {
+        out <- 1.0f;
+        loop { advance(); out <- -1.0f; }
+    }
+}
+
+processor ModifyValue
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            if (in > 1.0f)
+                out <- in;
+            else
+                out <- -1;
+
+            advance();
+        }
+    }
+}
+
+## testProcessor()
+
+graph test
+{
+    output stream int out;
+
+    node p1 = Processor (float32);
+    node p2 = Processor (float32) * 2;
+
+    connection
+    {
+        p1.out -> CompareRates.in1;
+        p2.out -> CompareRates.in2;
+        CompareRates.out -> out;
+    }
+}
+
+processor CompareRates
+{
+    input stream float64 in1, in2;
+    output stream int out;
+
+    void main()
+    {
+        loop (10) { out <- 1; advance(); }
+
+        if (in2 > in1)
+            out <- 1;
+        else
+            out <- 0;
+
+        loop
+        {
+            advance();
+            out <- -1;
+        }
+    }
+}
+
+processor Processor (using Type)
+{
+    output stream float64 out;
+
+    void main()
+    {
+        loop { out <- processor.frequency; advance(); }
+    }
+}
+
+## testProcessor()
+
+graph G [[main]]
+{
+    output stream int out;
+    node p = Signal * 2;
+    connection
+    {
+        p -> out;
+    }
+}
+
+## testCompile()
+
+graph test
+{
+    output event float64 out1;
+
+    node p1 = Processor * 2;
+
+    connection
+        p1.out -> out1;
+}
+
+processor Processor
+{
+    output event float64 out;
+    void main() { loop { out <- 1; advance(); } }
+}
+
+
+## testProcessor()
+// Two instances of the same Processor should have different sampleRates as one is oversampled
+
+graph test
+{
+    output stream int out;
+
+    node p1 = Processor;
+    node p2 = Processor * 2;
+
+    connection
+    {
+        p1.out -> CompareRates.in1;
+        p2.out -> CompareRates.in2;
+        CompareRates.out -> out;
+    }
+}
+
+processor CompareRates
+{
+    input stream float64 in1, in2;
+    output stream int out;
+
+    void main()
+    {
+        loop (10) { out <- 1; advance(); }
+
+        if (in2 > in1)
+            out <- 1;
+        else
+            out <- 0;
+
+        loop { advance(); out <- -1; }
+    }
+}
+
+processor Processor
+{
+    output stream float64 out;
+    void main() { loop { out <- processor.frequency; advance(); } }
+}
+
+## testProcessor()
+
+graph test
+{
+    output stream int out;
+
+    node p1 = Processor;
+    node p2 = OversampledProcessor * 2;
+
+    connection
+    {
+        p1.out -> CompareRates.in1;
+        p2.out -> CompareRates.in2;
+        CompareRates.out -> out;
+    }
+}
+
+processor CompareRates
+{
+    input stream float64 in1, in2;
+    output stream int out;
+
+    void main()
+    {
+        loop (10) { out <- 1; advance(); }
+
+        if (in2 > in1)
+            out <- 1;
+        else
+            out <- 0;
+
+        loop
+        {
+            advance();
+            out <- -1;
+        }
+    }
+}
+
+processor Processor
+{
+    output stream float64 out;
+    void main() { loop { out <- processor.frequency; advance(); } }
+}
+
+processor OversampledProcessor
+{
+    output stream float64 out;
+    void main() { loop { out <- processor.frequency; advance(); } }
+}
+
+## testProcessor()
+
+graph test
+{
+    output stream int out;
+
+    node p1 = UndersampledProcessor / 2;
+    node p2 = Processor;
+
+    connection
+    {
+        p1.out -> CompareRates.in1;
+        p2.out -> CompareRates.in2;
+        CompareRates.out -> out;
+    }
+}
+
+processor CompareRates
+{
+    input stream float64 in1, in2;
+    output stream int out;
+
+    void main()
+    {
+        loop (10) { out <- 1; advance(); }
+
+        if (in2 > in1)
+            out <- 1;
+        else
+            out <- 0;
+
+        loop
+        {
+            advance();
+            out <- -1;
+        }
+    }
+}
+
+processor Processor
+{
+    output stream float64 out;
+    void main() { loop { out <- processor.frequency; advance(); } }
+}
+
+processor UndersampledProcessor
+{
+    output stream float64 out;
+    void main() { loop { out <- processor.frequency; advance(); } }
+}
+
+## expectError ("5:26: error: Clock ratio must be a power of 2")
+
+graph test
+{
+    output stream int out;
+    node p = Processor * 7;
+}
+
+processor Processor
+{
+    output stream float64 out;
+    void main() { advance(); }
+}
+
+## expectError ("5:26: error: Clock ratio must be a power of 2")
+
+graph test
+{
+    output stream int out;
+    node p = Processor / 3;
+}
+
+processor Processor
+{
+    output stream float64 out;
+    void main() { advance(); }
+}
+
+## expectError ("5:26: error: Clock ratio out of range")
+
+graph test
+{
+    output stream int out;
+    node p = Processor / 0;
+}
+
+processor Processor
+{
+    output stream float64 out;
+    void main() { advance(); }
+}
+
+## expectError ("5:26: error: Clock ratio must be an integer constant")
+
+graph test
+{
+    output stream int out;
+    node p = Processor * 2.1;
+}
+
+processor Processor
+{
+    output stream float64 out;
+    void main() { advance(); }
+}
+
+## expectError ("5:26: error: Clock ratio must be an integer constant")
+
+graph test
+{
+    output stream int out;
+    node p = Processor / "x";
+}
+
+processor Processor
+{
+    output stream float64 out;
+    void main() { advance(); }
+}
+
+## testProcessor()
+
+processor source
+{
+    output stream int out[3];
+
+    void main()
+    {
+        out[0] <- 0;
+        out[1] <- 1;
+        out[2] <- 2;
+        advance();
+    }
+}
+
+processor filter
+{
+    input stream int in_many_to_many[3];
+    input stream int in_one_to_many[3];
+    input stream int in_many_to_one[3];
+    input stream int in_one_to_one[3];
+
+    output stream int out;
+
+    void main()
+    {
+        int[3] v1 = in_many_to_many;
+        int[3] v2 = in_one_to_many;
+        int[3] v3 = in_many_to_one;
+        int[3] v4 = in_one_to_one;
+
+        if (v1[0] == 0 && v1[1] == 1 && v1[2] == 2 &&
+            v2[0] == 1 && v2[1] == 1 && v2[2] == 1 &&
+            v3[0] == 0 && v3[1] == 3 && v3[2] == 0 &&
+            v4[0] == 0 && v4[1] == 0 && v4[2] == 1)
+        {
+            out <- 1;
+            advance();
+            out <- -1;
+            advance();
+        }
+    }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+
+    connection
+    {
+        source.out -> filter.in_many_to_many;
+        source.out[1] -> filter.in_one_to_many;
+        source.out    -> filter.in_many_to_one[1];
+        source.out[1] -> filter.in_one_to_one[2];
+        filter.out -> out;
+    }
+}
+
+## testProcessor()
+
+processor source
+{
+    output value int out[3];
+
+    void main()
+    {
+        out[0] <- 0;
+        out[1] <- 1;
+        out[2] <- 2;
+        advance();
+    }
+}
+
+processor filter
+{
+    input value int in_many_to_many[3];
+    input value int in_one_to_many[3];
+    input value int in_many_to_one[3];
+    input value int in_one_to_one[3];
+
+    output value int out;
+
+    void main()
+    {
+        int[3] v1 = in_many_to_many;
+        int[3] v2 = in_one_to_many;
+        int[3] v3 = in_many_to_one;
+        int[3] v4 = in_one_to_one;
+
+        // Open question about what we expect in v3[1]
+        // When running many to one, should the value be the accumulation of input values like a stream?
+        // If not, we have a determinism problem (e.g. which value gets copied last would determine the value)
+        // We have a similar issue with multiple writes to the same value from different sources
+        if (v1[0] == 0 && v1[1] == 1 && v1[2] == 2 &&
+            v2[0] == 1 && v2[1] == 1 && v2[2] == 1 &&
+            v3[0] == 0 && v3[1] != 0 && v3[2] == 0 &&
+            v4[0] == 0 && v4[1] == 0 && v4[2] == 1)
+        {
+            out <- 1;
+            advance();
+            out <- -1;
+            advance();
+        }
+    }
+}
+
+processor ValueToStream
+{
+    input value int in;
+    output stream int out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in;
+            advance();
+        }
+    }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+
+    connection
+    {
+        source.out -> filter.in_many_to_many;
+        source.out[1] -> filter.in_one_to_many;
+        source.out    -> filter.in_many_to_one[1];
+        source.out[1] -> filter.in_one_to_one[2];
+        filter.out -> ValueToStream.in;
+        ValueToStream.out -> out;
+    }
+}
+
+## expectError ("4:18: error: Endpoint arrays cannot use array data types")
+
+processor P
+{
+    output event int[4] out[2];
+    void main() { advance(); }
+}
+
+## expectError ("8:23: error: Cannot connect two endpoint arrays with different sizes")
+
+graph G
+{
+    output stream int out;
+    node p1 = P;
+    node p2 = P[5];
+
+    connection p1.out -> p2.in;
+}
+
+graph P
+{
+    input event int in;
+    output event int out[3];
+}
+
+## expectError ("15:24: error: Cannot connect p (float64<2>) to out (float64)")
+
+processor P (using T)
+{
+    output stream T out;
+    input stream float64 in;
+    void main() { advance(); }
+}
+
+graph G [[main]]
+{
+    output stream float64 out;
+    input stream float64 in;
+
+    node p = P (float64<2>);
+    connection in -> p -> out;
+}
+
+## expectError ("7:21: error: The endpoint 'p.in' is an input, so cannot be connected to 'out'")
+
+graph G
+{
+    output stream int out;
+    input stream int in;
+    node p = DummyProcessor;
+    connection p.in -> out;
+}
+
+## expectError ("5:19: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
+
+processor P
+{
+    input stream bool in;
+    output stream bool out;
+    void main() { out <- true; advance(); }
+}
+
+graph G
+{
+    output stream int out;
+    input stream int in;
+    node p1 = P;
+    node p2 = P;
+    node p3 = P;
+    connection p1 -> p2, p3;
+}
+
+## expectError ("7:19: error: The endpoint 'p.out' is an output, so cannot take an input from 'in'")
+
+graph G
+{
+    output stream int out;
+    input stream int in;
+    node p = DummyProcessor;
+    connection in -> p.out;
+}
+
+## expectError ("7:24: error: A processor that is chained between two others cannot specify an endpoint name")
+
+graph G
+{
+    output stream int out;
+    input stream int in;
+    node p = DummyProcessor;
+    connection in -> p.out -> out;
+}
+
+## expectError ("7:24: error: A processor that is chained between two others cannot specify an endpoint name")
+
+graph G
+{
+    output stream int out;
+    input stream int in;
+    node p = DummyProcessor;
+    connection in -> p.in -> out;
+}
+
+## expectError ("6:24: error: A processor that is chained between two others cannot specify an endpoint name")
+
+graph G [[main]]
+{
+    output stream int out;
+    input stream int in;
+    connection in -> P.out1 -> out;
+}
+
+graph P
+{
+    output stream int out1, out2;
+    input stream int in;
+    connection in -> out1;
+}
+
+## expectError ("6:22: error: A processor can only be placed inside a chain if it has exactly one input and one output")
+
+graph G [[main]]
+{
+    output stream int out;
+    input stream int in;
+    connection in -> P -> out;
+}
+
+graph P
+{
+    output stream int out1, out2;
+    input stream int in;
+    connection in -> out2;
+}
+
+## expectError ("6:22: error: A processor can only be placed inside a chain if it has exactly one input and one output")
+
+graph G [[main]]
+{
+    output stream int out;
+    node p1 = P2, p2 = P2;
+    connection P1 -> p1 -> p2 -> out;
+}
+
+graph P1
+{
+    output stream int out;
+}
+
+graph P2
+{
+    input stream int in;
+    output stream int out1, out2;
+    connection in -> out1;
+}
+
+## expectError ("7:26: error: Cannot create a chained sequence of connections when multiple endpoints are specified")
+
+graph G [[main]]
+{
+    output stream int out;
+    input stream int in;
+    node p1 = P, p2 = P;
+    connection in -> p1, p2 -> out;
+}
+
+graph P
+{
+    input event int in;
+    output event int out1, out2;
+    connection in -> out1, out2;
+}
+
+## testProcessor()
+
+processor source
+{
+    output event int out[3];
+
+    void main()
+    {
+        out[0] <- 0;
+        out[1] <- 1;
+        out[2] <- 2;
+        advance();
+    }
+}
+
+processor filter
+{
+    input event int in_many_to_many[3];
+    input event int in_one_to_many[3];
+    input event int in_many_to_one[3];
+    input event int in_one_to_one[3];
+    output event int out;
+
+    event in_many_to_many (int index, int v)   { v1[index] += v; }
+    event in_one_to_many (int index, int v)    { v2[index] += v; }
+    event in_many_to_one (int index, int v)    { v3[index] += v; }
+    event in_one_to_one (int index, int v)     { v4[index] += v; }
+
+
+    int[3] v1, v2, v3, v4;
+
+    void main()
+    {
+        if (v1[0] == 0 && v1[1] == 1 && v1[2] == 2 &&
+            v2[0] == 1 && v2[1] == 1 && v2[2] == 1 &&
+            v3[0] == 0 && v3[1] == 3 && v3[2] == 0 &&
+            v4[0] == 0 && v4[1] == 0 && v4[2] == 1)
+        {
+            out <- 1;
+            advance();
+            out <- -1;
+            advance();
+        }
+    }
+}
+
+graph test [[main]]
+{
+    output event int out;
+
+    connection
+    {
+        source.out    -> filter.in_many_to_many;
+        source.out[1] -> filter.in_one_to_many;
+        source.out    -> filter.in_many_to_one[1];
+        source.out[1] -> filter.in_one_to_one[2];
+        filter.out    -> out;
+    }
+}
+
+## testProcessor()
+
+processor source
+{
+    output event int out[3];
+
+    void main()
+    {
+        out[0] <- 0;
+        out[1] <- 1;
+        out[2] <- 2;
+        advance();
+    }
+}
+
+processor filter
+{
+    input event int in_many_to_many[3];
+    input event int in_one_to_many[3];
+    input event int in_many_to_one[3];
+    input event int in_one_to_one[3];
+    output event int out;
+
+    event in_many_to_many (int index, int v)   { v1[index] += v; }
+    event in_one_to_many (int index, int v)    { v2[index] += v; }
+    event in_many_to_one (int index, int v)    { v3[index] += v; }
+    event in_one_to_one (int index, int v)     { v4[index] += v; }
+
+    int[3] v1, v2, v3, v4;
+
+    void main()
+    {
+        if (v1[0] == 0 && v1[1] == 1 && v1[2] == 2 &&
+            v2[0] == 1 && v2[1] == 1 && v2[2] == 1 &&
+            v3[0] == 0 && v3[1] == 3 && v3[2] == 0 &&
+            v4[0] == 0 && v4[1] == 0 && v4[2] == 1)
+        {
+            out <- 1;
+            advance();
+            out <- -1;
+            advance();
+        }
+    }
+}
+
+graph through
+{
+    input event int in[3];
+    output event int out_many_to_many[3];
+    output event int out_one_to_many[3];
+    output event int out_many_to_one[3];
+    output event int out_one_to_one[3];
+
+    connection
+    {
+        in      -> out_many_to_many;
+        in[1]   -> out_one_to_many;
+        in      -> out_many_to_one[1];
+        in[1]   -> out_one_to_one[2];
+    }
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    connection
+    {
+        source.out    -> through.in;
+        through.out_many_to_many -> filter.in_many_to_many;
+        through.out_one_to_many -> filter.in_one_to_many;
+        through.out_many_to_one -> filter.in_many_to_one;
+        through.out_one_to_one -> filter.in_one_to_one;
+        filter.out    -> out;
+    }
+}
+
+## testProcessor()
+
+processor source
+{
+    output event int out[3];
+
+    void main()
+    {
+        out[1] <- 1;
+        advance();
+        out[1] <- -1;
+        advance();
+    }
+}
+
+graph test [[main]]
+{
+    output event int out;
+    connection source.out[1] -> out;
+}
+
+## testProcessor()
+
+processor source
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+processor target
+{
+    input event int in;
+    output stream int out;
+
+    event in (int i)
+    {
+        latchedValue = i;
+    }
+
+    int latchedValue;
+
+    void main()
+    {
+        let firstValue = latchedValue;
+        out <- firstValue;
+
+        loop
+        {
+            advance();
+            out <- -1;
+        }
+    }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+
+    node t = target;
+
+    connection
+    {
+        source.out -> t.in;
+        t.out -> out;
+    }
+}
+
+## testProcessor()
+
+processor source
+{
+    output stream int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+processor target
+{
+    input stream int in;
+    output stream int out;
+
+    void main()
+    {
+       let firstValue = in;
+
+        out <- firstValue;
+
+        loop
+        {
+            advance();
+            out <- -1;
+        }
+    }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+
+    node t = target;
+
+    connection
+    {
+        source.out -> t.in;
+        t.out -> out;
+    }
+}
+
+## testProcessor()
+
+processor source
+{
+    output stream int out[3];
+
+    void main()
+    {
+        out[1] <- 1;
+
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+processor target
+{
+    input stream int in;
+    output stream int out;
+
+    void main()
+    {
+        if (in == 1)
+            out <- in;
+
+        loop
+        {
+            advance();
+            out <- -1;
+        }
+    }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+
+    node t = target[3];
+
+    connection
+    {
+        source.out[1] -> t[2].in;
+        t[2].out -> out;
+    }
+}
+
+## testProcessor()
+
+processor test  // this one is designed to stress the advance removal algorithm
+{
+    output event int out;
+
+    void main()
+    {
+        bool b = true;
+        int index = 0;
+        int successes = 0;
+
+        if (b)
+        {
+            if (index == 0) ++successes;
+            b = false;
+            advance();
+            ++index;
+            advance();
+            if (index == 1) ++successes;
+
+            if (! b)
+            {
+                ++index;
+                advance();
+                if (index == 2) ++successes;
+                {
+                    advance();
+                    ++index;
+                }
+                if (index == 3) ++successes;
+            }
+            else
+            {
+                successes = 0;
+            }
+
+            int count = 0;
+
+            loop (2)
+            {
+                if (count == 0)
+                {
+                    {
+                        advance();
+                    }
+                    successes += 5;
+                    ++count;
+                }
+                else
+                {
+                    if (count == 1)
+                    {
+                        successes += 7;
+                        advance();
+                    }
+                }
+            }
+        }
+
+        ++index;
+        advance();
+        if (index == 5) ++successes;
+
+        loop (5)
+        {
+            advance();
+            ++successes;
+        }
+
+        loop (6)
+        {
+            ++successes;
+            advance();
+        }
+
+        out <- successes == 27 ? 1 : 0;
+
+        loop { advance(); out <- -1; }
+    }
+}
+
+## expectError ("16:14: error: A processor called 'myTest' is already visible in this scope //// 15:14: note: See previous declaration")
+
+processor myTest
+{
+    output stream float out;
+
+    void main() { advance(); }
+}
+
+namespace test
+{
+    graph Another [[ main ]]
+    {
+        output stream float out;
+
+        node myTest = myTest;
+        node myTest = myTest;
+        connection myTest.out -> out;
+    }
+}
+
+## testProcessor()
+
+graph Wrapper  [[ main ]]
+{
+    output stream float levelOut;
+
+    node p = Parameterised (0.1f);
+    connection p.levelOut -> levelOut;
+}
+
+processor Parameterised (float param)
+{
+    output stream float levelOut;
+
+    void main()
+    {
+        if const (param > 0)
+            levelOut <- 1.0f;
+
+        advance();
+        levelOut <- -1.0f;
+        advance();
+   }
+}
+
+## testProcessor()
+
+processor applyOffset
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- 1.0f + in;
+            advance();
+        }
+    }
+}
+
+graph filters [[ main ]]
+{
+    output stream float dc;
+
+    node noiseSource = std::noise::White;
+    node dcFilter = std::filters::dcblocker::Processor;
+
+    connection
+    {
+        noiseSource -> applyOffset.in;
+        applyOffset -> dcFilter;
+        dcFilter -> dc;
+    }
+}
+
+## testProcessor()
+
+processor Generator
+{
+    output stream float out[4];
+
+    void writeValue (float f)
+    {
+        wrap<4> i;
+
+        loop (4)
+        {
+            out[i] <- f;
+            i++;
+        }
+    }
+
+    void main()
+    {
+        writeValue (1.0f);
+        advance();
+        writeValue (-1.0f);
+        advance();
+    }
+}
+
+processor Filter
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            if (in == 1.0f)
+                out <- 1.0f;
+
+            if (in == -1.0f)
+                out <- -1.0f;
+
+            advance();
+        }
+    }
+}
+
+graph test [[ main ]]
+{
+    output stream float out;
+
+    node generator = Generator;
+    connection generator.out[0] -> Filter -> out;
+}
+
+## testProcessor()
+
+processor X
+{
+    output value int out;
+    void main() { out <- 1; loop { advance(); out <- -1; } }
+}
+
+processor ValueToStream
+{
+    input value int in;
+    output stream int out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in;
+            advance();
+        }
+    }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+
+    connection
+    {
+        X.out -> ValueToStream.in;
+        ValueToStream.out -> out;
+    }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event int out;
+    connection intermediate.out -> out;
+}
+
+graph intermediate
+{
+    output event int out;
+    connection Generator.out -> out;
+}
+
+processor Generator
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+## testCompile()
+
+graph test
+{
+    output event (std::notes::NoteOn, std::notes::NoteOff) out;
+    input event std::midi::Message in;
+
+    connection in -> std::midi::MPEConverter -> std::voices::VoiceAllocator(1) -> out;
+}
+
+## testProcessor()
+
+processor test
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event int out;
+    connection Generator.out -> out;
+}
+
+processor Generator
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+## testProcessor()
+
+namespace Parameterised (using A, using B = bool)
+{
+    processor P
+    {
+        output stream int out;
+        A a = 1;
+        B b = 2;
+        void main() { out <- a; advance(); out <- b; loop { advance(); out <- -1; } }
+    }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+
+    node p1 = Parameterised (int, int)::P;
+    connection p1 -> out;
+}
+
+## testProcessor()
+
+namespace Parameterised (using A, using B, int value)
+{
+    processor P
+    {
+        output stream int out;
+        A a = value;
+        B b = value;
+        void main() { out <- a; advance(); out <- b; loop { advance(); out <- -1; } }
+    }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+    namespace PP = Parameterised (int, int, 1);
+    node p1 = PP::P;
+    node p2 = PP::P;
+    node p3 = Parameterised (int, int, 1)::P;
+    connection p1, p2, p3 -> out;
+}
+
+## testProcessor()
+
+processor P (int x)
+{
+    output stream int out;
+    void main() { out <- x; loop { advance(); out <- -1; } }
+}
+
+graph Wrapper (processor Parameterised, int x)
+{
+    output stream int out;
+    node p = Parameterised(x);
+    connection p.out -> out;
+}
+
+graph test [[main]]
+{
+    output stream int out;
+    node w = Wrapper (P, 1);
+    connection w.out -> out;
+}
+
+## testCompile()
+
+graph G
+{
+    output stream int out;
+
+    node o1 = std::oscillators::Sine (float64<2>, 100.0f);
+    node o2 = std::oscillators::Sine (float32, 100.0f);
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output InnerGraph1.y.z.out1;
+}
+
+graph InnerGraph1
+{
+    output y.z.out1;
+    node y = InnerGraph2;
+}
+
+graph InnerGraph2
+{
+    output stream int out1;
+    node z = Source;
+}
+
+processor Source
+{
+    output event int out1;
+    void main() { out1 <- 1; loop { out1 <- -1; advance(); } }
+}
+
+## expectError ("4:14: error: Cannot find symbol 'foo'")
+
+graph test
+{
+    output x.foo.z.out2;
+    node x = InnerGraph1;
+}
+
+graph InnerGraph1
+{
+    output y.z.out1;
+    node y = InnerGraph2;
+}
+
+graph InnerGraph2
+{
+    output stream int out1;
+    node z = Source;
+}
+
+processor Source
+{
+    output event int out1;
+    void main() { out1 <- 1; loop { out1 <- -1; advance(); } }
+}
+
+## testProcessor()
+
+processor test [[main]]
+{
+    output stream int out;
+
+    void main()
+    {
+        out <- 2;
+        out <- -1;
+        advance();
+        loop { out <- -1; advance(); }
+    }
+}
+
+## expectError ("5:11: error: Expected a stream type specifier")
+
+processor test
+{
+    output stream int x;
+    input x.y;
+
+    void main() { loop advance(); }
+}
+
+## expectError ("5:25: error: Cannot use a processor name as a value")
+
+graph G
+{
+    output stream int x;
+    let n = std::noise::White;
+}
+
+## testProcessor()
+
+graph Top [[ main ]]
+{
+    output wrapper.test.out;
+    node wrapper = Wrapper;
+}
+
+graph Wrapper
+{
+    output stream int out;
+    node test = Test;
+}
+
+processor Test
+{
+    output stream int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+## testProcessor()
+
+graph Top [[ main ]]
+{
+    input wrapper.test.in;
+    output wrapper.test.out;
+
+    node wrapper = Wrapper;
+}
+
+graph Wrapper
+{
+    node test = Test;
+    connection {}
+    connection EmitOne -> test;
+    connection {}
+}
+
+processor Test
+{
+    input stream int in;
+    output stream int out;
+
+    void main()
+    {
+        out <- in;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+## testProcessor()
+
+processor P1
+{
+    output stream float out;
+
+    void main()
+    {
+        out <- 1.0f; advance();
+        loop { out <- -1.0f; advance(); }
+    }
+}
+
+processor P2
+{
+    input stream float in;
+    output event int out;
+    int f() { return int(in); }
+    void main() { loop { out <- f(); advance(); } }
+}
+
+graph G
+{
+    output event int out;
+    connection P1 -> P2 -> out;
+}
+
+## if (getEngineName() != "cpp") testProcessor (true, { sessionID : 101 })
+
+graph test [[ main ]]
+{
+    output event int out;
+    connection P.out -> out;
+}
+
+processor P
+{
+    output event int out;
+
+    void main()
+    {
+        console <- processor.id;
+
+        out <- x[8] == 7 ? 1 : 0
+            <- processor.session == 101 ? 1 : 0
+            <- processor.id != 0 ? 1 : 0
+            <- -1;
+
+        advance();
+    }
+
+   int[int32(processor.frequency / 50)] x = (7);
+}
+
+## if (getEngineName() != "cpp") testProcessor (true, { sessionID : 101 })
+
+processor P [[ main ]]
+{
+    output event int out;
+
+    void main()
+    {
+        console <- processor.id;
+
+        out <- x[8] == 7 ? 1 : 0
+            <- processor.session == 101 ? 1 : 0
+            <- processor.id != 0 ? 1 : 0
+            <- -1;
+
+        advance();
+    }
+
+   int[int32(processor.frequency / 50)] x = (7);
+}
+
+## testProcessor()
+
+processor DelayCheck (int len)
+{
+    output stream int out;
+    input stream int raw, delayed;
+
+    void main()
+    {
+        loop (len) { out <- 1; advance(); }
+
+        loop
+        {
+            out <- delayed == raw - len ? 1 : 0;
+            advance();
+        }
+    }
+}
+
+graph TestDelay (int len)
+{
+    output stream int out;
+
+    node delay = DelayCheck(len);
+
+    connection Signal.out -> [len] -> delay.delayed;
+    connection Signal.out -> delay.raw;
+    connection delay -> out;
+}
+
+graph G [[main]]
+{
+    output stream int out;
+
+    node d1 = TestDelay(5);
+    node d2 = TestDelay(1);
+    node d3 = TestDelay(8);
+    node d4 = TestDelay(113);
+    node check = Expect (200, 4);
+
+    connection d1.out, d2.out, d3.out, d4.out -> check.in;
+    connection check -> out;
+}
+
+## testProcessor()
+
+processor DoubleOut
+{
+    output stream int out[2];
+    input stream int in;
+
+    void main()
+    {
+        out[0] <- 1;   advance();
+        out[0] <- -1;  advance();
+    }
+}
+
+graph G [[main]]
+{
+    output stream int out;
+    node d1 = DoubleOut;
+    node d2 = DoubleOut;
+
+    connection d1.out[0] -> [10] -> d2;
+    connection d2.out[0] -> out;
+}
+
+## testProcessor()
+
+processor DoubleOut
+{
+    output event int out[2];
+    input event int in;
+
+    void main()
+    {
+        out[0] <- 1;   advance();
+        out[0] <- -1;  advance();
+    }
+}
+
+graph G [[main]]
+{
+    output event int out;
+    node d1 = DoubleOut;
+    node d2 = DoubleOut;
+
+    connection d1.out[0] -> [10] -> d2;
+    connection d2.out[0] -> out;
+}
+
+## testProcessor()
+
+graph G
+{
+    output stream int out;
+
+    node s1 = SquareWave (20),
+         d1 = DelayProcessor (20),
+         check = ExpectAbs (21, 10, 2);
+
+    connection
+    {
+        s1 -> check;
+        s1 -> d1 -> check -> out;
+    }
+}
+
+## testProcessor()
+
+graph G
+{
+    output stream int out;
+
+    node s1 = SquareWave (22),
+         d1 = DelayProcessor (21),
+         d2 = DelayProcessor (23),
+         check = ExpectAbs (25, 7, 3);
+
+    connection
+    {
+        s1 -> check -> out;
+        s1 -> d1 -> check;
+        s1 -> d2 -> check;
+    }
+}
+
+## testProcessor()
+
+graph G
+{
+    output stream int out;
+
+    node s1 = SquareWave (20),
+         d1 = DelayGraph (10),
+         d2 = DelayProcessor (11),
+         d3 = DelayProcessor (12),
+         check = ExpectAbs (23, 7, 1);
+
+    connection
+    {
+        s1 -> check -> out;
+        s1 -> d1 -> d2 -> check;
+        s1 -> d3 -> check;
+    }
+}
+
+## testProcessor()
+
+graph G
+{
+    output stream int out;
+
+    node s1 = SquareWave (20),
+         d1 = DelayProcessor (10),
+         d2 = DelayGraph (20),
+         d3 = DelayProcessor (10),
+         check = ExpectAbs (30, 15, 0);
+
+    connection
+    {
+        s1 -> d1 -> [2] -> check;
+        s1 -> d2 -> [2] -> check;
+        s1 -> [2] -> check -> out;
+        s1 -> [2] -> d3 -> check;
+    }
+}
+
+## testProcessor()
+
+graph G
+{
+    output stream int out;
+
+    node s1 = SquareWave (30),
+         d1 = DelayProcessor (15),
+         d2 = DelayGraph (15),
+         check = ExpectAbs (30, 30, 1);
+
+    connection
+    {
+        s1 -> check -> out;
+        s1 -> d1 -> d2 -> check;
+        s1 -> d2 -> check;
+    }
+}
+
+## testProcessor()
+
+graph G
+{
+    output stream int out;
+
+    node s1 = SquareWave (30),
+         d1 = DelayProcessor (15),
+         d2 = DelayGraph (15),
+         check = ExpectAbs (30, 40, 1);
+
+    connection
+    {
+        s1 -> check -> out;
+        s1 -> d2 -> check;
+        s1 -> d2 -> d1 -> check;
+    }
+}
+
+## testProcessor()
+
+graph G
+{
+    output stream int out;
+
+    node s1 = SquareWave (20),
+         d1 = DelayProcessor (10),
+         d2 = DelayGraph (10),
+         d3 = DelayProcessor (10),
+         d4 = DelayProcessor (2),
+         check = ExpectAbs (30, 50, 1);
+
+    connection
+    {
+        s1 -> EmitZero -> d4 -> [1] -> d2 -> EmitZero;
+        s1 -> d1 -> check;
+        s1 -> d1 -> d2 -> check;
+        s1 -> check -> out;
+    }
+}
+
+## testProcessor()
+
+graph G
+{
+    output stream int out;
+
+    node s1 = SquareWave (20),
+         d1 = DelayProcessor (10),
+         d2 = DelayGraph (10),
+         d3 = DelayProcessor (10),
+         d4 = DelayProcessor (2),
+         check = ExpectAbs (25, 25, 0);
+
+    connection
+    {
+        s1 -> d1 -> check;
+        s1 -> d4 -> EmitZero -> d3;
+        s1 -> d2 -> d1 -> check;
+        s1 -> d3 -> check;
+        s1 -> check -> out;
+    }
+}
+
+## testProcessor()
+
+graph G
+{
+    output event int out;
+    connection LatencyCheck (20) -> out;
+}
+
+processor LatencyCheck (int latency)
+{
+    output event int out;
+    processor.latency = latency;
+    void main() { out <- processor.latency == latency ? 1 : 0 <- -1; advance(); }
+}
+
+## expectError ("6:29: error: The processor.latency value must be declared as a constant integer or float")
+
+processor P
+{
+    output event int out;
+    void main() { advance(); }
+    processor.latency = int[]();
+}
+
+## expectError ("6:22: error: Found \";\" when expecting \"=\"")
+
+processor P
+{
+    output event int out;
+    void main() { advance(); }
+    processor.latency;
+}
+
+## expectError ("6:28: error: This latency value is out of range")
+
+processor P
+{
+    output event int out;
+    void main() { advance(); }
+    processor.latency = (1 << 20);
+}
+
+## expectError ("6:25: error: This latency value is out of range")
+
+processor P
+{
+    output event int out;
+    void main() { advance(); }
+    processor.latency = -1;
+}
+
+## expectError ("7:15: error: The processor.latency value must not be set more than once")
+
+processor P
+{
+    output event int out;
+    void main() { advance(); }
+    processor.latency = 10;
+    processor.latency = 10;
+}
+
+## expectError ("5:37: error: Processor properties are constants, and cannot be modified")
+
+processor P
+{
+    output event int out;
+    void main() { processor.latency = 20; advance(); }
+}
+
+## expectError ("2:20: error: Namespace specialisations may only be used in namespaces")
+
+graph G (namespace n)
+{
+    output event int out;
+}
+
+## expectError ("6:15: error: Expected a function or variable declaration")
+
+processor P
+{
+    output event int out;
+    void main() { advance(); }
+    processor.frequency;
+}
+
+## expectError ("20:20: error: Wrong number of arguments to instantiate processor 'generator'")
+
+processor generator
+{
+    output stream int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+
+    connection
+        generator (1).out -> out;
+}
+
+## testProcessor()
+
+graph G1 [[main]]
+{
+    output g2.g3.out;
+    node g2 = G2;
+}
+
+graph G2
+{
+    output g3.out;
+    node g3 = G3;
+}
+
+processor G3
+{
+    output event int out;
+    void main() { out <- 1 <- -1; advance(); }
+}
+
+## testProcessor()
+
+graph G1 [[main]]
+{
+    output g2.g3.out1 out;
+    node g2 = G2;
+}
+
+graph G2
+{
+    output g3.out1 out2;
+    node g3 = G3;
+}
+
+processor G3
+{
+    output event int out1;
+    void main() { out1 <- 1 <- -1; advance(); }
+}
+
+## testProcessor()
+
+graph G1 [[main]]
+{
+    output g2.out2 out;
+    node g2 = G2;
+}
+
+graph G2
+{
+    output g3.out1 out2;
+    node g3 = G3;
+    connection g3->out2;
+}
+
+processor G3
+{
+    output event int out1;
+    void main() { out1 <- 1 <- -1; advance(); }
+}
+
+## expectError ("8:10: error: A processor called 'duplicateNodeName' is already visible in this scope //// 7:10: note: See previous declaration")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node duplicateNodeName = std::levels::DynamicGain (float32);
+    node duplicateNodeName = std::levels::DynamicGain (float32);
+}
+
+
+## expectError ("11:12: error: Cannot connect in (float32) to gain.in (float64)")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float64, 0.5);
+
+    connection
+    {
+        in -> gain.in;
+        gain.out -> out;
+    }
+}
+
+## expectError ("11:12: error: Cannot connect in (float32) to gain.in (float32<2>)")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32<2>, 0.5);
+
+    connection
+    {
+        in -> gain.in;
+        gain.out -> out;
+    }
+}
+
+## expectError ("11:12: error: Cannot connect in (float32) to gain.in (float32<2>)")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32<2>, 0.5);
+
+    connection
+    {
+        in -> gain.in;
+        gain.out -> out;
+    }
+}
+
+## expectError ("11:12: error: Cannot connect in (event) to gain.in (stream)")
+
+graph test
+{
+    input event float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection
+    {
+        in -> gain.in;
+        gain.out -> out;
+    }
+}
+
+## expectError ("12:18: error: Cannot connect gain.out (stream) to out (event)")
+
+graph test
+{
+    input stream float in;
+    output event float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection
+    {
+        in -> gain.in;
+        gain.out -> out;
+    }
+}
+
+## expectError ("11:12: error: Cannot connect in (value) to gain.in (stream)")
+
+graph test
+{
+    input value float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection
+    {
+        in -> gain.in;
+        gain.out -> out;
+    }
+}
+
+## expectError ("13:19: error: Feedback cycle in graph: gain1 -> gain2 -> gain1")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain1 = std::levels::ConstantGain (float32, 0.5);
+    node gain2 = std::levels::ConstantGain (float32, 0.5);
+
+    connection
+    {
+        in -> gain1.in;
+        gain1.out -> gain2.in;
+        gain2.out -> gain1.in;      // Causes feedback loop
+        gain2.out -> out;
+    }
+}
+
+## expectError ("12:18: error: Feedback cycle in graph: gain -> gain")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection
+    {
+        in -> gain.in;
+        gain.out -> gain.in;  // Feedback
+        gain.out -> out;
+    }
+}
+
+## testCompile()
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection
+    {
+        in -> gain.in;
+        gain.out -> [1] -> gain.in;  // Feedback, but now includes a delay
+        gain.out -> out;
+    }
+}
+
+## testCompile()
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain1 = std::levels::ConstantGain (float32, 0.5);
+    node gain2 = std::levels::ConstantGain (float32, 0.5);
+
+    connection
+    {
+        in -> gain1.in;
+        gain1.out -> gain2.in;
+        gain2.out -> [1] -> gain1.in;      // Fixed by introducing delay
+        gain2.out -> out;
+    }
+}
+
+## testCompile()
+
+graph Feedback (int Delay)
+{
+    input stream float in;
+    output stream float out;
+
+    node gain1 = std::levels::ConstantGain (float32, 0.5);
+    node gain2 = std::levels::ConstantGain (float32, 0.5);
+
+    connection
+    {
+        in -> gain1.in;
+        gain1.out -> gain2.in;
+        gain2.out -> [Delay] -> gain1.in;      // Fixed by introducing delay
+        gain2.out -> out;
+    }
+}
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node feedback = Feedback (1);
+
+    connection in -> feedback -> out;
+}
+
+
+## expectError ("9:17: error: Expected an interpolation type")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection [1] -> gain;
+}
+
+## expectError ("9:27: error: Found \";\" when expecting \"->\"")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection gain -> [1];
+}
+
+## expectError ("9:25: error: A delay line length must be greater than zero")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection gain -> [0] -> gain;
+}
+
+## expectError ("9:25: error: Found \"]\" when expecting identifier")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection gain -> [] -> gain;
+}
+
+## expectError ("9:25: error: A delay line length must be an integer")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection gain -> [1.7] -> gain;
+}
+
+## expectError ("9:25: error: This exceeds the maximum delay line length (262144)")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection gain -> [1234567] -> gain;
+}
+
+## expectError ("9:25: error: Integer literal is too large to be represented")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection gain -> [123456789012345678901234567890] -> gain;
+}
+
+
+## expectError ("9:25: error: A delay line length must be greater than zero")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.5);
+
+    connection gain -> [-5] -> gain;
+}
+
+## testProcessor()
+
+processor Source
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    connection Source.out -> out;
+}
+
+## testProcessor()
+
+processor Source
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph SubGraph
+{
+    output event int out;
+
+    connection Source.out -> out;
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    connection SubGraph.out -> out;
+}
+
+## testProcessor()
+
+processor Source
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph SubGraph (processor SourceProcessor)
+{
+    output event int out;
+
+    connection SourceProcessor.out -> out;
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    node subGraph = SubGraph (Source);
+    connection subGraph.out -> out;
+}
+
+## testProcessor()
+
+processor Source (using DataType)
+{
+    output event DataType out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph SubGraph (processor SourceProcessor)
+{
+    output event int out;
+
+    connection SourceProcessor.out -> out;
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    node subGraph = SubGraph (Source (int));
+    connection subGraph.out -> out;
+}
+
+## testProcessor()
+
+processor Source (using DataType, int index)
+{
+    output event DataType out[10];
+
+    void main()
+    {
+        out[index] <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph SubGraph (processor SourceProcessor)
+{
+    output event int out[10];
+
+    connection SourceProcessor.out -> out;
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    node subGraph = SubGraph (Source (int, 2));
+    connection subGraph.out[2] -> out;
+}
+
+## testProcessor()
+
+processor Source
+{
+    output event int out[10];
+
+    void main()
+    {
+        out[2] <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph SubGraph
+{
+    output Source.out;
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    node subGraph = SubGraph;
+    connection subGraph.out[2] -> out;
+}
+
+## expectError ("7:27: error: Cannot connect m.eventOut (NoteOn, NoteOff, PitchBend, Slide, Pressure, Control) to out (int32)")
+
+graph test
+{
+    output event int out;
+
+    node m = std::midi::MPEConverter;
+    connection m.eventOut -> out;
+}
+
+## testCompile()
+
+graph test
+{
+    output event (std::notes::NoteOn, int) out;
+
+    node m = std::midi::MPEConverter;
+    connection m.eventOut -> out;
+}
+
+## testProcessor()
+
+processor DelayAndSendValue (int delay, int value)
+{
+    output event int out;
+
+    void main()
+    {
+        loop (delay) advance();
+        out <- value;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    node sendTerminate = DelayAndSendValue (5, -1);
+    node sendSuccess  = DelayAndSendValue (10, 1);
+
+    connection
+    {
+        sendTerminate -> [6] -> out;
+        sendSuccess -> out;
+    }
+}
+
+## testProcessor()
+
+processor DelayAndSendValue (int delay, int value)
+{
+    output event int out;
+
+    void main()
+    {
+        loop (delay)
+            advance();
+
+        out <- value;
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    node sendTerminate = DelayAndSendValue (5, -1)[4];
+    node sendSuccess  = DelayAndSendValue (10, 1)[4];
+
+    connection
+    {
+        sendTerminate -> [6] -> out;
+        sendSuccess -> out;
+    }
+}
+
+## testProcessor()
+
+processor Source (int value)
+{
+    output event int out;
+    void main() { loop { out <- value; advance(); } }
+}
+
+graph test [[ main ]]
+{
+    output event int out;
+    connection Source (1) -> out;
+}
+
+## expectError ("7:30: error: Wrong number of arguments to instantiate processor 'ConstantGain'")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32);
+    connection in -> gain -> out;
+}
+
+
+## expectError ("7:44: error: Expected a type")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (0.5, float32);
+    connection in -> gain -> out;
+}
+
+## expectError ("7:53: error: Cannot implicitly convert 0.123456789 ('float64') to 'float32'")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, 0.123456789);
+
+    connection in -> gain -> out;
+}
+
+## testCompile()
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    connection in -> std::levels::ConstantGain (float32, 0.1f) -> out;
+}
+
+## testCompile()
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    connection in -> std::levels::ConstantGain (float32, 0.1f) -> std::levels::ConstantGain (float32, 0.2f) -> out;
+ }
+
+## expectError ("7:78: error: An implicitly-created graph node cannot be used more than once: create a named instance instead")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    connection in -> std::levels::ConstantGain (float32, 0.1f) -> std::levels::ConstantGain (float32, 0.1f) -> out;
+}
+
+## testProcessor()
+
+processor Source
+{
+    output stream int out;
+    void main() { loop { out <- 1; advance(); } }
+}
+
+graph Forwarder
+{
+    input stream int in;
+    output stream int out;
+    connection in -> out;
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+    connection Source -> Forwarder -> out;
+}
+
+## testProcessor()
+
+processor Source (int value)
+{
+    output stream int out;
+    void main() { loop { out <- value; advance(); } }
+}
+
+graph Forwarder (processor P)
+{
+    output stream int out;
+    connection P -> out;
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+    connection Forwarder (Source (1)) -> out;
+}
+
+## testProcessor()
+
+processor Source (int value)
+{
+    output stream int out;
+    void main() { loop { out <- value; advance(); } }
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+
+    connection Source (-1) -> out;
+    connection Source (2) -> out;
+}
+
+## testProcessor()
+
+processor Source (int value)
+{
+    output stream int out;
+    void main() { loop { out <- value; advance(); } }
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+    connection Source (-1), Source (2) -> out;
+}
+
+## testProcessor()
+
+processor Source (int value)
+{
+    output stream int out;
+    void main() { loop { out <- value; advance(); } }
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+    node sources1 = Source(-1)[num1];
+    node sources2 = Source(1)[num2];
+    connection sources1 -> out;
+    connection sources2 -> out;
+    const int num1 = 2, num2 = 3;
+}
+
+## testProcessor()
+
+processor Source (int value)
+{
+    output stream int out;
+
+    void main() { loop { out <- value; advance(); } }
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+
+    node source1 = Source (-1);
+    node source2 = Source (2);
+
+    connection source1, source2 -> out;
+}
+
+## testProcessor()
+
+processor Source (int value)
+{
+    output stream int out;
+
+    void main() { loop { out <- value; advance(); } }
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+    node source1 = Source (-1);
+    connection source1, Source (2) -> out;
+}
+
+## testCompile()
+
+processor Source
+{
+    output stream int out;
+
+    int mySum<T> (const T& t)
+    {
+        int total;
+
+        for (wrap<T.size> i)
+            total += t[i];
+
+        return total;
+    }
+
+    void main()
+    {
+        out <- mySum (int<3> (1, 2, 3));
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+    node source = Source * 2;
+    connection source -> out;
+}
+
+## testProcessor()
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    node
+    {
+        g1 = Generator;
+        g2 = OversampledSubgraph * 2;
+    }
+
+    connection
+    {
+        g1.out -> Compare.in1;
+        g2.out -> Compare.in2;
+        Compare.out -> out;
+    }
+}
+
+graph OversampledSubgraph
+{
+    output stream float64 out;
+    node g = Generator;
+    connection g.out -> out;
+}
+
+processor Generator
+{
+    output stream float64 out;
+    void main() { loop { out <- processor.frequency; advance(); } }
+}
+
+processor Compare
+{
+    input stream float64 in1, in2;
+    output event int out;
+
+    void main()
+    {
+        advance();
+        advance();
+        advance();
+        advance();
+
+        // We expect in2 to be 2 * in1, but given it's been through an upsampler it will be approximate
+        if (in2 > in1 * 1.5)
+            out <- 1;
+
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+## testCompile()
+
+processor Test
+{
+    output value int32 result;
+
+    void main()
+    {
+        result <- 1;
+        advance();
+    }
+
+}
+
+## expectError ("4:12: error: Expected a stream type specifier or endpoint")
+
+graph G
+{
+    output p;
+    node p = P;
+}
+
+## expectError ("4:12: error: Expected a stream type specifier or endpoint")
+
+graph test [[main]]
+{
+    output p;
+    node p = P;
+}
+
+processor P
+{
+    output event int out;
+    void main() { advance(); }
+}
+
+## expectError ("4:14: error: Expected a node name")
+
+graph test  [[main]]
+{
+    output p.out.*;
+    node p = P;
+}
+
+processor P
+{
+    output event int out;
+    void main() { out <- 1 <- 1 <- -1; advance(); }
+}
+
+## expectError ("4:12: error: Expected a stream type specifier")
+
+graph test [[main]]
+{
+    output *;
+}
+
+## expectError ("5:12: error: The name 'x' is already in use //// 4:12: note: See previous declaration")
+
+graph test [[main]]
+{
+    output p.x;
+    output p.x;
+    node p = P;
+}
+
+processor P { output stream int x; void main() { advance(); } }
+
+## expectError ("5:12: error: The name 'x' is already in use //// 4:12: note: See previous declaration")
+
+graph test [[main]]
+{
+    output p.*;
+    output p.*;
+    node p = P;
+}
+
+processor P { output stream int x; void main() { advance(); } }
+
+## expectError ("4:16: error: Found identifier when expecting \";\"")
+
+graph test [[main]]
+{
+    output p.* xyz;
+    node p = P;
+}
+
+processor P { output stream int x; void main() { advance(); } }
+
+## testProcessor()
+
+graph test  [[main]]
+{
+    output p.*;
+    node p = P;
+}
+
+processor P
+{
+    output event int out;
+    void main() { out <- 1 <- 1 <- -1; advance(); }
+}
+
+## testProcessor()
+
+graph test  [[main]]
+{
+    output p.p.*;
+    node p = G2;
+}
+
+graph G2
+{
+    output stream int xyz;
+    node p = P;
+}
+
+processor P
+{
+    output event int out;
+    void main() { out <- 1 <- 1 <- -1; advance(); }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output p.good;
+    node p = P1;
+}
+
+graph P1
+{
+    output p.g*;
+    output p.b*;
+    node p = P2;
+}
+
+processor P2
+{
+    output event int bad1, good, bad2;
+    void main() { good <- 1 <- 1 <- -1; bad1 <- 0 <- 0 <- -1; bad2 <- 0 <- 0 <- -1; advance(); }
+}
+
+## expectError ("4:12: error: No outputs were found that matched the wildcard 'g?d'")
+
+graph test [[main]]
+{
+    output p.g?d;
+    node p = P;
+}
+
+processor P
+{
+    output event int bad1, good, bad2;
+    void main() { good <- 1 <- 1 <- -1; bad1 <- 0 <- 0 <- -1; bad2 <- 0 <- 0 <- -1; advance(); }
+}
+
+## expectError ("5:11: error: No inputs were found that matched the wildcard '*'")
+
+graph test [[main]]
+{
+    output p.g??d;
+    input p.*;
+    node p = P;
+}
+
+processor P
+{
+    output event int bad1, good, bad2;
+    void main() { good <- 1 <- 1 <- -1; bad1 <- 0 <- 0 <- -1; bad2 <- 0 <- 0 <- -1; advance(); }
+}
+
+## testCompile()
+
+graph test [[main]]
+{
+    input g2.testIn;
+    output g2.*;
+
+    node g2 = G2;
+}
+
+graph G2
+{
+    input g3.*;
+    output g3.*;
+
+    node g3 = G3;
+}
+
+graph G3
+{
+    input p.*;
+    output p.*;
+
+    node p = P;
+}
+
+processor P
+{
+    input event int testIn;
+    output event int testOut;
+}
+
+## testCompile()
+
+graph G3
+{
+    input p.*;
+    output p.*;
+
+    node p = P;
+}
+
+graph G2
+{
+    input g3.*;
+    output g3.*;
+
+    node g3 = G3;
+}
+
+graph test [[main]]
+{
+    input g2.testIn;
+    output g2.*;
+
+    node g2 = G2;
+}
+
+processor P
+{
+    input event int testIn;
+    output event int testOut;
+}
+
+## testCompile()
+
+graph G2
+{
+    input g3.*;
+    output g3.*;
+
+    node g3 = G3;
+}
+
+graph G3
+{
+    input p.*;
+    output p.*;
+
+    node p = P;
+}
+
+graph test [[main]]
+{
+    input g2.testIn;
+    output g2.*;
+
+    node g2 = G2;
+}
+
+processor P
+{
+    input event int testIn;
+    output event int testOut;
+}
+
+## testCompile()
+
+graph test [[main]]
+{
+    input g2.*;
+    output g2.*;
+
+    node g2 = G2;
+}
+
+graph G2
+{
+    input p.*;
+    output p.*;
+
+    node p = P;
+}
+
+processor P
+{
+    input event int testIn;
+    output event int testOut;
+}
+
+## testCompile()
+
+graph test [[main]]
+{
+    input g2.test*;
+    output g2.test*;
+
+    node g2 = G2;
+}
+
+graph G2
+{
+    input p.test*;
+    output p.test*;
+
+    node p = P;
+}
+
+processor P
+{
+    input event int testIn;
+    output event int testOut;
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output event int out;
+
+    input g2.testIn;
+    output g2.*;
+
+    node g2 = G2;
+    node source = Source;
+
+    connection
+    {
+        source.out -> g2.testIn;
+        g2.testOut -> out;
+    }
+}
+
+graph G2
+{
+    input p.*;
+    output p.*;
+
+    node p = Through;
+}
+
+graph Through
+{
+    input event int testIn;
+    output event int testOut;
+
+    connection testIn -> testOut;
+}
+
+processor Source
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        loop { advance(); out <- -1; }
+    }
+}
+
+
+## testCompile()
+
+graph Generator
+{
+    output stream float32 out;
+}
+
+graph GeneratorWrapper
+{
+    output g.out;
+
+    node g = Generator[10];
+}
+
+graph Test [[ main ]]
+{
+    output stream float32 out;
+
+    node g = GeneratorWrapper;
+
+    float select (const float32[10]& in, wrap<10> item)
+    {
+        return in[item];
+    }
+
+    connection
+        select (g.out, 2) -> out;
+}
+
+
+## expectError ("26:18: error: Cannot convert type 'float32[10]' to 'const float32[12]&'")
+
+graph Generator
+{
+    output stream float32 out;
+}
+
+graph GeneratorWrapper
+{
+    output g.out;
+
+    node g = Generator[10];
+}
+
+graph Test [[ main ]]
+{
+    output stream float32 out;
+
+    node g = GeneratorWrapper;
+
+    float select (const float32[12]& in, wrap<10> item)
+    {
+        return in[item];
+    }
+
+    connection
+        select (g.out, 2) -> out;
+}
+
+## expectError ("4:25: error: Array or vector size must be an integer")
+
+graph Test
+{
+    output stream float<"invalid"> out;
+}
+
+## expectError ("4:27: error: Array or vector size must be an integer")
+
+graph Test
+{
+    output stream float<n + 2> out;
+    let n = 2.3;
+}
+
+
+## testProcessor()
+
+graph G [[ main ]]
+{
+    output event int out;
+
+    node player = std::audio_data::SamplePlayer (std::audio_data::Mono);
+    connection TriggerSample -> player.content;
+    connection player -> TestSampleOutput -> out;
+}
+
+processor TriggerSample
+{
+    output event std::audio_data::Mono content;
+
+    external float[] data [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+
+    void main()
+    {
+        content <- std::audio_data::Mono (data, 1000);
+        advance();
+    }
+}
+
+processor TestSampleOutput
+{
+    input stream float in;
+    output event int out;
+
+    void main()
+    {
+        loop (100)
+        {
+            if (in != 0)
+                out <- 1;
+
+            advance();
+        }
+
+        out <- -1;
+        advance();
+    }
+}
+
+
+## testConsole ("stepIn called")
+
+graph Track [[ main ]]
+{
+    output event int out;
+
+    connection
+        Source.stepOut -> Sink.stepIn;
+}
+
+processor Sink
+{
+    input event params::Step stepIn;
+    output event int out;
+
+    event stepIn (params::Step value)
+    {
+        console <- "stepIn called";
+    }
+
+    void main()
+    {
+        advance();
+    }
+}
+
+
+processor Source
+{
+    output event params::Step stepOut;
+
+    void main()
+    {
+        params::Step s = params::Step();
+        stepOut <- s;
+        advance();
+    }
+}
+
+namespace params
+{
+    struct Step
+    {
+        int stepIndex;
+    }
+}

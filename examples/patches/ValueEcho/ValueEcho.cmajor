@@ -1,0 +1,34 @@
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+// Simple example which converts an incoming value to an output event for logging
+
+processor ValueEcho
+{
+    input value float inValue [[ name: "Value In",  min: 0, max: 1.0, init:  0.0 ]];
+    output event float outEvent;
+
+    void main()
+    {
+        int count = 0;
+
+        loop
+        {
+            if (++count >= processor.frequency / 25)
+            {
+                outEvent <- inValue;
+                count = 0;
+            }
+
+            advance();
+        }
+    }
+}

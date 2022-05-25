@@ -1,0 +1,467 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## expectError ("2:17: error: A variable type cannot be 'void'")
+
+void f() { void v; }
+
+## expectError ("2:21: error: Cannot cast to a void type")
+
+void f() { void v = 1; }
+
+## expectError ("2:20: error: Cannot cast to a void type")
+
+void f() { let v = void(); }
+
+## expectError ("2:26: error: Cannot cast to a void type")
+
+void f() { let v = const void(); }
+
+## expectError ("2:26: error: Cannot cast to a void type")
+
+void f() { let v = const void (1); }
+
+## expectError ("2:20: error: Cannot cast to a void type")
+
+void f() { let v = Void(); }
+using Void = void;
+
+## expectError ("2:26: error: Cannot cast to a void type")
+
+void f() { let v = const Void(); }
+using Void = void;
+
+## expectError ("2:20: error: A variable type cannot be 'void'")
+
+namespace N { void v; }
+
+## expectError ("2:26: error: A variable type cannot be 'void'")
+
+namespace N { const void v; }
+
+## expectError ("2:49: error: A variable type cannot be 'void'")
+
+processor P { output stream int out; const void v; }
+
+## expectError ("2:15: error: Only parameter variables can be given reference types")
+
+namespace N { int& v; }
+
+## expectError ("2:20: error: A variable type cannot be 'void'")
+
+namespace N { Void v; }
+using Void = void;
+
+## expectError ("2:15: error: Only parameter variables can be given reference types")
+
+namespace N { Int& v; }
+using Int = int;
+
+## expectError ("3:24: error: Failed to resolve generic function call f1(int32) //// 2:22: error: Only parameter variables can be given reference types")
+
+void f1<T> (T& i) { i.type a = i; }
+void f2() { int i = 1; f1 (i); }
+
+## expectError ("2:20: error: Expected a value")
+
+void f() { let v = float; }
+
+## expectError ("2:20: error: Cannot resolve bracketed expression in this context")
+
+void f() { let x = (); }
+
+## expectError ("2:24: error: Cannot resolve bracketed expression in this context")
+
+void f() { let x = 1 + (); }
+
+## expectError ("2:23: error: Expected a value")
+
+namespace N { var v = float64[2]; }
+
+## expectError ("2:19: error: Found \"int\" when expecting identifier")
+
+int f()  { int i, int (1 + 2); }
+
+## expectError ("2:42: error: Only constant variables can be declared inside a graph")
+
+graph G { output stream int out; float64 v; }
+
+## expectError ("2:38: error: Only constant variables can be declared inside a graph")
+
+graph G { output stream int out; var v = 1.0f; }
+
+## expectError ("2:20: error: Only constant variables can be declared inside a namespace")
+
+namespace N { bool v; }
+
+## expectError ("2:19: error: Only constant variables can be declared inside a namespace")
+
+namespace N { var v = 123; }
+
+## expectError ("2:21: error: Found \"=\" when expecting identifier")
+
+namespace N { float = 1; }
+
+## expectError ("2:12: error: Expected an assignable target on the left of the '=' operator")
+
+void f() { float = 1; }
+
+## expectError ("2:28: error: Assignment is not allowed inside an expression")
+
+void f() { int a, b; b = a = 1; }
+
+## expectError ("6:9: warning: 'a' shadows another declaration with the same name")
+
+void shadow()
+{
+    { int a = 1; }
+    let a = 2;
+    int a;
+}
+
+## expectError ("5:18: warning: 'a' shadows another declaration with the same name")
+
+void shadow()
+{
+    int a = 1;
+    { let b = 2, a = 2; }
+}
+
+## expectError ("2:31: warning: 'a' shadows another declaration with the same name")
+
+void shadow (bool a)    { let a = false; }
+
+## expectError ("3:34: error: Wrong number of values to create a type 'const int32[3]'")
+
+namespace N { const int[3] v1 = (1, 2, 3); }
+namespace N { const int[3] v2 = (1, 2, 3, 4); }
+
+## expectError ("3:34: error: Wrong number of values to create a type 'const int32<3>'")
+
+namespace N { const int<3> v1 = (1, 2, 3); }
+namespace N { const int<3> v2 = (1, 2, 3, 4); }
+
+## expectError ("5:17: error: Wrong number of values to create a type 'int32[3]'")
+
+using T = int[3];
+void f1 (T n) {}
+void f2() { f1 (T(1, 2, 3)); }
+void f3() { f1 (T(1, 2, 3, 4)); }
+
+## expectError ("5:17: error: Wrong number of values to create a type 'int32<3>'")
+
+using T = int<3>;
+void f1 (T n) {}
+void f2() { f1 (T(1, 2, 3)); }
+void f3() { f1 (T(1, 2, 3, 4)); }
+
+## expectError ("3:24: error: Wrong number of values to create a type 'int32[3]'")
+
+int[3] f1()  { return (1, 2, 3); }
+int[3] f2()  { return (1, 2, 3, 4); }
+
+## expectError ("3:24: error: Wrong number of values to create a type 'int32<3>'")
+
+int<3> f1()  { return (1, 2, 3); }
+int<3> f2()  { return (1, 2, 3, 4); }
+
+## expectError ("3:24: error: Cannot convert comma-separated list to type 'wrap<128>'")
+
+const int[128] buffer;
+void f() { let i = wrap<buffer.size> (1, 2); }
+
+## expectError ("2:14: error: Cannot find symbol 'i'")
+
+void xyz() { i = 1; int i = 2; }
+
+## expectError ("2:30: error: Cannot find symbol 'i'")
+
+void xyz()  { { int i = 1; } i = 2; }
+
+## expectError ("2:23: error: The variable 'a' cannot recursively refer to itself in its initial value")
+
+namespace n { let a = a * 2; }
+
+## expectError ("2:38: error: The variable 'a' cannot recursively refer to itself in its initial value")
+
+namespace n { let a = b * 2, b = 3 + a; }
+
+## expectError ("5:23: error: The variable 'a' cannot recursively refer to itself in its initial value")
+
+namespace n
+{
+    const int[3] a = (1, 2, b[1]);
+    const int[3] b = (a[1], a[2], a[0]);
+}
+
+## expectError ("6:22: error: The variable 'a' cannot recursively refer to itself in its initial value")
+
+namespace n
+{
+    const int[3] a = (1, 2, b[1].x);
+    struct S { int x; }
+    const S[3] b = ((a[1]), (a[2]), S(a[0]));
+}
+
+## expectError ("2:20: error: Cannot find symbol 'a'")
+
+void f() { let a = a * 2; }
+
+## expectError ("3:15: error: Cannot find symbol 's'")
+
+struct S { int x; }
+void xyz()  { s.x = 1; S s; }
+
+## expectError ("3:26: error: Cannot find symbol 's'")
+
+struct S { int x; }
+void xyz()  { loop (2) { s.x = 1; } S s; }
+
+## expectError ("3:15: error: Cannot find symbol 's'")
+
+struct S { int x; }
+void xyz()  { s.real = 1; complex s; }
+
+## expectError ("2:40: error: Cannot find symbol 'x'")
+
+int f() { if (false) let x = 1; return x; }
+
+## expectError ("2:38: error: Cannot find symbol 'x'")
+
+int f() { loop (1) let x = 1; return x; }
+
+## expectError ("2:33: error: A void function cannot return a value")
+
+namespace N { void f() { return nope; } }
+
+## expectError ("2:15: error: Cannot find symbol 'Nope'")
+
+namespace N = Nope;
+
+## testFunction()
+
+bool test_scope()  { int i = 1; { int i; i = 2; } let x = i; i = 3; return i == 3 && x == 1; }
+
+struct S { wrap<16> i; }
+
+bool test_zeroinit()
+{
+    S s1;
+    S[10] s2;
+    wrap<7>[10] s3;
+
+    return s1.i == 0
+        && s2[5].i == 0
+        && s3[3] == 0;
+}
+
+bool f1()  { float[100] buffer; float value = 2.1f; return wrap<buffer.size> (value) == 2; }
+bool f2()  { float[128] buffer; float value = 2.1f; return wrap<buffer.size> (value) == 2; }
+
+bool testPostIncrement()
+{
+    int[3] buffer;
+    wrap<3> index;
+
+    buffer[index++] = 1;
+
+    return buffer[0] == 1 && buffer[1] == 0 && index == 1;
+}
+
+int32 returnOldValue (int32& n, int32 newValue)
+{
+    var result = n;
+    n = newValue;
+    return result;
+}
+
+bool testResultIsNotReference()
+{
+    int a = 10;
+    int b = returnOldValue (a, 20);
+
+    return b == 10 && a == 20;
+}
+
+bool testTypeIsAssignment()
+{
+    const int i = 1;
+    var j = i;
+
+    j++;
+
+    return (j == 2);
+}
+
+void swap1<T> (T& i, T& j)
+{
+    i.type.removeReference a = i;
+    i = j;
+    j = a;
+}
+
+void swap2<T> (T& i, T& j)
+{
+    let a = i;
+    i = j;
+    j = a;
+}
+
+bool test()
+{
+    int i1 = 1, j1 = 2, i2 = 1, j2 = 2;
+    swap1 (i1, j1);
+    swap2 (i2, j2);
+    return i1 == 2 && j1 == 1 && i2 == 2 && j2 == 1;
+}
+
+bool test2()
+{
+    int n = 1;
+    if (n++ == 1) return n == 2;
+    return false;
+}
+
+bool test3()
+{
+    int n = 1;
+    if (n++ != 1) return false; else return n == 2;
+}
+
+bool test4()
+{
+    int n = 1;
+    if (++n == 2) return n++ == 2;
+    return false;
+}
+
+bool test5()
+{
+    let x = 1;
+
+    {
+        let c = x;
+        let x = x + 7;
+        return c == 1 && x == 8;
+    }
+}
+
+## testFunction()
+
+using ArrayType = float32[9];
+
+ArrayType product() { return ArrayType(); }
+
+bool test1()
+{
+    product();
+    return true;
+}
+
+bool test2()
+{
+    complex data = 1;
+    return data.real == 1 && data.imag == 0;
+}
+
+bool testComplexArray()
+{
+    complex[4] data = (1, 2 + 1.0fi, 2.0fi, 4 + 3.0fi);
+
+    return data[0].real == 1 && data[0].imag == 0
+        && data[1].real == 2 && data[1].imag == 1
+        && data[2].real == 0 && data[2].imag == 2
+        && data[3].real == 4 && data[3].imag == 3;
+}
+
+## expectError ("2:14: error: Failed to resolve external variable 'extern'")
+
+external S[] extern;
+struct S { int a; }
+void f() { let x = extern.size; }
+
+## expectError ("2:21: error: The size of a 'wrap' or 'clamp' type must be a constant")
+
+void f() { wrap<sine.size> a; }
+external int[] sine [[ sine, frames: 100, rate: 10000, frequency: 30 ]];
+
+## expectError ("3:21: error: Failed to resolve generic function call f(int32[]) //// 2:32: error: The size of a 'wrap' or 'clamp' type must be a constant")
+
+void f<T> (const T& x) { wrap<x.size> i; }
+void foo(int[] x) { f(x); }
+
+## expectError ("2:50: error: The size of a 'wrap' or 'clamp' type must be a constant")
+
+void f() { let a = 2; wrap<a> y; var n = 3; wrap<n> x; }
+
+## testFunction()
+
+namespace test
+{
+    external float[] square [[ squarewave, numFrames: 1000, rate: 400, frequency: 8 ]];
+
+    processor P
+    {
+        output stream int out;
+        external float[] square [[ squarewave, numFrames: 1000, rate: 500, frequency: 11 ]];
+        void main() { advance(); }
+    }
+}
+
+external int[] sine [[ sine, frames: 100, rate: 10000, frequency: 30 ]];
+
+bool test1()
+{
+    return test::square[10] < 0
+        && test::P::square[10] < 0
+        && test::P::square.size == 1000
+        && sine.size == 100;
+}
+
+bool test2()
+{
+    int count = 0;
+    loop (test::P::square.size)  ++count;
+    loop (sine.size) ++count;
+    return count == 1100;
+}
+
+bool test_graph_const() { return ns::G::x == 99; }
+namespace ns { graph G { output event int out; const int x = 99; } }
+
+## expectError ("13:39: error: Cannot reference a mutable variable belonging to another processor")
+
+processor P1
+{
+    output event int out;
+    void main() { advance(); }
+    var v = 1;
+    const int z = 2;
+}
+
+processor P2
+{
+    output event int out;
+    void main() { out <- P1::z <- P1::v; advance(); }
+}
+
+## testFunction()
+
+namespace N
+{
+    const int[3] a = (1, 2, 3);
+    struct S { int x, y; }
+    const S[] s = ((a[0], 1), (2, a[1]), (a[2], 3));
+}
+
+bool test()
+{
+    return N::s[0].x == 1 && N::s[1].x == 2 && N::s[2].x == N::s[2].y;
+}

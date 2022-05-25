@@ -1,0 +1,202 @@
+/*
+    Cmajor Freeverb Example
+    =======================
+
+    Yes folks, it's yet another implementation of that classic Freeverb algorithm
+    that we all know and love!
+
+    Big shout out to Jezar, the original author of Freeverb :)
+*/
+
+graph Freeverb   [[ main ]]
+{
+    input stream float audioIn;
+    output stream float<2> audioOut;
+
+    input parameterScaler.roomSize  [[ name: "Room Size",       min: 0, max: 100, init:  80, text: "Tiny|Small|Medium|Large|Hall" ]];
+    input parameterScaler.damping   [[ name: "Damping Factor",  min: 0, max: 100, init:  50, unit: "%",  step: 1 ]];
+    input parameterScaler.width     [[ name: "Width",           min: 0, max: 100, init: 100, unit: "%",  step: 1 ]];
+    input parameterScaler.wetLevel  [[ name: "Wet Level",       min: 0, max: 100, init:  33, unit: "%",  step: 1 ]];
+    input parameterScaler.dryLevel  [[ name: "Dry Level",       min: 0, max: 100, init:  40, unit: "%",  step: 1 ]];
+
+    //==============================================================================
+    node parameterScaler   = ParameterScaler;
+    node wetGainSmoother   = std::smoothing::SmoothedValueStream (0.02f);
+    node dryGainSmoother   = std::smoothing::SmoothedValueStream (0.02f);
+    node widthSmoother     = std::smoothing::SmoothedValueStream (0.02f);
+    node dampingSmoother   = std::smoothing::SmoothedValueStream (0.02f);
+    node feedbackSmoother  = std::smoothing::SmoothedValueStream (0.02f);
+
+    node reverbL = MonoReverb (0);
+    node reverbR = MonoReverb (23);
+
+    node mixer = WetDryMixer;
+
+    connection
+    {
+        audioIn -> mixer.audioInDry;
+        audioIn -> reverbL.audioIn; reverbL -> mixer.audioInWetL;
+        audioIn -> reverbR.audioIn; reverbR -> mixer.audioInWetR;
+
+        parameterScaler.wetGainOut  -> wetGainSmoother  -> mixer.wetGain;
+        parameterScaler.dryGainOut  -> dryGainSmoother  -> mixer.dryGain;
+        parameterScaler.widthOut    -> widthSmoother    -> mixer.width;
+        parameterScaler.dampingOut  -> dampingSmoother  -> reverbL.damping, reverbR.damping;
+        parameterScaler.feedbackOut -> feedbackSmoother -> reverbL.feedback, reverbR.feedback;
+
+        mixer -> audioOut;
+    }
+}
+
+//==============================================================================
+// This processor intercepts incoming parameter events and rescales them to the correct range
+processor ParameterScaler
+{
+    input event float roomSize, damping, wetLevel, dryLevel, width;
+    output event float wetGainOut, dryGainOut, widthOut, dampingOut, feedbackOut;
+
+    let wetScaleFactor  = 1.5f;
+    let dryScaleFactor  = 2.0f;
+    let roomScaleFactor = 0.28f;
+    let roomOffset      = 0.7f;
+    let dampScaleFactor = 0.4f;
+
+    event roomSize (float newValue)    { feedbackOut <- newValue * roomScaleFactor / 100.0f + roomOffset; }
+    event damping  (float newValue)    { dampingOut  <- newValue * dampScaleFactor / 100.0f; }
+    event dryLevel (float newValue)    { dryGainOut  <- newValue * dryScaleFactor / 100.0f; }
+    event wetLevel (float newValue)    { wetGainOut  <- newValue * wetScaleFactor / 100.0f; }
+    event width    (float newValue)    { widthOut    <- newValue / 100.0f; }
+}
+
+//==============================================================================
+processor WetDryMixer
+{
+    output stream float<2> out;
+
+    input stream float audioInDry, audioInWetL, audioInWetR;
+    input stream float width, wetGain, dryGain;
+
+    void main()
+    {
+        loop
+        {
+            let wetGain1 = wetGain * (1.0f + width);
+            let wetGain2 = wetGain * (1.0f - width);
+
+            let wet = float<2> (audioInWetL * wetGain1 + audioInWetR * wetGain2,
+                                audioInWetR * wetGain1 + audioInWetL * wetGain2);
+
+            out <- wet + dryGain * audioInDry;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+graph MonoReverb (int offset)
+{
+    input stream float audioIn, damping, feedback;
+    output stream float audioOut;
+
+    node comb1 = CombFilter (float, offset + 1116);
+    node comb2 = CombFilter (float, offset + 1188);
+    node comb3 = CombFilter (float, offset + 1277);
+    node comb4 = CombFilter (float, offset + 1356);
+    node comb5 = CombFilter (float, offset + 1422);
+    node comb6 = CombFilter (float, offset + 1491);
+    node comb7 = CombFilter (float, offset + 1557);
+    node comb8 = CombFilter (float, offset + 1617);
+
+    node allpass1 = AllpassFilter (float, offset + 225);
+    node allpass2 = AllpassFilter (float, offset + 341);
+    node allpass3 = AllpassFilter (float, offset + 441);
+    node allpass4 = AllpassFilter (float, offset + 556);
+
+    connection
+    {
+        audioIn -> comb1.in,
+                   comb2.in,
+                   comb3.in,
+                   comb4.in,
+                   comb5.in,
+                   comb6.in,
+                   comb7.in,
+                   comb8.in;
+
+        damping -> comb1.damping,
+                   comb2.damping,
+                   comb3.damping,
+                   comb4.damping,
+                   comb5.damping,
+                   comb6.damping,
+                   comb7.damping,
+                   comb8.damping;
+
+        feedback -> comb1.feedback,
+                    comb2.feedback,
+                    comb3.feedback,
+                    comb4.feedback,
+                    comb5.feedback,
+                    comb6.feedback,
+                    comb7.feedback,
+                    comb8.feedback;
+
+        comb1,
+        comb2,
+        comb3,
+        comb4,
+        comb5,
+        comb6,
+        comb7,
+        comb8  -> allpass1 -> allpass2 -> allpass3 -> allpass4  -> audioOut;
+    }
+}
+
+//==============================================================================
+processor AllpassFilter (using FrameType, int delayLength)
+{
+    input  stream FrameType in;
+    output stream FrameType out;
+
+    FrameType[delayLength] buffer;
+    wrap<delayLength> index;
+
+    void main()
+    {
+        loop
+        {
+            let newValue = in;
+            let delayedValue = buffer[index];
+            buffer[index] = newValue + (delayedValue * FrameType (0.5));
+            out <- delayedValue - newValue;
+            ++index;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor CombFilter (using FrameType, int delayLength)
+{
+    input  stream FrameType in;
+    output stream FrameType out;
+    input  stream float damping, feedback;
+
+    FrameType[delayLength] buffer;
+    wrap<delayLength> index;
+    FrameType last;
+    let gain = 0.015f;
+
+    void main()
+    {
+        loop
+        {
+            let delayedValue = buffer[index];
+            out <- delayedValue;
+            last = last * damping + delayedValue * (1.0f - damping);
+            buffer[index] = last * feedback + gain * in;
+            ++index;
+            advance();
+        }
+    }
+}

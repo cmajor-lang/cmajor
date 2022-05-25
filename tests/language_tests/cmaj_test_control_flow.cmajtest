@@ -1,0 +1,596 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## testFunction()
+
+bool test_loop1()
+{
+    int c = 0;
+    loop (10) c++;
+    return c == 10;
+}
+
+bool test_loop2()
+{
+    int c = 0, num = 10;
+    loop (num) { num = 5; ++c; }
+    return c == 10;
+}
+
+bool test_loop3()
+{
+    return countLoops (5) == 5 && countLoops (-5) == 0;
+}
+
+int countLoops (int count)
+{
+    int c = 0; loop (count) ++c;
+    return c;
+}
+
+bool test_loop4()
+{
+    int c = 0, num = 10;
+    loop (num) { ++c; break; }
+    return c == 1;
+}
+
+bool test_loop5()
+{
+    int c = 0, num = 10;
+    loop (num) { continue; ++c; }
+    return c == 0;
+}
+
+bool test_while1()
+{
+    int c = 0, num = 10;
+    while (--num >= 0) c++;
+    return c == 10;
+}
+
+bool test_while2()
+{
+    int n = 0, count = 10;
+    while (count-- > 0) n++;
+    return n == 10;
+}
+
+bool test_for1()
+{
+    int c = 0;
+    for (int i = 0; i < 10; i++) c++;
+    return c == 10;
+}
+
+bool test_for2()
+{
+    int c = 0;
+    for (int i = 0; i < 10; ++i) { ++c; break; ++c; }
+    return c == 1;
+}
+
+bool test_for3()
+{
+    int c = 0;
+    for (int i = 0; i < 10; ++i) { c++; continue; ++c; }
+    return c == 10;
+}
+
+bool test_for4()
+{
+    int c = 0;
+    for (wrap<5> i) c += i;
+    return c == 1 + 2 + 3 + 4;
+}
+
+bool test_for5()
+{
+    return countRangeLoops (int[5]()) == 1 + 2 + 3 + 4;
+}
+
+int countRangeLoops<T> (T v)
+{
+    int c = 0;
+    for (wrap<v.size> i) c += i;
+    return c;
+}
+
+bool test_for6()
+{
+    int c = 0;
+    for (wrap<5> i = 2) c += i;
+    return c == 2 + 3 + 4;
+}
+
+bool test_for7()
+{
+    int c = 0;
+    for (wrap<5> i = 4) c += i;
+    return c == 4;
+}
+
+bool test_for8()
+{
+    int[6] x;
+    for (wrap<x.size> i) x[i] = i + 1;
+    return x[-1] == x.size && x[0] == 1;
+}
+
+## expectError ("2:28: error: Expected a single variable declaraion")
+
+void f() { for (wrap<2> a, b) {} }
+
+## expectError ("2:23: error: A range-based-for loop must declare a variable with a 'wrap' type")
+
+void f() { for (int32 x) {} }
+
+## expectError ("2:24: error: A range-based-for loop must declare a variable with a 'wrap' type")
+
+void f() { for (int[2] x) {} }
+
+## expectError ("5:20: error: Forward branches must be the first statement in the block")
+
+bool test()
+{
+    int i = 0;
+    forward_branch (i) -> (block1, block2);
+    block1: {}
+    block2: {}
+    return true;
+}
+
+## testFunction()
+
+bool namedScope1()
+{
+    l1: loop
+    {
+        loop break l1;
+        return false;
+    }
+
+    return true;
+}
+
+bool namedScope2()
+{
+    int a = 0;
+
+    l1: loop
+    {
+        a = 1;
+        l2: loop
+        {
+            if (a == 1)
+                break l2;
+
+            a = 3;
+            break;
+        }
+        a = 2;
+        break;
+    }
+
+    return a == 2;
+}
+
+bool namedScope3()
+{
+    int a = 0;
+
+    l1: loop (10)
+    {
+        a = 1;
+        l2:
+        {
+            if (a == 1)
+                break l1;
+            a = 3;
+        }
+        a = 2;
+    }
+
+    return a == 1;
+}
+
+bool namedScope4()
+{
+    int a = 0;
+
+    l1:
+    {
+        a = 1;
+        l2:
+        {
+            if (a == 1)
+                break l2;
+            a = 3;
+        }
+        a = 2;
+    }
+
+    return a == 2;
+}
+
+bool foo()
+{
+    l1: loop
+    {
+        loop { break l1; }
+    }
+
+    return true;
+}
+
+## expectError ("2:16: error: Expected a label name to be followed by a loop statement or braced block")
+
+void f() { l1: int x; }
+
+## expectError ("2:16: error: Expected a label name to be followed by a loop statement or braced block")
+
+void f() { l1: }
+
+## expectError ("2:16: error: Expected a label name to be followed by a loop statement or braced block")
+
+void f() { l1: l2:  }
+
+## expectError ("2:16: error: Expected a label name to be followed by a loop statement or braced block")
+
+void f() { l1: ; }
+
+## expectError ("7:40: error: Cannot find a scoped block labelled 'undefinedBlock'")
+
+bool test()
+{
+    int i = 0;
+
+    {
+        forward_branch (i) -> (block1, undefinedBlock, block2);
+        block1: {}
+        block2: {}
+    }
+
+    return true;
+}
+
+## expectError ("7:48: error: Cannot find a scoped block labelled 'parentScopeLabel'")
+
+bool test()
+{
+    int i = 0;
+
+    {
+        forward_branch (i) -> (block1, block2, parentScopeLabel);
+        block1: {}
+        block2: {}
+    }
+
+    parentScopeLabel: {}
+
+    return true;
+}
+
+## expectError ("7:40: error: Expected the name of a block label")
+
+void f()
+{
+    int i = 0;
+
+    {
+        forward_branch (i) -> (block1, i, block2);
+        block1: {}
+        block2: {}
+    }
+}
+
+## expectError ("4:11: error: The name 'l1' is already in use //// 4:5: note: See previous declaration")
+
+void f()
+{
+    l1: { l1: {} }
+}
+
+## expectError ("7:25: error: Forward branch condition must be an int32 value")
+
+bool test()
+{
+    float f = 0;
+
+    {
+        forward_branch (f) -> (block1, block2);
+        block1: {}
+        block2: {}
+    }
+
+    return true;
+}
+
+## if (getEngineName() != "wasm") { testFunction (); } else { getCurrentTestSection().reportUnsupported ("Forward branch is not supported by the wasm engine"); }
+
+bool testDefault1()
+{
+    int i = 0;
+
+    {
+        forward_branch (i) -> (block1, block2);
+        return true;
+        block1: { return false; }
+        block2: { return false; }
+    }
+}
+
+bool testDefault2()
+{
+    int i = 3;
+
+    {
+        forward_branch (i) -> (block1, block2);
+        return true;
+        block1: { return false; }
+        block2: { return false; }
+    }
+}
+
+bool testMultipleCases()
+{
+    int i = 1;
+    int sum = 0;
+
+    for (;;)
+    {
+        forward_branch (i) -> (block1, block2, block3, block4);
+        break;
+        block1: { i++; sum = sum + 1; continue; }
+        block2: { i++; sum = sum + 2; continue; }
+        block3: { i++; sum = sum + 3; continue; }
+        block4: { i++; sum = sum + 4; continue; }
+    }
+
+    return sum == 10;
+}
+
+
+bool testNoTargets()
+{
+    int i = 3;
+
+    {
+        forward_branch (i) -> ();
+        return true;
+    }
+
+    return false;
+}
+
+## testFunction()
+
+int inc (int& i)    { return ++i; }
+
+bool evaluation_order1()
+{
+    int x = 0;
+    let a = inc (x);
+    let b = inc (x);
+    return a == 1 && b == 2;
+}
+
+bool evaluation_order2()
+{
+    int x = 0;
+    let a = inc(x) - inc(x);
+    return a == -1;
+}
+
+bool evaluation_order3()
+{
+    int x = 2;
+    return findMax (inc(x) + inc(x), inc(x), inc(x)) == 7;
+}
+
+int findMax (int a, int b, int c)   { return max (a, max (b, c)); }
+
+bool evaluation_order4()
+{
+    int x = 1;
+    return inc(x) * (inc(x) - inc(x)) == -2;
+}
+
+int get (int& n) { return ++n; }
+int getConstRef (const int& n)  { return n; }
+
+int getNext (int& i)    { i++; return i; }
+
+bool evaluation_order5()
+{
+    int n = 0;
+    int<2> i = getNext (n);
+    return (i[0] == 1 && i[1] == 1);
+}
+
+bool testTernary1()
+{
+    int n = 1;
+    let x = (n == 1) ? get(n) : getConstRef (get(n)) + get(n);
+    return x == 2 && n == 2;
+}
+
+bool testTernary2()
+{
+    int n = 1;
+    let x = (n != 1) ? getConstRef (get(n)) + get(n) : get(n) + getConstRef (get(n));
+    return x == 5 && n == 3;
+}
+
+bool testShortCircuit1()
+{
+    int n = 1;
+    bool b = getConstRef (get(n)) == 2 || getConstRef (get(n)) == 3;
+    return b && n == 2;
+}
+
+bool testShortCircuit2()
+{
+    int n = 1;
+    bool b = getConstRef (get(n)) == 2 && getConstRef (get(n)) == 3;
+    return b && n == 3;
+}
+
+bool testShortCircuit3()
+{
+    int n = 1;
+    bool b = getConstRef (get(n)) == 3 || getConstRef (get(n)) == 3;
+    return b && n == 3;
+}
+
+bool testShortCircuit4()
+{
+    int n = 1;
+    bool b = getConstRef (get(n)) == 3 && getConstRef (get(n)) == 3;
+    return ! b && n == 2;
+}
+
+int returnI (int& i)        { ++i; return i; }
+
+bool testShortCircuit5()
+{
+    int i;
+    let b = returnI (i) == 1 ? returnI (i) : returnI (i) + 10;
+    return (i == 2);
+}
+
+let globalConst = true;
+
+bool test_ifconst1()
+{
+    if const (! globalConst)
+        return false;
+
+    return true;
+}
+
+bool test_ifconst2()
+{
+    if const (globalConst)
+        return true;
+    else
+        junkhere();
+
+    return false;
+}
+
+bool test_ifconst3()
+{
+    return element0 (6) == 6 && element0 (int[] (3, 4, 5)) == 3;
+}
+
+int element0<T> (T t)
+{
+    if const (T.isScalar)
+        return t;
+    else
+        return t[0];
+}
+
+int test_ifconst4<T> (T t)
+{
+    if const (T.isVector)
+    {
+        if const (T.size < 8)
+            return 1;
+        else
+            return 2;
+    }
+    else
+    {
+        return 3;
+    }
+}
+
+bool test_ifconst4()
+{
+    return test_ifconst4 (int<3>())  == 1
+        && test_ifconst4 (int<10>()) == 2
+        && test_ifconst4 (int[4]())  == 3;
+
+}
+
+bool test_ifconst5_const<T> (T v)    { bool x; if const (v.isVector) x = true; return x; }
+bool test_ifconst5_nonconst<T> (T v) { bool x; if       (v.isVector) x = true; return x; }
+
+bool test_ifconst5()
+{
+    int<4> v;
+    return v.test_ifconst5_const() && v.test_ifconst5_nonconst();
+}
+
+## expectError ("2:36: error: Expected a constant value")
+
+bool f()  { var x = 1; if const (x == 1) return true; return false; }
+
+## expectError ("2:49: error: A void function cannot return a value")
+
+void f() { int a; ++a; if const (a == 1) return true; }
+
+## testCompile()
+
+processor P
+{
+    output stream int out;
+    void main() { return; loop { break; } advance(); }
+}
+
+## testProcessor()
+
+processor P
+{
+    output stream int out;
+
+    int x = 1;
+
+    void main()
+    {
+        if (x == 2)
+        {
+            return;
+            return;
+        }
+
+        loop
+        {
+            out <- 1;
+            advance();
+            return;
+            return;
+        }
+        return;
+    }
+}
+
+processor Check
+{
+    input stream int in;
+    output stream int out;
+
+    void main()
+    {
+        out <- in == 1 ? 1 : 0;  advance();
+        out <- in == 0 ? 1 : 0;  advance();
+        out <- in == 0 ? 1 : 0;  advance();
+        out <- in == 0 ? 1 : 0;  advance();
+        loop { out <- -1; advance(); }
+    }
+}
+
+graph test [[main]]
+{
+    output stream int out;
+    connection P -> Check -> out;
+}

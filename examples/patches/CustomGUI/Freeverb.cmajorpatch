@@ -1,0 +1,19 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.customgui",
+    "version":          "1.0",
+    "name":             "Freeverb (with custom GUI)",
+    "description":      "A version of the Freeverb patch with a modified GUI",
+    "category":         "effect",
+    "manufacturer":     "Sound Stacks Ltd",
+    "isInstrument":     false,
+
+    "source":           "Freeverb.cmajor",
+
+    "view":             {
+                            "html": "web_ui/index.html",
+                            "width": 800,
+                            "height": 700,
+                            "resizable": false
+                        }
+}

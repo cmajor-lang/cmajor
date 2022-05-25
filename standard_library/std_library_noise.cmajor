@@ -1,0 +1,116 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.noise
+
+/**
+    These processors can be used to generate various flavours of noise.
+*/
+namespace std::noise
+{
+    /// Simple white noise generator.
+    /// See https://en.wikipedia.org/wiki/White_noise
+    processor White
+    {
+        output stream float32 out;
+
+        std::random::RNG rng;
+
+        void init()
+        {
+            rng.seed (201L + processor.id);
+        }
+
+        void main()
+        {
+            loop
+            {
+                out <- rng.getBipolar();
+                advance();
+            }
+        }
+    }
+
+    /// Brown (a.k.a. Brownian) noise generator.
+    /// See https://en.wikipedia.org/wiki/Brownian_noise
+    processor Brown
+    {
+        output stream float32 out;
+
+        std::random::RNG rng;
+        float32 lastLevel;
+        let filter = 0.998f;
+        let scale = 32.0f;
+
+        void init()
+        {
+            rng.seed (301L + processor.id);
+        }
+
+        void main()
+        {
+            loop
+            {
+                let next = rng.getBipolar();
+                var level = lastLevel + next;
+
+                if (level < -scale || level > scale)
+                    level -= next;
+
+                level *= filter;
+                lastLevel = level;
+                out <- (1.0f / scale) * level;
+                advance();
+            }
+        }
+    }
+
+    /// Pink noise generator
+    /// See https://en.wikipedia.org/wiki/Pink_noise
+    processor Pink
+    {
+        output stream float32 out;
+
+        std::random::RNG rng;
+        float[12] values;
+        int32 sampleCount;
+        float32 lastLevel;
+
+        void init()
+        {
+            rng.seed (401L + processor.id);
+        }
+
+        void main()
+        {
+            loop
+            {
+                let next = rng.getBipolar();
+                let count = ++sampleCount;
+                var level = lastLevel;
+
+                for (wrap<values.size> i)
+                {
+                    if (((count >> i) & 1) != 0)
+                    {
+                        level -= values[i];
+                        values[i] = next;
+                        level += next;
+                        break;
+                    }
+                }
+
+                lastLevel = level;
+                out <- (1.0f / float32 (values.size - 1)) * level;
+                advance();
+            }
+        }
+    }
+}

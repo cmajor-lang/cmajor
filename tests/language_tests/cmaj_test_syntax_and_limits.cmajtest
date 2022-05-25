@@ -1,0 +1,2047 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## expectError ("8:1: error: Import statements can only be declared at the start of a namespace")
+
+processor P
+{
+    output stream int out;
+    void main()  { loop advance(); }
+}
+
+import xx;
+
+## expectError ("4:5: error: Import statements can only be declared at the start of a namespace")
+
+processor P
+{
+    import xx;
+    output stream int out;
+    void main()  { loop advance(); }
+}
+
+## expectError ("6:14: error: External declarations do not require the 'const' keyword")
+
+processor A
+{
+    output stream float out;
+
+    external const int i;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+## expectError ("2:7: error: A processor must declare at least one output")
+
+graph NoOutputs
+{
+    input stream float in;
+}
+
+## expectError ("2:11: error: A processor must declare at least one output")
+
+processor NoOutputs
+{
+    input stream float in;
+
+    void main() { advance(); }
+}
+
+## expectError ("2:30: error: Identifiers beginning with an underscore are reserved for system use")
+
+namespace N { const float<3> _x; }
+
+## expectError ("2:15: error: Identifiers beginning with an underscore are reserved for system use")
+
+namespace N { _Type foo() {} }
+
+## expectError ("2:19: error: Unexpected character '$' in source")
+
+namespace N { let $x = 123; }
+
+## expectError ("2:14: error: Found \"->\" when expecting \";\"")
+
+void f() { a -> b; }
+
+## expectError ("7:10: error: Unexpected character 'Ω' in source")
+
+namespace N
+{
+    // non-ascii OK in comments: 😀Ω😀
+    let s = "non-ascii OK in string 😀Ω😀";
+
+    void ΩnotOK() {}
+}
+
+## expectError ("7:10: error: Unexpected character '😀' in source")
+
+namespace N
+{
+    // non-ascii OK in comments: 😀Ω😀
+    let s = "non-ascii OK in string 😀Ω😀";
+
+    void 😀notOK() {}
+}
+
+## expectError ("6:22: error: Syntax error in unicode escape sequence")
+
+namespace N
+{
+    let ok2   = "\a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\v\w\x\y\z";
+    let ok1   = "xyz\ud83f\u0000x";
+    let dodgy = "\u12";
+}
+
+## expectError ("2:33: error: Syntax error in unicode escape sequence")
+
+namespace N { let dodgy = "\u000"; }
+
+## expectError ("2:31: error: Syntax error in unicode escape sequence")
+
+namespace N { let dodgy = "\ufx"; }
+
+## expectError ("3:6: error: Identifier too long")
+
+bool x23456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456()  { return true; }
+bool x23456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_1234567() { return true; }
+
+## expectError ("5:9: error: Identifier too long")
+
+namespace N
+{
+    let x23456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456 = 0;
+    let x23456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_1234567 = 0;
+}
+
+## testFunction()
+
+int total (int p001, int p002, int p003, int p004, int p005, int p006, int p007, int p008, int p009,int p010, int p011, int p012, int p013, int p014, int p015, int p016, int p017, int p018, int p019,int p020,
+           int p021, int p022, int p023, int p024, int p025, int p026, int p027, int p028, int p029,int p030, int p031, int p032, int p033, int p034, int p035, int p036, int p037, int p038, int p039,int p040,
+           int p041, int p042, int p043, int p044, int p045, int p046, int p047, int p048, int p049,int p050, int p051, int p052, int p053, int p054, int p055, int p056, int p057, int p058, int p059,int p060,
+           int p061, int p062, int p063, int p064, int p065, int p066, int p067, int p068, int p069,int p070, int p071, int p072, int p073, int p074, int p075, int p076, int p077, int p078, int p079,int p080,
+           int p081, int p082, int p083, int p084, int p085, int p086, int p087, int p088, int p089,int p090, int p091, int p092, int p093, int p094, int p095, int p096, int p097, int p098, int p099,int p100,
+           int p101, int p102, int p103, int p104, int p105, int p106, int p107, int p108, int p109,int p110, int p111, int p112, int p113, int p114, int p115, int p116, int p117, int p118, int p119,int p120,
+           int p121, int p122, int p123, int p124, int p125, int p126, int p127, int p128)
+{
+    return p001 + p002 + p003 + p004 + p005 + p006 + p007 + p008 + p009 + p010 + p011 + p012 + p013 + p014 + p015 + p016 + p017 + p018 + p019 + p020
+         + p021 + p022 + p023 + p024 + p025 + p026 + p027 + p028 + p029 + p030 + p031 + p032 + p033 + p034 + p035 + p036 + p037 + p038 + p039 + p040
+         + p041 + p042 + p043 + p044 + p045 + p046 + p047 + p048 + p049 + p050 + p051 + p052 + p053 + p054 + p055 + p056 + p057 + p058 + p059 + p060
+         + p061 + p062 + p063 + p064 + p065 + p066 + p067 + p068 + p069 + p070 + p071 + p072 + p073 + p074 + p075 + p076 + p077 + p078 + p079 + p080
+         + p081 + p082 + p083 + p084 + p085 + p086 + p087 + p088 + p089 + p090 + p091 + p092 + p093 + p094 + p095 + p096 + p097 + p098 + p099 + p100
+         + p101 + p102 + p103 + p104 + p105 + p106 + p107 + p108 + p109 + p110 + p111 + p112 + p113 + p114 + p115 + p116 + p117 + p118 + p119 + p120
+         + p121 + p122 + p123 + p124 + p125 + p126 + p127 + p128;
+}
+
+bool testParams()
+{
+    return total (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1) == 128;
+}
+
+## expectError ("8:92: error: Too many function parameters")
+
+int total (int p001, int p002, int p003, int p004, int p005, int p006, int p007, int p008, int p009,int p010, int p011, int p012, int p013, int p014, int p015, int p016, int p017, int p018, int p019,int p020,
+           int p021, int p022, int p023, int p024, int p025, int p026, int p027, int p028, int p029,int p030, int p031, int p032, int p033, int p034, int p035, int p036, int p037, int p038, int p039,int p040,
+           int p041, int p042, int p043, int p044, int p045, int p046, int p047, int p048, int p049,int p050, int p051, int p052, int p053, int p054, int p055, int p056, int p057, int p058, int p059,int p060,
+           int p061, int p062, int p063, int p064, int p065, int p066, int p067, int p068, int p069,int p070, int p071, int p072, int p073, int p074, int p075, int p076, int p077, int p078, int p079,int p080,
+           int p081, int p082, int p083, int p084, int p085, int p086, int p087, int p088, int p089,int p090, int p091, int p092, int p093, int p094, int p095, int p096, int p097, int p098, int p099,int p100,
+           int p101, int p102, int p103, int p104, int p105, int p106, int p107, int p108, int p109,int p110, int p111, int p112, int p113, int p114, int p115, int p116, int p117, int p118, int p119,int p120,
+           int p121, int p122, int p123, int p124, int p125, int p126, int p127, int p128, int p129)
+{
+    return p001 + p002 + p003 + p004 + p005 + p006 + p007 + p008 + p009 + p010 + p011 + p012 + p013 + p014 + p015 + p016 + p017 + p018 + p019 + p020
+         + p021 + p022 + p023 + p024 + p025 + p026 + p027 + p028 + p029 + p030 + p031 + p032 + p033 + p034 + p035 + p036 + p037 + p038 + p039 + p040
+         + p041 + p042 + p043 + p044 + p045 + p046 + p047 + p048 + p049 + p050 + p051 + p052 + p053 + p054 + p055 + p056 + p057 + p058 + p059 + p060
+         + p061 + p062 + p063 + p064 + p065 + p066 + p067 + p068 + p069 + p070 + p071 + p072 + p073 + p074 + p075 + p076 + p077 + p078 + p079 + p080
+         + p081 + p082 + p083 + p084 + p085 + p086 + p087 + p088 + p089 + p090 + p091 + p092 + p093 + p094 + p095 + p096 + p097 + p098 + p099 + p100
+         + p101 + p102 + p103 + p104 + p105 + p106 + p107 + p108 + p109 + p110 + p111 + p112 + p113 + p114 + p115 + p116 + p117 + p118 + p119 + p120
+         + p121 + p122 + p123 + p124 + p125 + p126 + p127 + p128 + p129;
+}
+
+bool testParams()
+{
+    return total (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1) == 129;
+}
+
+## expectError ("2:94: error: This value is too large to fit into an int32, did you mean to add an 'i64' suffix?")
+
+int64 nope() { return 2147483648_i64 + 2147483647 + -2147483647 + -2147483648 + 0x7fffffff + 2147483648; }
+
+## expectError ("2:94: error: This value is too large to fit into an int32, did you mean to add an 'i64' suffix?")
+
+int64 nope() { return 2147483648_i64 + 2147483647 + -2147483647 + -2147483648 + 0x7fffffff + 0x80000000; }
+
+## expectError ("2:60: error: This value is too large to fit into an int32, did you mean to add an 'i64' suffix?")
+
+int64 nope() { return 0b01111111111111111111111111111111 + 0b10000000000000000000000000000000; }
+
+## expectError ("2:23: error: Integer literal is too large to be represented")
+
+int64 nope() { return 0b111111111111111111111111111111111111111111111111111111111111111111111111111111111111111; }
+
+## expectError ("2:30: error: Octal literals are not supported")
+
+namespace nope { let octal = 0123; }
+
+## expectError ("2:23: error: Octal literals are not supported")
+
+int64 nope() { return 0666; }
+
+## expectError ("2:23: error: Integer literal is too large to be represented")
+
+int64 nope() { return 0xffffffffffffffff1; }
+
+## expectError ("2:27: error: Unrecognised suffix on literal")
+
+namespace N { let f = 2.0f31; }
+
+## expectError ("2:29: error: Unrecognised suffix on literal")
+
+namespace N { let f = 2.0f643; }
+
+## expectError ("5:22: error: Illegal array size")
+
+namespace N
+{
+    let array1 = int[1] (123);
+    let array2 = int[0] (123);
+}
+
+## expectError ("5:22: error: Illegal array size")
+
+namespace N
+{
+    let array1 = int[1] (123);
+    let array2 = int[-1] (123);
+}
+
+## expectError ("5:18: error: Too many elements")
+
+namespace N
+{
+     const float[2147483647L] array1;
+     const float[2147483648L] array2;
+}
+
+## expectError ("5:35: error: Too many elements")
+
+namespace N
+{
+     const float[] array1 = float[2147483647L] (1);
+     const float[] array2 = float[2147483648L] (1);
+}
+
+## expectError ("5:35: error: Too many elements")
+
+namespace N
+{
+     const float[] array1 = float[2147483647L]();
+     const float[] array2 = float[2147483648L]();
+}
+
+## expectError ("5:25: error: Too many elements")
+
+namespace N
+{
+     let array1 = float[2147483647L]();
+     let array2 = float[2147483648L]();
+}
+
+## expectError ("5:25: error: Too many elements")
+
+namespace N
+{
+     let array1 = float[2147483647L] (1);
+     let array2 = float[2147483648L] (1);
+}
+
+## expectError ("1:19: error: Unterminated '/*' comment")
+/**** //
+## expectError ("1:19: error: Expected a function or variable declaration")
+****/
+
+## expectError ("4:2: error: Expected a graph, processor or namespace declaration")
+
+namespace N {}}
+
+## expectError ("6:1: error: Expected a function or variable declaration")
+
+namespace N { namespace NN {
+
+## expectError ("2:6: error: Found \"processor\" when expecting identifier")
+
+void processor (int n) {}
+
+## expectError ("2:18: error: Found \":\" when expecting identifier")
+
+namespace N { foo: int x; }
+
+## expectError ("2:19: error: Found int32 literal when expecting identifier")
+
+namespace N { let 1 = 2; }
+
+## expectError ("2:29: error: Found int32 literal when expecting \",\"")
+
+void f() { let f = int[] (2 3); }
+
+## expectError ("2:12: error: Expected a statement")
+
+void f() { int64[2]; }
+
+## expectError ("2:23: error: Expected a value")
+
+int64[2] f() { return int64[2]; }
+
+## expectError ("2:20: error: Expected a value")
+
+void f() { let v = bool<2; }
+
+## expectError ("2:25: error: Expected a value")
+
+void f() { let i = 1L & int64; }
+
+## expectError ("2:19: error: A void function cannot return a value")
+
+void f() { return void; }
+
+## expectError ("2:11: error: Found \"{\" when expecting identifier")
+
+const f() {}
+
+## expectError ("2:16: error: Found identifier when expecting \"(\"")
+
+void f() { for i = 0; }
+
+## expectError ("2:17: error: Expected a statement")
+
+void f() { loop 10; }
+
+## expectError ("2:16: error: Expected a statement")
+
+void f() { loop; }
+
+## expectError ("2:20: error: Expected a value")
+
+void f() { let x = void; }
+
+## expectError ("2:25: error: Expected a type")
+
+void f() { let x = const<1>; }
+
+## expectError ("3:31: error: Could not resolve function or cast")
+
+struct S { float x; }
+void f() { int64[2]; let x = S.at(1); }
+
+## expectError ("2:12: error: Expected a value")
+
+void f() { int64 + 2; }
+
+## expectError ("2:21: error: Found \"*\" when expecting identifier")
+
+void f() { let x = (*xyz); }
+
+## expectError ("2:16: error: Found \"(\" when expecting identifier")
+
+void f() { let (x) = 1; }
+
+## expectError ("2:12: error: This constant expression will have no effect")
+
+void f() { std; }
+
+## expectError ("2:28: error: This constant expression will have no effect")
+
+void f() { int<4> i = 1; i[1]; }
+
+## expectError ("2:26: error: Found float32 literal when expecting \";\"")
+
+void f() { var x = (int) 2.0f; }
+
+## expectError ("2:16: error: Wrong number of arguments to instantiate namespace 'std'")
+
+void f() { std(1); }
+
+## expectError ("2:9: error: Expected a type")
+
+void f (processor n) {}
+
+## expectError ("3:15: error: Expected a namespace name")
+
+processor P { output event int x; }
+namespace n = P;
+
+## expectError ("2:37: error: Expected a type")
+
+processor P(using x) { output event x x; }
+namespace n = P(int);
+
+## expectError ("3:15: error: Expected a namespace name")
+
+processor P(using x) { output event x y; }
+namespace n = P(int);
+
+## expectError ("2:16: error: Found \"return\" when expecting identifier")
+
+void f() { if (return) {} }
+
+## expectError ("2:16: error: Found \"break\" when expecting identifier")
+
+void f() { if (break) {} }
+
+## expectError ("error: Stack size limit exceeded - program requires 50.8 KB, maximum allowed is 48.8 KB", { maxStackSize: 50000 })
+
+int bigStack1() { int[8000] n; n[2]++; return n[2]; }
+int bigStack2() { int[5000] n; n[2] += bigStack1(); return n[2]; }
+bool test() { return bigStack2() != 0; }
+
+## testFunction ( { maxStackSize : 60000 })
+
+int bigStack1() { int[8000] n; n[2]++; return n[2]; }
+int bigStack2() { int[5000] n; n[2] += bigStack1(); return n[2]; }
+bool test() { return bigStack2() != 0; }
+
+## expectError ("2:17: error: Event handler 'f' does not match an event input")
+
+graph G { event f(float f) {} }
+
+## expectError ("7:11: error: Graphs cannot contain both event handlers and connections for the same endpoint")
+
+graph G
+{
+    input event float in;
+    output event float out;
+
+    event in (float f) {}
+
+    connection
+        in -> out;
+}
+
+## expectError ("2:21: error: Event handlers can only be declared inside a processor or graph")
+
+namespace N { event f(float f) {} }
+
+## expectError ("2:1: error: A namespace cannot contain endpoint declarations")
+
+output X {}
+
+## expectError ("2:1: error: A namespace cannot contain endpoint declarations")
+
+input X {}
+
+## expectError ("5:5: error: A processor can only be defined inside a namespace")
+
+processor P1
+{
+    output stream int out;
+    processor P2 {}
+    void main() { loop advance(); }
+}
+
+## expectError ("5:5: error: A graph can only be defined inside a namespace")
+
+processor P1
+{
+    output stream int out;
+    graph G1 {}
+    void main() { loop advance(); }
+}
+
+## expectError ("5:5: error: A processor can only be defined inside a namespace")
+
+graph G
+{
+    output stream int out;
+    processor P {}
+}
+
+## expectError ("5:5: error: A graph can only be defined inside a namespace")
+
+graph G
+{
+    output stream int out;
+    graph P {}
+}
+
+## expectError ("2:1: error: Expected a function or variable declaration")
+
+node X = x;
+
+## expectError ("5:2: error: A brace-enclosed declaration should not be followed by a semicolon")
+
+processor P
+{
+    output stream int x;
+};
+
+## expectError ("4:25: error: Expected a function or variable declaration")
+
+processor P
+{
+    output stream int x;;
+}
+
+## expectError ("2:37: error: Expected a function or variable declaration")
+
+void f() { int lotsOfSemicolons;;; };;;
+
+## expectError ("2:5: error: Only constant variables can be declared inside a namespace")
+
+int x = 123;
+
+## expectError ("2:41: error: Expected a processor name")
+
+graph g { output stream int o; node x = 123; }
+
+## expectError ("2:21: error: The processor.latency value can only be declared in a processor")
+
+graph g { processor.latency = 123; }
+
+## expectError ("5:50: error: Unknown processor property")
+
+processor P
+{
+    output event int out;
+    void main() { advance();;; let a = processor.nope; }
+}
+
+## expectError ("5:15: error: A namespace can only be defined inside a namespace")
+
+processor P
+{
+    output stream float out1;
+    namespace stuff { void f() {} }
+    void main() { loop advance(); }
+}
+
+## expectError ("6:5: error: Endpoint declarations must all appear at the start of the processor")
+
+processor P
+{
+    output event int out;
+    void f() {}
+    input event int in;
+    void main() { loop advance(); }
+}
+
+## expectError ("2:11: error: A processor must contain a main() function")
+
+processor P { output stream int out; }
+
+## expectError ("6:10: error: A processor cannot contain more than one main() function")
+
+processor P
+{
+    output stream int out;
+    void main() { loop advance(); }
+    void main() { loop advance(); }
+}
+
+## expectError ("6:10: error: The main() and init() functions may only be declared inside a processor")
+
+graph test [[ main ]]
+{
+    output stream int out;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+## expectError ("6:10: error: The main() and init() functions may only be declared inside a processor")
+
+graph test [[ main ]]
+{
+    output stream int out;
+
+    void init()
+    {
+    }
+}
+
+## expectError ("4:10: error: The main() and init() functions may only be declared inside a processor")
+
+namespace T
+{
+    void init (int i)
+    {
+    }
+}
+
+## expectError ("4:10: error: The main() and init() functions may only be declared inside a processor")
+
+namespace T
+{
+    void main()
+    {
+    }
+}
+
+## expectError ("2:27: error: Namespace specialisations may only be used in namespaces")
+
+processor test (namespace X)
+{
+    output event float out;
+}
+
+## expectError ("6:16: error: The main() function cannot be called from user code")
+
+processor P
+{
+    output stream int out;
+    void main() { loop advance(); }
+    void f() { main(); }
+}
+
+## expectError ("5:22: error: The name 'main' is not a valid endpoint name")
+
+processor P
+{
+    output stream int out;
+    input stream int main;
+    void main() { advance(); }
+}
+
+## expectError ("4:23: error: The name 'main' is not a valid endpoint name")
+
+processor P
+{
+    output stream int main;
+    void main() { advance(); }
+}
+
+## expectError ("4:23: error: The name 'init' is not a valid endpoint name")
+
+processor P
+{
+    output stream int init;
+    void main() { advance(); }
+}
+
+## expectError ("4:26: error: 'void' is not a valid data type for endpoints")
+
+processor P
+{
+    output event (int32, void) out;
+    void main() { advance(); }
+}
+
+## expectError ("5:18: error: 'void' is not a valid data type for endpoints")
+
+processor P
+{
+    output stream int out;
+    input stream void in;
+    void main() { advance(); }
+}
+
+## expectError ("5:17: error: Expected a type")
+
+processor P
+{
+    output stream int out;
+    input event out in;
+    void main() { advance(); }
+}
+
+## expectError ("4:19: error: Multiple data types not supported by this endpoint type")
+
+processor P
+{
+    output stream (int32, int64) out;
+    void main() { advance(); }
+}
+
+## expectError ("5:25: error: Duplicate types found in type list: float32 and float32")
+
+processor P
+{
+    output event float audioOut;
+    input event (float, float32) eventIn;
+    void main() { advance(); }
+}
+
+## expectError ("4:26: error: Duplicate types found in type list: int32 and int32")
+
+processor P
+{
+    output event (int32, int) out;
+    void main() { advance(); }
+}
+
+## expectError ("4:36: error: Duplicate types found in type list: int32<1> and int32")
+
+processor P
+{
+    output event (float, int32<1>, int) out;
+    void main() { advance(); }
+}
+
+## expectError ("4:48: error: Duplicate types found in type list: float32<1> and float32")
+
+processor P
+{
+    output event (float32<1>, int32, int32<2>, float) out;
+    void main() { advance(); }
+}
+
+## expectError ("4:44: error: Duplicate types found in type list: int32<2> and int32<2>")
+
+processor P
+{
+    output event (float32<2>, int<2>, int32<2>, float) out;
+    void main() { advance(); }
+}
+
+## expectError ("6:27: error: Cannot read from an output")
+
+processor P
+{
+    output event float out;
+    input event float in;
+    void main() { let x = out; advance(); }
+}
+
+## expectError ("6:26: error: Cannot read from an output")
+
+processor P
+{
+    output event float out;
+    input event float in;
+    void main() { out <- out; advance(); }
+}
+
+## expectError ("6:27: error: Event inputs must be handled in event callback functions, they cannot be read as expressions")
+
+processor P
+{
+    output event float out;
+    input event float in;
+    void main() { let x = in + out; advance(); }
+}
+
+## expectError ("2:30: error: Processor properties are only valid inside a processor declaration")
+
+void f() { let x = processor.period; }
+
+## expectError ("2:49: error: Expected a variable declaration")
+
+void breakAndContinueInSillyPlaces()     { for (break;;) }
+
+## expectError ("2:49: error: Expected a variable declaration")
+
+void breakAndContinueInSillyPlaces()     { for (continue;;) }
+
+## expectError ("2:49: error: Expected a variable declaration")
+
+void breakAndContinueInSillyPlaces()     { for (return;;) }
+
+## expectError ("2:67: error: Found \"break\" when expecting identifier")
+
+void breakAndContinueInSillyPlaces()     { for (int i = 1; i < 2; break) }
+
+## expectError ("2:67: error: Found \"return\" when expecting identifier")
+
+void breakAndContinueInSillyPlaces()     { for (int i = 1; i < 2; return) }
+
+## expectError ("2:67: error: Found \"continue\" when expecting identifier")
+
+void breakAndContinueInSillyPlaces()     { for (int i = 1; i < 2; continue) }
+
+## expectError ("2:60: error: Found \"break\" when expecting identifier")
+
+void breakAndContinueInSillyPlaces()     { for (int i = 1; break; ++i) }
+
+## expectError ("2:60: error: Found \"continue\" when expecting identifier")
+
+void breakAndContinueInSillyPlaces()     { for (int i = 1; continue; ++i) }
+
+## expectError ("2:60: error: Found \"return\" when expecting identifier")
+
+void breakAndContinueInSillyPlaces()     { for (int i = 1; return; ++i) }
+
+## expectError ("2:21: error: Expected a variable declaration")
+
+void f()     { for ({ int i = 1 }; i < 10; ++i) }
+
+## expectError ("2:40: error: Found \"{\" when expecting identifier")
+
+void f()     { for (int i = 1; i < 10; { ++i; break; }) }
+
+## expectError ("2:29: error: Number of loop iterations must be a positive integer")
+
+void negativeLoop() { loop (-1) {} }
+
+## expectError ("2:39: error: The 'break' statement can only be used inside a loop")
+
+void foo()  { label: { break label; } break; label2: { break label2; } }
+
+## expectError ("2:24: error: The 'break' statement can only be used inside a loop")
+
+void foo()  { label: { break; } break; label2: { break label2; } }
+
+## expectError ("2:41: error: The 'continue' statement can only be used inside a loop")
+
+void foo()  { label: {{ break label; }} continue; label2: { break label2; } }
+
+## expectError ("2:55: error: This statement does not have a parent block or loop labelled 'label'")
+
+void foo()  { label: { break label; } label2: { break label; } }
+
+## expectError ("2:37: error: The 'continue' statement can only be used inside a loop")
+
+void foo()  { label: { break label; continue label; } }
+
+## expectError ("6:5: error: The name 'label' is already in use //// 5:5: note: See previous declaration")
+
+void foo()
+{
+    { label: {} }
+    label: {}
+    label: {}
+}
+
+## expectError ("6:34: error: A ternary operator cannot be used as a statement")
+
+processor X
+{
+    int x;
+    int foo() { return ++x; }
+    void main()     { 1 + 2 == 3 ? foo() : 5; advance(); }
+}
+
+## expectError ("3:37: error: The ternary operator must return non-void values")
+
+void foo() {}
+void foo2()  { let x = 2 + 3 == 4 ? foo() : 2; }
+
+## expectError ("3:11: error: The name 'X' is already in use //// 2:11: note: See previous declaration")
+
+processor X { void main() { advance(); }}
+processor X { void main() { advance(); }}
+
+## expectError ("3:8: error: The name 'X' is already in use //// 2:11: note: See previous declaration")
+
+processor X { output event int out; void main() { advance(); } }
+struct X { complex c; }
+
+## expectError ("3:11: error: The name 'X' is already in use //// 2:11: note: See previous declaration")
+
+processor X { output event int out; void main() { advance(); } }
+namespace X {}
+
+## expectError ("3:6: error: The name 'X' is already in use //// 2:11: note: See previous declaration")
+
+processor X { output event int out; void main() { advance(); } }
+void X() {}
+
+## expectError ("3:7: error: The name 'X' is already in use //// 2:11: note: See previous declaration")
+
+processor X { output event int out; void main() { advance(); } }
+using X = X;
+
+## expectError ("2:8: error: The name 'x' is already in use //// 2:8: note: See previous declaration")
+
+struct S { int S, x, y, x; }
+
+## expectError ("3:6: error: The name 'x' is already in use //// 2:11: note: See previous declaration")
+
+namespace x (using T = int) {}
+void x() {}
+
+## expectError ("3:11: error: The name 'n' is already in use //// 2:11: note: See previous declaration")
+
+namespace n { void f() {} }
+namespace n (using T = complex64) { void f() {} }
+void f() { n::f(); }
+
+## expectError ("2:35: error: The name 'T' is already in use //// 2:20: note: See previous declaration")
+
+namespace n (using T = int, using T = int) {}
+
+## expectError ("2:37: error: The name 'T' is already in use //// 2:20: note: See previous declaration")
+
+namespace n (using T = int) { using T = int; }
+
+## expectError ("8:23: error: This identifier cannot have a namespace qualifier")
+
+namespace N
+{
+    void f() {}
+    struct S { bool b; }
+}
+
+void f() { N::S s; s.N::f(); }
+
+## expectError ("2:12: error: This constant expression will have no effect")
+
+void f() { 123; }
+
+## expectError ("2:12: error: This constant expression will have no effect")
+
+void f() { "xyz"; }
+
+## expectError ("2:14: error: This constant expression will have no effect")
+
+void f() { 1 + sin (1.0); }
+
+## testProcessor()
+
+processor test
+{
+    output event int out;
+
+    int n;
+    int nextN()  { return ++n; }
+
+    void main()
+    {
+        n = 1;
+        let x = 1000 * n + 100 * nextN() + 10 * nextN() + n;
+        let expectedX = 1233;
+        out <- (x == expectedX ? 1 : 0);
+        loop { advance(); out <- -1; }
+    }
+}
+
+## expectError ("error: Cannot find a main processor or graph to use", {"doNotWrapInTestNamespace":true})
+
+processor test (int i = 1) [[ main ]]
+{
+    output stream float32 out;
+    void main() { advance(); }
+}
+
+## expectError ("6:19: error: Expected a processor name")
+
+graph test
+{
+    output stream int out;
+    input x.y;
+    node x = std::midi;
+}
+
+## testCompile()
+
+processor P1
+{
+    output stream float out;
+    input stream int in;
+
+    void main()  { loop { out <- float (in); advance(); } }
+}
+
+namespace N1
+{
+    using T = int32;
+
+    processor P
+    {
+        output stream float out;
+        input stream T in;
+
+        void main() { loop { out <- out.type (in); advance(); } }
+    }
+}
+
+namespace N2
+{
+    processor P()
+    {
+        input stream float in;
+        output stream T out;
+
+        void main()  { loop { out <- T(in); advance(); } }
+    }
+
+    using T = int32;
+}
+
+namespace N3
+{
+    processor P
+    {
+        output stream float32 out;
+        input event T eventIn;
+
+        void main()  { loop { out <- out.type(); advance(); } }
+    }
+
+    struct T { int i; }
+}
+
+## expectError ("2:12: error: Expected 1 or 2 arguments")
+
+void f() { static_assert(); }
+
+## expectError ("2:12: error: Static assertion failure")
+
+void f() { static_assert (float.isArray); }
+
+## expectError ("2:12: error: nope")
+
+void f() { static_assert (float.isArray, "nope"); }
+
+## expectError ("2:44: error: Expected a string literal error message as the second argument")
+
+void f() { static_assert (float.isArray, 2 + 3); }
+
+## expectError ("2:49: error: nope2")
+
+void f() { static_assert (1 + 1 == 2, "nope1"); static_assert (1 + 1 == 3, "nope2"); }
+
+## expectError ("2:27: error: Cannot find symbol 'nope'")
+
+void f() { static_assert (nope, "nope"); }
+
+## if (getEngineName() != "cpp") expectError ("8:9: error: nope")
+
+processor P
+{
+    output stream int out;
+
+    void main()
+    {
+        static_assert (processor.frequency < 0, "nope");
+        advance();
+    }
+}
+
+## if (getEngineName() != "cpp") expectError ("5:5: error: nope")
+
+processor P
+{
+    output stream int out;
+    static_assert (processor.frequency < 0, "nope");
+    void main() { advance(); }
+}
+
+## expectError ("8:9: error: nope")
+
+processor P (int param)
+{
+    output stream int out;
+
+    void main()
+    {
+        static_assert (param > 10, "nope");
+        advance();
+    }
+}
+
+graph G
+{
+    output stream int out;
+    node p = P(1);
+    connection p.out -> out;
+}
+
+## expectError ("8:9: error: nope")
+
+processor P (using param)
+{
+    output stream int out;
+
+    void main()
+    {
+        static_assert (param.isFloat, "nope");
+        advance();
+    }
+}
+
+graph G
+{
+    output stream int out;
+    node p = P(int);
+    connection p.out -> out;
+
+    const int c = 100;
+    static_assert (123 == c + 23);
+}
+
+## expectError ("8:9: error: nope")
+
+processor P (using param)
+{
+    output stream int out;
+
+    void main()
+    {
+        static_assert (param.isFloat, "nope");
+        advance();
+    }
+}
+
+graph G
+{
+    output stream int out;
+    node p1 = P(float64);
+    node p2 = P(int);
+    connection p1.out -> out;
+    connection p2.out -> out;
+
+    const int c = 100;
+    static_assert (123 == c + 23);
+}
+
+## expectError ("8:9: error: nope")
+
+processor P (using param)
+{
+    output stream int out;
+
+    void main()
+    {
+        static_assert (param.isFloat, "nope");
+        advance();
+    }
+
+    const int c = 100;
+}
+
+graph G
+{
+    output stream int out;
+    node p1 = P(float64);
+    node p2 = P(float);
+    connection p1.out -> out;
+    connection p2.out -> out;
+
+    static_assert (123 == P(int)::c + 23);
+}
+
+## testCompile()
+
+processor P (using param)
+{
+    output stream int out;
+
+    void main()
+    {
+        static_assert (param.isFloat, "nope");
+        advance();
+    }
+
+    const int c = 100;
+}
+
+graph G
+{
+    output stream int out;
+    node p1 = P(float64);
+    node p2 = P(float);
+    connection p1.out -> out;
+    connection p2.out -> out;
+
+    static_assert (123 == P(float)::c + 23);
+}
+
+## testFunction()
+
+bool static_assert() { return true; }
+bool f() { bool static_assert = true; return static_assert; }
+
+## testProcessor()
+
+processor P
+{
+    output event int out;
+
+    let a = processor.id + 5;
+    let b = c + 7;
+    let c = a + 9;
+    int d = 3;
+
+    void init()     { d *= 5; d += b; }
+
+    void main()
+    {
+        out <- a == processor.id + 5  ? 1 : 0
+            <- b == processor.id + 21 ? 1 : 0
+            <- c == processor.id + 14 ? 1 : 0
+            <- d == b + 15 ? 1 : 0
+            <- -1;
+
+        advance();
+    }
+}
+
+## testProcessor()
+
+processor GenerateID
+{
+    output event int32 out;
+    void main() { loop { out <- processor.id; advance(); } }
+}
+
+processor DuplicateIDCheck (int num)
+{
+    input event int id;
+    output event int out;
+
+    int32[num] ids;
+    wrap<num> nextIndex;
+
+    event id (int32 id) { ids[nextIndex++] = id; }
+
+    int getTestResult()
+    {
+        for (wrap<num> i)
+            for (wrap<num> j)
+                if (i != j && ids[i] == ids[j])
+                    return 0;
+
+        return 1;
+    }
+
+    void main() { out <- getTestResult() <- -1; advance(); }
+}
+
+graph G [[main]]
+{
+    output event int out;
+
+    node check = DuplicateIDCheck (5);
+    node id1 = GenerateID;
+    node id2 = GenerateID;
+    node idArray = GenerateID[3];
+
+    connection id1, id2 -> check -> out;
+    connection idArray -> check;
+}
+
+## expectError ("21:9: error: The processor 'Zeroes' cannot be used in a 'node' statement if it is also used directly")
+
+processor Zeroes
+{
+    output stream float out;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+graph test [[ main ]]
+{
+    output stream float out1, out2;
+
+    node z = Zeroes;
+
+    connection
+    {
+        z.out -> out1;
+        Zeroes.out -> out2;
+    }
+}
+
+
+## expectError ("22:9: error: The processor 'Forwarder' cannot be used in a 'node' statement if it is also used directly")
+
+processor Forwarder
+{
+    input event float32 forwarderIn;
+    output event float32 forwarderOut;
+
+    event forwarderIn (float f)
+    {
+        forwarderOut <- f;
+    }
+}
+
+graph Multiply [[ main ]]
+{
+    input event float32 in;
+    output event float32 out;
+
+    node forwarder = Forwarder;
+
+    event in (float32 f)
+    {
+        Forwarder.forwarderIn <- f * 2.0f;
+    }
+
+    connection
+        Forwarder.forwarderOut -> out;
+}
+
+
+## expectError ("5:19: error: The init() function cannot be called from user code")
+
+processor P
+{
+    output stream int out;
+    void main() { init(); advance(); }
+    void init() {}
+}
+
+## expectError ("6:23: error: Streams are not available during init()")
+
+processor P
+{
+    output stream int out;
+    void main() { advance(); }
+    void init() { out <- 123; }
+}
+
+## expectError ("7:27: error: Streams are not available during init()")
+
+processor P
+{
+    output stream int out;
+    input stream int in;
+    void main() { advance(); }
+    void init() { let a = in; }
+}
+
+## expectError ("6:10: error: The init() function must not have any parameters")
+
+processor P
+{
+    output stream int out;
+    void main() { advance(); }
+    void init (int i) {}
+}
+
+## expectError ("5:16: error: The advance() function does not take any arguments")
+
+processor P
+{
+    output event int out;
+    void f() { advance (1); }
+    void main() { f(); }
+}
+
+## expectError ("5:27: error: Expected a value")
+
+processor P
+{
+    output event int out;
+    void main() { let x = advance() + 2; }
+}
+
+## expectError ("6:17: error: The advance() function cannot be called inside this function")
+
+processor P
+{
+    output event int out;
+    void f1() { advance(); out <- 0; }
+    void f2() { advance(); out <- 0; }
+    void main() { f1(); }
+}
+
+## expectError ("10:28: error: Function is not visible from this scope")
+
+processor P
+{
+    output stream float out;
+    void f() { advance(); }
+    void init() { ns::f(); }
+    void main() { loop f(); }
+}
+
+namespace ns { void f() { P::f(); } }
+
+## expectError ("6:34: error: The advance() function cannot be called inside this function")
+
+processor test
+{
+    output event int out;
+    void f1() { advance(); out <- 0; }
+    void f2() { loop { out <- 0; advance(); } }
+    void init() { f2(); }
+    void main() { f1(); f2(); }
+}
+
+## expectError ("3:13: error: Cannot use a processor name as a type")
+
+processor P { output event int x; void main() { advance(); } }
+void f()  { P p; }
+
+## expectError ("3:13: error: Cannot use a processor name as a type")
+
+processor P (using X) { output event int x; void main() { advance(); } }
+void f()  { P p; }
+
+## expectError ("3:24: error: Cannot use a processor name as a type")
+
+processor P { output event int x; void main() { advance(); } }
+namespace N (using T = P) { void f() {} }
+void f() { N::f(); }
+
+## expectError ("3:21: error: Cannot use a processor name as a function call")
+
+processor P (int y) { output event int x; void main() { advance(); } }
+void f()  { let x = P(); }
+
+## expectError ("3:25: error: Cannot use a processor name as a value")
+
+processor P { output event int x; void main() { advance(); } }
+void f()  { let x = 3 + P; }
+
+## expectError ("3:19: error: Cannot use a processor name as a value")
+
+processor P { output event int x; void main() { advance(); } }
+int f()  { return P; }
+
+## expectError ("3:9: error: Cannot use a processor name as a type")
+
+processor P { output event int x; void main() { advance(); } }
+void f (P p) {}
+
+## expectError ("3:12: error: Cannot use a processor name as a type")
+
+processor P { output event int x; void main() { advance(); } }
+P f (const P& p) {}
+
+## expectError ("3:1: error: Cannot use a processor name as a type")
+
+processor P { output event int x; void main() { advance(); } }
+P f() {}
+
+## expectError ("3:25: error: Found \"=\" when expecting \";\"")
+
+processor P { output event int x; void main() { advance(); } }
+struct S { float P; P p = (); }
+
+## expectError ("3:12: error: Cannot use a processor name as a type")
+
+processor P { output event int x; void main() { advance(); } }
+struct S { P p; }
+
+## expectError ("3:12: error: Cannot use a processor name as a type")
+
+processor P { output event int x; void main() { advance(); } }
+struct S { P p; }
+
+## expectError ("3:21: error: No such operation is supported on a processor")
+
+processor P (using T) { output event int x; void main() { advance(); } }
+void f()  { let x = P.xyz; }
+
+## expectError ("3:21: error: No such operation is supported on a processor")
+
+processor P (int y) { output event int x; void main() { advance(); } }
+void f()  { let x = P.type; }
+
+## expectError ("3:21: error: No such operation is supported on a processor")
+
+processor P () { output event int x; void main() { advance(); } }
+void f()  { let x = P.size; }
+
+## expectError ("2:19: error: This identifier cannot have a namespace qualifier")
+
+graph G { output a::b.c; }
+
+## expectError ("2:21: error: This identifier cannot have a namespace qualifier")
+
+graph G { output a.b::c; }
+
+## expectError ("5:31: error: The advance() function cannot be used as a method call")
+
+processor p
+{
+    output stream int out;
+    void main() { let i = 5; i.advance(); }
+}
+
+## expectError ("8:1: error: Import statements can only be declared at the start of a namespace")
+
+processor test
+{
+    output stream float out;
+    void main() { advance(); }
+}
+
+import something
+
+## expectError ("4:2: error: Expected a module identifier")
+
+import
+
+## expectError ("2:18: error: Found \";\" when expecting identifier")
+
+import something.;
+
+## expectError ("4:2: error: Found \"}\" when expecting \";\"")
+
+import something.foo
+
+## expectError ("2:8: error: Expected a module identifier")
+
+import 9876;
+
+## expectError ("10:15: error: Expected a processor name")
+
+processor test
+{
+    output stream float out;
+
+    void main() { advance(); }
+}
+
+// test is not a namespace
+processor test::nestedProcessor
+{
+    output stream float out;
+
+    void main() { advance(); }
+}
+
+## expectError ("2:14: error: Failed to resolve external variable 'x'")
+
+external int x;
+
+processor test
+{
+    output stream float out;
+
+    void main()
+    {
+        int<x> a;
+
+        advance();
+    }
+}
+
+## expectError ("6:28: error: Syntax error in numeric constant")
+
+processor test
+{
+    output stream float out;
+
+    let emptyIntConstant = 0x;
+}
+
+## expectError ("10:11: error: The result of the '<<' operator is unused")
+
+processor test
+{
+    output stream float out;
+
+    int a;
+
+    void main()
+    {
+        a << 1;
+        advance();
+    }
+}
+
+## expectError ("5:31: error: Writing to an endpoint is not allowed inside an expression")
+
+processor test
+{
+    output stream float out;
+    void main() { let x = out <- 1; advance(); }
+}
+
+## expectError ("5:25: error: Writing to an endpoint is not allowed inside an expression")
+
+processor test
+{
+    output stream float out;
+    void main() { f(out <- 1); advance(); }
+}
+
+## expectError ("5:23: error: Writing to an endpoint is not allowed inside an expression")
+
+processor test
+{
+    output stream float out;
+    void main() { 123 <- 1; advance(); }
+}
+
+## expectError ("5:29: error: Expected an endpoint")
+
+processor test
+{
+    output stream float out;
+    void main() { int nope; nope <- 1; advance(); }
+}
+
+## expectError ("5:23: error: Cannot perform a left-shift on an output - did you mean to use the '<-' operator instead of '<<'?")
+
+processor test
+{
+    output stream int out;
+    void main() { out << 123 << 123; advance(); }
+}
+
+## expectError ("5:27: error: Cannot perform a left-shift on an output - did you mean to use the '<-' operator instead of '<<'?")
+
+processor test
+{
+    output stream int out;
+    void main() { console << "x" << 1.0f; advance(); }
+}
+
+## expectError ("5:38: error: Unexpected end-of-input in string constant")
+
+processor test
+{
+    output stream float out;
+    let unterminatedStringConstant = "
+}
+
+## testCompile()
+
+//"
+
+processor test { output event float out; }
+
+## expectError ("2:7: error: Multiple processors were marked as 'main' //// 7:11: error: Multiple processors were marked as 'main'")
+
+graph test [[ main ]]
+{
+    output stream float out;
+}
+
+processor another [[ main ]]
+{
+    output stream float out;
+    void main() { advance(); }
+}
+
+## expectError ("2:7: error: Multiple processors were marked as 'main' //// 7:7: error: Multiple processors were marked as 'main'")
+
+graph test [[ main ]]
+{
+    output stream float out;
+}
+
+graph test2 [[ main ]]
+{
+    output stream float out;
+}
+
+## expectError ("2:41: error: A processor must contain a main() function. Perhaps this 'run' function was intended to be 'main'?")
+
+processor P { output stream int x; void run() { advance(); } }
+
+## testCompile()
+
+namespace test [[ main ]]
+{
+    graph testGraph
+    {
+        output stream float out;
+    }
+}
+
+processor another [[ main ]]
+{
+    output stream float out;
+
+    void main() { advance(); }
+}
+
+## expectError ("7:52: error: Illegal array size")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::DynamicGain (float32)[0];
+}
+
+## expectError ("10:28: error: This endpoint is not an array")
+
+graph Engine [[main]]
+{
+    output stream float<2> audioOut;
+    input stream float audioIn;
+
+    node gain = std::levels::DynamicGain (float32<2>);
+
+    connection {
+        audioIn -> gain.in[0];
+        gain[0].out -> audioOut;
+    }
+}
+
+## expectError ("7:20: error: Expected a vector or array to the left of the bracket operator")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+    node gain = std::levels::DynamicGain (float32);
+    connection gain.out[2] -> out;
+}
+
+## expectError ("7:21: error: Index is out of range")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+    node gain = std::levels::DynamicGain (float32)[5];
+    connection gain[10].out -> out;
+}
+
+## expectError ("7:21: error: This node is not an array")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+    node gain = std::levels::DynamicGain (float32);
+    connection gain[2].out -> out;
+}
+
+## expectError ("24:25: error: Index is out of range")
+
+processor ConstantGainArray (using FrameType, float32 gain)
+{
+    input  stream FrameType  in[2];
+    output stream FrameType  out[2];
+
+    void main()
+    {
+        loop
+        {
+            out[0] <- in[0] * gain;
+            advance();
+        }
+    }
+}
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = ConstantGainArray (float32, 0.5f);
+
+    connection gain.out[2] -> out;
+}
+
+## expectError ("7:52: error: Array or vector size must be an integer")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::DynamicGain (float32)[1.5];
+}
+
+## expectError ("6:16: error: Cannot find symbol 'unknown'")
+
+graph test
+{
+    output stream float out;
+
+    connection unknown.out -> out;
+}
+
+## expectError ("8:21: error: Cannot find symbol 'unknown'")
+
+graph test
+{
+    output stream float out;
+
+    node gain = std::levels::DynamicGain (float32);
+
+    connection gain.unknown -> out;
+}
+
+## expectError ("8:21: error: Cannot find symbol 'unknown1'")
+
+graph test
+{
+    output stream float out;
+
+    node gain = std::levels::DynamicGain (float32);
+
+    connection gain.unknown1.unknown2 -> out;
+}
+
+## expectError ("8:21: error: Cannot find symbol 'unknown1'")
+
+graph test
+{
+    output stream float out;
+
+    node gain = std::levels::DynamicGain (float32);
+
+    connection gain.unknown1.unknown2.unknown3 -> out;
+}
+
+## expectError ("5:18: error: Expected a processor name")
+
+graph test
+{
+    node gain = std::levels::DynamicGain (float32);
+    node gain2 = gain;
+}
+
+## expectError ("7:53: error: Expected a value")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = std::levels::ConstantGain (float32, in);
+
+    connection in -> gain -> out;
+}
+
+## expectError ("2:7: error: Exceeded the maximum number of specialised namespace instances (100) - possible namespace recursion")
+
+graph RecursiveGraphDefinition (int n)
+{
+    output stream float out;
+
+    node child = RecursiveGraphDefinition (n + 1);
+
+    connection child.out -> out;
+}
+
+graph test [[ main ]]
+{
+    output stream float out;
+
+    node child = RecursiveGraphDefinition (0);
+
+    connection child.out -> out;
+}
+
+## expectError ("2:7: error: 'RecursiveGraphDefinition' cannot refer to itself recursively")
+
+graph RecursiveGraphDefinition (using Type)
+{
+    output stream float out;
+    node child = RecursiveGraphDefinition (Type);
+    connection child.out -> out;
+}
+
+graph test [[ main ]]
+{
+    output stream float out;
+    node child = RecursiveGraphDefinition (float32);
+    connection child.out -> out;
+}
+
+## expectError ("7:27: error: An implicitly-created graph node cannot be used more than once: create a named instance instead")
+
+graph test
+{
+    output stream float out;
+
+    connection std::levels::DynamicGain (float32) -> out;
+    connection std::levels::DynamicGain (float32) -> out;
+}
+
+## expectError ("2:11: error: The name 'std' is already in use", {"doNotWrapInTestNamespace":"true"})
+
+processor std { output stream float32 out; void main() { advance(); } }
+
+## expectError ("2:7: error: The name 'std' is already in use", {"doNotWrapInTestNamespace":"true"})
+
+graph std { output stream float32 out; }
+
+## expectError ("2:23: error: The name 'intrinsics' is already in use", {"doNotWrapInTestNamespace":"true"})
+
+namespace std { graph intrinsics { output stream float32 out; } }
+graph G [[main]] { output stream int out; node n = std::intrinsics; }
+
+## testFunction()
+} // NB: this brace is a hack to escape the test namespace that gets wrapped around this bit
+namespace std { int32 roundToInt (float32 value) { return 0; } }
+namespace tests {
+bool f() { return roundToInt (10.0f) != 0; }
+
+## testProcessor()
+
+processor P1
+{
+    output event int pi;
+    void main() { pi <- 1 <- -1; advance(); }
+}
+
+processor P2
+{
+    output event int nan;
+    input event int inf;
+    event inf (int x) { nan <- x; }
+}
+
+graph G [[main]]
+{
+    output event int out;
+    connection P1 -> P2 -> out;
+}
+
+## expectError ("5:27: error: Cannot read from an output")
+
+processor P1
+{
+    output event int pi;
+    void main() { let x = pi; advance(); }
+}
+
+## expectError ("2:23: error: Assignment is not allowed inside an expression")
+
+int f (int i) { if (i = 1) return 2; else return 1; }
+
+## expectError ("2:27: error: Assignment is not allowed inside an expression")
+
+int f (int i) { return (i = 1) ?  2 : 1; }
+
+## expectError ("8:14: error: Cannot convert type 'int32[2]' to 'const float32<2>&'")
+
+bool f<Type> (const Type& t, const float<2>& i) { return true; }
+
+bool test()
+{
+    float<2> arg1;
+    int[2] wrongType;
+    f (arg1, wrongType);
+    return true;
+}
+
+## expectError ("8:5: error: Can't find a function 't' with 2 argument(s)")
+
+void t (float f)
+{
+}
+
+void test()
+{
+    t (1.0f, 2.0f);
+}
+
+## expectError ("11:14: error: No member called 'b' found in struct 'tests::S'")
+
+struct S
+{
+    float a;
+}
+
+float test()
+{
+    S s;
+
+    return s.b;
+}
+
+## expectError ("11:12: error: The enum 'tests::E' does not contain a member called 'b'")
+
+enum E
+{
+    a
+}
+
+void test()
+{
+    E e;
+
+    e = E::b;
+}
+
+## expectError ("11:12: error: The enum 'tests::E' does not contain a member called 'A'")
+
+enum E
+{
+    a
+}
+
+void test()
+{
+    E e;
+
+    e = E::A::b;
+}
+
+
+## expectError ("10:9: error: A module cannot write to it's own input endpoints")
+
+processor Test
+{
+    input event float32 in;
+    input event float32 in2;
+    output event float32 out;
+
+    event in (float f)
+    {
+        in2 <- f;
+    }
+}
+
+
+## expectError ("9:12: error: Cannot use graph input endpoint 'in2' as a connection destination")
+
+graph Test
+{
+    input event float32 in;
+    input event float32 in2;
+    output event float32 out;
+
+    connection
+        in -> in2;
+}
+
+
+## expectError ("8:13: error: Cannot use graph output endpoint 'out' as a connection source")
+
+graph Test
+{
+    input event float32 in;
+    output event float32 out;
+
+    connection
+        out -> in;
+}
+
+## expectError ("7:11: error: Event Handlers for event arrays need a first argument index integer type")
+
+graph Test
+{
+    input event float32 in[4];
+    output event float32 out;
+
+    event in (float32 f)
+    {
+    }
+}
+
+
+## expectError ("6:17: error: functions that call advance() do not support parameters containing slices")
+
+processor test
+{
+    output stream float out;
+
+    void write (int[] values)
+    {
+        for (int i = 0; i < values.size; i++)
+        {
+            console <- values[i] <- " ";
+            advance();
+        }
+    }
+
+    void main()
+    {
+        write (int[8] (1, 2, 3, 4, 5, 6, 7, 8));
+    }
+}

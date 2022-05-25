@@ -1,0 +1,64 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.random
+
+/**
+    If you're writing code that needs to be cryptographically secure, then this is not the
+    random number generation library that you want. The target audience for these classes
+    are those who need quick-and-dirty RNGs for noise generation and similar non-critical
+    tasks.
+
+    When seeding RNGs, the `processor.id` and `processor.session` values are very useful:
+
+      - `processor.id` is different for each instance of a processor, but the same for each
+        run of the program. If you have multiple instances of a processor node which each
+        have an RNG, then if you seed them with a value based on `processor.id`, they'll
+        each use a different stream of values, but the sequences will be the same each time
+        the program runs.
+
+      - `processor.session` is the same for all processors, but different each time the
+        program runs, so if you use it as part of your seed, it'll make the program
+        behave differently each time.
+*/
+namespace std::random
+{
+    /// This default RNG is a basic linear congruential generator.
+    /// See https://en.wikipedia.org/wiki/Lehmer_random_number_generator
+    ///
+    struct RNG
+    {
+        /// Resets the generator with a given seed.
+        void seed (int64 newSeed)
+        {
+            this.state = (newSeed | (newSeed >>> 32)) & 0x7fffffff;
+        }
+
+        /// Returns a positive int32 between 0 and 0x7fffffff
+        int32 getInt32()
+        {
+            let next = (this.state * 1103515245L + 12345L) & 0x7fffffff;
+            this.state = next;
+            return int32 (next) & 0x7fffffff;
+        }
+
+        /// Returns a value between 0 and 1.
+        float32 getUnipolar()                     { return this.getFloat (1.0f); }
+
+        /// Returns a value between -1 and 1.
+        float32 getBipolar()                      { return this.getFloat (2.0f) - 1.0f; }
+
+        /// Returns a floating point value between 0 and maximumValue
+        float32 getFloat (float maximumValue)     { return maximumValue * (1.0f / 2147483647.0f) * float (this.getInt32()); }
+
+        /// The Lehmer algorithm uses a simple 64-bit state which mutates each time a number is generated.
+        int64 state;
+    }
+}

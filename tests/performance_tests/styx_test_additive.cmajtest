@@ -1,0 +1,209 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## performanceTest ({ sampleRate:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:16384 })
+
+graph AdditiveSynth  [[ main ]]
+{
+    input event std::midi::Message midiIn;
+    output stream float audioOut;
+
+    node
+    {
+        voices = Voice[16];
+        voiceAllocator = std::voices::VoiceAllocator(16);
+    }
+
+    connection
+    {
+        midiIn -> std::midi::MPEConverter -> voiceAllocator;
+
+        // Plumb the voice allocator to the voices array
+        voiceAllocator.voiceEventOut -> voices.noteOn,
+                                        voices.noteOff,
+                                        voices.pitchBend;
+
+        // Sum the voices audio out to the output
+        voices -> audioOut;
+    }
+}
+
+processor AmplitudeSource (int size = 64)
+{
+    input event std::notes::NoteOn noteOn;
+
+    output stream float<size> out;
+
+    float<size>[] amplitudes = (
+        (0.0771684f, 0.416632f, 0.207456f, 0.265672f, 0.180432f, 0.0961695f, 0.10478f, 0.0221957f, 0.0420186f, 0.00237062f, 0.0151291f, 0.00104185f, 0.00509087f, 0.000963772f, 0.00160207f, 0.000570908f, 0.000412379f, 0.000396504f, 0.000354536f, 0.000294449f, 0.00062172f, 0.0f, 0.000661496f, 0.000297345f, 0.000441867f, 0.000283614f, 0.000179393f, 0.00017709f, 0.0f, 0.000102386f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.000123285f, 0.000205293f, 0.000107552f, 0.000286504f, 0.0f, 0.000288591f, 0.000109848f, 0.000191679f, 0.000107616f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
+        (0.078043f, 0.414928f, 0.207718f, 0.261759f, 0.178124f, 0.093818f, 0.0991962f, 0.0216932f, 0.0471604f, 0.0016705f, 0.0196354f, 0.00444616f, 0.00722587f, 0.00333355f, 0.00225786f, 0.00186435f, 0.000538661f, 0.000924104f, 0.000440342f, 0.000441606f, 0.000639088f, 0.000173742f, 0.000552868f, 0.000257454f, 0.000378143f, 0.000241234f, 0.00014966f, 0.000151937f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.000100647f, 0.000173251f, 0.000102279f, 0.000259452f, 0.0f, 0.000252239f, 0.000101921f, 0.000164477f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
+        (0.07651f, 0.412797f, 0.207772f, 0.257434f, 0.175121f, 0.0913874f, 0.0957292f, 0.0205873f, 0.0485254f, 0.00190781f, 0.0207891f, 0.00533855f, 0.00769395f, 0.00385508f, 0.00239746f, 0.00200714f, 0.000594718f, 0.000820073f, 0.000328985f, 0.000260273f, 0.000464254f, 0.000191179f, 0.000553292f, 0.000189749f, 0.000372934f, 0.000196044f, 0.000156201f, 0.000116271f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.000156228f, 0.0f, 0.000228765f, 0.0f, 0.00022192f, 0.0f, 0.000144426f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
+    );
+
+    float multiplier = 1.0f;
+
+    event noteOn (std::notes::NoteOn e)
+    {
+        reset();
+    }
+
+    void reset()
+    {
+        value = amplitudes[0] * multiplier;
+        increment = multiplier * (amplitudes[1] - amplitudes[0]) / stepRate;
+        nextSlot = 1;
+        steps = stepRate;
+    }
+
+    void next()
+    {
+        if (nextSlot < amplitudes.size - 1)
+        {
+            value = multiplier * amplitudes.at (nextSlot);
+            increment = multiplier * (amplitudes.at (nextSlot + 1) - amplitudes.at (nextSlot)) / stepRate;
+            nextSlot++;
+            steps = stepRate;
+        }
+        else
+        {
+            increment = 0;
+            steps = stepRate;
+        }
+    }
+
+    float<size> value, increment;
+    int nextSlot;
+    int steps;
+    int stepRate = 1024;
+
+    void main()
+    {
+        loop
+        {
+            out <- value;
+            value += increment;
+            steps--;
+
+            if (steps == 0)
+                next();
+
+            advance();
+        }
+    }
+
+    void init()
+    {
+    }
+}
+
+//==============================================================================
+processor OscillatorBank (int size = 64)
+{
+    input event
+    {
+        std::notes::NoteOn noteOn;
+        std::notes::PitchBend pitchBend;
+    }
+
+    input stream float<size> amplitudes;
+
+    output stream float audioOut;
+
+    event noteOn (std::notes::NoteOn e)
+    {
+        notePitch = e.pitch;
+        bendSemitones = 0.0f;
+        oscillators = 1.0f;
+        setMultipliers();
+    }
+
+    event pitchBend (std::notes::PitchBend e)
+    {
+        bendSemitones = e.bendSemitones;
+        setMultipliers();
+    }
+
+    float notePitch, bendSemitones;
+
+    void setMultipliers()
+    {
+        let noteFrequency  = std::notes::noteToFrequency (notePitch + bendSemitones);
+
+        let nyquist = float (processor.frequency / 2.0);
+
+        for (int harmonic = 1; harmonic <= size; harmonic++)
+        {
+            let harmonicFrequency = noteFrequency * harmonic;
+
+            if (harmonicFrequency < nyquist)
+            {
+                let angle = float32 (twoPi * harmonicFrequency / processor.frequency);
+                multiplier.at (harmonic-1).real = cos (angle);
+                multiplier.at (harmonic-1).imag = sin (angle);
+            }
+            else
+            {
+                multiplier.at (harmonic-1) = 1.0f;
+            }
+        }
+    }
+
+    complex32<size> oscillators, multiplier;
+
+    void main()
+    {
+        loop
+        {
+            oscillators = oscillators * multiplier;
+            audioOut <- sum (oscillators.imag * amplitudes);
+            advance();
+        }
+    }
+
+    void init()
+    {
+        oscillators = 1.0f;
+        multiplier = 1.0f;
+    }
+}
+
+//==============================================================================
+graph Voice
+{
+    input event
+    {
+        std::notes::NoteOn noteOn;
+        std::notes::NoteOff noteOff;
+        std::notes::PitchBend pitchBend;
+    }
+
+    output stream float audioOut;
+
+    node
+    {
+        osc = OscillatorBank;
+        amplitudeSource = AmplitudeSource;
+        amplitudeEnvelope = std::envelopes::FixedASR (0.02f, 0.1f);
+        attenuator = std::levels::DynamicGain (float);
+    }
+
+    connection
+    {
+        noteOn          -> osc.noteOn, amplitudeSource.noteOn;
+        pitchBend       -> osc.pitchBend;
+        noteOn, noteOff -> amplitudeEnvelope.eventIn;
+
+
+        amplitudeSource.out -> osc.amplitudes;
+        osc.audioOut                -> attenuator.in;
+        amplitudeEnvelope.gainOut   -> attenuator.gain;
+        attenuator                  -> audioOut;
+    }
+}

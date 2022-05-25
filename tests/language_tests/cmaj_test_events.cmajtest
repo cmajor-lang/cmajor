@@ -1,0 +1,660 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## global
+
+processor Ping (using Type)
+{
+    output event Type out;
+
+    void main()
+    {
+        out <- Type (1); advance();
+        loop { out <- Type (-1); advance(); }
+    }
+}
+
+processor Forward (using Type)
+{
+    input event Type in;
+    output event Type out;
+
+    event in (Type i) { out <- i; }
+}
+
+## testProcessor()
+
+processor P
+{
+    output event float64 out;
+    void main() { out <- 1; advance(); out <- -1; }
+}
+
+## testProcessor()
+
+processor P
+{
+    output event int32 out;
+    void main() { out <- 1; advance(); out <- -1; }
+}
+
+## expectError ("4:19: error: Endpoint types cannot be references")
+
+processor P
+{
+    output stream float32& out;
+    void main() { out <- 1.0f; advance(); out <- -1.0f; }
+}
+
+## expectError ("5:18: error: Endpoint types cannot be references")
+
+processor P
+{
+    output stream float32 out;
+    input stream float& in;
+    void main() { out <- 1.0f; advance(); out <- -1.0f; }
+}
+
+## expectError ("5:26: error: Ambiguous cast from type 'int32' to 'int64, float32'")
+
+processor P
+{
+    output event (int64, float32) out;
+    void main() { out <- 2; advance(); }
+}
+
+## expectError ("6:40: error: Cannot resolve bracketed expression in this context")
+
+processor P
+{
+    output event (int64, float32) out1;
+    output event int out2;
+    void main() { out2 <- (); out1 <- (); advance(); }
+}
+
+## expectError ("4:26: error: Endpoint types cannot be const")
+
+processor EventSource [[ main ]]
+{
+    output event (int32, const float32) out;
+    void main() { out <- 1.0f; advance(); out <- -1.0f; }
+}
+
+## expectError ("4:19: error: Expected a type")
+
+processor Source [[ main ]]
+{
+    output stream blah out;
+    let blah = 1;
+    void main() { out <- 1; advance(); out <- -1; advance(); }
+}
+
+## expectError ("6:14: error: Found \"{\" when expecting \"(\"")
+
+processor P
+{
+    output stream float out;
+    input event float in;
+    event in {}
+}
+
+## expectError ("4:19: error: Cannot use a processor name as a type")
+
+processor X
+{
+    output stream X out;
+    void main() { advance(); }
+}
+
+## expectError ("4:19: error: Expected a type")
+
+processor Source [[ main ]]
+{
+    output stream StreamType out;
+    let StreamType = const float32;
+    void main() { out <- 1; advance(); out <- -1; advance(); }
+}
+
+## expectError ("19:32: error: Cannot connect Source.eventOut (int32) to Dest.eventIn (float32)")
+
+processor Source
+{
+    output event int eventOut;
+    void main() { advance(); }
+}
+
+processor Dest
+{
+    input event float32 eventIn;
+    output event float32 eventOut;
+
+    void main() { advance(); }
+}
+
+graph test
+{
+    output event int eventOut;
+    connection Source.eventOut -> Dest.eventIn;
+}
+
+## testProcessor()
+
+graph test [[ main ]]
+{
+    output event float32 out;
+    connection { Ping (float) -> Forward (float) -> out; }
+}
+
+## testProcessor()
+
+processor ForwardFloatEvents
+{
+    input event (int32, float32) in;
+    output event float32 out;
+    event in (float32 f) { out <- f; }
+}
+
+graph test [[ main ]]
+{
+    output event float32 out;
+    connection { Ping(float) -> ForwardFloatEvents -> out; }
+}
+
+## testProcessor()
+
+processor ForwardFloatEvents
+{
+    input event (int32, float32) in;
+    output event float32 out;
+
+    event in (int32 i) {}
+    event in (float32 f) { out <- f; }
+}
+
+graph test [[ main ]]
+{
+    output event float32 out;
+    connection Ping(float) -> ForwardFloatEvents -> out;
+}
+
+## testProcessor()
+
+processor ForwardFloatEvents
+{
+    input event (int32, float32) in;
+    output event float32 out;
+
+    event in (float32 f) { out <- f; }
+    event in (int32 i) {}
+}
+
+graph test [[ main ]]
+{
+    output event float32 out;
+    connection Ping(float) -> ForwardFloatEvents -> out;
+}
+
+## expectError ("18:23: error: Cannot connect Source (int32, float32) to Target (float64, string)")
+
+processor Source
+{
+    output event (int, float) out;
+    void main() { out <- 1; advance(); out <- 2.0f; advance(); }
+}
+
+processor Target
+{
+    input event (float64, string) in;
+    output event int out;
+    event in (float64 f) {}
+}
+
+graph G [[ main ]]
+{
+    output event int out;
+    connection Source -> Target -> out;
+}
+
+## expectError ("12:39: error: Cannot connect Ping (int32) to out (float32)")
+
+processor P
+{
+    input event float in;
+    output stream int out;
+    void main() { advance(); }
+}
+
+graph G [[main]]
+{
+    output event float out;
+    connection Ping(float), Ping(int) -> out;
+}
+
+## expectError ("13:26: error: Cannot connect Ping (int32) to P (float32)")
+
+processor P
+{
+    input event float in;
+    output stream int out;
+    void main() { advance(); }
+}
+
+graph G [[main]]
+{
+    output event float out;
+    connection Ping(float) -> P;
+    connection Ping(int) -> P -> out;
+}
+
+## testProcessor()
+
+processor P1
+{
+    output event int out;
+    void main() { out <- 1; loop { out <- -1; advance(); } }
+}
+
+processor P2
+{
+    output event int out;
+    input event int in;
+    event in (int x) {}
+}
+
+graph G [[main]]
+{
+    output event int out;
+    node p1 = P2, p2 = P2;
+    connection P1 -> p1, out, p2;
+}
+
+## testProcessor()
+
+processor Target
+{
+    input event int32 triggerIn;
+    output stream float32 out;
+
+    event triggerIn (int32 i) { enabled = true; }
+
+    bool enabled = false;
+
+    void main()
+    {
+        while (! enabled)
+            advance();
+
+        out <- 1.0f; advance();
+        out <- -1.0f; advance();
+    }
+}
+
+processor Trigger
+{
+    output event int32 out[4];
+    void main() { out[1] <- 1; advance(); }
+}
+
+graph test [[ main ]]
+{
+    output stream float32 out;
+
+    node target = Target[4];
+
+    connection
+    {
+        Trigger.out -> target.triggerIn;
+        target.out -> out;
+    }
+}
+
+## expectError ("8:28: error: Streams cannot be used in event callback functions")
+
+processor P
+{
+    output stream int out;
+    input event int in;
+    input stream int in2;
+
+    event in (int x) { out <- in2; }
+    void main() { advance(); }
+}
+
+## expectError ("8:32: error: Streams cannot be used in event callback functions")
+
+processor P
+{
+    output stream int out;
+    input event int in;
+    input stream int in2;
+
+    event in (int x) { let y = in2; }
+    void main() { advance(); }
+}
+
+## expectError ("8:24: error: Streams cannot be used in event callback functions")
+
+processor P
+{
+    output stream int out;
+    input event int in;
+    input stream int in2;
+
+    event in (int x) { f(); }
+    void f() { out <- 1; }
+    void main() { advance(); }
+}
+
+## expectError ("8:24: error: Streams cannot be used in event callback functions")
+
+processor P
+{
+    output stream int out;
+    input event int in;
+    input stream int in2;
+
+    event in (int x) { f(); }
+    void f() { let y = in2 + 1; }
+    void main() { advance(); }
+}
+
+## expectError ("8:11: error: Event handler 'in2' does not match an event input")
+
+processor P
+{
+    output stream int out;
+    input event float in;
+
+    int x;
+    event in2 (float f) { x = 123; }
+    void main() { advance(); }
+}
+
+
+## expectError ("8:11: error: Event handler 'in' does not match an event input")
+
+processor P
+{
+    output stream float out;
+    input stream float in;
+
+    int x;
+    event in (float f) { x = 123; }
+    void main() { advance(); }
+}
+
+## expectError ("8:11: error: Event handler 'out' does not match an event input")
+
+processor P
+{
+    output event float out;
+    input event float in;
+
+    int x;
+    event out (float f) { x = 123; }
+    void main() { advance(); }
+}
+
+
+## expectError ("8:11: error: A function with matching parameters has already been defined")
+
+processor P
+{
+    output stream int out;
+    input event float in;
+
+    event in (float f) {}
+    event in (const float& f) {}
+    void main() { advance(); }
+}
+
+## expectError ("6:10: error: The name 'in' is already in use //// 5:17: note: See previous declaration")
+
+processor P
+{
+    output stream int out;
+    input event int in;
+    void in (int i) {}
+    void main() { advance(); }
+}
+
+## expectError ("7:11: error: Event 'in' does not support type 'bool'")
+
+processor P
+{
+    output stream int out;
+    input event float in;
+
+    event in (const bool& f) {}
+    void main() { advance(); }
+}
+
+## expectError ("7:11: error: Event function arguments invalid")
+
+processor P
+{
+    output stream int out;
+    input event float in;
+
+    event in (float f, float b) {}
+    void main() { advance(); }
+}
+
+## expectError ("7:22: error: Event parameters cannot be non-const references")
+
+processor P
+{
+    output stream int out;
+    input event float in;
+
+    event in (float& f) {}
+    void main() { advance(); }
+}
+
+## expectError ("7:11: error: Event Handlers for event arrays need a first argument index integer type")
+
+processor P
+{
+    output stream int out;
+    input event float in[2];
+
+    event in (float i, float f) {}
+    void main() { advance(); }
+}
+
+## expectError ("7:11: error: Event 'in' does not support type 'float32<2>'")
+
+processor P
+{
+    output stream int out;
+    input event float in[2];
+
+    event in (int i, float<2> f) {}
+    void main() { advance(); }
+}
+
+## expectError ("5:17: error: 'tests::P::S' is not a valid data type for endpoints")
+
+processor P
+{
+    output stream int out;
+    input event S in;
+
+    event in (S s) {}
+    void main() { advance(); }
+
+    struct S { int x; wrap<10> w, y; float64 f; }
+}
+
+## expectError ("5:17: error: 'tests::P::S' is not a valid data type for endpoints")
+
+processor P
+{
+    output stream int out;
+    input event S in;
+
+    event in (S s) {}
+    void main() { advance(); }
+
+    struct S { int x; clamp<10>[4] y; float64 f; }
+}
+
+## expectError ("11:9: error: The in() function cannot be called from user code")
+
+processor P
+{
+    output event int out;
+    input event int in;
+
+    event in (int i) { out <- i; }
+
+    void main()
+    {
+        in (8);
+        advance();
+    }
+}
+
+## expectError ("9:16: error: The in() function cannot be called from user code")
+
+processor P
+{
+    output event int out;
+    input event int in;
+
+    event in (int i) { out <- i; }
+
+    void f() { in (8); }
+    void main() { advance(); return; }
+}
+
+## testProcessor()
+
+graph G [[main]]
+{
+    output event int out;
+
+    node source = Ping (int);
+    node forward = Forward (int);
+
+    connection source -> forward -> out;
+}
+
+## testProcessor()
+
+processor PingArray
+{
+    output event int out[2];
+    void main() { out <- 1; advance(); loop { out <- -1; advance(); } }
+}
+
+graph G [[main]]
+{
+    output event int out;
+    connection PingArray -> Forward(int) -> out;
+}
+
+## testProcessor()
+
+processor PingArray
+{
+    output event int out[2];
+    void main() { out <- 1; advance(); loop { out <- -1; advance(); } return; }
+}
+
+processor ForwardArray
+{
+    input event int in[2];
+    output event int out;
+
+    event in (int n, int i) { out <- i; }
+}
+
+graph G [[main]]
+{
+    output event int out;
+    connection PingArray -> ForwardArray -> out;
+}
+
+## testProcessor()
+
+processor PingArray
+{
+    output event int out[1];
+    void main() { out <- 1; advance(); loop { out <- -1; advance(); } return; return; }
+}
+
+processor ForwardArray
+{
+    input event int in[1];
+    output event int out;
+
+    input event float f1, f2, f3;
+
+    event f1 (float f)          { let x = f / 3.0f; }
+    event f2 (const float& f)   { let x = f / 3.0f; }
+    event f3 (const float f)    { let x = f / 3.0f; }
+
+    event in (int n, int i) { out <- i; }
+}
+
+graph G [[main]]
+{
+    output event int out;
+    connection PingArray -> ForwardArray.in;
+    connection ForwardArray.out -> out;
+}
+
+## testProcessor()
+
+processor P2
+{
+    output event int out;
+    input event S in;
+
+    struct S { int[] x; }
+    S s;
+    int index;
+
+    event in (S newS) { s = newS; }
+    void main()
+    {
+        loop (4) { out <- s.x[index] == index ? 1 : 0; ++index; advance(); }
+        out <- -1; advance();
+    }
+}
+
+processor P1
+{
+    output event P2::S out;
+
+    let a = int[] (0, 1, 2, 3, 4);
+
+    void main()
+    {
+        out <- (a);
+        advance();
+    }
+}
+
+graph G [[main]]
+{
+    output event int out;
+    connection P1 -> P2 -> out;
+}
+
+## expectError ("6:51: error: Only source values which have global scope may be written to an endpoint //// 6:54: note: See context where local data is assigned")
+
+processor P2
+{
+    output event S out;
+    struct S { int[] x; }
+    void main() { var a = int[] (1, 2, 3); out <- S (a); advance(); }
+}

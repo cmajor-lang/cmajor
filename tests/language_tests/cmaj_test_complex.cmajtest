@@ -1,0 +1,306 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## testFunction()
+
+bool near<T> (T a, T b)
+{
+    return abs (a - b) < 0.0001f;
+}
+
+bool equals<T> (T a, T b)
+{
+    for (wrap<T.size> i)
+        if (a[i] != b[i])
+            return false;
+
+    return true;
+}
+
+bool boolAnd<T> (T bools)
+{
+    for (wrap<T.size> i)
+        if (bools[i] == false)
+            return false;
+
+    return true;
+}
+
+bool testInitialisationAndComparison()
+{
+    complex32 a1 = 1 + 2.0fi;
+    complex32 a2 = complex32 (1, 2);
+
+    complex32<3> b1 = (1 + 2.0fi, 3, 4 + 5.0fi);
+    complex32<3> b2 = ((1, 2), 3, (4, 5));
+    complex64[3] c1 = (1 + 2.0fi, 3, 4 + 5.0fi);
+    complex64[3] c2 = ((1, 2), 3, (4, 5));
+
+    complex64<3> d = a1;
+
+    return a1.real == 1 && a1.imag == 2
+        && a1 == a2
+
+        && b1[0].real == 1 && b1[0].imag == 2
+        && b1[1].real == 3 && b1[1].imag == 0
+        && b1[2].real == 4 && b1[2].imag == 5
+        && equals (b1, b2)
+
+        && c1[0].real == 1 && c1[0].imag == 2
+        && c1[1].real == 3 && c1[1].imag == 0
+        && c1[2].real == 4 && c1[2].imag == 5
+        && equals (c1, c2)
+
+        && d[0].real == 1 && d[0].imag == 2
+        && d[0] == a1
+        && d[0] == d[1]
+        && d[1] == d[2];
+}
+
+bool testComplex32Operators()
+{
+    complex32 a = 1 + 2.0fi;
+    complex32 b = 2 + 3.0fi;
+
+    let sum = a + b;
+    let diff = a - b;
+    let mult = a * b;
+    let div = a / b;
+    let neg = -a;
+
+    return sum.real == 3 && sum.imag == 5
+        && diff.real == -1 && diff.imag == -1
+        && mult.real == -4 && mult.imag == 7
+        && near (div.real, 0.6154f) && near (div.imag, 0.0769f)
+        && neg.real == -a.real && neg.imag == -a.imag;
+}
+
+bool testComplex32InlineOperators()
+{
+    complex32 a = 1 + 2.0fi;
+
+    a += 3;
+    a -= 1.0fi;
+    a *= 2;
+    a /= 2.0fi;
+
+    return near (a.real, 1.0f) && near (a.imag, -4.0f);
+}
+
+bool testComplex64Operators()
+{
+    complex64 a = 2 + 3.0fi;
+    complex64 b = 4 + 5.0fi;
+
+    let sum = a + b;
+    let diff = a - b;
+    let mult = a * b;
+    let div = a / b;
+    let neg = -a;
+
+    return sum.real == 6 && sum.imag == 8
+        && diff.real == -2 && diff.imag == -2
+        && mult.real == -7 && mult.imag == 22
+        && near (div.real, 0.561) && near (div.imag, 0.0488)
+        && neg.real == -a.real && neg.imag == -a.imag;
+}
+
+bool testComplexVectorOperators()
+{
+    complex32 a = 1 + 2.0fi;
+    complex32 b = 3 + 4.0fi;
+    complex32 c = 5 + 6.0fi;
+    complex32 d = 7 + 8.0fi;
+
+    complex32<2> v1 = (a, b);
+    complex32<2> v2 = (c, d);
+
+    let sum = v1 + v2;
+    let diff = v1 - v2;
+    let mult = v1 * v2;
+    let div = v1 / v2;
+
+    return sum[0] == a + c
+        && sum[1] == b + d
+
+        && diff[0] == a - c
+        && diff[1] == b - d
+
+        && mult[0] == a * c
+        && mult[1] == b * d
+
+        && div[0] == a / c
+        && div[1] == b / d;
+}
+
+bool testVectorComponents()
+{
+    complex32<3> a = (1, 2, 3);
+
+    return equals (a.real, float<3> (1, 2, 3))
+        && equals (a.imag, float<3> (0, 0, 0));
+}
+
+bool conversion()
+{
+    int i = 7;
+    let c32 = complex32 (i);
+    let c64 = complex64 (i);
+
+    return c32.real == 7 && c32.imag == 0
+        && c64.real == 7 && c64.imag == 0;
+}
+
+bool vectorAssign()
+{
+    complex32<3> c32;
+
+    c32.real = 7;
+
+    return c32[0].real == 7 && c32[1].real == 7 && c32[2].real == 7
+        && c32[0].imag == 0 && c32[1].imag == 0 && c32[2].imag == 0
+        && boolAnd (c32.real == float<3> (7, 7, 7))
+        && boolAnd (c32.imag == float<3> (0, 0, 0));
+}
+
+bool arrayAssign()
+{
+    complex32[3] c = 1 + 2.0fi;
+
+    let d = c;
+
+    return equals (c, d);
+}
+
+bool wideningCast()
+{
+    complex32 a = 1.0f + 2.0fi;
+    complex64 b = 3.0 + 4.0i;
+
+    let c = a + b;
+
+    return c.real == 4.0 && c.imag == 6.0;
+}
+
+bool widening()
+{
+    complex32 a = 1 + 2.0fi;
+    complex64 b = a;
+
+    return a.real == b.real
+        && a.imag == b.imag;
+}
+
+bool floatArrayAssign()
+{
+    float[10] a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    complex32[10] c;
+
+    c = a;
+
+    for (wrap<10> i)
+        if (c[i] != a[i]) return false;
+
+    return true;
+}
+
+bool floatSliceAssign()
+{
+    float[10] a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    complex[10] c;
+
+    c[0:2] = a[0:2];
+
+    return c[0].real == 1 && c[1].real == 2 && c[2].real == 0;
+}
+
+bool complexArrayAssign()
+{
+    complex32[10] a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    complex32[10] c;
+
+    c = a;
+
+    for (wrap<10> i)
+        if (c[i] != a[i]) return false;
+
+    return true;
+}
+
+bool complexArraySliceAssign()
+{
+    complex32[10] a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    complex[10] c;
+
+    c[0:2] = a[0:2];
+
+    return c[0].real == 1 && c[1].real == 2 && c[2].real == 0;
+}
+
+bool complexVectorComponentAssign()
+{
+    float<10> a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    complex32<10> c;
+
+    c.real = a;
+
+    for (wrap<10> i)
+        if (c[i] != a[i]) return false;
+
+    return true;
+}
+
+bool complexVectorComponentSliceAssign()
+{
+    float<10> a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    complex32<10> c;
+
+    c.imag[2:5] = a[2:5];
+
+    for (int i =2; i < 5; i++)
+        if (c.at (i).imag != a.at (i)) return false;
+
+    return true;
+}
+
+## expectError ("5:19: error: Cannot implicitly convert 'complex64' to 'complex32'")
+
+bool narrowing()
+{
+    complex64 a = 1 + 2.0fi;
+    complex32 b = a;
+
+    return a.real == b.real
+        && a.imag == b.imag;
+}
+
+## expectError ("7:15: error: The '+' operator can be applied to vector types, but not arrays")
+
+bool arrayOperator()
+{
+    complex32[3] a;
+    complex32[3] b;
+
+    let c = a + b;
+
+    return true;
+}
+
+## expectError ("7:7: error: The '+=' operator can be applied to vector types, but not arrays")
+
+bool arrayOperator()
+{
+    complex32[3] a;
+    complex32[3] b;
+
+    a += b;
+
+    return true;
+}

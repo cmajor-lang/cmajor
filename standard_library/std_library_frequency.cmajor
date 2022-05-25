@@ -1,0 +1,136 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.frequency
+
+/**
+    Contains DFT implementations for complex and real numbers
+
+    The buffers can be either float32 or float64 (or complex32/complex64).
+    Buffer sizes must be a power of 2.
+*/
+namespace std::frequency
+{
+    /// Performs a forward DFT.
+    /// The parameters must be power-of-2 sized arrays of floats. The input parameter takes the real
+    /// components, and the output array receives the real and imaginary components.
+    void realOnlyForwardFFT<FloatArray> (const FloatArray& inputData, FloatArray& outputData)
+    {
+        static_assert (FloatArray.isFixedSizeArray && FloatArray.elementType.isFloat, "realOnlyForwardFFT() requires arguments which are float arrays");
+        static_assert ((FloatArray.size & (FloatArray.size - 1)) == 0, "The arrays passed to realOnlyForwardFFT() must have a size which is a power of 2");
+        let size = FloatArray.size;
+
+        using ComplexType = FloatArray.elementType.isFloat32 ? complex32 : complex64;
+        ComplexType[FloatArray.size] buffer;
+
+        for (wrap<size> i)
+            buffer[i] = inputData[i];
+
+        complexFFT (buffer);
+
+        wrap<size> out;
+
+        for (wrap<size / 2 + 1> i)  outputData[out++] = buffer[i].real;
+        for (wrap<size / 2> i = 1)  outputData[out++] = buffer[i].imag;
+    }
+
+    /// Performs an inverse FFT.
+    /// The parameters must be power-of-2 sized arrays of floats. The input parameter takes the real
+    /// and imaginary components, and the output array receives the real components.
+    void realOnlyInverseFFT<FloatArray> (const FloatArray& inputData, FloatArray& outputData)
+    {
+        static_assert (FloatArray.isFixedSizeArray && FloatArray.elementType.isFloat, "realOnlyInverseFFT() requires arguments which are float arrays");
+        static_assert ((FloatArray.size & (FloatArray.size - 1)) == 0, "The arrays passed to realOnlyInverseFFT() must have a size which is a power of 2");
+
+        using ComplexType = FloatArray.elementType.isFloat32 ? complex32 : complex64;
+        ComplexType[FloatArray.size] buffer;
+
+        for (wrap<FloatArray.size> i)
+        {
+            if (i == 0)
+            {
+                buffer.at (i).real = inputData[i];
+            }
+            else if (i > 0 && i <= FloatArray.size/2)
+            {
+                buffer.at (i).real = inputData[i];
+                buffer.at (FloatArray.size - i).real = inputData[i];
+            }
+            else
+            {
+                buffer.at(i - FloatArray.size / 2).imag = -inputData[i];
+                buffer.at(FloatArray.size + FloatArray.size / 2 - i).imag = inputData[i];
+            }
+        }
+
+        complexFFT (buffer);
+
+        let scaleFactor = 1.0f / FloatArray.size;
+
+        for (wrap<FloatArray.size> i)
+            outputData[i] = buffer[i].real * scaleFactor;
+    }
+
+    //==============================================================================
+    /// Performs an in-place forward FFT on complex data.
+    void complexFFT<ComplexArray> (ComplexArray& data)
+    {
+        static_assert (data.isFixedSizeArray && data.elementType.isComplex, "complexFFT() expects an array of complex values as its argument");
+        static_assert ((data.size & (data.size - 1)) == 0, "The array passed to complexFFT() must have a size which is a power of 2");
+        let size = data.size;
+
+        if const (size != 1)
+        {
+            ComplexArray.elementType[size / 2] even, odd;
+
+            wrap<size> sourceIndex;
+
+            for (wrap<size / 2> targetIndex)
+            {
+                even[targetIndex] = data[sourceIndex++];
+                odd[targetIndex]  = data[sourceIndex++];
+            }
+
+            complexFFT (even);
+            complexFFT (odd);
+
+            wrap<size> targetIndex1, targetIndex2 = size / 2;
+
+            for (wrap<size / 2> i)
+            {
+                let angle = float (-twoPi) * float (i) / size;
+                let t = ComplexArray.elementType (cos (angle), sin (angle)) * odd[i];
+
+                data[targetIndex1++] = even[i] + t;
+                data[targetIndex2++] = even[i] - t;
+            }
+        }
+    }
+
+    /// Performs an in-place inverse FFT on complex data.
+    void complexIFFT<ComplexArray> (ComplexArray& data)
+    {
+        static_assert (data.isFixedSizeArray && data.elementType.isComplex, "complexIFFT() expects an array of complex values as its argument");
+        static_assert ((data.size & (data.size - 1)) == 0, "The array passed to complexIFFT() must have a size which is a power of 2");
+
+        for (wrap<data.size> i)
+            data[i].imag = -data[i].imag;
+
+        complexFFT (data);
+
+        let scaleFactor = 1.0f / data.size;
+
+        for (wrap<data.size> i)
+        {
+            data[i].real *= scaleFactor;
+            data[i].imag = -data[i].imag * scaleFactor;
+        }
+    }
+}

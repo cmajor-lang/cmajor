@@ -1,0 +1,116 @@
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+/**
+    A *very* lo-fi piano synth example!
+
+    Don't expect this to sound like your Bechstein, but as an example program, it's
+    very small and very simple!
+
+    Dedicated to Philip Meehan, a lost genius and friend, who recorded these piano
+    samples for use in the Tracktion V1 demo songs, back in the olden times,
+    around 2001-ish.
+*/
+namespace piano
+{
+    //==============================================================================
+    graph Piano  [[ main ]]
+    {
+        output stream float out;
+        input event std::midi::Message midiIn;
+        input gain.volume;
+
+        let numVoices = 8;
+
+        node gain = std::levels::SmoothedGain (float, 0.1f);
+        node voices = Voice[numVoices];
+
+        connection midiIn
+                    -> std::midi::MPEConverter
+                    -> std::voices::VoiceAllocator(numVoices)
+                    -> voices
+                    -> gain.in;
+
+        connection gain -> out;
+    }
+
+    //==============================================================================
+    graph Voice
+    {
+        output stream float out;
+        input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
+
+        node
+        {
+            envelope     = std::envelopes::FixedASR (0.0f, 0.3f);
+            attenuator   = std::levels::DynamicGain (float);
+            noteSelector = NoteSelector;
+            samplePlayer = std::audio_data::SamplePlayer (PianoSample::source);
+        }
+
+        connection
+        {
+            eventIn -> noteSelector;
+            noteSelector.content -> samplePlayer.content;
+            noteSelector.speedRatio -> samplePlayer.speedRatio;
+            samplePlayer -> attenuator.in;
+            eventIn -> envelope -> attenuator.gain;
+            attenuator -> out;
+        }
+    }
+
+    //==============================================================================
+    // Takes a NoteOn event, and turns it into some events that trigger the right
+    // piano sample to play in a downstream std::audio_data::SamplePlayer
+    processor NoteSelector
+    {
+        input event std::notes::NoteOn eventIn;
+        output event PianoSample::source content;
+        output event float speedRatio;
+
+        event eventIn (std::notes::NoteOn e)
+        {
+            let sample = selectBestSampleForNote (int (e.pitch));
+
+            speedRatio <- float32 (std::notes::getSpeedRatioBetween (float32 (sample.rootNote), e.pitch));
+            content <- sample.source;
+        }
+
+        PianoSample selectBestSampleForNote (int targetNote)
+        {
+            wrap<samples.size> nearest;
+            int nearestDistance = 128;
+
+            for (wrap<samples.size> i)
+            {
+                let distance = abs (samples[i].rootNote - targetNote);
+
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearest = i;
+                }
+            }
+
+            return samples[nearest];
+        }
+    }
+
+    //==============================================================================
+    /// Holds a chunk of audio data and the root note which it was pitched at.
+    struct PianoSample
+    {
+        std::audio_data::Mono source;
+        int rootNote;
+    }
+
+    external PianoSample[5] samples;
+}
