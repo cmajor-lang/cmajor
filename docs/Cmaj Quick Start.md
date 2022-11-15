@@ -33,7 +33,7 @@ This will prompt you for a folder in which to create a new JUCE project containi
 
 ## Installing the Cmajor command-line tools
 
-On the Github releases page, you'll find [downloadable binaries for Mac, Windows and Linux](https://github.com/SoundStacks/cmajor/releases). These provide:
+On the Github releases page, you'll find [downloadable binaries for Mac and Windows](https://github.com/SoundStacks/cmajor/releases). These provide:
 
 - The command-line tool (`cmaj` or `cmaj.exe`) which provides a compiler, utilities and can load and run Cmajor patches.
 - The redistributable libraries (`CmajPerformer.dll` or `libCmajPerformer.so`) which are needed if you're building your own native app which embeds the Cmajor JIT engine.
