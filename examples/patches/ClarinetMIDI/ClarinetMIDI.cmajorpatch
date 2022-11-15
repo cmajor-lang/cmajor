@@ -1,12 +1,12 @@
 {
-    "CmajorVersion": 1,
-    "ID": "grame.cmajor.clarinetMIDI",
-    "version": "1.0",
-    "name": "clarinetMIDI",
-    "description": "Cmajor example",
-    "category": "synth",
-    "manufacturer": "GRAME",
-    "website": "https://faust.grame.fr",
-    "isInstrument": true,
-    "source": "ClarinetMIDI.cmajor"
+	"CmajorVersion": 1,
+	"ID": "grame.cmajor.clarinetMIDI",
+	"version": "1.0",
+	"name": "clarinetMIDI",
+	"description": "Cmajor example",
+	"category": "synth",
+	"manufacturer": "GRAME",
+	"website": "https://faust.grame.fr",
+	"isInstrument": false,
+	"source": "clarinetMIDI.cmajor"
 }
