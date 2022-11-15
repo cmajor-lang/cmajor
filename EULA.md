@@ -22,9 +22,11 @@ You should print a copy of this Licence for future reference.
 
     1.2. All of the Code is governed by the permissive ISC License.
 
-    1.3 You may not create Applications directed toward Children, unless you fully comply with the rules in respect of the relevant jurisdiction, including without limitation obtaining verifiable parental consent (if applicable in the relevant jurisdiction), as further described in clause 10 below. You are responsible for any liabilities arising out of a violation of rules in respect of the relevant jurisdiction.
+    1.3. You may use Applications which use the Software (provided such use incorporates your Licensee Content), for commercial (including without limitation sale or distribution to end users) or non-commercial purposes (including without limitation providing demos and beta testing).
 
-    1.4 The Licensor permits the Licensee to use  Cmajor related Trademarks solely to identify Applications built using the Software. It is envisaged that the Licensee will use the Cmajor related Trademark for this purpose, both in the Application itself and in associated documentation and promotional materials.
+    1.4 You may not create Applications directed toward Children, unless you fully comply with the rules in respect of the relevant jurisdiction, including without limitation obtaining verifiable parental consent (if applicable in the relevant jurisdiction), as further described in clause 10 below. You are responsible for any liabilities arising out of a violation of rules in respect of the relevant jurisdiction.
+
+    1.5 The Licensor permits the Licensee to use Cmajor related Trademarks solely to identify Applications built using the Software. It is envisaged that the Licensee will use the Cmajor related Trademark for this purpose, both in the Application itself and in associated documentation and promotional materials.
 
 2. Restrictions
 
@@ -64,7 +66,7 @@ You should print a copy of this Licence for future reference.
 
 6. LIMITATION OF LIABILITY AND INDEMNIFICATION
 
-    6.1. Neither Sound Stacks  nor its parent company, subsidiaries, affiliates, employees, partners or contractors shall in any circumstances whatsoever be liable to you, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, arising under or in connection with this Agreement for any indirect, consequential or special loss or damage, including but not limited to, for:
+    6.1. Neither Sound Stacks nor its parent company, subsidiaries, affiliates, employees, partners or contractors shall in any circumstances whatsoever be liable to you, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, arising under or in connection with this Agreement for any indirect, consequential or special loss or damage, including but not limited to, for:
 
     6.1.1. loss of profits, sales, business, or revenue; business interruption;
 
@@ -112,29 +114,29 @@ You should print a copy of this Licence for future reference.
 
     8.3. To ensure compliance with this Agreement, you agree that within thirty (30) days from the date of our request, you shall provide all pertinent records and information requested in order to verify that your installation and use of any and all Software is in compliance with this Agreement, along with a signed verification that all such information is complete and correct. You also agree we may audit applicable records concerning your use of Software during normal business hours upon notice to you, at our cost, except in the event the audit reveals an underpayment or breach of this Agreement, you shall be liable for the cost of the audit.
 
-    8.4 Sound Stacks’ privacy policy can be consulted [here](https://www.native-instruments.com/en/company/legal-information/privacy-policy/)
-
 9. Other Important Terms
 
-    9.1. We may transfer our rights and obligations under this Agreement to another organisation (including without limitation a group company or affiliate), but this will not affect your rights or our obligations under this Agreement.
+    9.1. We may update, change or amend this Agreement at our discretion, as needed, via posting with the Software, with no obligation on our part to notify you personally. You should, therefore, periodically check back for updates.
 
-    9.2. You may not transfer your rights or your obligations under this Agreement.
+    9.2. We may transfer our rights and obligations under this Agreement to another organisation (including without limitation a group company or affiliate), but this will not affect your rights or our obligations under this Agreement.
 
-    9.3. This Agreement and any document expressly referred to in it constitutes the entire agreement between you and us. You acknowledge that you have not relied on any statement, promise or representation made or given by or on behalf of us which is not set out in this Agreement or any document expressly referred to in it.
+    9.3. You may not transfer your rights or your obligations under this Agreement.
 
-    9.4. If we fail to insist that you perform any of your obligations under this Agreement, or if we do not enforce our rights against you, or if we delay in doing so, that will not mean that we have waived our rights against you and will not mean that you do not have to comply with those obligations. If we do waive a default by you, we will only do so in writing, and that will not mean that we will automatically waive any later default by you.
+    9.4. This Agreement and any document expressly referred to in it constitutes the entire agreement between you and us. You acknowledge that you have not relied on any statement, promise or representation made or given by or on behalf of us which is not set out in this Agreement or any document expressly referred to in it.
 
-    9.5. Each of the conditions of this Agreement operates separately. If any court or competent authority decides that any of them are unlawful or unenforceable, the remaining conditions will remain in full force and effect.
+    9.5. If we fail to insist that you perform any of your obligations under this Agreement, or if we do not enforce our rights against you, or if we delay in doing so, that will not mean that we have waived our rights against you and will not mean that you do not have to comply with those obligations. If we do waive a default by you, we will only do so in writing, and that will not mean that we will automatically waive any later default by you.
 
-    9.6. Governing Law and Jurisdiction.
+    9.6. Each of the conditions of this Agreement operates separately. If any court or competent authority decides that any of them are unlawful or unenforceable, the remaining conditions will remain in full force and effect.
 
-    9.6.1. If you are a UK, EU, EEA or Swiss citizen, this Licence shall be governed by the laws of England and Wales without regard to its conflict of law rules and you consent to the exclusive jurisdiction of the courts located in London, UK.
+    9.7. Governing Law and Jurisdiction.
 
-    9.6.2. If you are a US citizen, this Licence shall be governed by the laws of New York without regard to its conflict of laws rules and you consent to the exclusive jurisdiction of the state and federal courts located in New York County.
+    9.7.1. If you are a UK, EU, EEA or Swiss citizen, this Licence shall be governed by the laws of England and Wales without regard to its conflict of law rules and you consent to the exclusive jurisdiction of the courts located in London, UK.
 
-    9.6.3. If you live outside the US, UK and EU, EEA or Switzerland, you agree to the laws and jurisdiction of New York as noted above in clause 9.6.2 above.
+    9.7.2. If you are a US citizen, this Licence shall be governed by the laws of New York without regard to its conflict of laws rules and you consent to the exclusive jurisdiction of the state and federal courts located in New York County.
 
-    9.6.4. You may have additional rights as a consumer under your local law.
+    9.7.3. If you live outside the US, UK and EU, EEA or Switzerland, you agree to the laws and jurisdiction of New York as noted above in clause 9.6.2 above.
+
+    9.7.4. You may have additional rights as a consumer under your local law.
 
 10. Definitions.
 
