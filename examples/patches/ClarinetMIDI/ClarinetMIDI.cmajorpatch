@@ -8,5 +8,5 @@
 	"manufacturer": "GRAME",
 	"website": "https://faust.grame.fr",
 	"isInstrument": false,
-	"source": "clarinetMIDI.cmajor"
+	"source": "ClarinetMIDI.cmajor"
 }
