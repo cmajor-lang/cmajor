@@ -22,6 +22,7 @@
 #pragma once
 
 #include "../../choc/platform/choc_DynamicLibrary.h"
+#include "../../choc/platform/choc_Platform.h"
 #include "cmaj_EngineFactoryInterface.h"
 #include <memory>
 
