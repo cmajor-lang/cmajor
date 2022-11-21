@@ -178,7 +178,7 @@ and
 
 ..but since there's nowhere to put the file's sample rate, that information will be discarded.
 
-## Patch GUIs
+## Patch GUIs
 
 ### Specifying a custom GUI for a patch
 
@@ -195,9 +195,107 @@ To add a custom GUI to your patch, your `.cmajorpatch` file should include a `vi
 
 The `view` property should contain a `html` property providing a relative URL to a HTML index page that can be displayed in an embedded browser view in the host.
 
-### GUI-to-patch Communication
+### GUI Communication
 
-** TODO **
+Patch GUIs communicate with the runtime by passing serialised message structures back and forth over a communication channel. The specific implementation details are encapsulated inside a `PatchConnection` object, which is made available in the global scope by the runtime.
+
+The `PatchConnection` API has methods for sending data to, and requesting data from, the runtime, and allows for setting up functions which the runtime will invoke when various aspects of the patch change (i.e in response to previous actions from the GUI, from external changes in a DAW, or because of recompilation).
+
+Below is a brief overview of the available functionality:
+
+_(note: for all methods below, `endpointID` is the endpoint name, as specified in the cmajor source code, as a string)_
+
+#### GUI-to-Runtime
+
+##### Actions
+- `sendEventOrValue (endpointID, value, optionalNumFrames)`
+  - Notify the runtime that a given input endpoint (either an `event` or `value`) should change to the given value
+  - The value will typically be a primitive number, or boolean, but it can also be a javascript object
+    - e.g. to update an endpoint of type `std::timeline::Tempo`, send a value like `{ bpm: 120.0 }` and the runtime will take care of converting it to a `std::timeline::Tempo`
+  - In the case of a `value` endpoint, an optional frame count can be specified, which the runtime will use to smoothly interpolate between the current value and the target value
+  - If the runtime accepts the change, it will asynchronously notify the client by invoking the `onParameterEndpointChanged` callback
+  - Typically this will be invoked multiple times when changing a UI control like a slider, bookended by calls to the gesture actions described below
+- `sendParameterGestureStart (endpointID)`
+- `sendParameterGestureEnd (endpointID)`
+   - These are used by host applications when recording automation, indicating that the user is holding a given parameter. The gesture calls must always be matched (a `GestureEnd` action must eventually follow a `GestureStart` action).
+
+##### Requests
+- `requestStatusUpdate()`
+  - Request the current manifest and endpoint details
+  - The runtime will asynchronously call back to `onPatchStatusChanged`
+- `requestEndpointValue (endpointID)`
+  - Request the current value for a given input endpoint
+  - The runtime will asynchronously call back to `onParameterEndpointChanged`
+
+#### Runtime-to-GUI
+- `onPatchStatusChanged (errorMessage, patchManifest, inputsList, outputsList)`
+  - This will be called in response to a `requestStatusUpdate()` request, or following each recompile
+  - `errorMessage` will contain any output from an unsuccessful compile run, or otherwise be empty
+  - `patchManifest` is the same information specified in the `cmajorpatch` file
+  - `inputsList` and `outputsList` are arrays of javascript object representations of the `cmaj::EndpointDetails` structures described in the C++ API docs. See [`EndpointDetails::toJSON()`](https://github.com/SoundStacks/cmajor/blob/main/include/cmajor/API/cmaj_Endpoints.h#L290) for the specific implementation details
+- `onSampleRateChanged (newSampleRate)`
+  - This will be called following changes to the sample rate within the host, or following each recompile
+- `onParameterEndpointChanged (endpointID, newValue)`
+  - This will be called following a change to an input endpoint parameter (i.e. after processing a `sendEventOrValue` call, or from an external change via the host), or following a `requestEndpointValue` request
+- `onOutputEvent (endpointID, newValue)`
+  - The value here will typically be a primitive number or boolean. If the endpoint type is an aggregate / `struct`, the runtime will convert it to a javascript object, i.e there will be a key for each field name in the struct
+
+#### Typical use cases
+
+- Dedicated UI for a single patch
+  - i.e has fixed custom UI controls laid out by hand, which represent specific endpoints
+  - Here, the UI code will end up with some hardcoded endpoint IDs, and is mostly concerned with initiating, and reacting to, changes of input endpoints, and additionally reacting to output events. Information from endpoint annotations may be used for various bits of UI logic, such as limiting the input range on the client side
+- Generic UI for use with multiple patches
+  - i.e something like the default patch player UI, where controls are programatically laid out using type and annotation information
+  - Here, much more is done in the `onPatchStatusChanged` callback, typically including tearing down the whole UI and starting again using the various bits of information about the patch (e.g.the title from the manifest, input endpoint annotations, etc) to decide what to render
+
+Regardless of the specific use case, the app will typically instantiate a `PatchConnection` early in its bootstrapping, setup callbacks for manipulating UI state when aspects of the patch change, and then request the initial state from the runtime. i.e:
+
+```js
+const connection = new PatchConnection();
+
+connection.onPatchStatusChanged = (errorMessage, patchManifest, inputList, outputList) =>
+{
+    // following a status update, it is typical to request the value
+    // of all input parameters, and update the UI accordingly. e.g:
+    const inputParameters = inputList.filter (e => e.purpose === "parameter");
+    inputParameters.forEach (({ endpointID, annotation }) =>
+    {
+        // ...update any UI state dependent on annotation data etc
+
+        // further request current value
+        connection.requestEndpointValue (endpointID);
+    });
+};
+
+connection.onSampleRateChanged = (newSampleRate) =>
+{
+    // ...update any UI state that needs the sample rate information
+};
+
+connection.onParameterEndpointChanged = (endpointID, newValue) =>
+{
+    // ...update UI state for endpoint, typically some kind of knob, slider, etc
+};
+
+connection.onOutputEvent = (endpointID, newValue) =>
+{
+    // ...update UI state for endpoint, typically some kind of visualisation
+};
+
+// initial request for state
+connection.requestStatusUpdate();
+```
+
+It is worth nothing that the runtime should be considered the source of truth for patch state, as parameters can change from outside the GUI (i.e. via automation in a DAW). Therefore UI controls should only really update in reaction to patch connection callbacks.
+
+_Note: The patch player and plugin provide access to the dev tools / inspector of the web view via the context menu presented when right-clicking on the window. This can be used for debugging, and inspecting the source of the default Patch player_
+
+#### Known limitations
+
+- Currently, `PatchConnection` is effectively a singleton / the app is limited to a single instance. This is due to the current mechanism used by the runtime to invoke callbacks, and it will only notify the most recently created instance about changes. However, multiple instances can be used to communication from the GUI to the runtime. More sophisticated abstractions can be built client-side to work around these limitations, allowing for multiple listeners etc.
+- The annotations are currently the raw annotations as written in the cmajor source file, and therefore do not contain the default properties picked by the C++ runtime
+- The patch player and plugins will only process input values for parameter and timeline related input endpoints
 
 ## Playing a Patch
 
