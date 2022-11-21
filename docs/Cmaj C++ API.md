@@ -11,7 +11,7 @@ The two main folders to look at for this are:
 
 (There is also a lower-level COM-based API in `include/cmajor/COM` which you can use if you like, but it's probably better to ignore them and stick to the API wrapper classes that expose the same things as idiomatic C++ classes).
 
-There are some example projects demonstrating simple use of the C++ API: see the [examples/native_apps](../examples/native_apps/) folder.
+There are some example projects demonstrating simple use of the C++ API: see the [examples/native_apps](https://github.com/SoundStacks/cmajor/tree/main/examples/native_apps) folder.
 
 ## Main API classes
 
