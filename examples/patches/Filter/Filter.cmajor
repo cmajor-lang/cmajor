@@ -1,0 +1,27 @@
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+graph Filter [[ main ]]
+{
+    input filter.frequency;
+    input filter.q;
+
+    input stream float<2> in;
+    output stream float<2> out;
+
+    node filter             = std::filters (float<2>)::tpt::svf::Processor;
+
+    connection
+    {
+        in -> filter.in;
+        filter.out -> out;
+    }
+}
