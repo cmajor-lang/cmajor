@@ -57,7 +57,7 @@ Engine createEngineForGeneratedCppProgram();
 /// that is nicely wrapped in a cmaj::Engine object.
 ///
 template <typename GeneratedCppClass>
-struct GeneratedCppEngine  : public EngineInterface
+struct GeneratedCppEngine  : public choc::com::ObjectWithAtomicRefCount<EngineInterface, GeneratedCppEngine<GeneratedCppClass>>
 {
     GeneratedCppEngine() = default;
 
@@ -102,7 +102,7 @@ struct GeneratedCppEngine  : public EngineInterface
     bool setExternalVariable (const char*, const void*, size_t) override { return false; }
 
     const char* getAvailableCodeGenTargetTypes() override   { return ""; }
-    void generateCode (const char*, const char*, void*, HandleCodeGenOutput) override {}
+    void generateCode (const char*, const char*, void*, EngineInterface::HandleCodeGenOutput) override {}
 
     BuildSettings buildSettings;
 
@@ -125,7 +125,7 @@ private:
     }
 
     //==============================================================================
-    struct Performer  : public PerformerInterface
+    struct Performer  : public choc::com::ObjectWithAtomicRefCount<PerformerInterface, Performer>
     {
         Performer (int32_t sessionID, double frequency)
         {
@@ -170,7 +170,7 @@ private:
             generatedObject.copyOutputFrames (endpoint, dest, numFramesToCopy);
         }
 
-        void iterateOutputEvents (EndpointHandle endpoint, void* context, HandleOutputEventCallback callback) override
+        void iterateOutputEvents (EndpointHandle endpoint, void* context, PerformerInterface::HandleOutputEventCallback callback) override
         {
             if constexpr (GeneratedCppClass::maxOutputEventSize != 0)
             {
