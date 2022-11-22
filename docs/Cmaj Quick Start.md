@@ -85,7 +85,7 @@ To get started with a new patch, the `cmaj` app can generate the basic boilerpla
 $ cmaj create --name="Hello" MyNewPatchFolderName
 ```
 
-This creates a new folder containing a patch called "Hello" that can be explored, renamed and built upon. For in-depth details on how these files work, see the [Patch Format Guide](./Cmaj%20Patch%20Format.md)
+This creates a new folder containing a patch called "Hello" that can be explored, renamed and built upon. For in-depth details on how these files work, see the [Patch Format Guide](../docs/PatchFormat)
 
 The VScode extension also provides the `Cmajor: Create a new patch` command to do the same thing.
 
@@ -93,7 +93,7 @@ The VScode extension also provides the `Cmajor: Create a new patch` command to d
 
 ## Coding in Cmajor: High-Level Overview
 
-This is a very quick summary of the main concepts in Cmajor. For a deep dive on the language syntax, see the [Language Guide](./Cmaj%20Language%20Guide.md)
+This is a very quick summary of the main concepts in Cmajor. For a deep dive on the language syntax, see the [Language Guide](../docs/LanguageReference)
 
 
 #### Programs vs Patches
@@ -192,7 +192,7 @@ graph AnnoyingBeep  [[main]]
 If you start the patch running with:
 
 ```shell
-$ cmaj AnnoyingBeep/AnnoyingBeep.cmajorpatch
+$ cmaj play AnnoyingBeep/AnnoyingBeep.cmajorpatch
 ```
 
 Then you should hear a sine wave playing. While it's running, try opening an editor on the `AnnoyingBeep.cmajor` file, and modify the "440" to change its pitch. When you re-save the file, the player should pick this up and you'll hear the sound changing.
