@@ -47,4 +47,5 @@ target_link_libraries(RenderPatch
     PRIVATE
         ${CMAKE_DL_LIBS}
         $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
+        ${EXTRA_LIBS}
 )
