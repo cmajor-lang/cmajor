@@ -684,7 +684,7 @@ struct Patch::LoadedPatch
             float v = value.isString() ? param->getStringAsValue (value.getString())
                                        : value.getWithDefault<float> (0);
 
-            param->setValue (v, false);
+            param->setValue (v, false, rampFrames);
 
             if (handleParameterChange)
                 handleParameterChange (endpointID, param->currentValue);
@@ -1863,7 +1863,7 @@ inline void PatchWebView::createBindings()
 
         this.sendEventOrValue = function (endpointID, value, optionalNumFrames)
         {
-            window.cmaj_clientRequest ({ type: "send_value", id: endpointID, value: value, numFrames: optionalNumFrames });
+            window.cmaj_clientRequest ({ type: "send_value", id: endpointID, value: value, rampFrames: optionalNumFrames });
         };
 
         this.sendParameterGestureStart = function (endpointID)
@@ -1907,7 +1907,7 @@ inline void PatchWebView::createBindings()
                         if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
                         {
                             auto endpointID = cmaj::EndpointID::create (endpointIDMember.getString());
-                            loadedPatch.sendEventOrValueToPatch (endpointID, msg["value"], msg["frames"].getWithDefault<int32_t> (-1));
+                            loadedPatch.sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
                         }
                     }
                     else if (type == "send_gesture_start")
