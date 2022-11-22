@@ -26,8 +26,6 @@
 namespace cmaj
 {
 
-using COMObjectBase = choc::com::ObjectWithAtomicRefCount<choc::com::Object>;
-
 /// Options used by Program::getSyntaxTree()
 struct SyntaxTreeOptions
 {
@@ -50,7 +48,7 @@ struct SyntaxTreeOptions
     just the underlying COM object without the wrapper class, call
     cmaj::Library::createProgram().
 */
-struct ProgramInterface  : public COMObjectBase
+struct ProgramInterface  : public choc::com::Object
 {
     ProgramInterface() = default;
     virtual ~ProgramInterface() = default;

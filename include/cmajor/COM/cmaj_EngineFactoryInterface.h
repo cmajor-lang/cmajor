@@ -37,10 +37,8 @@ namespace cmaj
     skip all the COM and factory pattern nastiness and just get an engine
     using an idiomatic C++ style.
 */
-struct EngineFactoryInterface   : public COMObjectBase
+struct EngineFactoryInterface   : public choc::com::Object
 {
-    ~EngineFactoryInterface() override = default;
-
     /// Takes an optional JSON string specifying the options for the engine
     [[nodiscard]] virtual EngineInterface* createEngine (const char* engineCreationOptions) = 0;
     virtual const char* getName() = 0;

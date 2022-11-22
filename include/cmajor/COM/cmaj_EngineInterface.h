@@ -40,10 +40,9 @@ namespace cmaj
     EngineInterface objects can be created by EngineFactoryInterface, but an
     easier way to get one is to use the helper function cmaj::Engine::create().
 */
-struct EngineInterface   : public COMObjectBase
+struct EngineInterface   : public choc::com::Object
 {
     EngineInterface() = default;
-    virtual ~EngineInterface() = default;
 
     //==============================================================================
     /// Returns a JSON string which can be parsed into a BuildSettings object

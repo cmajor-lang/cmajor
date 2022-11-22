@@ -60,7 +60,6 @@ template <typename GeneratedCppClass>
 struct GeneratedCppEngine  : public EngineInterface
 {
     GeneratedCppEngine() = default;
-    ~GeneratedCppEngine() override {}
 
     //==============================================================================
     choc::com::String* getBuildSettings() override

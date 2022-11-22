@@ -31,13 +31,15 @@ namespace cmaj
 /// A simple implementation of CacheDatabaseInterface that saves the data as
 /// files in a given folder, and deletes the oldest files when a maximum
 /// number exist
-struct FileBasedCacheDatabase   : public CacheDatabaseInterface
+struct FileBasedCacheDatabase   : public choc::com::ObjectWithAtomicRefCount<CacheDatabaseInterface, FileBasedCacheDatabase>
 {
     FileBasedCacheDatabase (std::filesystem::path parentFolder, size_t maxNumFilesAllowed)
        : folder (std::move (parentFolder)), maxNumFiles (maxNumFilesAllowed)
     {
         purgeThread.start (0, [this] { removeOldFiles(); });
     }
+
+    virtual ~FileBasedCacheDatabase() = default;
 
     void store (const char* key, const void* dataToSave, uint64_t dataSize) override
     {

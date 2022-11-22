@@ -43,7 +43,7 @@ using EndpointHandle = uint32_t;
     helper class), and they are a fully linked, stateful, ready to render instance
     of a program.
 */
-struct PerformerInterface   : public COMObjectBase
+struct PerformerInterface   : public choc::com::Object
 {
     PerformerInterface() = default;
     virtual ~PerformerInterface() = default;

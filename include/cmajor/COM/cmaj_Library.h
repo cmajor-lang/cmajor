@@ -144,7 +144,7 @@ inline bool Library::initialise (std::string_view pathToDLL)
     {
         using GetEntryPointsFn = EntryPoints*(*)();
 
-        if (auto fn = (GetEntryPointsFn) library->findFunction ("cmajor_getEntryPointsV1"))
+        if (auto fn = (GetEntryPointsFn) library->findFunction ("cmajor_getEntryPointsV2"))
         {
             entryPoints = fn();
 

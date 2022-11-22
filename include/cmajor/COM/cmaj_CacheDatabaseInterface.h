@@ -33,7 +33,7 @@ namespace cmaj
     runtime can use to re-load previously compiled programs, avoiding the need to
     re-link them.
 */
-struct CacheDatabaseInterface   : public COMObjectBase
+struct CacheDatabaseInterface   : public choc::com::Object
 {
     /// Asks the cache to store a block of data for a given key.
     /// The hash is a string, and the cache should overwrite an existing entry with the
