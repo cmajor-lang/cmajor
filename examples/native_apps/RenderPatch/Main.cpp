@@ -57,7 +57,16 @@ int main (int argc, char** argv)
     std::cout << "Loading patch " << argv[2] << std::endl;
 
     cmaj::PatchManifest patchManifest;
-    patchManifest.initialiseWithFile (argv[2]);
+
+    try
+    {
+        patchManifest.initialiseWithFile (argv[2]);
+    }
+    catch (std::runtime_error e)
+    {
+        std::cout << "Initialising failed: " << e.what() << std::endl;
+        return 1;
+    }
 
     cmaj::Patch patch (true, false);
 
