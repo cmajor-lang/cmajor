@@ -238,7 +238,7 @@ _(note: for all methods below, `endpointID` is the endpoint name, as specified i
 - `onParameterEndpointChanged (endpointID, newValue)`
   - This will be called following a change to an input endpoint parameter (i.e. after processing a `sendEventOrValue` call, or from an external change via the host), or following a `requestEndpointValue` request
 - `onOutputEvent (endpointID, newValue)`
-  - The value here will typically be a primitive number or boolean. If the endpoint type is an aggregate / `struct`, the runtime will convert it to a javascript object, i.e there will be a key for each field name in the struct
+  - The value here can be a scalar value (a primitive number or boolean), an array, or a javascript object. If the endpoint type is an aggregate / `struct`, the runtime will convert it to a javascript object, i.e there will be a key for each field name in the struct
 
 #### Typical use cases
 
@@ -247,7 +247,7 @@ _(note: for all methods below, `endpointID` is the endpoint name, as specified i
   - Here, the UI code will end up with some hardcoded endpoint IDs, and is mostly concerned with initiating, and reacting to, changes of input endpoints, and additionally reacting to output events. Information from endpoint annotations may be used for various bits of UI logic, such as limiting the input range on the client side
 - Generic UI for use with multiple patches
   - i.e something like the default patch player UI, where controls are programatically laid out using type and annotation information
-  - Here, much more is done in the `onPatchStatusChanged` callback, typically including tearing down the whole UI and starting again using the various bits of information about the patch (e.g.the title from the manifest, input endpoint annotations, etc) to decide what to render
+  - Here, much more is done in the `onPatchStatusChanged` callback, typically including tearing down the whole UI and starting again using the various bits of information about the patch (e.g. the title from the manifest, input endpoint annotations, etc) to decide what to render
 
 Regardless of the specific use case, the app will typically instantiate a `PatchConnection` early in its bootstrapping, setup callbacks for manipulating UI state when aspects of the patch change, and then request the initial state from the runtime. i.e:
 
@@ -287,7 +287,7 @@ connection.onOutputEvent = (endpointID, newValue) =>
 connection.requestStatusUpdate();
 ```
 
-It is worth nothing that the runtime should be considered the source of truth for patch state, as parameters can change from outside the GUI (i.e. via automation in a DAW). Therefore UI controls should only really update in reaction to patch connection callbacks.
+It is worth noting that the runtime should be considered the source of truth for patch state, as parameters can change from outside the GUI (i.e. via automation in a DAW). Therefore UI controls should only really update in reaction to patch connection callbacks.
 
 _Note: The patch player and plugin provide access to the dev tools / inspector of the web view via the context menu presented when right-clicking on the window. This can be used for debugging, and inspecting the source of the default Patch player_
 
