@@ -85,7 +85,7 @@ To get started with a new patch, the `cmaj` app can generate the basic boilerpla
 $ cmaj create --name="Hello" MyNewPatchFolderName
 ```
 
-This creates a new folder containing a patch called "Hello" that can be explored, renamed and built upon. For in-depth details on how these files work, see the [Patch Format Guide](../docs/PatchFormat)
+This creates a new folder containing a patch called "Hello" that can be explored, renamed and built upon. For in-depth details on how these files work, see the [Patch Format Guide](https://cmajor.dev/docs/PatchFormat)
 
 The VScode extension also provides the `Cmajor: Create a new patch` command to do the same thing.
 
@@ -93,7 +93,7 @@ The VScode extension also provides the `Cmajor: Create a new patch` command to d
 
 ## Coding in Cmajor: High-Level Overview
 
-This is a very quick summary of the main concepts in Cmajor. For a deep dive on the language syntax, see the [Language Guide](../docs/LanguageReference)
+This is a very quick summary of the main concepts in Cmajor. For a deep dive on the language syntax, see the [Language Guide](https://cmajor.dev/docs/LanguageReference)
 
 
 #### Programs vs Patches
