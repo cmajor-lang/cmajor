@@ -16,7 +16,7 @@
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    auto patch = std::make_unique<cmaj::Patch> (false);
+    auto patch = std::make_unique<cmaj::Patch> (false, true);
     patch->createEngine = +[] { return cmaj::Engine::create(); };
 
     return new cmaj::plugin::JITLoaderPlugin (std::move (patch));
