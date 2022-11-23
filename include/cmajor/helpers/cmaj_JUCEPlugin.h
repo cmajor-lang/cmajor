@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "cmaj_PatchUtilities.h"
+#include "cmaj_PatchWebView.h"
 #include "cmaj_GeneratedCppEngine.h"
 #include "../../choc/memory/choc_xxHash.h"
 
@@ -1336,7 +1336,7 @@ public:
             PatchManifest manifest;
             manifest.initialiseWithFile (PluginInstance::getFileFromPluginID (desc.fileOrIdentifier));
 
-            auto patch = std::make_unique<Patch> (false);
+            auto patch = std::make_unique<Patch> (false, true);
             patch->createEngine = +[] { return cmaj::Engine::create(); };
             patch->cache = cache;
             patch->preload (manifest);

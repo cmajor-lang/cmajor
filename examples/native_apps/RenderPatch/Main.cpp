@@ -59,7 +59,7 @@ int main (int argc, char** argv)
     cmaj::PatchManifest patchManifest;
     patchManifest.initialiseWithFile (argv[2]);
 
-    cmaj::Patch patch (true);
+    cmaj::Patch patch (true, false);
 
     patch.createEngine = [&] { return cmaj::Engine::create(); };
 
