@@ -67,8 +67,12 @@ public:
                 patch->setPlaybackParams (getPlaybackParams (44100, 128));
                 setNewState (createEmptyState ({}));
             }
-
-            createParameterTree();
+            else
+            {
+                // for a JIT plugin, we can't recreate parameter objects without hosts crashing, so
+                // will just create a big flat list and re-use its parameter objects when things change
+                ensureNumParameters (100);
+            }
         }
         else
         {
@@ -635,11 +639,17 @@ private:
         {
         }
 
+        ~Parameter() override
+        {
+            detach();
+        }
+
         bool setPatchParam (PatchParameterPtr p)
         {
             if (patchParam == p)
                 return false;
 
+            detach();
             patchParam = std::move (p);
 
             patchParam->valueChanged = [this] (float v)
@@ -649,9 +659,23 @@ private:
 
             patchParam->gestureStart = [this] { beginChangeGesture(); };
             patchParam->gestureEnd   = [this] { endChangeGesture(); };
-
-            patchParam->valueChanged (patchParam->currentValue);
             return true;
+        }
+
+        void detach()
+        {
+            if (patchParam != nullptr)
+            {
+                patchParam->valueChanged = [] (float) {};
+                patchParam->gestureStart = [] {};
+                patchParam->gestureEnd   = [] {};
+            }
+        }
+
+        void forceValueChanged()
+        {
+            if (patchParam != nullptr)
+                patchParam->valueChanged (patchParam->currentValue);
         }
 
         juce::String getParameterID() const override                { return paramID; }
@@ -716,22 +740,26 @@ private:
         const juce::String paramID;
     };
 
+    static constexpr bool useFixedParamTree = EngineType::isPrecompiled || EngineType::isFixedPatch;
+
     void createParameterTree()
     {
         // for a precompiled plugin, we can build a complete group structure
-        if constexpr (EngineType::isPrecompiled || EngineType::isFixedPatch)
+        if constexpr (useFixedParamTree)
         {
             struct ParameterTreeBuilder
             {
-                void add (const PatchParameterPtr& param)
+                Parameter* add (const PatchParameterPtr& param)
                 {
                     auto newParam = std::make_unique<Parameter> (param->endpointID.toString());
-                    newParam->setPatchParam (param);
+                    auto rawParam = newParam.get();
 
                     if (! param->group.empty())
                         getOrCreateGroup (tree, {}, param->group).addChild (std::move (newParam));
                     else
                         tree.addChild (std::move (newParam));
+
+                    return rawParam;
                 }
 
                 juce::AudioProcessorParameterGroup& getOrCreateGroup (juce::AudioProcessorParameterGroup& targetTree,
@@ -764,31 +792,36 @@ private:
             ParameterTreeBuilder builder;
 
             for (auto& p : patch->getParameterList())
-                builder.add (p);
+            {
+                auto param = builder.add (p);
+                parameters.push_back (param);
+                param->setPatchParam (p);
+            }
+
+            for (auto p : parameters)
+                p->forceValueChanged();
 
             setHostedParameterTree (std::move (builder.tree));
-        }
-        else
-        {
-            // for a JIT plugin, we can't recreate parameter objects without hosts crashing, so
-            // will just create a big flat list and re-use its parameter objects when things change
-            ensureNumParameters (100);
         }
     }
 
     bool updateParameters()
     {
         bool changed = false;
+        auto params = patch->getParameterList();
 
-        if constexpr (! EngineType::isPrecompiled)
+        if constexpr (useFixedParamTree)
         {
-            auto params = patch->getParameterList();
-
-            ensureNumParameters (params.size());
-
-            for (size_t i = 0; i < params.size(); ++i)
-                changed = parameters[i]->setPatchParam (params[i]) || changed;
+            if (parameters.empty())
+                createParameterTree();
         }
+        else
+        {
+            ensureNumParameters (params.size());
+        }
+
+        for (size_t i = 0; i < params.size(); ++i)
+            changed = parameters[i]->setPatchParam (params[i]) || changed;
 
         return changed;
     }
