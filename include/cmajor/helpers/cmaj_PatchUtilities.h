@@ -780,7 +780,7 @@ struct Patch::Build
                 }
             }
 
-            engine.setBuildSettings (cmaj::BuildSettings()
+            engine.setBuildSettings (engine.getBuildSettings()
                                        .setFrequency (playbackParams.sampleRate)
                                        .setMaxBlockSize (playbackParams.blockSize));
 
