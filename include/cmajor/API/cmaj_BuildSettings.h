@@ -48,6 +48,7 @@ struct BuildSettings
     BuildSettings& setMaxBlockSize (uint32_t size)         { setProperty (maxBlockSizeMember, static_cast<int32_t> (size)); return *this; }
     BuildSettings& setMaxStateSize (uint64_t size)         { setProperty (maxStateSizeMember, static_cast<int32_t> (size)); return *this; }
     BuildSettings& setMaxStackSize (uint64_t size)         { setProperty (maxStackSizeMember, static_cast<int32_t> (size)); return *this; }
+    BuildSettings& setEventBufferSize (uint32_t size)      { setProperty (eventBufferSizeMember, static_cast<int32_t> (size)); return *this; }
     BuildSettings& setOptimisationLevel (int level)        { setProperty (optimisationLevelMember, level); return *this; }
     BuildSettings& setSessionID (int32_t id)               { setProperty (sessionIDMember, id); return *this; }
     BuildSettings& setDebugFlag (bool b)                   { setProperty (debugMember, b); return *this; }
@@ -136,8 +137,13 @@ private:
         {
             auto value = settings[name].getWithDefault (defaultValue);
 
-            if (value == defaultValue || (value >= minValue && value < maxValue))
-                return value;
+            if (value < minValue)
+                return minValue;
+
+            if (value > maxValue)
+                return maxValue;
+
+            return value;
         }
 
         return defaultValue;
