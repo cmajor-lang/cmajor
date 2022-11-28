@@ -62,7 +62,7 @@ int main (int argc, char** argv)
     {
         patchManifest.initialiseWithFile (argv[2]);
     }
-    catch (std::runtime_error e)
+    catch (const std::runtime_error& e)
     {
         std::cout << "Initialising failed: " << e.what() << std::endl;
         return 1;
