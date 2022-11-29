@@ -681,6 +681,7 @@ R"(
     update (state.rotation, force);
 
     let accumlatedRotation = undefined;
+    let previousScreenY = undefined;
 
     const onMouseMove = (event) =>
     {
@@ -692,13 +693,21 @@ R"(
 
             return clamp (rotation - delta, -maxKnobRotation, maxKnobRotation);
         };
+
+        const workaroundBrowserIncorrectlyCalculatingMovementY = event.movementY === event.screenY;
+        const movementY = workaroundBrowserIncorrectlyCalculatingMovementY
+            ? event.screenY - previousScreenY
+            : event.movementY;
+        previousScreenY = event.screenY;
+
         const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
-        accumlatedRotation = nextRotation (accumlatedRotation, event.movementY * speedMultiplier);
+        accumlatedRotation = nextRotation (accumlatedRotation, movementY * speedMultiplier);
         onEdit (toValue (accumlatedRotation));
     };
 
     const onMouseUp = (event) =>
     {
+        previousScreenY = undefined;
         accumlatedRotation = undefined;
         window.removeEventListener ("mousemove", onMouseMove);
         window.removeEventListener ("mouseup", onMouseUp);
@@ -707,6 +716,7 @@ R"(
 
     const onMouseDown = (event) =>
     {
+        previousScreenY = event.screenY;
         accumlatedRotation = state.rotation;
         onBeginEdit();
         window.addEventListener ("mousemove", onMouseMove);
