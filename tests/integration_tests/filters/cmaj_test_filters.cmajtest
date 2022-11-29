@@ -207,15 +207,15 @@ graph filters [[ main ]]
     node source2   = WideNoise (float, 2);
     node source3   = WideNoise (float64, 2);
 
-    node lowPassNode   = std::filters (float<2>)::simper::Processor (std::filters (float<2>)::simper::Mode::lowPass,   1000.0, 1, 10);
-    node highPassNode  = std::filters (float64<2>)::simper::Processor (std::filters (float64<2>)::simper::Mode::highPass,  1000.0, 1, 10);
-    node bandPassNode  = std::filters::simper::Processor (std::filters::simper::Mode::bandPass,  1000.0, 1, 10);
-    node notchPassNode = std::filters::simper::Processor (std::filters::simper::Mode::notchPass, 1000.0, 1, 10);
-    node peakPassNode  = std::filters::simper::Processor (std::filters::simper::Mode::peakPass,  1000.0, 1, 10);
-    node allPassNode   = std::filters::simper::Processor (std::filters::simper::Mode::allPass,   1000.0, 1, 10);
-    node lowShelfNode  = std::filters::simper::Processor (std::filters::simper::Mode::lowShelf,  1000.0, 1, 10);
-    node highShelfNode = std::filters::simper::Processor (std::filters::simper::Mode::highShelf, 1000.0, 1, 10);
-    node bellNode      = std::filters::simper::Processor (std::filters::simper::Mode::bell,      1000.0, 1, 10);
+    node lowPassNode   = std::filters (float<2>)::simper::Processor (std::filters (float<2>)::simper::Mode::lowPass,   1000.0, 1, 20);
+    node highPassNode  = std::filters (float64<2>)::simper::Processor (std::filters (float64<2>)::simper::Mode::highPass,  1000.0, 1, 20);
+    node bandPassNode  = std::filters::simper::Processor (std::filters::simper::Mode::bandPass,  1000.0, 1, 20);
+    node notchPassNode = std::filters::simper::Processor (std::filters::simper::Mode::notchPass, 1000.0, 1, 20);
+    node peakPassNode  = std::filters::simper::Processor (std::filters::simper::Mode::peakPass,  1000.0, 1, 20);
+    node allPassNode   = std::filters::simper::Processor (std::filters::simper::Mode::allPass,   1000.0, 1, 20);
+    node lowShelfNode  = std::filters::simper::Processor (std::filters::simper::Mode::lowShelf,  1000.0, 1, 20);
+    node highShelfNode = std::filters::simper::Processor (std::filters::simper::Mode::highShelf, 1000.0, 1, 20);
+    node bellNode      = std::filters::simper::Processor (std::filters::simper::Mode::bell,      1000.0, 1, 20);
 
     connection
     {

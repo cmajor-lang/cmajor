@@ -642,14 +642,10 @@ namespace std::filters (using FrameType = float32,
                 if (this.mode == Mode::lowShelf || this.mode == Mode::highShelf || this.mode == Mode::bell)
                 {
                     let A = CoefficientType (pow (10.0, gain / 40.0));
-                    g = CoefficientType (g / sqrt (A));
-
-                    this.a1 = CoefficientType (1.0 / (1.0 + g * (g + k)));
-                    this.a2 = CoefficientType (g * this.a1);
-                    this.a3 = CoefficientType (g * this.a2);
 
                     if (this.mode == Mode::lowShelf)
                     {
+                        g = CoefficientType (g / sqrt (A));
                         this.f0 = 1;
                         this.f1 = k * (A - 1);
                         this.f2 = (A * A) - 1;
@@ -662,6 +658,7 @@ namespace std::filters (using FrameType = float32,
                     }
                     else if (this.mode == Mode::highShelf)
                     {
+                        g = CoefficientType (g * sqrt (A));
                         this.f0 = A * A;
                         this.f1 = k * (1 - A) * A;
                         this.f2 = 1 - (A * A);
@@ -669,10 +666,6 @@ namespace std::filters (using FrameType = float32,
                 }
                 else
                 {
-                    this.a1 = CoefficientType (1.0 / (1.0 + g * (g + k)));
-                    this.a2 = CoefficientType (g * this.a1);
-                    this.a3 = CoefficientType (g * this.a2);
-
                     if (this.mode == Mode::lowPass)
                     {
                         this.f0 = 0;
@@ -713,6 +706,10 @@ namespace std::filters (using FrameType = float32,
                         this.f2 = 0;
                     }
                 }
+
+                this.a1 = CoefficientType (1.0 / (1.0 + g * (g + k)));
+                this.a2 = CoefficientType (g * this.a1);
+                this.a3 = CoefficientType (g * this.a2);
             }
 
             FrameType process (FrameType v0)
