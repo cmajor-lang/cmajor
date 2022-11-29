@@ -25,6 +25,16 @@
 #include "cmaj_GeneratedCppEngine.h"
 #include "../../choc/memory/choc_xxHash.h"
 
+#if JUCE_LINUX
+ #define Font FontX  // Gotta love these C headers with global symbol clashes.. sigh..
+ #define Time TimeX
+ #define Drawable DrawableX
+ #include <gtk/gtkx.h>
+ #undef Font
+ #undef Time
+ #undef Drawable
+#endif
+
 namespace cmaj::plugin
 {
 
@@ -304,6 +314,8 @@ public:
                             midi.addEvent (m.data, m.length(), static_cast<int> (frame));
                         });
     }
+
+    void processBlock (juce::AudioBuffer<double>&, juce::MidiBuffer&) override { CMAJ_ASSERT_FALSE; }
 
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& data) override
@@ -875,7 +887,7 @@ private:
             if (owner.patch->isPlayable())
             {
                 if (patchGUIHolder != nullptr
-                     && patchGUIHolder->patchView.isViewOf (*owner.patch))
+                     && patchGUIHolder->patchView->isViewOf (*owner.patch))
                     return;
 
                 removeEditor();
@@ -914,11 +926,13 @@ private:
                 }
             }
 
-            patchGUIHolder = std::make_unique<PatchGUIHolder> (*this,
-                                                               static_cast<uint32_t> (w),
-                                                               static_cast<uint32_t> (h));
+            auto patchWebView = std::make_unique<PatchWebView> (*owner.patch,
+                                                                static_cast<uint32_t> (w),
+                                                                static_cast<uint32_t> (h));
 
-            setResizable (patchGUIHolder->patchView.resizable, false);
+            patchGUIHolder = std::make_unique<PatchGUIHolder> (*this, std::move (patchWebView));
+
+            setResizable (patchGUIHolder->patchView->resizable, false);
 
             addAndMakeVisible (*patchGUIHolder);
             childBoundsChanged (nullptr);
@@ -965,22 +979,23 @@ private:
        #elif JUCE_WINDOWS
         using NativeUIBase = juce::HWNDComponent;
        #else
-        using NativeUIBase = juce::Component; //juce::XEmbedComponent;  TODO
+        using NativeUIBase = juce::XEmbedComponent;
        #endif
 
         struct PatchGUIHolder  : public NativeUIBase
         {
-            PatchGUIHolder (Editor& e, uint32_t w, uint32_t h)  : patchView (*e.owner.patch, w, h), editor (e)
+            PatchGUIHolder (Editor& e, std::unique_ptr<PatchWebView> webView) :
+               #if JUCE_LINUX
+                juce::XEmbedComponent (getWindowID (*webView), true, true),
+               #endif
+                editor (e), patchView (std::move (webView))
             {
-                setSize ((int) patchView.width, (int) patchView.height);
-                auto nativeHandle = patchView.getWebView().getViewHandle();
+                setSize ((int) patchView->width, (int) patchView->height);
 
                #if JUCE_MAC
-                setView (nativeHandle);
+                setView (patchView->getWebView().getViewHandle());
                #elif JUCE_WINDOWS
-                setHWND (nativeHandle);
-               #elif JUCE_LINUX
-                CMAJ_TODO
+                setHWND (patchView->getWebView().getViewHandle());
                #endif
             }
 
@@ -991,12 +1006,23 @@ private:
                #elif JUCE_WINDOWS
                 setHWND ({});
                #elif JUCE_LINUX
-                CMAJ_TODO
+                removeClient();
                #endif
             }
 
-            PatchWebView patchView;
+           #if JUCE_LINUX
+            static unsigned long getWindowID (PatchWebView& v)
+            {
+                auto childWidget = GTK_WIDGET (v.getWebView().getViewHandle());
+                auto plug = gtk_plug_new (0);
+                gtk_container_add (GTK_CONTAINER (plug), childWidget);
+                gtk_widget_show_all (plug);
+                return gtk_plug_get_id (GTK_PLUG (plug));
+            }
+           #endif
+
             Editor& editor;
+            std::unique_ptr<PatchWebView> patchView;
 
             JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PatchGUIHolder)
         };

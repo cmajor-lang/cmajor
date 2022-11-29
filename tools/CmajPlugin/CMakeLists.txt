@@ -35,6 +35,15 @@ file(GLOB_RECURSE SOURCE
     Source/*.h
 )
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules (gtk3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
+    pkg_check_modules (webkit2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
+    target_link_libraries (CmajPlugin PUBLIC PkgConfig::gtk3 PkgConfig::webkit2)
+
+    add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTRYPOINT=1)
+endif ()
+
 target_sources(CmajPlugin PRIVATE ${SOURCE})
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" PREFIX "Source" FILES ${SOURCE})
