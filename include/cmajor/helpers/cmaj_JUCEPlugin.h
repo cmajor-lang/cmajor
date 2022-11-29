@@ -986,7 +986,7 @@ private:
         {
             PatchGUIHolder (Editor& e, std::unique_ptr<PatchWebView> webView) :
                #if JUCE_LINUX
-                juce::XEmbedComponent (getWindowID (*webView), true, true),
+                juce::XEmbedComponent (getWindowID (*webView), true, false),
                #endif
                 editor (e), patchView (std::move (webView))
             {
