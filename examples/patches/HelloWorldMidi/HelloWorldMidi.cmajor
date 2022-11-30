@@ -1,0 +1,93 @@
+/**
+    The "hello world" of audio programming!
+
+    A snippet of "Gran Vals" by the great classical guitar
+    composer Francisco Tarrega, performed here using midi
+*/
+
+processor NoteToMidi
+{
+    input event (std::notes::NoteOn,
+                  std::notes::NoteOff,
+                  std::notes::PitchBend,
+                  std::notes::Slide,
+                  std::notes::Pressure,
+                  std::notes::Control) eventIn;
+
+    output event std::midi::Message midiOut;
+
+    event eventIn (std::notes::NoteOn e)
+    {
+        midiOut <- constructMidi (0x90 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
+    }
+
+    event eventIn (std::notes::NoteOff e)
+    {
+        midiOut <- constructMidi (0x80 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
+    }
+
+    std::midi::Message constructMidi (int b1, int b2, int b3)
+    {
+        std::midi::Message m;
+
+        m.message = ((b1 & 0xff) << 16) + ((b2 & 0x7f) << 8) + (b3 & 0x7f);
+
+        return m;
+    }
+}
+
+processor NoteGenerator
+{
+    output event (std::notes::NoteOn,
+                  std::notes::NoteOff) eventOut;
+
+    // This simple struct holds a note + duration for our melody
+    struct Note
+    {
+        int pitch, length;
+
+        void play() const
+        {
+            let numFrames = this.length * framesPerQuarterNote;
+
+            std::notes::NoteOn noteOn;
+            noteOn.pitch = float (this.pitch);
+            noteOn.velocity = 1.0f;
+            eventOut <- noteOn;
+
+            loop (numFrames)
+            {
+                advance();
+            }
+
+            std::notes::NoteOff noteOff;
+            noteOff.pitch = float (this.pitch);
+            noteOff.velocity = 1.0f;
+            eventOut <- noteOff;
+        }
+    }
+
+    // This is our processor's entry-point function, which is invoked
+    // by the system
+    void main()
+    {
+        let melody = Note[] ( (79, 1),  (77, 1),  (69, 2),  (71, 2),
+                              (76, 1),  (74, 1),  (65, 2),  (67, 2),
+                              (74, 1),  (72, 1),  (64, 2),  (67, 2),
+                              (72, 4) );
+
+        for (wrap<melody.size> i)
+            melody[i].play();
+    }
+
+    // We'll define a couple of constants here to set the volume and tempo
+    let framesPerQuarterNote = int (processor.frequency / 7);
+}
+
+graph HelloWorld [[ main ]]
+{
+    output event std::midi::Message midiOut;
+
+    connection
+        NoteGenerator -> NoteToMidi -> midiOut;
+}

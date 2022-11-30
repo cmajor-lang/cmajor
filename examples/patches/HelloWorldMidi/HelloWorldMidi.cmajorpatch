@@ -1,0 +1,12 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.helloworld",
+    "version":          "1.0",
+    "name":             "Hello World",
+    "description":      "The classic audio Hello World",
+    "manufacturer":     "Sound Stacks Ltd",
+    "category":         "generator",
+    "isInstrument":     false,
+
+    "source":           "HelloWorldMidi.cmajor"
+}
