@@ -79,6 +79,12 @@ namespace std::midi
         int32 getSongPositionPointerValue() const           { return this.get14BitValue(); }
     }
 
+    /// standard MPE range of 48 semitones
+    let semitoneBendRange = 48.0f;
+
+    /// MPE slide controller number
+    let slideController = 74;
+
     //==============================================================================
     /// Accepts an input stream of raw MIDI MPE events and converts them to a stream
     /// of note event objects which can be more easily used by synthesiser classes.
@@ -109,8 +115,6 @@ namespace std::midi
             }
             else if (message.isPitchWheel())
             {
-                let semitoneBendRange = 48.0f; // standard MPE range of 48 semitones
-
                 eventOut <- std::notes::PitchBend (message.getChannel0to15(),
                                                    (semitoneBendRange / 8192.0f) * float32 (message.get14BitValue() - 8192));
             }
@@ -121,7 +125,7 @@ namespace std::midi
             }
             else if (message.isController())
             {
-                if (message.getControllerNumber() == 74) // 74 = MPE slide
+                if (message.getControllerNumber() == slideController)
                     eventOut <- notes::Slide (message.getChannel0to15(),
                                               message.getFloatControllerValue());
                 else
@@ -129,6 +133,64 @@ namespace std::midi
                                                      message.getControllerNumber(),
                                                      message.getFloatControllerValue());
             }
+        }
+    }
+
+    //==============================================================================
+    /// Accepts an input of note events, and converts them to a stream of short
+    /// midi messages.
+    processor NoteToMidi
+    {
+        input event (std::notes::NoteOn,
+                     std::notes::NoteOff,
+                     std::notes::PitchBend,
+                     std::notes::Slide,
+                     std::notes::Pressure,
+                     std::notes::Control) eventIn;
+
+        output event std::midi::Message midiOut;
+
+        event eventIn (std::notes::NoteOn e)
+        {
+            midiOut <- constructMidi (0x90 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
+        }
+
+        event eventIn (std::notes::NoteOff e)
+        {
+            midiOut <- constructMidi (0x80 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
+        }
+
+        event eventIn (std::notes::PitchBend e)
+        {
+            let value = int (8192.0f + (8192.0f * clamp (e.bendSemitones, -semitoneBendRange, semitoneBendRange)));
+
+            midiOut <- constructMidi (0xe0 + (e.channel & 0xf), value >> 7, value & 0x7f);
+        }
+
+        event eventIn (std::notes::Slide e)
+        {
+            midiOut <- constructMidi (0xb0 + (e.channel & 0xf), slideController, int (e.slide * 127.0f));
+        }
+
+        event eventIn (std::notes::Pressure e)
+        {
+            let value = int (128.0f * clamp (e.pressure, 0.0f, 128.0f));
+
+            midiOut <- constructMidi (0xd0 + (e.channel & 0xf), value >> 7, value & 0x7f);
+        }
+
+        event eventIn (std::notes::Control e)
+        {
+            midiOut <- constructMidi (0xb0 + (e.channel & 0xf), e.control, int (e.value * 127.0f));
+        }
+
+        std::midi::Message constructMidi (int b1, int b2, int b3)
+        {
+            std::midi::Message m;
+
+            m.message = ((b1 & 0xff) << 16) + ((b2 & 0x7f) << 8) + (b3 & 0x7f);
+
+            return m;
         }
     }
 }

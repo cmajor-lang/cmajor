@@ -5,37 +5,6 @@
     composer Francisco Tarrega, performed here using midi
 */
 
-processor NoteToMidi
-{
-    input event (std::notes::NoteOn,
-                  std::notes::NoteOff,
-                  std::notes::PitchBend,
-                  std::notes::Slide,
-                  std::notes::Pressure,
-                  std::notes::Control) eventIn;
-
-    output event std::midi::Message midiOut;
-
-    event eventIn (std::notes::NoteOn e)
-    {
-        midiOut <- constructMidi (0x90 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
-    }
-
-    event eventIn (std::notes::NoteOff e)
-    {
-        midiOut <- constructMidi (0x80 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
-    }
-
-    std::midi::Message constructMidi (int b1, int b2, int b3)
-    {
-        std::midi::Message m;
-
-        m.message = ((b1 & 0xff) << 16) + ((b2 & 0x7f) << 8) + (b3 & 0x7f);
-
-        return m;
-    }
-}
-
 processor NoteGenerator
 {
     output event (std::notes::NoteOn,
@@ -89,5 +58,5 @@ graph HelloWorld [[ main ]]
     output event std::midi::Message midiOut;
 
     connection
-        NoteGenerator -> NoteToMidi -> midiOut;
+        NoteGenerator -> std::midi::NoteToMidi -> midiOut;
 }
