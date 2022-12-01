@@ -58,5 +58,5 @@ graph HelloWorld [[ main ]]
     output event std::midi::Message midiOut;
 
     connection
-        NoteGenerator -> std::midi::NoteToMidi -> midiOut;
+        NoteGenerator -> std::midi::NoteToMIDI -> midiOut;
 }

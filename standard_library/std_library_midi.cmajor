@@ -86,6 +86,15 @@ namespace std::midi
     let slideController = 74;
 
     //==============================================================================
+    /// Creates a short MIDI message object from the raw bytes
+    Message createMessage (int byte1, int byte2, int byte3)
+    {
+        std::midi::Message m;
+        m.message = ((byte1 & 0xff) << 16) + ((byte2 & 0x7f) << 8) + (byte3 & 0x7f);
+        return m;
+    }
+
+    //==============================================================================
     /// Accepts an input stream of raw MIDI MPE events and converts them to a stream
     /// of note event objects which can be more easily used by synthesiser classes.
     processor MPEConverter
@@ -139,7 +148,7 @@ namespace std::midi
     //==============================================================================
     /// Accepts an input of note events, and converts them to a stream of short
     /// midi messages.
-    processor NoteToMidi
+    processor NoteToMIDI
     {
         input event (std::notes::NoteOn,
                      std::notes::NoteOff,
@@ -152,45 +161,34 @@ namespace std::midi
 
         event eventIn (std::notes::NoteOn e)
         {
-            midiOut <- constructMidi (0x90 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
+            midiOut <- createMessage (0x90 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
         }
 
         event eventIn (std::notes::NoteOff e)
         {
-            midiOut <- constructMidi (0x80 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
+            midiOut <- createMessage (0x80 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
         }
 
         event eventIn (std::notes::PitchBend e)
         {
             let value = int (8192.0f + (8192.0f * clamp (e.bendSemitones, -semitoneBendRange, semitoneBendRange)));
-
-            midiOut <- constructMidi (0xe0 + (e.channel & 0xf), value >> 7, value & 0x7f);
+            midiOut <- createMessage (0xe0 + (e.channel & 0xf), value >> 7, value & 0x7f);
         }
 
         event eventIn (std::notes::Slide e)
         {
-            midiOut <- constructMidi (0xb0 + (e.channel & 0xf), slideController, int (e.slide * 127.0f));
+            midiOut <- createMessage (0xb0 + (e.channel & 0xf), slideController, int (e.slide * 127.0f));
         }
 
         event eventIn (std::notes::Pressure e)
         {
             let value = int (128.0f * clamp (e.pressure, 0.0f, 128.0f));
-
-            midiOut <- constructMidi (0xd0 + (e.channel & 0xf), value >> 7, value & 0x7f);
+            midiOut <- createMessage (0xd0 + (e.channel & 0xf), value >> 7, value & 0x7f);
         }
 
         event eventIn (std::notes::Control e)
         {
-            midiOut <- constructMidi (0xb0 + (e.channel & 0xf), e.control, int (e.value * 127.0f));
-        }
-
-        std::midi::Message constructMidi (int b1, int b2, int b3)
-        {
-            std::midi::Message m;
-
-            m.message = ((b1 & 0xff) << 16) + ((b2 & 0x7f) << 8) + (b3 & 0x7f);
-
-            return m;
+            midiOut <- createMessage (0xb0 + (e.channel & 0xf), e.control, int (e.value * 127.0f));
         }
     }
 }
