@@ -465,3 +465,31 @@ bool test()
 {
     return N::s[0].x == 1 && N::s[1].x == 2 && N::s[2].x == N::s[2].y;
 }
+
+## testCompile()
+
+processor T (using Type, Type value)
+{
+    output event Type out;
+}
+
+graph test [[ main ]]
+{
+    output stream float out;
+
+    node t = T (std::notes::NoteOn, std::notes::NoteOn (1, 2, 3));
+}
+
+## expectError ("11:47: error: Wrong number of values to create a type 'NoteOn'")
+
+processor T (using Type, Type value)
+{
+    output event Type out;
+}
+
+graph test [[ main ]]
+{
+    output stream float out;
+
+    node t = T (std::notes::NoteOn, std::notes::NoteOn (1, 2, 3, 4));
+}
