@@ -1524,6 +1524,7 @@ inline void Patch::applyFinishedBuild (std::shared_ptr<LoadedPatch> newPatch)
     stopPlayback();
 
     currentPatch.reset();
+    sendPatchChange();
     currentPatch = std::move (newPatch);
 
     currentPatch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
