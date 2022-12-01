@@ -492,6 +492,9 @@ private:
             state.setProperty (ids.viewHeight, lastEditorHeight, nullptr);
         }
 
+        if (auto s = patch->getStoredState(); ! s.empty())
+            state.setProperty (ids.state, juce::String (s.data(), s.length()), nullptr);
+
         juce::ValueTree paramList (ids.PARAMS);
 
         for (auto& p : patch->getParameterList())
@@ -573,6 +576,10 @@ private:
             lastEditorWidth = 0;
             lastEditorHeight = 0;
         }
+
+        if (auto state = newState.getPropertyPointer (ids.state))
+            if (state->isString())
+                patch->setStoredState (state->toString().toStdString(), false);
 
         patch->loadPatch (loadParams);
     }
@@ -1052,7 +1059,8 @@ private:
                                V          { "V" },
                                location   { "location" },
                                viewWidth  { "viewWidth" },
-                               viewHeight { "viewHeight" };
+                               viewHeight { "viewHeight" },
+                               state      { "state" };
     } ids;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JUCEPluginBase)

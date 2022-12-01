@@ -111,6 +111,7 @@ inline void PatchWebView::createBindings()
         this.onSampleRateChanged         = function (newSampleRate) {};
         this.onParameterEndpointChanged  = function (endpointID, newValue) {};
         this.onOutputEvent               = function (endpointID, newValue) {};
+        this.onStoredStateChanged        = function() {};
 
         this.requestStatusUpdate = function()
         {
@@ -137,16 +138,23 @@ inline void PatchWebView::createBindings()
             window.cmaj_clientRequest ({ type: "send_gesture_end", id: endpointID });
         };
 
+        this.getStoredState = function()
+        {
+            return window.cmaj_clientRequest ({ type: "get_state" });
+        }
+
+        this.setStoredState = function (newStateString)
+        {
+            window.cmaj_clientRequest ({ type: "set_state", value: newStateString });
+        }
+
         this.handleEventFromServer = function (msg)
         {
-            if (msg.type == "output_event")
-                this.onOutputEvent (msg.ID, msg.value);
-            else if (msg.type == "param_value")
-                this.onParameterEndpointChanged (msg.ID, msg.value);
-            else if (msg.type == "status")
-                this.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs);
-            else if (msg.type == "sample_rate")
-                this.onSampleRateChanged (msg.rate);
+            if (msg.type == "output_event")         this.onOutputEvent (msg.ID, msg.value);
+            else if (msg.type == "param_value")     this.onParameterEndpointChanged (msg.ID, msg.value);
+            else if (msg.type == "status")          this.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs);
+            else if (msg.type == "sample_rate")     this.onSampleRateChanged (msg.rate);
+            else if (msg.type == "state_changed")   this.onStoredStateChanged();
         };
 
         window.patchConnection = this;
@@ -194,6 +202,15 @@ inline void PatchWebView::createBindings()
                             if (auto param = loadedPatch.findParameter (endpointID))
                                 patch.sendParameterChangeToViews (endpointID, param->currentValue);
                         }
+                    }
+                    else if (type == "set_state")
+                    {
+                        if (auto value = msg["value"]; value.isString())
+                            patch.setStoredState (value.toString(), true);
+                    }
+                    else if (type == "get_state")
+                    {
+                        return choc::value::Value (patch.getStoredState());
                     }
                 }
             }

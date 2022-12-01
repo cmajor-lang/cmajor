@@ -202,6 +202,14 @@ struct Patch
     /// Can be called before process() to update the playhead time
     void sendPosition (int64_t currentFrame, double ppq, double ppqBar);
 
+    /// Sets a persistent string that should be saved and restored for this
+    /// patch by the host.
+    void setStoredState (std::string newState, bool sendChangeMessageToViews);
+
+    /// Returns the persistent state string that a host should save and restore for
+    /// this patch.
+    std::string_view getStoredState() const        { return storedState; }
+
     //==============================================================================
     /// This must be supplied by the client using this class before trying to load a patch.
     std::function<cmaj::Engine()> createEngine;
@@ -247,6 +255,7 @@ private:
     PlaybackParams currentPlaybackParams;
     std::unique_ptr<FileChangeChecker> fileChangeChecker;
     std::vector<PatchView*> activeViews;
+    std::string storedState;
 
     choc::fifo::VariableSizeFIFO paramChangeQueue;
     choc::threading::TaskThread paramChangeHandler;
@@ -1442,6 +1451,17 @@ inline void Patch::sendSampleRateChangeToViews (double newRate)
     sendMessageToViews (choc::value::createObject ({},
                                                     "type", "sample_rate",
                                                     "rate", newRate));
+}
+
+inline void Patch::setStoredState (std::string newState, bool sendChangeMessageToViews)
+{
+    if (storedState != newState)
+    {
+        storedState = std::move (newState);
+
+        if (sendChangeMessageToViews)
+            sendMessageToViews (choc::value::createObject ({}, "type", "state_changed"));
+    }
 }
 
 inline void Patch::sendRealtimeParameterChangeToViews (const std::string& endpointID, float value)
