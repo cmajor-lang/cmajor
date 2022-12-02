@@ -204,11 +204,10 @@ struct Patch
 
     /// Sets a persistent string that should be saved and restored for this
     /// patch by the host.
-    void setStoredState (std::string newState, bool sendChangeMessageToViews);
+    void setStoredStateValue (const std::string& key, std::string newValue);
 
-    /// Returns the persistent state string that a host should save and restore for
-    /// this patch.
-    std::string_view getStoredState() const        { return storedState; }
+    /// Iterates any persistent state values that have been stored
+    const std::unordered_map<std::string, std::string>& getStoredStateValues() const;
 
     //==============================================================================
     /// This must be supplied by the client using this class before trying to load a patch.
@@ -239,6 +238,7 @@ struct Patch
     void sendParameterChangeToViews (const EndpointID& endpointID, float value);
     void sendRealtimeParameterChangeToViews (const std::string& endpointID, float value);
     void sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView&);
+    void sendStoredStateToViews (const std::string& key);
 
 private:
     //==============================================================================
@@ -255,7 +255,7 @@ private:
     PlaybackParams currentPlaybackParams;
     std::unique_ptr<FileChangeChecker> fileChangeChecker;
     std::vector<PatchView*> activeViews;
-    std::string storedState;
+    std::unordered_map<std::string, std::string> storedState;
 
     choc::fifo::VariableSizeFIFO paramChangeQueue;
     choc::threading::TaskThread paramChangeHandler;
@@ -1453,14 +1453,19 @@ inline void Patch::sendSampleRateChangeToViews (double newRate)
                                                     "rate", newRate));
 }
 
-inline void Patch::setStoredState (std::string newState, bool sendChangeMessageToViews)
+inline const std::unordered_map<std::string, std::string>& Patch::getStoredStateValues() const
 {
-    if (storedState != newState)
-    {
-        storedState = std::move (newState);
+    return storedState;
+}
 
-        if (sendChangeMessageToViews)
-            sendMessageToViews (choc::value::createObject ({}, "type", "state_changed"));
+inline void Patch::setStoredStateValue (const std::string& key, std::string newValue)
+{
+    auto& v = storedState[key];
+
+    if (v != newValue)
+    {
+        v = std::move (newValue);
+        sendStoredStateToViews (key);
     }
 }
 
@@ -1504,6 +1509,15 @@ inline void Patch::sendOutputEventToViews (std::string_view endpointID, const ch
                                                         "type", "output_event",
                                                         "ID", endpointID,
                                                         "value", value));
+}
+
+inline void Patch::sendStoredStateToViews (const std::string& key)
+{
+    if (! key.empty())
+        if (auto found = storedState.find (key); found != storedState.end())
+            sendMessageToViews (choc::value::createObject ({},
+                                                           "key", key,
+                                                           "value", found->second));
 }
 
 inline void Patch::sendPatchChange()

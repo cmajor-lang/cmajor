@@ -492,8 +492,20 @@ private:
             state.setProperty (ids.viewHeight, lastEditorHeight, nullptr);
         }
 
-        if (auto s = patch->getStoredState(); ! s.empty())
-            state.setProperty (ids.state, juce::String (s.data(), s.length()), nullptr);
+        if (const auto& values = patch->getStoredStateValues(); ! values.empty())
+        {
+            juce::ValueTree stateValues (ids.STATE);
+
+            for (auto& v : values)
+            {
+                juce::ValueTree value (ids.VALUE);
+                value.setProperty (ids.key,   juce::String (v.first.data(),  v.first.length()), nullptr);
+                value.setProperty (ids.value, juce::String (v.second.data(), v.second.length()), nullptr);
+                stateValues.appendChild (value, nullptr);
+            }
+
+            state.appendChild (stateValues, nullptr);
+        }
 
         juce::ValueTree paramList (ids.PARAMS);
 
@@ -577,9 +589,23 @@ private:
             lastEditorHeight = 0;
         }
 
-        if (auto state = newState.getPropertyPointer (ids.state))
-            if (state->isString())
-                patch->setStoredState (state->toString().toStdString(), false);
+        if (auto state = newState.getChildWithName (ids.STATE); state.isValid())
+        {
+            for (const auto& v : state)
+            {
+                if (v.hasType (ids.VALUE))
+                {
+                    if (auto key = v.getPropertyPointer (ids.key))
+                    {
+                        if (auto value = v.getPropertyPointer (ids.value))
+                        {
+                            if (key->isString() && value->isString() && key->toString().isNotEmpty())
+                                patch->setStoredStateValue (key->toString().toStdString(), value->toString().toStdString());
+                        }
+                    }
+                }
+            }
+        }
 
         patch->loadPatch (loadParams);
     }
@@ -1057,10 +1083,13 @@ private:
                                PARAM      { "PARAM" },
                                ID         { "ID" },
                                V          { "V" },
+                               STATE      { "STATE" },
+                               VALUE      { "VALUE" },
                                location   { "location" },
+                               key        { "key" },
+                               value      { "value" },
                                viewWidth  { "viewWidth" },
-                               viewHeight { "viewHeight" },
-                               state      { "state" };
+                               viewHeight { "viewHeight" };
     } ids;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JUCEPluginBase)

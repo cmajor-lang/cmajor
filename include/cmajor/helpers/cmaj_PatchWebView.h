@@ -111,7 +111,7 @@ inline void PatchWebView::createBindings()
         this.onSampleRateChanged         = function (newSampleRate) {};
         this.onParameterEndpointChanged  = function (endpointID, newValue) {};
         this.onOutputEvent               = function (endpointID, newValue) {};
-        this.onStoredStateChanged        = function() {};
+        this.onStoredStateChanged        = function (key, value) {};
 
         this.requestStatusUpdate = function()
         {
@@ -138,24 +138,24 @@ inline void PatchWebView::createBindings()
             window.cmaj_clientRequest ({ type: "send_gesture_end", id: endpointID });
         };
 
-        this.getStoredState = function()
-        {
-            return window.cmaj_clientRequest ({ type: "get_state" });
-        }
-
-        this.setStoredState = function (newStateString)
-        {
-            window.cmaj_clientRequest ({ type: "set_state", value: newStateString });
-        }
-
         this.handleEventFromServer = function (msg)
         {
             if (msg.type == "output_event")         this.onOutputEvent (msg.ID, msg.value);
             else if (msg.type == "param_value")     this.onParameterEndpointChanged (msg.ID, msg.value);
             else if (msg.type == "status")          this.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs);
             else if (msg.type == "sample_rate")     this.onSampleRateChanged (msg.rate);
-            else if (msg.type == "state_changed")   this.onStoredStateChanged();
+            else if (msg.type == "state_changed")   this.onStoredStateChanged (msg.key, msg.value);
         };
+
+        this.requestStoredState = function (key)
+        {
+            window.cmaj_clientRequest ({ type: "req_state", key: key });
+        }
+
+        this.setStoredState = function (key, newValue)
+        {
+            window.cmaj_clientRequest ({ type: "send_state", key : key, value: newValue });
+        }
 
         window.patchConnection = this;
     }
@@ -203,14 +203,16 @@ inline void PatchWebView::createBindings()
                                 patch.sendParameterChangeToViews (endpointID, param->currentValue);
                         }
                     }
-                    else if (type == "set_state")
+                    else if (type == "req_state")
                     {
-                        if (auto value = msg["value"]; value.isString())
-                            patch.setStoredState (value.toString(), true);
+                        if (auto key = msg["key"]; key.isString())
+                            patch.sendStoredStateToViews (key.toString());
                     }
-                    else if (type == "get_state")
+                    else if (type == "send_state")
                     {
-                        return choc::value::Value (patch.getStoredState());
+                        if (auto key = msg["key"]; key.isString())
+                            if (auto value = msg["value"]; value.isString() || value.isVoid())
+                                patch.setStoredStateValue (key.toString(), value.get<std::string>());
                     }
                 }
             }
