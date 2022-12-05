@@ -2045,3 +2045,16 @@ processor test
         write (int[8] (1, 2, 3, 4, 5, 6, 7, 8));
     }
 }
+
+## expectError ("5:25: error: The name 'console' is not a valid endpoint name")
+
+processor P [[ main ]]
+{
+    output event float out;
+    output stream float console;
+
+    void main()
+    {
+        advance();
+    }
+}
