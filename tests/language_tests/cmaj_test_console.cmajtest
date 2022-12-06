@@ -86,6 +86,34 @@ processor P
 
 graph test [[main]]
 {
+    output event string out;
+    connection P.out -> console;
+}
+
+processor P
+{
+    output event string out;
+    void main()  { console <- "hello_"; out <- "world"; advance();  }
+}
+
+## testConsole ("1world")
+
+graph test [[main]]
+{
+    output event string out;
+    connection P.out -> console;
+}
+
+processor P
+{
+    output event string out;
+    void main()  { console <- 1; out <- "world"; advance();  }
+}
+
+## testConsole ("hello_world")
+
+graph test [[main]]
+{
     output stream int out;
     connection G1 -> out;
 }
@@ -124,4 +152,15 @@ processor P
 
     void write()  { console <- getVal(); }
     int getVal() { return 1234; }
+}
+
+## expectError ("8:12: error: Cannot connect in (stream) to console (event)")
+
+graph G [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+        in -> console;
 }
