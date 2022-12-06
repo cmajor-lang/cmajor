@@ -133,9 +133,8 @@ graph TwoGainsInSeries
 ```mermaid
 graph TD;
     A(["in"])-->B(["gain1"]);
-    A-->C(["gain2"]);
-    B-->D(["out"]);
-    C-->D;
+    B-->C(["gain2"]);
+    C-->D(["out"]);
 ```
 
 #### `processor` declarations
