@@ -493,3 +493,14 @@ graph test [[ main ]]
 
     node t = T (std::notes::NoteOn, std::notes::NoteOn (1, 2, 3, 4));
 }
+
+## testFunction()
+
+bool test()
+{
+    let i = 1;
+    float f;
+    f = i;
+
+    return true;
+}
