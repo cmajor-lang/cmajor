@@ -900,3 +900,32 @@ bool calc (float<1 + 1> f)
 {
     return true;
 }
+
+## testCompile()
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    S v;
+    float f;
+
+    struct S
+    {
+        float a;
+    }
+
+   void Func<T> (T In) {}
+
+    void testF()
+    {
+        Func (v.a);
+        Func (f);
+    }
+
+    void main()
+    {
+        testF();
+        advance();
+    }
+}
