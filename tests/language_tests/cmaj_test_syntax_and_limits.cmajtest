@@ -739,15 +739,15 @@ processor P
 
 void f() { let x = processor.period; }
 
-## expectError ("2:49: error: Expected a variable declaration")
+## expectError ("2:49: error: Found \"break\" when expecting identifier")
 
 void breakAndContinueInSillyPlaces()     { for (break;;) }
 
-## expectError ("2:49: error: Expected a variable declaration")
+## expectError ("2:49: error: Found \"continue\" when expecting identifier")
 
 void breakAndContinueInSillyPlaces()     { for (continue;;) }
 
-## expectError ("2:49: error: Expected a variable declaration")
+## expectError ("2:49: error: Found \"return\" when expecting identifier")
 
 void breakAndContinueInSillyPlaces()     { for (return;;) }
 
@@ -775,7 +775,7 @@ void breakAndContinueInSillyPlaces()     { for (int i = 1; continue; ++i) }
 
 void breakAndContinueInSillyPlaces()     { for (int i = 1; return; ++i) }
 
-## expectError ("2:21: error: Expected a variable declaration")
+## expectError ("2:21: error: Found \"{\" when expecting identifier")
 
 void f()     { for ({ int i = 1 }; i < 10; ++i) }
 
@@ -2056,6 +2056,23 @@ processor P [[ main ]]
     void main()
     {
         advance();
+    }
+}
+
+## testCompile()
+
+processor T
+{
+    output stream float out;
+
+    void main()
+    {
+        int i;
+
+        for (i = 1; i < 1000; i++)
+        {
+            advance();
+        }
     }
 }
 
