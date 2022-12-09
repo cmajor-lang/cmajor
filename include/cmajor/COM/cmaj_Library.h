@@ -107,6 +107,11 @@ private:
 
 #if CMAJOR_DLL
 
+/// This is the name of the single entry point function to the DLL - when
+/// there's a breaking change to the API, this will be updated to prevent
+/// accidental use of older (or newer) library versions.
+static constexpr const char* entryPointFunction = "cmajor_getEntryPointsV2";
+
 inline Library::EntryPoints& Library::getEntryPoints()
 {
     // Must call Library::initialise() to load the DLL before using any other functions!
@@ -144,7 +149,7 @@ inline bool Library::initialise (std::string_view pathToDLL)
     {
         using GetEntryPointsFn = EntryPoints*(*)();
 
-        if (auto fn = (GetEntryPointsFn) library->findFunction ("cmajor_getEntryPointsV2"))
+        if (auto fn = (GetEntryPointsFn) library->findFunction (entryPointFunction))
         {
             entryPoints = fn();
 
