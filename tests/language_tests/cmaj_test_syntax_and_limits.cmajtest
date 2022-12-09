@@ -2058,3 +2058,11 @@ processor P [[ main ]]
         advance();
     }
 }
+
+## expectError ("5:15: error: Cannot implicitly convert 'int32' to 'bool'")
+
+bool test()
+{
+    wrap<10> i;
+    return (i % 1) ? false : true;
+}

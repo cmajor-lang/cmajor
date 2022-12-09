@@ -584,8 +584,8 @@ bool test1()
 
 ## testFunction()
 
-bool f1<T> (const T& x) { wrap<x.size> i; return x[i]; }
-bool f2<T> (T x) { wrap<x.size> i; return x[i]; }
+bool f1<T> (const T& x) { wrap<x.size> i; return bool (x[i]); }
+bool f2<T> (T x) { wrap<x.size> i; return bool (x[i]); }
 bool test() { return f1 (int[] (1, 0, 0, 0, 0)) && f2 (int[] (1, 0)); }
 
 ## expectError ("6:22: error: Failed to resolve external variable 'sample'")
