@@ -654,10 +654,13 @@ function testPatch (file, expectedError)
 //==============================================================================
 /*
     This test loads helper files containing input and output data that should
-    be fed into a processor.
+    be fed into a processor. It can also run tests on a patch by specifying a patch
+    to build
 
     e.g.
     ## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"foo" })
+    ## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"foo", patch: "path/to/patch.cmajorpatch" })
+
 */
 function runScript (options)
 {
@@ -670,12 +673,31 @@ function runScript (options)
         options.maxDiffDb = -100;
 
     let program = new Program();
-    let error = program.parse (testSection.source + testSection.globalSource);
 
-    if (isError (error))
+    var error;
+    var patch;
+
+    if (options.patch != null)
     {
-        testSection.reportFail (error);
-        return;
+        patch = new Patch (new File (testSection.getAbsolutePath (options.patch)));
+
+        if (isError (patch.error))
+        {
+            testSection.reportFail (patch.error);
+            return;
+        }
+
+        program = patch.createProgram();
+    }
+    else
+    {
+        error = program.parse (testSection.source + testSection.globalSource);
+
+        if (isError (error))
+        {
+            testSection.reportFail (error);
+            return;
+        }
     }
 
     let engine = createEngine (options);
@@ -691,31 +713,39 @@ function runScript (options)
 
     let inputEndpoints = engine.getInputEndpoints();
     let outputEndpoints = engine.getOutputEndpoints();
-    let externals = engine.getExternalVariables();
 
-    if (externals.length > 0)
+    if (patch == null)
     {
-        let externalFilename = options.subDir + "/externals.json";
-        let externalData = testSection.readEventData (externalFilename);
+        let externals = engine.getExternalVariables();
 
-        if (isError (externalData))
+        if (externals.length > 0)
         {
-            testSection.reportFail ("Failed to read external data " + externalFilename);
-            return;
-        }
+            let externalFilename = options.subDir + "/externals.json";
+            let externalData = testSection.readEventData (externalFilename);
 
-        for (let i = 0; i < externals.length; i++)
-        {
-            let value = externalData[externals[i].name];
-
-            if (value == null)
+            if (isError (externalData))
             {
-                testSection.reportFail ("Failed to find external for " + externals[i].name);
+                testSection.reportFail ("Failed to read external data " + externalFilename);
                 return;
             }
 
-            engine.setExternalVariable (externals[i].name, value);
+            for (let i = 0; i < externals.length; i++)
+            {
+                let value = externalData[externals[i].name];
+
+                if (value == null)
+                {
+                    testSection.reportFail ("Failed to find external for " + externals[i].name);
+                    return;
+                }
+
+                engine.setExternalVariable (externals[i].name, value);
+            }
         }
+    }
+    else
+    {
+        patch._resolveExternals (engine);
     }
 
     for (let i = 0; i < inputEndpoints.length; i++)
