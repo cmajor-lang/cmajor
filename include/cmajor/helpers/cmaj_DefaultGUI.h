@@ -90,11 +90,13 @@ private:
 
     /* control value + name display */
     --labelled-control-font-color: var(--foreground);
+    --labelled-control-font-size: 12px;
 }
 
 body {
     font-family: 'IBM Plex Mono', monospace;
     background-color: var(--background);
+    overflow: hidden;
 }
 
 .header {
@@ -154,6 +156,10 @@ select {
     appearance: none;
     -webkit-appearance: none;
     font-family: inherit;
+    font-size: var(--labelled-control-font-size);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
 
     padding: 0 1.5rem 0 0.6rem;
 
@@ -306,10 +312,15 @@ select option {
     max-width: 80px;
     margin: -0.5rem auto 0.5rem;
     text-align: center;
-    font-size: 12px;
+    font-size: var(--labelled-control-font-size);
     color: var(--labelled-control-font-color);
 
     cursor: default;
+}
+
+.labelled-control-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .labelled-control-value {
@@ -634,15 +645,15 @@ function makeKnob ({
     const trackValue = createSvgElement ({ tag: "path" });
     trackValue.setAttribute ("d", typePaths[type]);
     trackValue.setAttribute ("stroke-dasharray", typeDashLengths[type]);
-    trackValue.classList.add ("knob-path");
+   )"
+R"( trackValue.classList.add ("knob-path");
     trackValue.classList.add ("knob-track-value");
 
     const dial = document.createElement ("div");
     dial.className = "knob-dial";
 
     const dialTick = document.createElement ("div");
-    dialTick.className = "knob-dial-tick";)"
-R"(
+    dialTick.className = "knob-dial-tick";
     dial.appendChild (dialTick);
 
     const container = document.createElement ("div");
