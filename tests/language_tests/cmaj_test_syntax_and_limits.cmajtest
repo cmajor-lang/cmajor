@@ -2083,3 +2083,32 @@ bool test()
     wrap<10> i;
     return (i % 1) ? false : true;
 }
+
+## testFunction()
+
+namespace this
+{
+    struct this
+    {
+        int this;
+    }
+}
+
+bool auto()
+{
+    return true;
+}
+
+bool test1()
+{
+    let this = true;
+
+    return this;
+}
+
+bool test2()
+{
+    this::this this;
+
+    return this.this == 0;
+}
