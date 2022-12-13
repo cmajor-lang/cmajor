@@ -120,19 +120,13 @@ namespace std::levels
     /// constant gain applied.
     /// The FrameType parameter could be a float, or a vector of floats.
     /// See: DynamicGain, SmoothedGain
-    processor ConstantGain (using FrameType, float32 gain)
+    graph ConstantGain (using FrameType, float32 gain)
     {
         input  stream FrameType  in;
         output stream FrameType  out;
 
-        void main()
-        {
-            loop
-            {
-                out <- in * gain;
-                advance();
-            }
-        }
+        connection
+            in * gain -> out;
     }
 
     //==============================================================================
@@ -140,20 +134,14 @@ namespace std::levels
     /// for a gain level, and emits the input signal with the gain applied.
     /// The FrameType parameter could be a float, or a vector of floats.
     /// See: ConstantGain, SmoothedGain
-    processor DynamicGain (using FrameType)
+    graph DynamicGain (using FrameType)
     {
         input  stream float32    gain;
         input  stream FrameType  in;
         output stream FrameType  out;
 
-        void main()
-        {
-            loop
-            {
-                out <- in * gain;
-                advance();
-            }
-        }
+        connection
+            in * gain -> out;
     }
 
     //==============================================================================
@@ -167,17 +155,10 @@ namespace std::levels
         output stream FrameType      out;
 
         node
-        {
-            gainProcessor = std::levels::DynamicGain (FrameType);
             gainParameter = std::levels::SmoothedGainParameter (smoothingTimeSeconds);
-        }
 
         connection
-        {
-            gainParameter.gain -> gainProcessor.gain;
-            in -> gainProcessor.in;
-            gainProcessor.out -> out;
-        }
+            in * gainParameter.gain -> out;
     }
 
     //==============================================================================
@@ -204,6 +185,11 @@ namespace std::levels
                 gain <- smoothedGain.getNext();
                 advance();
             }
+        }
+
+        void init()
+        {
+            smoothedGain.reset (1.0f);
         }
 
         std::smoothing::SmoothedValue smoothedGain;
