@@ -772,8 +772,11 @@ function runScript (options)
 
             if (isError (inputData))
             {
-                testSection.reportFail ("Failed to read input value data " + expectedStreamFilename);
-                return;
+                if (options.skipMissing == null)
+                {
+                    testSection.reportFail ("Failed to read input value data " + expectedStreamFilename);
+                    return;
+                }
             }
 
             inputEndpoints[i].values = inputData;
@@ -786,8 +789,11 @@ function runScript (options)
 
             if (isError (inputData))
             {
-                testSection.reportFail ("Failed to read input event data " + expectedStreamFilename);
-                return;
+                if (options.skipMissing == null)
+                {
+                    testSection.reportFail ("Failed to read input event data " + expectedStreamFilename);
+                    return;
+                }
             }
 
             inputEndpoints[i].events = inputData;
@@ -824,10 +830,25 @@ function runScript (options)
     let outstandingSamples = options.samplesToRender;
     let framesRendered = 0;
 
+    let eventsToApply = [];
+
+    for (let i = 0; i < inputEndpoints.length; i++)
+    {
+        const input = inputEndpoints[i];
+
+        if (input.purpose == "parameter" && input.annotation.init !== undefined)
+        {
+            if (input.endpointType == "event")
+                eventsToApply.push ({ handle: input.handle,
+                                      event: input.annotation.init });
+            else
+                performer.setInputValue (input.endpointID, input.annotation.init, 0);
+        }
+    }
+
     while (outstandingSamples > 0)
     {
         let samplesThisBlock = (options.blockSize < outstandingSamples) ? options.blockSize : outstandingSamples;
-        let eventsToApply = [];
 
         for (let i = 0; i < inputEndpoints.length; i++)
         {
@@ -878,6 +899,8 @@ function runScript (options)
 
         for (let i = 0; i < eventsToApply.length; i++)
             performer.addInputEvent (eventsToApply[i].handle, eventsToApply[i].event);
+
+        eventsToApply = [];
 
         for (let i = 0; i < inputEndpoints.length; i++)
         {
