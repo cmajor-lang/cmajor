@@ -2112,3 +2112,15 @@ bool test2()
 
     return this.this == 0;
 }
+
+enum reserved
+{
+    this
+}
+
+bool test3()
+{
+    reserved r;
+
+    return r == reserved::this;
+}
