@@ -119,6 +119,9 @@ struct Patch
     /// parameter values to apply before processing starts.
     bool loadPatch (const LoadParams&);
 
+    /// Tries to load a patch from a file path
+    bool loadPatchFromFile (const std::string& patchFilePath);
+
     /// Triggers a rebuild of the current patch, which may be needed if the code
     /// or playback parameters change.
     void rebuild();
@@ -1251,6 +1254,28 @@ inline bool Patch::loadPatch (const LoadParams& params)
     }
 
     return true;
+}
+
+inline bool Patch::loadPatchFromFile (const std::string& patchFile)
+{
+    LoadParams params;
+
+    try
+    {
+        params.manifest.initialiseWithFile (patchFile);
+    }
+    catch (const choc::json::ParseError& e)
+    {
+        setStatusMessage ("error: " + std::string (e.what()) + ":" + e.lineAndColumn.toString(), true);
+        return false;
+    }
+    catch (const std::runtime_error& e)
+    {
+        setStatusMessage ("error: " + std::string (e.what()), true);
+        return false;
+    }
+
+    return loadPatch (params);
 }
 
 inline void Patch::unload()
