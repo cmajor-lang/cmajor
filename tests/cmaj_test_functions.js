@@ -759,8 +759,13 @@ function runScript (options)
 
             if (isError (inputData))
             {
-                testSection.reportFail ("Failed to read input stream " + expectedStreamFilename);
-                return;
+                if (options.skipMissing == null)
+                {
+                    testSection.reportFail ("Failed to read input stream " + expectedStreamFilename);
+                    return;
+                }
+
+                inputData.data = Array (options.samplesToRender);
             }
 
             inputEndpoints[i].frames = inputData;
