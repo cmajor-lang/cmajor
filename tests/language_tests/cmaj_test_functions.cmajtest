@@ -929,3 +929,26 @@ processor Test [[ main ]]
         advance();
     }
 }
+
+## expectError ("4:16: error: Expected a value")
+
+bool test()
+{
+    float f = (float) 3;
+
+    return f == 3.0f;
+}
+
+## testFunction()
+
+bool parenthesisOkAroundTypes()
+{
+    float f = (float) (3);
+
+    return f == 3.0f;
+}
+
+bool parenthesisOkAroundFunctioCalls()
+{
+    return ((min)) (1, 2) == 1;
+}
