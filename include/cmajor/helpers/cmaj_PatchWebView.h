@@ -86,18 +86,21 @@ inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
 
 inline void PatchWebView::initialiseFromFirstHTMLView()
 {
-    for (auto& view : loadedPatch.manifest.views)
+    if (auto manifest = patch.getManifest())
     {
-        if (loadedPatch.manifest.fileExists (view.html))
+        for (auto& view : manifest->views)
         {
-            const auto index = std::filesystem::path (view.html);
-            indexFilename = index.filename();
-            rootFolder = index.parent_path();
+            if (manifest->fileExists (view.html))
+            {
+                const auto index = std::filesystem::path (view.html);
+                indexFilename = index.filename();
+                rootFolder = index.parent_path();
 
-            width  = view.width;
-            height = view.height;
-            resizable = view.resizable;
-            return;
+                width  = view.width;
+                height = view.height;
+                resizable = view.resizable;
+                return;
+            }
         }
     }
 }
@@ -176,18 +179,18 @@ inline void PatchWebView::createBindings()
                         if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
                         {
                             auto endpointID = cmaj::EndpointID::create (endpointIDMember.getString());
-                            loadedPatch.sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
+                            sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
                         }
                     }
                     else if (type == "send_gesture_start")
                     {
                         if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                            loadedPatch.sendGestureStart (cmaj::EndpointID::create (endpointIDMember.getString()));
+                            sendGestureStart (cmaj::EndpointID::create (endpointIDMember.getString()));
                     }
                     else if (type == "send_gesture_end")
                     {
                         if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                            loadedPatch.sendGestureEnd (cmaj::EndpointID::create (endpointIDMember.getString()));
+                            sendGestureEnd (cmaj::EndpointID::create (endpointIDMember.getString()));
                     }
                     else if (type == "req_status")
                     {
@@ -196,12 +199,7 @@ inline void PatchWebView::createBindings()
                     else if (type == "req_endpoint")
                     {
                         if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                        {
-                            auto endpointID = cmaj::EndpointID::create (endpointIDMember.getString());
-
-                            if (auto param = loadedPatch.findParameter (endpointID))
-                                patch.sendParameterChangeToViews (endpointID, param->currentValue);
-                        }
+                            requestEndpointValueStatus (cmaj::EndpointID::create (endpointIDMember.getString()));
                     }
                     else if (type == "req_state")
                     {
@@ -256,8 +254,9 @@ inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePat
     const auto relativePath = navigateToIndex ? indexFilename : std::filesystem::path (path).relative_path();
     const auto file = rootFolder / relativePath;
 
-    if (const auto content = loadedPatch.manifest.readFileContent (file.string()); ! content.empty())
-        return toResource (content, toMimeType (relativePath.extension().string()));
+    if (auto manifest = patch.getManifest())
+        if (const auto content = manifest->readFileContent (file.string()); ! content.empty())
+            return toResource (content, toMimeType (relativePath.extension().string()));
 
     return {};
 }

@@ -76,7 +76,7 @@ struct PatchManifest
     std::function<std::string(const std::string&)> getFullPathForFile;
     std::function<std::filesystem::file_time_type(const std::string&)> getFileModificationTime;
     std::function<bool(const std::string&)> fileExists;
-    std::string readFileContent (const std::string& name);
+    std::string readFileContent (const std::string& name) const;
 
     /// Represents one of the GUI views in the patch
     struct View
@@ -182,6 +182,7 @@ struct Patch
     EndpointDetailsList getOutputEndpoints() const;
 
     choc::span<PatchParameterPtr> getParameterList() const;
+    PatchParameterPtr findParameter (const EndpointID&) const;
 
     //==============================================================================
     /// Processes the next block, optionally adding or replacing the audio output data
@@ -324,11 +325,16 @@ struct PatchView
     bool isViewOf (Patch&) const;
     virtual void sendMessage (const choc::value::ValueView&) = 0;
 
+    // A subclass can use these methods to control the patch
+    void sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&, int32_t rampFrames = -1);
+    void sendGestureStart (const EndpointID&);
+    void sendGestureEnd (const EndpointID&);
+    void requestEndpointValueStatus (const EndpointID&);
+
     uint32_t width = 0, height = 0;
     bool resizable = true;
 
     Patch& patch;
-    Patch::LoadedPatch& loadedPatch;
 };
 
 
@@ -453,7 +459,7 @@ inline bool PatchManifest::reload()
     throw std::runtime_error ("The patch file did not contain a valid JSON object");
 }
 
-inline std::string PatchManifest::readFileContent (const std::string& file)
+inline std::string PatchManifest::readFileContent (const std::string& file) const
 {
     if (auto stream = createFileReader (file))
     {
@@ -1401,6 +1407,15 @@ inline choc::span<PatchParameterPtr> Patch::getParameterList() const
     return {};
 }
 
+inline PatchParameterPtr Patch::findParameter (const EndpointID& endpointID) const
+{
+    if (currentPatch)
+        if (auto p = currentPatch->findParameter (endpointID))
+            return p->shared_from_this();
+
+    return {};
+}
+
 inline void Patch::addMIDIMessage (int frameIndex, const void* data, uint32_t length)
 {
     if (length < 4)
@@ -1816,7 +1831,7 @@ inline float PatchParameter::getStringAsValue (std::string_view text) const
 
 //==============================================================================
 inline PatchView::PatchView (Patch& p, uint32_t viewWidth, uint32_t viewHeight)
-  : patch (p), loadedPatch (p.getLoadedPatch())
+  : patch (p)
 {
     width  = viewWidth;
     height = viewHeight;
@@ -1836,7 +1851,31 @@ inline PatchView::~PatchView()
 
 inline bool PatchView::isViewOf (Patch& p) const
 {
-    return p.isLoaded() && std::addressof (loadedPatch) == std::addressof (p.getLoadedPatch());
+    return std::addressof (p) == std::addressof (patch);
+}
+
+inline void PatchView::sendEventOrValueToPatch (const EndpointID& endpointID, const choc::value::ValueView& value, int32_t rampFrames)
+{
+    if (patch.currentPatch != nullptr)
+        patch.currentPatch->sendEventOrValueToPatch (endpointID, value, rampFrames);
+}
+
+inline void PatchView::sendGestureStart (const EndpointID& endpointID)
+{
+    if (patch.currentPatch != nullptr)
+        patch.currentPatch->sendGestureStart (endpointID);
+}
+
+inline void PatchView::sendGestureEnd (const EndpointID& endpointID)
+{
+    if (patch.currentPatch != nullptr)
+        patch.currentPatch->sendGestureEnd (endpointID);
+}
+
+inline void PatchView::requestEndpointValueStatus (const EndpointID& endpointID)
+{
+    if (auto param = patch.findParameter (endpointID))
+        patch.sendParameterChangeToViews (endpointID, param->currentValue);
 }
 
 } // namespace cmaj
