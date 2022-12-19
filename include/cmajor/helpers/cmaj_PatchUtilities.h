@@ -239,10 +239,17 @@ struct Patch
     void sendMessageToViews (const choc::value::ValueView&);
     void sendPatchStatusChangeToViews();
     void sendSampleRateChangeToViews (double newRate);
-    void sendParameterChangeToViews (const EndpointID& endpointID, float value);
-    void sendRealtimeParameterChangeToViews (const std::string& endpointID, float value);
+    void sendParameterChangeToViews (const EndpointID&, float value);
+    void sendRealtimeParameterChangeToViews (const std::string&, float value);
+    void sendCurrentParameterValueToViews (const EndpointID&);
     void sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView&);
     void sendStoredStateToViews (const std::string& key);
+
+    // These can be called by things like the GUI to control the patch
+    bool handleCientMessage (const choc::value::ValueView&);
+    void sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&, int32_t rampFrames = -1);
+    void sendGestureStart (const EndpointID&);
+    void sendGestureEnd (const EndpointID&);
 
 private:
     //==============================================================================
@@ -324,12 +331,6 @@ struct PatchView
 
     bool isViewOf (Patch&) const;
     virtual void sendMessage (const choc::value::ValueView&) = 0;
-
-    // A subclass can use these methods to control the patch
-    void sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&, int32_t rampFrames = -1);
-    void sendGestureStart (const EndpointID&);
-    void sendGestureEnd (const EndpointID&);
-    void requestEndpointValueStatus (const EndpointID&);
 
     uint32_t width = 0, height = 0;
     bool resizable = true;
@@ -1625,6 +1626,115 @@ inline void Patch::sendOutputEvent (uint64_t frame, std::string_view endpointID,
     sendOutputEventToViews (endpointID, v);
 }
 
+inline void Patch::sendEventOrValueToPatch (const EndpointID& endpointID, const choc::value::ValueView& value, int32_t rampFrames)
+{
+    if (currentPatch != nullptr)
+        currentPatch->sendEventOrValueToPatch (endpointID, value, rampFrames);
+}
+
+inline void Patch::sendGestureStart (const EndpointID& endpointID)
+{
+    if (currentPatch != nullptr)
+        currentPatch->sendGestureStart (endpointID);
+}
+
+inline void Patch::sendGestureEnd (const EndpointID& endpointID)
+{
+    if (currentPatch != nullptr)
+        currentPatch->sendGestureEnd (endpointID);
+}
+
+inline void Patch::sendCurrentParameterValueToViews (const EndpointID& endpointID)
+{
+    if (auto param = findParameter (endpointID))
+        sendParameterChangeToViews (endpointID, param->currentValue);
+}
+
+inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
+{
+    if (! msg.isObject())
+        return false;
+
+    if (auto typeMember = msg["type"]; typeMember.isString())
+    {
+        auto type = typeMember.getString();
+
+        if (type == "send_value")
+        {
+            if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
+            {
+                auto endpointID = cmaj::EndpointID::create (endpointIDMember.getString());
+                sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
+            }
+
+            return true;
+        }
+
+        if (type == "send_gesture_start")
+        {
+            if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
+                sendGestureStart (cmaj::EndpointID::create (endpointIDMember.getString()));
+
+            return true;
+        }
+
+        if (type == "send_gesture_end")
+        {
+            if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
+                sendGestureEnd (cmaj::EndpointID::create (endpointIDMember.getString()));
+
+            return true;
+        }
+
+        if (type == "req_status")
+        {
+            sendPatchStatusChangeToViews();
+            return true;
+        }
+
+        if (type == "req_endpoint")
+        {
+            if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
+                sendCurrentParameterValueToViews (cmaj::EndpointID::create (endpointIDMember.getString()));
+
+            return true;
+        }
+
+        if (type == "req_state")
+        {
+            if (auto key = msg["key"]; key.isString())
+                sendStoredStateToViews (key.toString());
+
+            return true;
+        }
+
+        if (type == "send_state")
+        {
+            if (auto key = msg["key"]; key.isString())
+                if (auto value = msg["value"]; value.isString() || value.isVoid())
+                    setStoredStateValue (key.toString(), value.get<std::string>());
+
+            return true;
+        }
+
+        if (type == "load_patch")
+        {
+            if (auto file = msg["file"].getWithDefault<std::string>({}); ! file.empty())
+                loadPatchFromFile (file);
+
+            return true;
+        }
+
+        if (type == "unload")
+        {
+            unload();
+            return true;
+        }
+    }
+
+    return false;
+}
+
 //==============================================================================
 inline PatchParameter::PatchParameter (std::shared_ptr<Patch::LoadedPatch> p, const EndpointDetails& details, cmaj::EndpointHandle handle)
     : patch (p), endpointHandle (handle)
@@ -1852,30 +1962,6 @@ inline PatchView::~PatchView()
 inline bool PatchView::isViewOf (Patch& p) const
 {
     return std::addressof (p) == std::addressof (patch);
-}
-
-inline void PatchView::sendEventOrValueToPatch (const EndpointID& endpointID, const choc::value::ValueView& value, int32_t rampFrames)
-{
-    if (patch.currentPatch != nullptr)
-        patch.currentPatch->sendEventOrValueToPatch (endpointID, value, rampFrames);
-}
-
-inline void PatchView::sendGestureStart (const EndpointID& endpointID)
-{
-    if (patch.currentPatch != nullptr)
-        patch.currentPatch->sendGestureStart (endpointID);
-}
-
-inline void PatchView::sendGestureEnd (const EndpointID& endpointID)
-{
-    if (patch.currentPatch != nullptr)
-        patch.currentPatch->sendGestureEnd (endpointID);
-}
-
-inline void PatchView::requestEndpointValueStatus (const EndpointID& endpointID)
-{
-    if (auto param = patch.findParameter (endpointID))
-        patch.sendParameterChangeToViews (endpointID, param->currentValue);
 }
 
 } // namespace cmaj

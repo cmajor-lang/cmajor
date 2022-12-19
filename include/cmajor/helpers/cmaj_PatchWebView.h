@@ -80,7 +80,7 @@ inline PatchWebView::PatchWebView (Patch& p, uint32_t viewWidth, uint32_t viewHe
 
 inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
 {
-    webview.evaluateJavascript ("if (window.patchConnection) window.patchConnection.handleEventFromServer ("
+    webview.evaluateJavascript ("if (window.cmaj_handleMessageFromPatch) window.cmaj_handleMessageFromPatch ("
                                   + choc::json::toString (msg, true) + ");");
 }
 
@@ -118,103 +118,56 @@ inline void PatchWebView::createBindings()
 
         this.requestStatusUpdate = function()
         {
-            window.cmaj_clientRequest ({ type: "req_status" });
+            window.cmaj_sendMessageToPatch ({ type: "req_status" });
         };
 
         this.requestEndpointValue = function (endpointID)
         {
-            window.cmaj_clientRequest ({ type: "req_endpoint", id: endpointID });
+            window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID });
         };
 
         this.sendEventOrValue = function (endpointID, value, optionalNumFrames)
         {
-            window.cmaj_clientRequest ({ type: "send_value", id: endpointID, value: value, rampFrames: optionalNumFrames });
+            window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: optionalNumFrames });
         };
 
         this.sendParameterGestureStart = function (endpointID)
         {
-            window.cmaj_clientRequest ({ type: "send_gesture_start", id: endpointID });
+            window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID });
         };
 
         this.sendParameterGestureEnd = function (endpointID)
         {
-            window.cmaj_clientRequest ({ type: "send_gesture_end", id: endpointID });
-        };
-
-        this.handleEventFromServer = function (msg)
-        {
-            if (msg.type == "output_event")         this.onOutputEvent (msg.ID, msg.value);
-            else if (msg.type == "param_value")     this.onParameterEndpointChanged (msg.ID, msg.value);
-            else if (msg.type == "status")          this.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs);
-            else if (msg.type == "sample_rate")     this.onSampleRateChanged (msg.rate);
-            else if (msg.type == "state_changed")   this.onStoredStateChanged (msg.key, msg.value);
+            window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID });
         };
 
         this.requestStoredState = function (key)
         {
-            window.cmaj_clientRequest ({ type: "req_state", key: key });
+            window.cmaj_sendMessageToPatch ({ type: "req_state", key: key });
         }
 
         this.setStoredState = function (key, newValue)
         {
-            window.cmaj_clientRequest ({ type: "send_state", key : key, value: newValue });
+            window.cmaj_sendMessageToPatch ({ type: "send_state", key : key, value: newValue });
         }
 
-        window.patchConnection = this;
+        const self = this;
+
+        window.cmaj_handleMessageFromPatch = function (msg)
+        {
+            if (msg.type == "output_event")         self.onOutputEvent (msg.ID, msg.value);
+            else if (msg.type == "param_value")     self.onParameterEndpointChanged (msg.ID, msg.value);
+            else if (msg.type == "status")          self.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs);
+            else if (msg.type == "sample_rate")     self.onSampleRateChanged (msg.rate);
+            else if (msg.type == "state_changed")   self.onStoredStateChanged (msg.key, msg.value);
+        };
     }
     )");
 
-    webview.bind ("cmaj_clientRequest", [this] (const choc::value::ValueView& args) -> choc::value::Value
+    webview.bind ("cmaj_sendMessageToPatch", [this] (const choc::value::ValueView& args) -> choc::value::Value
     {
-        if (args.isArray())
-        {
-            if (auto msg = args[0]; msg.isObject())
-            {
-                if (auto typeMember = msg["type"]; typeMember.isString())
-                {
-                    auto type = typeMember.getString();
-
-                    if (type == "send_value")
-                    {
-                        if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                        {
-                            auto endpointID = cmaj::EndpointID::create (endpointIDMember.getString());
-                            sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
-                        }
-                    }
-                    else if (type == "send_gesture_start")
-                    {
-                        if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                            sendGestureStart (cmaj::EndpointID::create (endpointIDMember.getString()));
-                    }
-                    else if (type == "send_gesture_end")
-                    {
-                        if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                            sendGestureEnd (cmaj::EndpointID::create (endpointIDMember.getString()));
-                    }
-                    else if (type == "req_status")
-                    {
-                        patch.sendPatchStatusChangeToViews();
-                    }
-                    else if (type == "req_endpoint")
-                    {
-                        if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                            requestEndpointValueStatus (cmaj::EndpointID::create (endpointIDMember.getString()));
-                    }
-                    else if (type == "req_state")
-                    {
-                        if (auto key = msg["key"]; key.isString())
-                            patch.sendStoredStateToViews (key.toString());
-                    }
-                    else if (type == "send_state")
-                    {
-                        if (auto key = msg["key"]; key.isString())
-                            if (auto value = msg["value"]; value.isString() || value.isVoid())
-                                patch.setStoredStateValue (key.toString(), value.get<std::string>());
-                    }
-                }
-            }
-        }
+        if (args.isArray() && args.size() != 0)
+            patch.handleCientMessage (args[0]);
 
         return {};
     });
