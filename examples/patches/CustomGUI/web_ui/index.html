@@ -183,7 +183,21 @@
 
   <script>
 
-    var patch = new PatchConnection();
+    //==============================================================================
+    // This returns an instance of a PatchConnection object
+    // that can be used to communicate with the running patch
+    function createPatchConnection()
+    {
+        if (window.frameElement && window.frameElement.PatchConnection)
+            return new window.frameElement.PatchConnection();
+
+        if (window.PatchConnection)
+            return new window.PatchConnection();
+
+        return new PatchConnection();
+    }
+
+    var patch = createPatchConnection();
     var sampleRate = null;
 
     patch.onPatchStatusChanged = function (buildError, manifest, inputEndpoints, outputEndpoints)

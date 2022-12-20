@@ -175,12 +175,12 @@ inline void PatchWebView::createBindings()
 
 inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePath& path)
 {
-    const auto toResource = [] (const std::string& content, const auto& mimeType) -> choc::ui::WebView::Options::Resource
+    const auto toResource = [] (std::string_view content, const auto& mimeType) -> choc::ui::WebView::Options::Resource
     {
         return
         {
-            std::vector<uint8_t> (reinterpret_cast<const uint8_t*> (content.c_str()),
-                                  reinterpret_cast<const uint8_t*> (content.c_str()) + content.size()),
+            std::vector<uint8_t> (reinterpret_cast<const uint8_t*> (content.data()),
+                                  reinterpret_cast<const uint8_t*> (content.data()) + content.size()),
             mimeType
         };
     };
@@ -192,8 +192,8 @@ inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePat
     };
 
     const auto navigateToIndex = path == "/";
-
     const auto shouldServeDefaultGUIResource = indexFilename.empty();
+
     if (shouldServeDefaultGUIResource)
     {
         const auto file = std::filesystem::path (path).relative_path();
