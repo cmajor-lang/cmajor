@@ -355,21 +355,8 @@ select option {
 
 <script type="module">
 
-//==============================================================================
-// This returns an instance of a PatchConnection object
-// that can be used to communicate with the running patch
-function createPatchConnection()
-{
-    if (window.frameElement && window.frameElement.PatchConnection)
-        return new window.frameElement.PatchConnection();
+import * as cmajor from "/cmajor_patch_connection.js";
 
-    if (window.PatchConnection)
-        return new window.PatchConnection();
-
-    return new PatchConnection();
-}
-
-//==============================================================================
 const patchTitleElement = document.getElementById ("patch-title");
 const rootElement = document.getElementById ("patch-parameters");
 
@@ -537,7 +524,7 @@ function makePatchConnection ({
 {
     // N.B: `PatchConnection` is effectively a singleton at the moment.
     //       if we had multiple instances, the backend would only communicate with the most recent instance
-    const patch = createPatchConnection();
+    const patch = cmajor.createPatchConnection();
 
     patch.onPatchStatusChanged = (buildError, manifest, inputEndpoints, outputEndpoints) =>
     {
@@ -651,8 +638,7 @@ function makeKnob ({
     const svg = createSvgElement();
     svg.setAttribute ("viewBox", "0 0 100 100");
 
-    const trackBackground = createSvgElement ({ tag: "path" )"
-R"(});
+    const trackBackground = createSvgElement ({ tag: "path" });
     trackBackground.setAttribute ("d", "M20,76 A 40 40 0 1 1 80 76");
     trackBackground.classList.add ("knob-path");
     trackBackground.classList.add ("knob-track-background");
@@ -661,7 +647,8 @@ R"(});
 
     const trackValue = createSvgElement ({ tag: "path" });
     trackValue.setAttribute ("d", typePaths[type]);
-    trackValue.setAttribute ("stroke-dasharray", typeDashLengths[type]);
+    trackValue.setAttribute ("stroke-dasharray", typeDashLengths[t)"
+R"(ype]);
     trackValue.classList.add ("knob-path");
     trackValue.classList.add ("knob-track-value");
 

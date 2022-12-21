@@ -107,63 +107,6 @@ inline void PatchWebView::initialiseFromFirstHTMLView()
 
 inline void PatchWebView::createBindings()
 {
-    webview.addInitScript (R"(
-    function PatchConnection()
-    {
-        this.onPatchStatusChanged        = function (errorMessage, patchManifest, inputsList, outputsList) {};
-        this.onSampleRateChanged         = function (newSampleRate) {};
-        this.onParameterEndpointChanged  = function (endpointID, newValue) {};
-        this.onOutputEvent               = function (endpointID, newValue) {};
-        this.onStoredStateChanged        = function (key, value) {};
-
-        this.requestStatusUpdate = function()
-        {
-            window.cmaj_sendMessageToPatch ({ type: "req_status" });
-        };
-
-        this.requestEndpointValue = function (endpointID)
-        {
-            window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID });
-        };
-
-        this.sendEventOrValue = function (endpointID, value, optionalNumFrames)
-        {
-            window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: optionalNumFrames });
-        };
-
-        this.sendParameterGestureStart = function (endpointID)
-        {
-            window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID });
-        };
-
-        this.sendParameterGestureEnd = function (endpointID)
-        {
-            window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID });
-        };
-
-        this.requestStoredState = function (key)
-        {
-            window.cmaj_sendMessageToPatch ({ type: "req_state", key: key });
-        }
-
-        this.setStoredState = function (key, newValue)
-        {
-            window.cmaj_sendMessageToPatch ({ type: "send_state", key : key, value: newValue });
-        }
-
-        const self = this;
-
-        window.cmaj_handleMessageFromPatch = function (msg)
-        {
-            if (msg.type == "output_event")         self.onOutputEvent (msg.ID, msg.value);
-            else if (msg.type == "param_value")     self.onParameterEndpointChanged (msg.ID, msg.value);
-            else if (msg.type == "status")          self.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs);
-            else if (msg.type == "sample_rate")     self.onSampleRateChanged (msg.rate);
-            else if (msg.type == "state_changed")   self.onStoredStateChanged (msg.key, msg.value);
-        };
-    }
-    )");
-
     webview.bind ("cmaj_sendMessageToPatch", [this] (const choc::value::ValueView& args) -> choc::value::Value
     {
         if (args.isArray() && args.size() != 0)
@@ -172,6 +115,68 @@ inline void PatchWebView::createBindings()
         return {};
     });
 }
+
+static constexpr auto cmajor_patch_connection_js = R"(
+function PatchConnection()
+{
+    this.onPatchStatusChanged        = function (errorMessage, patchManifest, inputsList, outputsList) {};
+    this.onSampleRateChanged         = function (newSampleRate) {};
+    this.onParameterEndpointChanged  = function (endpointID, newValue) {};
+    this.onOutputEvent               = function (endpointID, newValue) {};
+    this.onStoredStateChanged        = function (key, value) {};
+
+    this.requestStatusUpdate = function()
+    {
+        window.cmaj_sendMessageToPatch ({ type: "req_status" });
+    };
+
+    this.requestEndpointValue = function (endpointID)
+    {
+        window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID });
+    };
+
+    this.sendEventOrValue = function (endpointID, value, optionalNumFrames)
+    {
+        window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: optionalNumFrames });
+    };
+
+    this.sendParameterGestureStart = function (endpointID)
+    {
+        window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID });
+    };
+
+    this.sendParameterGestureEnd = function (endpointID)
+    {
+        window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID });
+    };
+
+    this.requestStoredState = function (key)
+    {
+        window.cmaj_sendMessageToPatch ({ type: "req_state", key: key });
+    }
+
+    this.setStoredState = function (key, newValue)
+    {
+        window.cmaj_sendMessageToPatch ({ type: "send_state", key : key, value: newValue });
+    }
+
+    const self = this;
+
+    window.cmaj_handleMessageFromPatch = function (msg)
+    {
+        if (msg.type == "output_event")         self.onOutputEvent (msg.ID, msg.value);
+        else if (msg.type == "param_value")     self.onParameterEndpointChanged (msg.ID, msg.value);
+        else if (msg.type == "status")          self.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs);
+        else if (msg.type == "sample_rate")     self.onSampleRateChanged (msg.rate);
+        else if (msg.type == "state_changed")   self.onStoredStateChanged (msg.key, msg.value);
+    };
+}
+
+export function createPatchConnection()
+{
+    return new PatchConnection();
+}
+)";
 
 inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePath& path)
 {
@@ -190,6 +195,9 @@ inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePat
         const auto mimeType = toMimeTypeCustomImpl ? toMimeTypeCustomImpl (extension) : std::string {};
         return mimeType.empty() ? toMimeTypeDefaultImpl (extension) : mimeType;
     };
+
+    if (path == "/cmajor_patch_connection.js")
+        return toResource (cmajor_patch_connection_js, toMimeType (".js"));
 
     const auto navigateToIndex = path == "/";
     const auto shouldServeDefaultGUIResource = indexFilename.empty();
