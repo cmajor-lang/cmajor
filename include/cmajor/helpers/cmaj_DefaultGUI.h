@@ -51,10 +51,559 @@ private:
         R"(<!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8" />
-    <title>Cmajor Patch Controls</title>
+  <meta charset="utf-8" />
+  <title>Cmajor Patch Controls</title>
 </head>
 
+<style>
+body {
+    background-color: #1a1a1a;
+    overflow: hidden;
+}
+</style>
+
+<body></body>
+
+<script type="module">
+
+import * as cmajor from "/cmajor_patch_connection.js";
+
+class DefaultPatchView  extends HTMLElement
+{
+    constructor (patchConnection)
+    {
+        super();
+        this.patchConnection = patchConnection;
+        this.state = {};
+        this.parameterChangedListeners = {};
+    }
+
+    connectedCallback()
+    {
+        this.attachShadow ({ mode: 'open' });
+        this.shadowRoot.innerHTML = this.getHTML();
+
+        this.titleElement      = this.shadowRoot.getElementById ("patch-title");
+        this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
+
+        this.connection = this.createPatchConnection();
+        this.connection.requestStatusUpdate();
+    }
+
+    createPatchConnection()
+    {
+        this.patchConnection.onPatchStatusChanged       = this.onPatchStatusChanged.bind (this);
+        this.patchConnection.onSampleRateChanged        = this.onSampleRateChanged.bind (this);
+        this.patchConnection.onParameterEndpointChanged = this.onParameterEndpointChanged.bind (this);
+        this.patchConnection.onOutputEvent              = this.onOutputEvent.bind (this);
+
+        return {
+            requestStatusUpdate:       this.patchConnection.requestStatusUpdate.bind (this.patchConnection),
+            sendParameterGestureStart: this.patchConnection.sendParameterGestureStart.bind (this.patchConnection),
+            sendEventOrValue:          this.patchConnection.sendEventOrValue.bind (this.patchConnection),
+            sendParameterGestureEnd:   this.patchConnection.sendParameterGestureEnd.bind (this.patchConnection),
+
+            performSingleEdit: (endpointID, value) =>
+            {
+                this.patchConnection.sendParameterGestureStart (endpointID);
+                this.patchConnection.sendEventOrValue (endpointID, value);
+                this.patchConnection.sendParameterGestureEnd (endpointID);
+            },
+        };
+    }
+
+    notifyParameterChangedListeners (endpointID, parameter)
+    {
+        this.parameterChangedListeners[endpointID]?.forEach (notify => notify (parameter));
+    }
+
+    onPatchStatusChanged (buildError, manifest, inputEndpoints, outputEndpoints)
+    {
+        this.parametersElement.innerHTML = "";
+
+        const initialState = {
+            title: manifest?.name ?? "Cmajor",
+            status: buildError ?? "",
+            inputs:  this.toInputControls (inputEndpoints),
+            outputs: this.toOutputControls (outputEndpoints),
+        };
+
+        const clear = object => Object.keys (object).forEach (key => delete object[key]);
+        clear (this.parameterChangedListeners);
+        clear (this.state);
+        Object.assign (this.state, initialState);
+
+        this.renderInitialState ({
+                onBeginEdit: (endpointID)              => this.connection.sendParameterGestureStart (endpointID),
+                onEdit: (endpointID, value)            => this.connection.sendEventOrValue (endpointID, value),
+                onEndEdit: (endpointID)                => this.connection.sendParameterGestureEnd (endpointID),
+                performSingleEdit: (endpointID, value) => this.connection.performSingleEdit (endpointID, value),
+            });
+
+        this.state.inputs.forEach (({ endpointID }) => this.patchConnection.requestEndpointValue (endpointID))
+    }
+
+    onParameterEndpointChanged (endpointID, value)
+    {
+        const currentInputs = this.state.inputs;
+        const index = currentInputs.findIndex (p => p.endpointID === endpointID);
+
+        if (index < 0)
+            return;
+
+        const currentParameter = currentInputs[index];
+        currentParameter.value = value;
+        this.notifyParameterChangedListeners (endpointID, currentParameter);
+    }
+
+    onOutputEvent (endpointID, value)
+    {
+    }
+
+    onSampleRateChanged()
+    {
+    }
+
+    addParameterChangedListener (endpointID, update)
+    {
+        let listeners = this.parameterChangedListeners[endpointID];
+
+        if (! listeners)
+            listeners = this.parameterChangedListeners[endpointID] = [];
+
+        listeners.push (update);
+    }
+
+    toInputControls (inputEndpoints)
+    {
+        return (inputEndpoints || []).filter (e => e.purpose === "parameter").map (this.toParameterControl);
+    }
+
+    toParameterControl ({ endpointID, annotation })
+    {
+        const common =
+        {
+            name: annotation?.name,
+            endpointID,
+            annotation,
+            unit: annotation.unit,
+            defaultValue: annotation.init,
+        };
+
+        if (annotation.boolean)
+        {
+            return { type: "switch", ...common, };
+        }
+
+        const textOptions = annotation.text?.split?.("|");
+        if (textOptions?.length > 1)
+        {
+            const hasUserDefinedRange = annotation.min != null && annotation.max != null;
+            const { min, step } = hasUserDefinedRange
+                ? { min: annotation.min, step: (annotation.max - annotation.min) / (textOptions.length - 1) }
+                : { min: 0, step: 1 };
+
+            return {
+                type: "options",
+                options: textOptions.map ((text, index) => ({ value: min + (step * index), text })),
+                ...common,
+            };
+        }
+
+        return {
+            type: "slider",
+            min: annotation.min ?? 0,
+            max: annotation.max ?? 1,
+            ...common,
+        };
+    }
+
+    toOutputControls (endpoints)
+    {
+        return [];
+    }
+
+    renderInitialState (backend)
+    {
+        this.titleElement.innerText = this.state.title;
+        const self = this;
+
+        this.state.inputs.forEach (({ type, value, name, ...other }, index) =>
+        {
+            const control = self.makeControl (backend, { type, value, name, index, ...other });
+
+            if (control)
+            {
+                const mapValue = control.mapValue ?? (v => v);
+                const wrapped = this.makeLabelledControl (control.control, {
+                    initialValue: mapValue (other.defaultValue),
+                    name,
+                    toDisplayValue: control.toDisplayValue,
+                });
+
+                self.addParameterChangedListener (other.endpointID, parameter => wrapped.update (mapValue (parameter.value)));
+                self.parametersElement.appendChild (wrapped.element);
+            }
+        });
+    }
+
+    makeControl (backend, { type, min, max, defaultValue, index, ...other })
+    {
+        switch (type)
+        {
+            case "slider": return {
+                control: this.makeKnob ({
+                    initialValue: defaultValue,
+                    min,
+                    max,
+                    onBeginEdit: () => backend.onBeginEdit (other.endpointID),
+                    onEdit: nextValue => backend.onEdit (other.endpointID, nextValue),
+                    onEndEdit: () => backend.onEndEdit (other.endpointID),
+                    onReset: () => backend.performSingleEdit (other.endpointID, defaultValue),
+                }),
+                toDisplayValue: v => `${v.toFixed (2)} ${other.unit ?? ""}`
+            }
+            case "switch":
+            {
+                const mapValue = v => v > 0.5;
+                return {
+                    control: this.makeSwitch ({
+                        initialValue: mapValue (defaultValue),
+                        onEdit: nextValue => backend.performSingleEdit (other.endpointID, nextValue),
+                    }),
+                    toDisplayValue: v => `${v ? "On" : "Off"}`,
+                    mapValue,
+                };
+            }
+            case "options":
+            {
+                const toDisplayValue = index => other.options[index].text;
+
+                const toIndex = (value, options) =>
+                {
+                    const binarySearch = (arr, toValue, target) =>
+                    {
+                        let low = 0;
+                        let high = arr.length - 1;
+
+                        while (low <= high)
+                        {
+                            const mid = low + ((high - low) >> 1);
+                            const value = toValue (arr[mid]);
+
+                            if (value < target) low = mid + 1;
+                            else if (value > target) high = mid - 1;
+                            else return mid;
+                        }
+
+                        return high;
+                    };
+
+                    return Math.max(0, binarySearch (options, v => v.value, value));
+                };
+
+                return {
+                    control: this.makeOptions ({
+                        initialSelectedIndex: toIndex (defaultValue, other.options),
+                        options: other.options,
+                        onEdit: (optionsIndex) =>
+                        {
+                            const nextValue = other.options[optionsIndex].value;
+                            backend.performSingleEdit (other.endpointID, nextValue);
+                        },
+                        toDisplayValue,
+                    }),
+                    toDisplayValue,
+                    mapValue: (v) => toIndex (v, other.options),
+                };
+            }
+        }
+
+        return undefined;
+    }
+
+    makeKnob ({
+        initialValue = 0,
+        min = 0,
+        max = 1,
+        onBeginEdit = () => {},
+        onEdit = (nextValue) => {},
+        onEndEdit = () => {},
+        onReset = () => {},
+     } = {})
+    {
+        // core drawing code derived from https://github.com/Kyle-Shanks/react_synth (MIT licensed)
+
+        const isBipolar = min + max === 0;
+        const type = isBipolar ? 2 : 1;
+
+        const maxKnobRotation = 132;
+        const typeDashLengths = { 1: 184, 2: 251.5 };
+        const typeValueOffsets = { 1: 132, 2: 0 };
+        const typePaths =
+        {
+            1: "M20,76 A 40 40 0 1 1 80 76",
+            2: "M50.01,10 A 40 40 0 1 1 50 10"
+        };
+
+        const createSvgElement = ({ document = window.document, tag = "svg" } = {}) => document.createElementNS ("http://www.w3.org/2000/svg", tag);
+
+        const svg = createSvgElement();
+        svg.setAttribute ("viewBox", "0 0 100 100");
+
+        const trackBackground = createSvgElement ({ tag: "path" });
+        trackBackground.setAttribute ("d", "M20,76 A 40 40 0 1 1 80 76");
+        trackBackground.classList.add ("knob-path");
+        trackBackground.classList.add ("knob-track-background");
+
+        const getDashOffset = (val, type) => typeDashLengths[type] - 184 / (maxKnobRotation * 2) * (val + typeValueOffsets[type]);
+
+        const trackValue = createSvgElement ({ tag: "path" });
+        trackValue.setAttribute ("d", typePaths[type]);
+        trackValue.setAttribute ("stroke-dasharray", typeDashLengths[type]);
+        trackValue.classList.add ("knob-path");
+        trackValue.classList.add ("knob-track-value");
+
+        const dial = document.createElement ("div");
+        dial.className = "knob-dial";
+
+        const dialTick = document.createElement ("div");
+        dialTick.className = "knob-dial-tick";
+        dial.appendChild (dialTick);
+
+        const container = document.createElement ("div");
+        container.className = "knob-container";
+
+        svg.appendChild (trackBackground);
+        svg.appendChild (trackValue);
+
+        container.appendChild (svg);
+        container.appendChild (dial);
+
+        const remap = (source, sourceFrom, sourceTo, targetFrom, targetTo) =>
+        {
+            return targetFrom + (source - sourceFrom) * (targetTo - targetFrom) / (sourceTo - sourceFrom);
+        };
+
+        const toValue = (knobRotation) => remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);
+        const toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);
+
+        const state =
+        {
+            rotation: toRotation (initialValue),
+        };
+
+        const update = (degrees, force) =>
+        {
+            if (! force && state.rotation === degrees) return;
+
+            state.rotation = degrees;
+
+            trackValue.setAttribute ("stroke-dashoffset", getDashOffset (state.rotation, type));
+            dial.style.transform = `translate(-50%,-50%) rotate(${state.rotation}deg)`
+        };
+
+        const force = true;
+        update (state.rotation, force);
+
+        let accumlatedRotation = undefined;
+        let previousScreenY = undefined;
+
+        const onMouseMove = (event) =>
+        {
+            event.preventDefault(); // avoid scrolling whilst dragging
+
+            const nextRotation = (rotation, delta) =>
+            {
+                const clamp = (v, min, max) => Math.min (Math.max (v, min), max);
+
+                return clamp (rotation - delta, -maxKnobRotation, maxKnobRotation);
+            };
+
+            const workaroundBrowserIncorrectlyCalculatingMovementY = event.movementY === event.screenY;
+            const movementY = workaroundBrowserIncorrectlyCalculatingMovementY
+                ? event.screenY - previousScreenY
+                : event.movementY;
+            previousScreenY = event.screenY;
+
+            const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
+            accumlatedRotation = nextRotation (accumlatedRotation, movementY * speedMultiplier);
+            onEdit (toValue (accumlatedRotation));
+        };
+
+        const onMouseUp = (event) =>
+        {
+            previousScreenY = undefined;
+            accumlatedRotation = undefined;
+            window.removeEventListener ("mousemove", onMouseMove);
+            window.removeEventListener ("mouseup", onMouseUp);
+            onEndEdit();
+        };
+
+        const onMouseDown = (event) =>
+        {
+            previousScreenY = event.screenY;
+            accumlatedRotation = state.rotation;
+            onBeginEdit();
+            window.addEventListener ("mousemove", onMouseMove);
+            window.addEventListener ("mouseup", onMouseUp);
+        };
+
+        container.addEventListener ("mousedown", onMouseDown);
+        container.addEventListener ("mouseup", onMouseUp);
+        container.addEventListener ("dblclick", () => onReset());
+
+        return {
+            element: container,
+            update: nextValue => update (toRotation (nextValue)),
+        };
+    }
+
+    makeSwitch ({
+        initialValue = false,
+        onEdit = () => {},
+    } = {})
+    {
+        const outer = document.createElement ("div");
+        outer.classList = "switch-outline";
+
+        const inner = document.createElement ("div");
+        inner.classList = "switch-thumb";
+
+        const state =
+        {
+            value: initialValue,
+        };
+
+        outer.appendChild (inner);
+
+        const container = document.createElement ("div");
+        container.classList.add ("switch-container");
+
+        container.addEventListener ("click", () => onEdit (! state.value));
+
+        container.appendChild (outer);
+
+        const update = (nextValue, force) =>
+        {
+            if (! force && state.value === nextValue) return;
+
+            state.value = nextValue;
+            container.classList.remove ("switch-off", "switch-on");
+            container.classList.add (`${nextValue ? "switch-on" : "switch-off"}`);
+        };
+
+        const force = true;
+        update (initialValue, force);
+
+        return {
+            element: container,
+            update,
+        };
+    }
+
+    makeOptions ({
+        initialSelectedIndex = -1,
+        options = [],
+        onEdit = () => {},
+        toDisplayValue = () => {},
+    } = {})
+    {
+        const select = document.createElement ("select");
+
+        options.forEach ((option, index) =>
+        {
+            const optionElement = document.createElement ("option");
+            optionElement.innerText = toDisplayValue (index);
+            select.appendChild (optionElement);
+        });
+
+        const state =
+        {
+            selectedInd)"
+R"(ex: initialSelectedIndex,
+        };
+
+        select.addEventListener ("change", (e) =>
+        {
+            const incomingIndex = e.target.selectedIndex;
+
+            // prevent local state change. the caller will update us when the backend actually applies the update
+            e.target.selectedIndex = state.selectedIndex;
+
+            onEdit?.(incomingIndex);
+        });
+
+        const update = (incomingIndex, force) =>
+        {
+            if (! force && state.selectedIndex === incomingIndex) return;
+
+            state.selectedIndex = incomingIndex;
+            select.selectedIndex = state.selectedIndex;
+        };
+
+        const force = true;
+        update (initialSelectedIndex, force);
+
+        const wrapper = document.createElement ("div");
+        wrapper.className = "select-container";
+
+        wrapper.appendChild (select);
+
+        const icon = document.createElement ("span");
+        icon.className = "select-icon";
+        wrapper.appendChild (icon);
+
+        return {
+            element: wrapper,
+            update,
+        };
+    }
+
+    makeLabelledControl (childControl, {
+        name = "",
+        initialValue = 0,
+        toDisplayValue = () => "",
+    } = {})
+    {
+        const container = document.createElement ("div");
+        container.className = "labelled-control";
+
+        const centeredControl = document.createElement ("div");
+        centeredControl.className = "labelled-control-centered-control";
+
+        centeredControl.appendChild (childControl.element);
+
+        const titleValueHoverContainer = document.createElement ("div");
+        titleValueHoverContainer.className = "labelled-control-label-container";
+
+        const nameText = document.createElement ("div");
+        nameText.classList.add ("labelled-control-name");
+        nameText.innerText = name;
+
+        const valueText = document.createElement ("div");
+        valueText.classList.add ("labelled-control-value");
+        valueText.innerText = toDisplayValue (initialValue);
+
+        titleValueHoverContainer.appendChild (nameText);
+        titleValueHoverContainer.appendChild (valueText);
+
+        container.appendChild (centeredControl);
+        container.appendChild (titleValueHoverContainer);
+
+        return {
+            element: container,
+            update: (nextValue) =>
+            {
+                childControl.update (nextValue);
+                valueText.innerText = toDisplayValue (nextValue);
+            },
+        };
+    }
+
+    getHTML()
+    {
+        return `
 <style>
 @import url('./assets/ibmplexmono/v12/ibmplexmono.css');
 * {
@@ -68,7 +617,7 @@ private:
     padding: 0;
 }
 
-:root {
+.panel {
     --header-height: 40px;
     --foreground: #ffffff;
     --background: #1a1a1a;
@@ -90,9 +639,7 @@ private:
     /* control value + name display */
     --labelled-control-font-color: var(--foreground);
     --labelled-control-font-size: 12px;
-}
 
-body {
     font-family: 'IBM Plex Mono', monospace;
     background-color: var(--background);
     overflow: hidden;
@@ -345,551 +892,23 @@ select option {
 
 </style>
 
-<body>
-<div class="header">
-    <span class="logo"></span>
-    <h2 id="patch-title" class="header-title"></h2>
-    <div class="header-filler"></div>
+<div class="panel">
+ <div class="header">
+  <span class="logo"></span>
+  <h2 id="patch-title" class="header-title"></h2>
+  <div class="header-filler"></div>
+ </div>
+ <div id="patch-parameters" class="app-body"></div>
 </div>
-<div id="patch-parameters" class="app-body"></div>
-
-<script type="module">
-
-import * as cmajor from "/cmajor_patch_connection.js";
-
-const patchTitleElement = document.getElementById ("patch-title");
-const rootElement = document.getElementById ("patch-parameters");
-
-const state = {};
-const parameterChangedListeners = {};
-
-const addParameterChangedListener = (endpointID, update) =>
-{
-    const endpointListeners = (() =>
-    {
-        let listeners = parameterChangedListeners[endpointID];
-        if (! listeners)
-            listeners = parameterChangedListeners[endpointID] = [];
-
-        return listeners;
-    })();
-    endpointListeners.push (update);
-};
-
-const notifyParameterChangedListeners = (endpointID, parameter) =>
-{
-    parameterChangedListeners[endpointID]?.forEach (notify => notify (parameter));
-};
-
-const connection = makePatchConnection ({
-    onPatchStatusChanged: (initialState) =>
-    {
-        rootElement.innerHTML = "";
-
-        const clear = object => Object.keys (object).forEach (key => delete object[key]);
-
-        clear (parameterChangedListeners);
-        clear (state);
-        Object.assign (state, initialState);
-
-        renderInitialState (
-            state,
-            rootElement,
-            addParameterChangedListener,
-            {
-                onBeginEdit: (endpointID) => connection.sendParameterGestureStart (endpointID),
-                onEdit: (endpointID, value) => connection.sendEventOrValue (endpointID, value),
-                onEndEdit: (endpointID) => connection.sendParameterGestureEnd (endpointID),
-                performSingleEdit: (endpointID, value) => connection.performSingleEdit (endpointID, value),
-            }
-        );
-    },
-    onParameterEndpointChanged: ({ endpointID, value }) =>
-    {
-        const currentInputs = state.inputs;
-        const index = currentInputs.findIndex (p => p.endpointID === endpointID);
-        if (index < 0) return;
-
-        const currentParameter = currentInputs[index];
-
-        currentParameter.value = value;
-        notifyParameterChangedListeners (endpointID, currentParameter);
-    },
-});
-
-connection.requestStatusUpdate();
-
-function renderInitialState (state, rootElement, addParameterChangedListener, backend)
-{
-    patchTitleElement.innerText = state.title;
-
-    state.inputs.forEach (({ type, value, name, ...other }, index) =>
-    {
-        const control = makeControl (backend, { type, value, name, index, ...other });
-        if (control)
-        {
-            const mapValue = control.mapValue ?? (v => v);
-            const wrapped = makeLabelledControl (control.control, {
-                initialValue: mapValue (other.defaultValue),
-                name,
-                toDisplayValue: control.toDisplayValue,
-            });
-
-            addParameterChangedListener (other.endpointID, parameter => wrapped.update (mapValue (parameter.value)));
-            rootElement.appendChild (wrapped.element);
-        }
-    });
-}
-
-function makeControl (backend, { type, min, max, defaultValue, index, ...other })
-{
-    switch (type)
-    {
-        case "slider": return {
-            control: makeKnob ({
-                initialValue: defaultValue,
-                min,
-                max,
-                onBeginEdit: () => backend.onBeginEdit (other.endpointID),
-                onEdit: nextValue => backend.onEdit (other.endpointID, nextValue),
-                onEndEdit: () => backend.onEndEdit (other.endpointID),
-                onReset: () => backend.performSingleEdit (other.endpointID, defaultValue),
-            }),
-            toDisplayValue: v => `${v.toFixed (2)} ${other.unit ?? ""}`
-        }
-        case "switch":
-        {
-            const mapValue = v => v > 0.5;
-            return {
-                control: makeSwitch ({
-                    initialValue: mapValue (defaultValue),
-                    onEdit: nextValue => backend.performSingleEdit (other.endpointID, nextValue),
-                }),
-                toDisplayValue: v => `${v ? "On" : "Off"}`,
-                mapValue,
-            };
-        }
-        case "options":
-        {
-            const toDisplayValue = index => other.options[index].text;
-
-            const toIndex = (value, options) =>
-            {
-                const binarySearch = (arr, toValue, target) =>
-                {
-                    let low = 0;
-                    let high = arr.length - 1;
-
-                    while (low <= high)
-                    {
-                        const mid = low + ((high - low) >> 1);
-                        const value = toValue (arr[mid]);
-
-                        if (value < target) low = mid + 1;
-                        else if (value > target) high = mid - 1;
-                        else return mid;
-                    }
-
-                    return high;
-                };
-
-                return Math.max(0, binarySearch (options, v => v.value, value));
-            };
-            return {
-                control: makeOptions ({
-                    initialSelectedIndex: toIndex (defaultValue, other.options),
-                    options: other.options,
-                    onEdit: (optionsIndex) =>
-                    {
-                        const nextValue = other.options[optionsIndex].value;
-                        backend.performSingleEdit (other.endpointID, nextValue);
-                    },
-                    toDisplayValue,
-                }),
-                toDisplayValue,
-                mapValue: (v) => toIndex (v, other.options),
-            };
-        }
+`;
     }
-
-    return undefined;
 }
 
-function makePatchConnection ({
-    onPatchStatusChanged = () => {},
-    onSampleRateChanged = () => {},
-    onParameterEndpointChanged = () => {},
-    onOutputEvent = () => {}
-} = {})
-{
-    // N.B: `PatchConnection` is effectively a singleton at the moment.
-    //       if we had multiple instances, the backend would only communicate with the most recent instance
-    const patch = cmajor.createPatchConnection();
+window.customElements.define ('default-patch-view', DefaultPatchView);
 
-    patch.onPatchStatusChanged = (buildError, manifest, inputEndpoints, outputEndpoints) =>
-    {
-        const state =
-        {
-            title: manifest?.name ?? "Cmajor",
-            status: buildError ?? "",
-            inputs: toInputControls (inputEndpoints),
-            outputs: toOutputControls (outputEndpoints),
-        };
-
-        onPatchStatusChanged (state);
-        state.inputs.forEach (({ endpointID }) => patch.requestEndpointValue (endpointID))
-    };
-
-    patch.onSampleRateChanged = onSampleRateChanged;
-
-    patch.onParameterEndpointChanged = (endpointID, value) => onParameterEndpointChanged ({ endpointID, value });
-
-    patch.onOutputEvent = (endpointID, value) => onOutputEvent ({ endpointID, value });
-
-    return {
-        requestStatusUpdate: () => patch.requestStatusUpdate(),
-        sendParameterGestureStart: (endpointID) => patch.sendParameterGestureStart (endpointID),
-        sendEventOrValue: (endpointID, value) => patch.sendEventOrValue (endpointID, value),
-        sendParameterGestureEnd: (endpointID) => patch.sendParameterGestureEnd (endpointID),
-        performSingleEdit: (endpointID, value) =>
-        {
-            patch.sendParameterGestureStart (endpointID);
-            patch.sendEventOrValue (endpointID, value);
-            patch.sendParameterGestureEnd (endpointID);
-        },
-    };
-}
-
-function toInputControls (inputEndpoints)
-{
-    return (inputEndpoints || []).filter (e => e.purpose === "parameter").map (toParameterControl);
-}
-
-function toParameterControl ({ endpointID, annotation })
-{
-    const common =
-    {
-        name: annotation?.name,
-        endpointID,
-        annotation,
-        unit: annotation.unit,
-        defaultValue: annotation.init,
-    };
-
-    if (annotation.boolean)
-    {
-        return { type: "switch", ...common, };
-    }
-
-    const textOptions = annotation.text?.split?.("|");
-    if (textOptions?.length > 1)
-    {
-        const hasUserDefinedRange = annotation.min != null && annotation.max != null;
-        const { min, step } = hasUserDefinedRange
-            ? { min: annotation.min, step: (annotation.max - annotation.min) / (textOptions.length - 1) }
-            : { min: 0, step: 1 };
-
-        return {
-            type: "options",
-            options: textOptions.map ((text, index) => ({ value: min + (step * index), text })),
-            ...common,
-        };
-    }
-
-    return {
-        type: "slider",
-        min: annotation.min ?? 0,
-        max: annotation.max ?? 1,
-        ...common,
-    };
-}
-
-function toOutputControls (endpoints)
-{
-    return [];
-}
-
-function makeKnob ({
-    initialValue = 0,
-    min = 0,
-    max = 1,
-    onBeginEdit = () => {},
-    onEdit = (nextValue) => {},
-    onEndEdit = () => {},
-    onReset = () => {},
-} = {})
-{
-    // core drawing code derived from https://github.com/Kyle-Shanks/react_synth (MIT licensed)
-
-    const isBipolar = min + max === 0;
-    const type = isBipolar ? 2 : 1;
-
-    const maxKnobRotation = 132;
-    const typeDashLengths = { 1: 184, 2: 251.5 };
-    const typeValueOffsets = { 1: 132, 2: 0 };
-    const typePaths =
-    {
-        1: "M20,76 A 40 40 0 1 1 80 76",
-        2: "M50.01,10 A 40 40 0 1 1 50 10"
-    };
-
-    const createSvgElement = ({ document = window.document, tag = "svg" } = {}) => document.createElementNS ("http://www.w3.org/2000/svg", tag);
-
-    const svg = createSvgElement();
-    svg.setAttribute ("viewBox", "0 0 100 100");
-
-    const trackBackground = createSvgElement ({ tag: "path" });
-    trackBackground.setAttribute ("d", "M20,76 A 40 40 0 1 1 80 76");
-    trackBackground.classList.add ("knob-path");
-    trackBackground.classList.add ("knob-track-background");
-
-    const getDashOffset = (val, type) => typeDashLengths[type] - 184 / (maxKnobRotation * 2) * (val + typeValueOffsets[type]);
-
-    const trackValue = createSvgElement ({ tag: "path" });
-    trackValue.setAttribute ("d", typePaths[type]);
-    trackValue.setAttribute ("stroke-dasharray", typeDashLengths[t)"
-R"(ype]);
-    trackValue.classList.add ("knob-path");
-    trackValue.classList.add ("knob-track-value");
-
-    const dial = document.createElement ("div");
-    dial.className = "knob-dial";
-
-    const dialTick = document.createElement ("div");
-    dialTick.className = "knob-dial-tick";
-    dial.appendChild (dialTick);
-
-    const container = document.createElement ("div");
-    container.className = "knob-container";
-
-    svg.appendChild (trackBackground);
-    svg.appendChild (trackValue);
-
-    container.appendChild (svg);
-    container.appendChild (dial);
-
-    const remap = (source, sourceFrom, sourceTo, targetFrom, targetTo) =>
-    {
-        return targetFrom + (source - sourceFrom) * (targetTo - targetFrom) / (sourceTo - sourceFrom);
-    };
-
-    const toValue = (knobRotation) => remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);
-    const toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);
-
-    const state =
-    {
-        rotation: toRotation (initialValue),
-    };
-
-    const update = (degrees, force) =>
-    {
-        if (! force && state.rotation === degrees) return;
-
-        state.rotation = degrees;
-
-        trackValue.setAttribute ("stroke-dashoffset", getDashOffset (state.rotation, type));
-        dial.style.transform = `translate(-50%,-50%) rotate(${state.rotation}deg)`
-    };
-
-    const force = true;
-    update (state.rotation, force);
-
-    let accumlatedRotation = undefined;
-    let previousScreenY = undefined;
-
-    const onMouseMove = (event) =>
-    {
-        event.preventDefault(); // avoid scrolling whilst dragging
-
-        const nextRotation = (rotation, delta) =>
-        {
-            const clamp = (v, min, max) => Math.min (Math.max (v, min), max);
-
-            return clamp (rotation - delta, -maxKnobRotation, maxKnobRotation);
-        };
-
-        const workaroundBrowserIncorrectlyCalculatingMovementY = event.movementY === event.screenY;
-        const movementY = workaroundBrowserIncorrectlyCalculatingMovementY
-            ? event.screenY - previousScreenY
-            : event.movementY;
-        previousScreenY = event.screenY;
-
-        const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
-        accumlatedRotation = nextRotation (accumlatedRotation, movementY * speedMultiplier);
-        onEdit (toValue (accumlatedRotation));
-    };
-
-    const onMouseUp = (event) =>
-    {
-        previousScreenY = undefined;
-        accumlatedRotation = undefined;
-        window.removeEventListener ("mousemove", onMouseMove);
-        window.removeEventListener ("mouseup", onMouseUp);
-        onEndEdit();
-    };
-
-    const onMouseDown = (event) =>
-    {
-        previousScreenY = event.screenY;
-        accumlatedRotation = state.rotation;
-        onBeginEdit();
-        window.addEventListener ("mousemove", onMouseMove);
-        window.addEventListener ("mouseup", onMouseUp);
-    };
-
-    container.addEventListener ("mousedown", onMouseDown);
-    container.addEventListener ("mouseup", onMouseUp);
-    container.addEventListener ("dblclick", () => onReset());
-
-    return {
-        element: container,
-        update: nextValue => update (toRotation (nextValue)),
-    };
-}
-
-function makeSwitch ({
-    initialValue = false,
-    onEdit = () => {},
-} = {})
-{
-    const outer = document.createElement ("div");
-    outer.classList = "switch-outline";
-
-    const inner = document.createElement ("div");
-    inner.classList = "switch-thumb";
-
-    const state =
-    {
-        value: initialValue,
-    };
-
-    outer.appendChild (inner);
-
-    const container = document.createElement ("div");
-    container.classList.add ("switch-container");
-
-    container.addEventListener ("click", () => onEdit (! state.value));
-
-    container.appendChild (outer);
-
-    const update = (nextValue, force) =>
-    {
-        if (! force && state.value === nextValue) return;
-
-        state.value = nextValue;
-        container.classList.remove ("switch-off", "switch-on");
-        container.classList.add (`${nextValue ? "switch-on" : "switch-off"}`);
-    };
-
-    const force = true;
-    update (initialValue, force);
-
-    return {
-        element: container,
-        update,
-    };
-}
-
-function makeOptions ({
-    initialSelectedIndex = -1,
-    options = [],
-    onEdit = () => {},
-    toDisplayValue = () => {},
-} = {})
-{
-    const select = document.createElement ("select");
-
-    options.forEach ((option, index) =>
-    {
-        const optionElement = document.createElement ("option");
-        optionElement.innerText = toDisplayValue (index);
-        select.appendChild (optionElement);
-    });
-
-    const state =
-    {
-        selectedIndex: initialSelectedIndex,
-    };
-
-    select.addEventListener ("change", (e) =>
-    {
-        const incomingIndex = e.target.selectedIndex;
-
-        // prevent local state change. the caller will update us when the backend actually applies the update
-        e.target.selectedIndex = state.selectedIndex;
-
-        onEdit?.(incomingIndex);
-    });
-
-    const update = (incomingIndex, force) =>
-    {
-        if (! force && state.selectedIndex === incomingIndex) return;
-
-        state.selectedIndex = incomingIndex;
-        select.selectedIndex = state.selectedIndex;
-    };
-
-    const force = true;
-    update (initialSelectedIndex, force);
-
-    const wrapper = document.createElement ("div");
-    wrapper.className = "select-container";
-
-    wrapper.appendChild (select);
-
-    const icon = document.createElement ("span");
-    icon.className = "select-icon";
-    wrapper.appendChild (icon);
-
-    return {
-        element: wrapper,
-        update,
-    };
-}
-
-function makeLabelledControl (childControl, {
-    name = "",
-    initialValue = 0,
-    toDisplayValue = () => "",
-} = {})
-{
-    const container = document.createElement ("div");
-    container.className = "labelled-control";
-
-    const centeredControl = document.createElement ("div");
-    centeredControl.className = "labelled-control-centered-control";
-
-    centeredControl.appendChild (childControl.element);
-
-    const titleValueHoverContainer = document.createElement ("div");
-    titleValueHoverContainer.className = "labelled-control-label-container";
-
-    const nameText = document.createElement ("div");
-    nameText.classList.add ("labelled-control-name");
-    nameText.innerText = name;
-
-    const valueText = document.createElement ("div");
-    valueText.classList.add ("labelled-control-value");
-    valueText.innerText = toDisplayValue (initialValue);
-
-    titleValueHoverContainer.appendChild (nameText);
-    titleValueHoverContainer.appendChild (valueText);
-
-    container.appendChild (centeredControl);
-    container.appendChild (titleValueHoverContainer);
-
-    return {
-        element: container,
-        update: (nextValue) =>
-        {
-            childControl.update (nextValue);
-            valueText.innerText = toDisplayValue (nextValue);
-        },
-    };
-}
+document.body.appendChild (new DefaultPatchView (cmajor.createPatchConnection()));
 
 </script>
-</body>
 
 </html>
 )";
