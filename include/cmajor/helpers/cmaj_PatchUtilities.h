@@ -1557,6 +1557,7 @@ inline void Patch::sendStoredStateToViews (const std::string& key)
     if (! key.empty())
         if (auto found = storedState.find (key); found != storedState.end())
             sendMessageToViews (choc::value::createObject ({},
+                                                           "type", "state_changed",
                                                            "key", key,
                                                            "value", found->second));
 }
