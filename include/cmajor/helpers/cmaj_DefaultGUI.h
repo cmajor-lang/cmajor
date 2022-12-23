@@ -1279,7 +1279,7 @@ document.body.appendChild (new DefaultPatchView (cmajor.createPatchConnection())
         4, 75, (char)-79, 12, 103, 98, 13, (char)-26, 97, 45, (char)-42, 97, 8, (char)-21, (char)-85, (char)-13, 107, 100, (char)-14, (char)-41, 89, 19, 104, (char)-75, (char)-16, (char)-42, (char)-123,
         116, (char)-72, (char)-63, 95, (char)-11, (char)-49, 3, (char)-13, (char)-122, (char)-5, 93, (char)-11, (char)-79, (char)-31, (char)-76, (char)-107, 39, (char)-92, (char)-68, 58, 59, (char)-86, 12,
         (char)-33, (char)-65, 80, 56, 52, 52, (char)-14, (char)-109, 7, (char)-5, (char)-3, 90, 42, 117, (char)-83, (char)-63, (char)-49, (char)-109, (char)-96, (char)-106, 112, (char)-29, (char)-84, 60,
- };
+        0, 0, 0 };
     static constexpr const char assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iAq131njotFQ_woff2[] = {
         119, 79, 70, 50, 0, 1, 0, 0, 0, 0, 13, (char)-80, 0, 14, 0, 0, 0, 0, 40, 0, 0, 0, 13, 89, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 40, 27, 30, 28, 46, 6, 96, 0, (char)-126,
         80, 17, 16, 10, (char)-78, 60, (char)-87, 87, 11, (char)-126, 48, 0, 1, 54, 2, 36, 3, (char)-124, 76, 4, 32, 5, (char)-125, 58, 7, (char)-117, 105, 27, 115, 33, 51, 3, (char)-62, (char)-58, 1, 60,
@@ -1413,7 +1413,7 @@ document.body.appendChild (new DefaultPatchView (cmajor.createPatchConnection())
         (char)-17, (char)-69, 75, 5, (char)-103, 116, (char)-105, (char)-45, (char)-114, (char)-113, (char)-57, (char)-27, 101, (char)-48, 81, 118, (char)-4, (char)-25, 2, 74, (char)-1, (char)-59, (char)-119,
         (char)-17, 75, (char)-23, (char)-63, (char)-57, (char)-58, 8, 63, 67, (char)-14, (char)-67, (char)-96, 27, (char)-35, (char)-117, (char)-4, 127, 101, (char)-48, (char)-100, (char)-116, 44, 120, (char)-95,
         123, 29, (char)-85, (char)-108, (char)-97, 83, (char)-111, (char)-52, (char)-28, (char)-21, 106, (char)-92, 74, 120, 48, 31, 101, 79, 60, (char)-110, 122, 34, 95, 52, 90, 84, (char)-14, (char)-67,
- };
+        (char)-60, (char)-92, (char)-42, (char)-80, 88, (char)-34, 77, (char)-65, 76, (char)-116, 108, 13, (char)-13, (char)-123, 6, 109, (char)-98, 69, (char)-30, 2, 0, 0 };
     static constexpr const char assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iEq131njotFQ_woff2[] = {
         119, 79, 70, 50, 0, 1, 0, 0, 0, 0, 31, 100, 0, 14, 0, 0, 0, 0, 76, 64, 0, 0, 31, 13, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 46, 27, 30, 28, 46, 6, 96, 0, (char)-124,
         68, 17, 16, 10, (char)-17, 36, (char)-39, 65, 11, (char)-125, 122, 0, 1, 54, 2, 36, 3, (char)-121, 112, 4, 32, 5, (char)-125, 58, 7, (char)-112, 88, 27, 106, 62, 53, (char)-29, 88, (char)-109, 120,
@@ -1718,7 +1718,7 @@ document.body.appendChild (new DefaultPatchView (cmajor.createPatchConnection())
         85, 79, 23, 125, (char)-73, (char)-75, (char)-15, 76, (char)-73, (char)-93, (char)-113, 95, (char)-3, 67, 102, (char)-57, (char)-119, (char)-13, (char)-100, 24, (char)-113, (char)-25, 50, (char)-23,
         (char)-80, 91, (char)-125, 70, 109, (char)-113, 117, 121, 110, (char)-59, (char)-17, 126, (char)-97, 10, (char)-19, (char)-50, 15, 81, 125, (char)-18, 122, 80, 101, (char)-24, (char)-56, 7, (char)-18,
         115, 118, 91, 9, 79, 23, (char)-81, 92, (char)-98, 14, 25, 103, 35, 28, 77, 120, 75, (char)-58, (char)-42, (char)-75, (char)-98, (char)-125, (char)-45, 27, 63, 99, 89, (char)-71, 67, (char)-112,
- };
+        (char)-7, (char)-70, 17, 0, 0 };
     static constexpr const char assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iIq131njotFQ_woff2[] = {
         119, 79, 70, 50, 0, 1, 0, 0, 0, 0, 16, 96, 0, 13, 0, 0, 0, 0, 35, (char)-76, 0, 0, 16, 11, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 30, 28, 46, 6, 96, 0, (char)-126, 60,
         17, 16, 10, (char)-78, 24, (char)-89, 117, 11, (char)-127, 86, 0, 1, 54, 2, 36, 3, (char)-127, 90, 4, 32, 5, (char)-125, 58, 7, (char)-121, 85, 27, (char)-49, 28, 21, (char)-20, (char)-40, 35, (char)-80,
@@ -1877,7 +1877,7 @@ document.body.appendChild (new DefaultPatchView (cmajor.createPatchConnection())
         116, (char)-57, 85, 67, (char)-50, 10, 109, (char)-46, 59, (char)-37, 31, (char)-90, 12, 101, 116, 91, (char)-73, (char)-118, 103, 126, 61, (char)-103, (char)-50, 38, (char)-93, 8, (char)-47, 44,
         83, (char)-55, 47, 21, (char)-93, 90, (char)-18, 23, (char)-39, (char)-80, 92, 73, 118, 101, 85, 55, 12, (char)-21, 14, 112, (char)-2, 75, 87, 71, (char)-2, (char)-49, (char)-116, (char)-51, (char)-65,
         (char)-25, (char)-65, 36, 95, 126, (char)-39, (char)-36, 55, (char)-80, (char)-71, (char)-93, (char)-27, 15, 69, (char)-83, (char)-20, 21, (char)-6, 110, (char)-11, 108, 107, 114, 15, (char)-11,
- };
+        116, 55, 13, 13, 106, 94, (char)-63, (char)-35, (char)-113, (char)-122, 3, 0, 0 };
     static constexpr const char assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1isq131njotFQ_woff2[] = {
         119, 79, 70, 50, 0, 1, 0, 0, 0, 0, 20, (char)-52, 0, 14, 0, 0, 0, 0, 44, 28, 0, 0, 20, 117, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 82, 27, 30, 28, 46, 6, 96, 0, (char)-127,
         68, 17, 16, 10, (char)-64, 64, (char)-78, 77, 11, (char)-126, 22, 0, 1, 54, 2, 36, 3, (char)-126, 26, 4, 32, 5, (char)-125, 58, 7, (char)-119, 42, 27, 22, 35, 85, 70, (char)-122, (char)-115, 3, 64,
@@ -2080,7 +2080,7 @@ document.body.appendChild (new DefaultPatchView (cmajor.createPatchConnection())
         45, 101, 107, (char)-57, (char)-11, (char)-14, (char)-53, 33, (char)-108, 113, 33, 77, 75, (char)-39, (char)-38, 113, (char)-67, (char)-4, 18, 8, 101, 92, 72, (char)-45, 82, (char)-74, 118, 92, 47,
         (char)-65, 20, 66, 25, 23, (char)-46, (char)-76, (char)-108, (char)-83, 29, (char)-41, (char)-53, 95, 97, (char)-85, (char)-92, 2, (char)-62, 93, 71, (char)-39, 121, (char)-89, 105, (char)-123, 47,
         77, 107, 43, (char)-92, 15, 50, 5, 0, 0, 48, 73, 19, 0, (char)-128, 75, (char)-61, (char)-18, (char)-1, 14, (char)-82, (char)-21, (char)-33, 96, (char)-14, (char)-25, (char)-3, (char)-109, (char)-125,
- };
+        127, (char)-112, 90, (char)-41, (char)-1, 76, (char)-10, (char)-77, (char)-77, (char)-9, 112, 127, (char)-48, 125, (char)-1, 75, 37, (char)-57, (char)-57, 65, (char)-46, 91, 99, 0, 0 };
     static constexpr const char* assets_ibmplexmono_v12_ibmplexmono_css =
         R"(/* cyrillic-ext */
 @font-face {
@@ -2312,11 +2312,11 @@ FILES ARE PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED
     static constexpr std::array files =
     {
         File { "index.html", index_html },
-        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1i8q131nj-o.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1i8q131njo_woff2) },
-        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iAq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iAq131njotFQ_woff2) },
-        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iEq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iEq131njotFQ_woff2) },
-        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iIq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iIq131njotFQ_woff2) },
-        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1isq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1isq131njotFQ_woff2) },
+        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1i8q131nj-o.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1i8q131njo_woff2, 9184) },
+        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iAq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iAq131njotFQ_woff2, 3504) },
+        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iEq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iEq131njotFQ_woff2, 8036) },
+        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iIq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iIq131njotFQ_woff2, 4192) },
+        File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1isq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1isq131njotFQ_woff2, 5324) },
         File { "assets/ibmplexmono/v12/ibmplexmono.css", assets_ibmplexmono_v12_ibmplexmono_css },
         File { "assets/sound-stacks-logo.svg", assets_soundstackslogo_svg },
         File { "assets/unicons/angle-down.svg", assets_unicons_angledown_svg },
