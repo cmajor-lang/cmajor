@@ -113,7 +113,7 @@ struct Patch
     /// caller to get vital statistics such as the name, description, channels,
     /// parameters etc., before calling loadPatch() to do a full build on a
     /// background thread.
-    bool preload (PatchManifest&);
+    bool preload (const PatchManifest&);
 
     /// Kicks off a full build of a patch, optionally providing some initial
     /// parameter values to apply before processing starts.
@@ -159,6 +159,11 @@ struct Patch
     void setPlaybackParams (PlaybackParams);
 
     PlaybackParams getPlaybackParams() const        { return currentPlaybackParams; }
+
+    /// Attempts to code-generate from a patch.
+    Engine::CodeGenOutput generateCode (const LoadParams&,
+                                        const std::string& targetType,
+                                        const std::string& extraOptionsJSON);
 
     //==============================================================================
     const PatchManifest* getManifest() const;
@@ -824,7 +829,7 @@ struct Patch::Build
         return false;
     }
 
-    void build (const std::function<void()>& checkForStopSignal)
+    void build (const std::function<void()>& checkForStopSignal, bool stopBeforeLink = false)
     {
         if (! loadProgram (checkForStopSignal))
             return;
@@ -846,6 +851,9 @@ struct Patch::Build
             findEndpointIDs();
             connectPerformerEndpoints();
             checkForStopSignal();
+
+            if (stopBeforeLink)
+                return;
 
             if (! engine.link (result->errors, cache.get()))
                 return;
@@ -1220,7 +1228,7 @@ inline Patch::~Patch()
     unload();
 }
 
-inline bool Patch::preload (PatchManifest& m)
+inline bool Patch::preload (const PatchManifest& m)
 {
     CHOC_ASSERT (createEngine);
 
@@ -1283,6 +1291,26 @@ inline bool Patch::loadPatchFromFile (const std::string& patchFile)
     }
 
     return loadPatch (params);
+}
+
+inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, const std::string& target, const std::string& options)
+{
+    CHOC_ASSERT (createEngine);
+    unload();
+    auto engine = createEngine();
+    CHOC_ASSERT (engine);
+
+    auto build = std::make_unique<Build> (std::move (engine), params, currentPlaybackParams, cache);
+    build->build ([] {}, true);
+
+    if (build->result->errors.hasErrors())
+    {
+        Engine::CodeGenOutput result;
+        result.messages = build->result->errors;
+        return result;
+    }
+
+    return engine.generateCode (target, options);
 }
 
 inline void Patch::unload()
