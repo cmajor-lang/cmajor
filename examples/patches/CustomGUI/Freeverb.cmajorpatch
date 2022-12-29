@@ -11,7 +11,7 @@
     "source":           "Freeverb.cmajor",
 
     "view":             {
-                            "html": "web_ui/index.html",
+                            "src": "web_ui/index.js",
                             "width": 800,
                             "height": 700,
                             "resizable": false

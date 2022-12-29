@@ -82,7 +82,7 @@ struct PatchManifest
     struct View
     {
         /// A (possibly relative) URL for the view content
-        std::string html;
+        std::string source;
         uint32_t width = 0, height = 0;
         bool resizable = false;
     };
@@ -377,11 +377,10 @@ inline void PatchManifest::initialiseWithFile (std::filesystem::path file)
 
     const auto getFileAsPath = [folder] (const std::string& f) -> std::filesystem::path
     {
-        std::filesystem::path path (f);
-        return path.is_absolute() ? path : (folder / path);
+        return folder / std::filesystem::path (f).relative_path();
     };
 
-    initialiseWithVirtualFile (file.string(),
+    initialiseWithVirtualFile (file.filename().string(),
         [getFileAsPath] (const std::string& f) -> std::shared_ptr<std::istream>
         {
             try
@@ -514,7 +513,8 @@ inline void PatchManifest::addView (const choc::value::ValueView& view)
     else if (view.isObject())
     {
         View v;
-        v.html      = view["html"].toString();
+
+        v.source    = view["src"].toString();
         v.width     = view["width"].getWithDefault<uint32_t> (0);
         v.height    = view["height"].getWithDefault<uint32_t> (0);
         v.resizable = view["resizable"].getWithDefault<bool> (true);
@@ -565,7 +565,7 @@ private:
                 add (m, f);
 
             for (auto& v : m.views)
-                add (m, v.html);
+                add (m, v.source);
         }
 
         SourceFilesWithTimes (SourceFilesWithTimes&&) = default;

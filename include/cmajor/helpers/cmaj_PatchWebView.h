@@ -47,7 +47,7 @@ struct PatchWebView  : public PatchView
 private:
     MimeTypeMappingFn toMimeTypeCustomImpl;
     choc::ui::WebView webview { { true, [this] (const auto& path) { return onRequest (path); } } };
-    std::filesystem::path indexFilename, rootFolder;
+    std::filesystem::path jsModuleFilename;
 
     void initialiseFromFirstHTMLView();
     void createBindings();
@@ -90,16 +90,18 @@ inline void PatchWebView::initialiseFromFirstHTMLView()
     {
         for (auto& view : manifest->views)
         {
-            if (manifest->fileExists (view.html))
+            if (manifest->fileExists (view.source))
             {
-                const auto index = std::filesystem::path (view.html);
-                indexFilename = index.filename();
-                rootFolder = index.parent_path();
+                auto sourceFile = std::filesystem::path (view.source);
 
-                width  = view.width;
-                height = view.height;
-                resizable = view.resizable;
-                return;
+                if (sourceFile.extension() == ".js")
+                {
+                    jsModuleFilename = sourceFile;
+                    width  = view.width;
+                    height = view.height;
+                    resizable = view.resizable;
+                    return;
+                }
             }
         }
     }
@@ -116,7 +118,24 @@ inline void PatchWebView::createBindings()
     });
 }
 
-static constexpr auto cmajor_patch_connection_js = R"(
+static constexpr auto cmajor_patch_gui_html = R"(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Cmajor Patch Controls</title>
+</head>
+
+<style>
+  body { overflow: hidden; margin: 0; padding: 0; }
+</style>
+
+<body></body>
+
+<script type="module">
+
+IMPORT_VIEW
+
 function PatchConnection()
 {
     this.onPatchStatusChanged        = function (errorMessage, patchManifest, inputsList, outputsList) {};
@@ -125,40 +144,13 @@ function PatchConnection()
     this.onOutputEvent               = function (endpointID, newValue) {};
     this.onStoredStateChanged        = function (key, value) {};
 
-    this.requestStatusUpdate = function()
-    {
-        window.cmaj_sendMessageToPatch ({ type: "req_status" });
-    };
-
-    this.requestEndpointValue = function (endpointID)
-    {
-        window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID });
-    };
-
-    this.sendEventOrValue = function (endpointID, value, optionalNumFrames)
-    {
-        window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: optionalNumFrames });
-    };
-
-    this.sendParameterGestureStart = function (endpointID)
-    {
-        window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID });
-    };
-
-    this.sendParameterGestureEnd = function (endpointID)
-    {
-        window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID });
-    };
-
-    this.requestStoredState = function (key)
-    {
-        window.cmaj_sendMessageToPatch ({ type: "req_state", key: key });
-    }
-
-    this.sendStoredState = function (key, newValue)
-    {
-        window.cmaj_sendMessageToPatch ({ type: "send_state", key : key, value: newValue });
-    }
+    this.requestStatusUpdate        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_status" }); };
+    this.requestEndpointValue       = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID }); };
+    this.requestStoredState         = function (key)                           { window.cmaj_sendMessageToPatch ({ type: "req_state", key: key }); }
+    this.sendEventOrValue           = function (endpointID, value, numFrames)  { window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: numFrames }); };
+    this.sendParameterGestureStart  = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID }); };
+    this.sendParameterGestureEnd    = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID }); };
+    this.sendStoredState            = function (key, newValue)                 { window.cmaj_sendMessageToPatch ({ type: "send_state", key : key, value: newValue }); }
 
     const self = this;
 
@@ -172,10 +164,16 @@ function PatchConnection()
     };
 }
 
-export function createPatchConnection()
-{
-    return new PatchConnection();
-}
+function createConnection() { return new PatchConnection(); }
+
+const patchView = new PatchView (createConnection());
+patchView.style.display = "block";
+patchView.style.height = "100vh";
+
+document.body.appendChild (patchView);
+
+</script>
+</html>
 )";
 
 inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePath& path)
@@ -196,28 +194,32 @@ inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePat
         return mimeType.empty() ? toMimeTypeDefaultImpl (extension) : mimeType;
     };
 
-    if (path == "/cmajor_patch_connection.js")
-        return toResource (cmajor_patch_connection_js, toMimeType (".js"));
+    auto relativePath = std::filesystem::path (path).relative_path();
+    bool usingDefaultView = jsModuleFilename.empty();
 
-    const auto navigateToIndex = path == "/";
-    const auto shouldServeDefaultGUIResource = indexFilename.empty();
-
-    if (shouldServeDefaultGUIResource)
+    if (relativePath.empty() || relativePath == "index.html")
     {
-        const auto file = std::filesystem::path (path).relative_path();
+        auto viewLocation = usingDefaultView ? "/index.js"
+                                             : "/" + jsModuleFilename.filename().string();
 
-        if (const auto content = DefaultGUI::findResource (file.string()); ! content.empty())
-            return toResource (content, toMimeType (navigateToIndex ? ".html" : file.extension().string()));
-
-        return {};
+        return toResource (choc::text::replace (cmajor_patch_gui_html,
+                                                "IMPORT_VIEW",
+                                                "import PatchView from "
+                                                   + choc::json::getEscapedQuotedString (viewLocation) + ";"),
+                           toMimeType (".html"));
     }
 
-    const auto relativePath = navigateToIndex ? indexFilename : std::filesystem::path (path).relative_path();
-    const auto file = rootFolder / relativePath;
-
-    if (auto manifest = patch.getManifest())
-        if (const auto content = manifest->readFileContent (file.string()); ! content.empty())
+    if (usingDefaultView)
+    {
+        if (auto content = DefaultGUI::findResource (relativePath.string()); ! content.empty())
             return toResource (content, toMimeType (relativePath.extension().string()));
+    }
+    else
+    {
+        if (auto manifest = patch.getManifest())
+            if (auto content = manifest->readFileContent (jsModuleFilename.parent_path() / relativePath.string()); ! content.empty())
+                return toResource (content, toMimeType (relativePath.extension().string()));
+    }
 
     return {};
 }

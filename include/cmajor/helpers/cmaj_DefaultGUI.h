@@ -35,7 +35,7 @@ struct DefaultGUI
     static std::string_view findResource (std::string_view path)
     {
         if (path.empty())
-            return findResource ("index.html");
+            return findResource ("index.js");
 
         for (auto& file : files)
             if (path == file.name)
@@ -47,34 +47,9 @@ struct DefaultGUI
 private:
     struct File { std::string_view name, content; };
 
-    static constexpr const char* index_html =
-        R"(<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Cmajor Patch Controls</title>
-</head>
-
-<style>
-body {
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
-}
-
-default-patch-view {
-    display: block;
-    height: 100vh;
-}
-</style>
-
-<body></body>
-
-<script type="module">
-
-import * as cmajor from "/cmajor_patch_connection.js";
-
-class DefaultPatchView  extends HTMLElement
+    static constexpr const char* index_js =
+        R"(
+export default class PatchView  extends HTMLElement
 {
     constructor (patchConnection)
     {
@@ -88,16 +63,16 @@ class DefaultPatchView  extends HTMLElement
         this.patchConnection = patchConnection;
         this.state = {};
         this.parameterChangedListeners = {};
-    }
 
-    connectedCallback()
-    {
         this.attachShadow ({ mode: "open" });
         this.shadowRoot.innerHTML = this.getHTML();
 
         this.titleElement      = this.shadowRoot.getElementById ("patch-title");
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
+    }
 
+    connectedCallback()
+    {
         this.connection = this.createPatchConnection();
         this.connection.requestStatusUpdate();
     }
@@ -112,8 +87,7 @@ class DefaultPatchView  extends HTMLElement
         return {
             requestStatusUpdate:       this.patchConnection.requestStatusUpdate.bind (this.patchConnection),
             sendParameterGestureStart: this.patchConnection.sendParameterGestureStart.bind (this.patchConnection),
-            sendEventOrValue:          this.patchConnection.sendEventOrValue.bind (this.patchConnection),)"
-R"(
+            sendEventOrValue:          this.patchConnection.sendEventOrValue.bind (this.patchConnection),
             sendParameterGestureEnd:   this.patchConnection.sendParameterGestureEnd.bind (this.patchConnection),
 
             performSingleEdit: (endpointID, value) =>
@@ -121,7 +95,8 @@ R"(
                 this.patchConnection.sendParameterGestureStart (endpointID);
                 this.patchConnection.sendEventOrValue (endpointID, value);
                 this.patchConnection.sendParameterGestureEnd (endpointID);
-            },
+            },)"
+R"(
         };
     }
 
@@ -160,8 +135,7 @@ R"(
     {
         const currentInputs = this.state.inputs;
         const index = currentInputs.findIndex (p => p.endpointID === endpointID);
-)"
-R"(
+
         if (index < 0)
             return;
 
@@ -181,7 +155,8 @@ R"(
     addParameterChangedListener (endpointID, update)
     {
         let listeners = this.parameterChangedListeners[endpointID];
-
+)"
+R"(
         if (! listeners)
             listeners = this.parameterChangedListeners[endpointID] = [];
 
@@ -240,8 +215,7 @@ R"(
     renderInitialState (backend)
     {
         this.titleElement.innerText = this.state.title;
-)"
-R"(
+
         this.state.inputs.forEach (({ type, value, name, ...other }, index) =>
         {
             const control = this.makeControl (backend, { type, value, name, index, ...other });
@@ -250,7 +224,8 @@ R"(
             {
                 const mapValue = control.mapValue ?? (v => v);
                 const wrapped = this.makeLabelledControl (control.control, {
-                    initialValue: mapValue (other.defaultValue),
+                    initialValue: mapValue (other.defaultValue),)"
+R"(
                     name,
                     toDisplayValue: control.toDisplayValue,
                 });
@@ -290,8 +265,7 @@ R"(
                 };
             }
             case "options":
-            {)"
-R"(
+            {
                 const toDisplayValue = index => other.options[index].text;
 
                 const toIndex = (value, options) =>
@@ -302,7 +276,8 @@ R"(
                         let high = arr.length - 1;
 
                         while (low <= high)
-                        {
+                        {)"
+R"(
                             const mid = low + ((high - low) >> 1);
                             const value = toValue (arr[mid]);
 
@@ -351,8 +326,7 @@ R"(
 
         const isBipolar = min + max === 0;
         const type = isBipolar ? 2 : 1;
-)"
-R"(
+
         const maxKnobRotation = 132;
         const typeDashLengths = { 1: 184, 2: 251.5 };
         const typeValueOffsets = { 1: 132, 2: 0 };
@@ -361,7 +335,8 @@ R"(
             1: "M20,76 A 40 40 0 1 1 80 76",
             2: "M50.01,10 A 40 40 0 1 1 50 10"
         };
-
+)"
+R"(
         const createSvgElement = ({ document = window.document, tag = "svg" } = {}) => document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
         const svg = createSvgElement();
@@ -401,8 +376,7 @@ R"(
             return targetFrom + (source - sourceFrom) * (targetTo - targetFrom) / (sourceTo - sourceFrom);
         };
 
-        const toValue = (knobRotation) => remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);)"
-R"(
+        const toValue = (knobRotation) => remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);
         const toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);
 
         const state =
@@ -411,7 +385,8 @@ R"(
         };
 
         const update = (degrees, force) =>
-        {
+        {)"
+R"(
             if (! force && state.rotation === degrees) return;
 
             state.rotation = degrees;
@@ -459,15 +434,15 @@ R"(
 
         const onMouseDown = (event) =>
         {
-            previousScreenY = event.screenY;)"
-R"(
+            previousScreenY = event.screenY;
             accumlatedRotation = state.rotation;
             onBeginEdit();
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
         };
 
-        container.addEventListener ("mousedown", onMouseDown);
+        container.addEventListener ("mousedown", onMouseDown);)"
+R"(
         container.addEventListener ("mouseup", onMouseUp);
         container.addEventListener ("dblclick", () => onReset());
 
@@ -532,8 +507,7 @@ R"(
         options.forEach ((option, index) =>
         {
             const optionElement = document.createElement ("option");
-            optionElement.innerText = toDisplayValue (index);)"
-R"(
+            optionElement.innerText = toDisplayValue (index);
             select.appendChild (optionElement);
         });
 
@@ -545,7 +519,8 @@ R"(
         select.addEventListener ("change", (e) =>
         {
             const incomingIndex = e.target.selectedIndex;
-
+)"
+R"(
             // prevent local state change. the caller will update us when the backend actually applies the update
             e.target.selectedIndex = state.selectedIndex;
 
@@ -599,15 +574,15 @@ R"(
         nameText.classList.add ("labelled-control-name");
         nameText.innerText = name;
 
-        const valueText = document.createElement ("div");)"
-R"(
+        const valueText = document.createElement ("div");
         valueText.classList.add ("labelled-control-value");
         valueText.innerText = toDisplayValue (initialValue);
 
         titleValueHoverContainer.appendChild (nameText);
         titleValueHoverContainer.appendChild (valueText);
 
-        container.appendChild (centeredControl);
+        container.appendChild (centeredControl);)"
+R"(
         container.appendChild (titleValueHoverContainer);
 
         return {
@@ -684,8 +659,7 @@ R"(
 .logo {
     flex: 1;
     height: 100%;
-    background-color: var(--foreground);)"
-R"(
+    background-color: var(--foreground);
     mask: url(./assets/sound-stacks-logo.svg);
     mask-repeat: no-repeat;
     -webkit-mask: url(./assets/sound-stacks-logo.svg);
@@ -698,7 +672,8 @@ R"(
 }
 
 .app-body {
-    height: calc(100% - var(--header-height));
+    height: calc(100% - var(--header-height));)"
+R"(
     overflow: auto;
     padding: 1rem;
     text-align: center;
@@ -789,8 +764,7 @@ select option {
     border: 2px solid var(--knob-dial-border-color);
     border-radius: 100%;
     box-sizing: border-box;
-    transform: translate(-50%,-50%);)"
-R"(
+    transform: translate(-50%,-50%);
     background-color: var(--knob-dial-background-color);
 }
 
@@ -806,7 +780,8 @@ R"(
 /* switch */
 .switch-outline {
     position: relative;
-    display: inline-block;
+    display: inline-block;)"
+R"(
     height: 1.25rem;
     width: 2.5rem;
     border-radius: 10rem;
@@ -894,8 +869,7 @@ R"(
     left: 0;
     right: 0;
 
-    overflow: hidden;)"
-R"(
+    overflow: hidden;
     text-overflow: ellipsis;
 
     opacity: 0;
@@ -912,7 +886,8 @@ R"(
 
 </style>
 
-<div class="header">
+<div class="header">)"
+R"(
  <span class="logo"></span>
  <h2 id="patch-title" class="header-title"></h2>
  <div class="header-filler"></div>
@@ -922,13 +897,8 @@ R"(
     }
 }
 
-window.customElements.define ("default-patch-view", DefaultPatchView);
-
-document.body.appendChild (new DefaultPatchView (cmajor.createPatchConnection()));
-
-</script>
-
-</html>
+if (! window.customElements.get ("default-patch-view"))
+    window.customElements.define ("default-patch-view", PatchView);
 )";
     static constexpr const char assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1i8q131njo_woff2[] = {
         119, 79, 70, 50, 0, 1, 0, 0, 0, 0, 35, (char)-32, 0, 14, 0, 0, 0, 0, 82, 36, 0, 0, 35, (char)-122, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 58, 27, 30, 28, (char)-124,
@@ -2216,7 +2186,7 @@ with others.
 
 The OFL allows the licensed fonts to be used, studied, modified and
 redistributed freely as long as they are not sold by themselves. The
-fonts, including any derivative works, can be bundled, embedded,
+fonts, including any derivative works, can be bundled, embedded, 
 redistributed and/or sold with any software provided that any reserved
 names are not used by derivative works. The fonts and derivatives,
 however, cannot be released under any other type of license. The
@@ -2239,8 +2209,7 @@ or substituting -- in part or in whole -- any of the components of the
 Original Version, by changing formats or by porting the Font Software to a
 new environment.
 
-"Author" refers to any designer, engineer, programmer, technical
-)"
+"Author" refers to any designer, engineer, programmer, technical)"
 R"(
 writer or other person who contributed to the Font Software.
 
@@ -2283,8 +2252,7 @@ not met.
 
 DISCLAIMER
 THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
-)"
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF)"
 R"(
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
 OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
@@ -2313,7 +2281,7 @@ FILES ARE PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED
 
     static constexpr std::array files =
     {
-        File { "index.html", index_html },
+        File { "index.js", index_js },
         File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1i8q131nj-o.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1i8q131njo_woff2, 9184) },
         File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iAq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iAq131njotFQ_woff2, 3504) },
         File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iEq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iEq131njotFQ_woff2, 8036) },

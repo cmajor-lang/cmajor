@@ -186,14 +186,14 @@ To add a custom GUI to your patch, your `.cmajorpatch` file should include a `vi
 
 ```json
   "view": {
-    "html":      "patch_gui/index.html",
+    "src":       "patch_gui/index.js",
     "width":     800,
     "height":    700,
     "resizable": false
   }
 ```
 
-The `view` property should contain a `html` property providing a relative URL to a HTML index page that can be displayed in an embedded browser view in the host.
+The `view` property should contain a `src` property providing a relative URL to a javascript module. This module should have a single default export, which must be a HTMLElement class that can be used as the GUI element for the patch. The exported class's constructor will be passed a `PatchConnection` object which it can use for communication with the patch instance that it controls.
 
 ### GUI Communication
 
