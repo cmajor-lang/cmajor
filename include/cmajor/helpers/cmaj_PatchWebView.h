@@ -155,7 +155,7 @@ function PatchConnection()
         window.cmaj_sendMessageToPatch ({ type: "req_state", key: key });
     }
 
-    this.setStoredState = function (key, newValue)
+    this.sendStoredState = function (key, newValue)
     {
         window.cmaj_sendMessageToPatch ({ type: "send_state", key : key, value: newValue });
     }
