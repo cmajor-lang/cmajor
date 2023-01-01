@@ -55,11 +55,6 @@ export default class PatchView  extends HTMLElement
     {
         super();
 
-        const font = document.createElement ("link");
-        font.href = "./assets/ibmplexmono/v12/ibmplexmono.css";
-        font.rel = "stylesheet"
-        document.head.appendChild (font);
-
         this.patchConnection = patchConnection;
         this.state = {};
         this.parameterChangedListeners = {};
@@ -75,6 +70,11 @@ export default class PatchView  extends HTMLElement
     {
         this.connection = this.createPatchConnection();
         this.connection.requestStatusUpdate();
+
+        const font = document.createElement ("link");
+        font.href = this.patchConnection.getResourceAddress ("./assets/ibmplexmono/v12/ibmplexmono.css");
+        font.rel = "stylesheet"
+        document.head.appendChild (font);
     }
 
     createPatchConnection()
@@ -93,10 +93,10 @@ export default class PatchView  extends HTMLElement
             performSingleEdit: (endpointID, value) =>
             {
                 this.patchConnection.sendParameterGestureStart (endpointID);
-                this.patchConnection.sendEventOrValue (endpointID, value);
-                this.patchConnection.sendParameterGestureEnd (endpointID);
-            },)"
+                this.patchConnection.sendEventOrValue (endpointID, value);)"
 R"(
+                this.patchConnection.sendParameterGestureEnd (endpointID);
+            },
         };
     }
 
@@ -151,12 +151,12 @@ R"(
     onSampleRateChanged()
     {
     }
-
+)"
+R"(
     addParameterChangedListener (endpointID, update)
     {
         let listeners = this.parameterChangedListeners[endpointID];
-)"
-R"(
+
         if (! listeners)
             listeners = this.parameterChangedListeners[endpointID] = [];
 
@@ -222,10 +222,10 @@ R"(
 
             if (control)
             {
-                const mapValue = control.mapValue ?? (v => v);
-                const wrapped = this.makeLabelledControl (control.control, {
-                    initialValue: mapValue (other.defaultValue),)"
+                const mapValue = control.mapValue ?? (v => v);)"
 R"(
+                const wrapped = this.makeLabelledControl (control.control, {
+                    initialValue: mapValue (other.defaultValue),
                     name,
                     toDisplayValue: control.toDisplayValue,
                 });
@@ -272,12 +272,12 @@ R"(
                 {
                     const binarySearch = (arr, toValue, target) =>
                     {
-                        let low = 0;
+                        let low = 0;)"
+R"(
                         let high = arr.length - 1;
 
                         while (low <= high)
-                        {)"
-R"(
+                        {
                             const mid = low + ((high - low) >> 1);
                             const value = toValue (arr[mid]);
 
@@ -660,20 +660,20 @@ R"(
     flex: 1;
     height: 100%;
     background-color: var(--foreground);
-    mask: url(./assets/sound-stacks-logo.svg);
+    mask: url(${this.patchConnection.getResourceAddress ("./assets/sound-stacks-logo.svg")});
     mask-repeat: no-repeat;
-    -webkit-mask: url(./assets/sound-stacks-logo.svg);
+    -webkit-mask: url(${this.patchConnection.getResourceAddress ("./assets/sound-stacks-logo.svg")});
     -webkit-mask-repeat: no-repeat;
     min-width: 100px;
 }
-
+)"
+R"(
 .header-filler {
     flex: 1;
 }
 
 .app-body {
-    height: calc(100% - var(--header-height));)"
-R"(
+    height: calc(100% - var(--header-height));
     overflow: auto;
     padding: 1rem;
     text-align: center;
@@ -725,9 +725,9 @@ select option {
     background-color: var(--foreground);
     width: 1.4em;
     height: 1.4em;
-    mask: url(./assets/unicons/angle-down.svg);
+    mask: url(${this.patchConnection.getResourceAddress ("./assets/angle-down.svg")});
     mask-repeat: no-repeat;
-    -webkit-mask: url(./assets/unicons/angle-down.svg);
+    -webkit-mask: url(${this.patchConnection.getResourceAddress ("./assets/angle-down.svg")});
     -webkit-mask-repeat: no-repeat;
 }
 
@@ -771,7 +771,8 @@ select option {
 .knob-dial-tick {
     position: absolute;
     display: inline-block;
-
+)"
+R"(
     height: 14px;
     width: 2px;
     background-color: var(--knob-dial-tick-color);
@@ -780,8 +781,7 @@ select option {
 /* switch */
 .switch-outline {
     position: relative;
-    display: inline-block;)"
-R"(
+    display: inline-block;
     height: 1.25rem;
     width: 2.5rem;
     border-radius: 10rem;
@@ -876,7 +876,8 @@ R"(
 }
 
 .labelled-control:hover .labelled-control-name,
-.labelled-control:active .labelled-control-name {
+.labelled-control:active .labelled-control-name {)"
+R"(
     opacity: 0;
 }
 .labelled-control:hover .labelled-control-value,
@@ -886,8 +887,7 @@ R"(
 
 </style>
 
-<div class="header">)"
-R"(
+<div class="header">
  <span class="logo"></span>
  <h2 id="patch-title" class="header-title"></h2>
  <div class="header-filler"></div>

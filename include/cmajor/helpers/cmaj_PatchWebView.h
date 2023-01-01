@@ -144,6 +144,8 @@ function PatchConnection()
     this.onOutputEvent               = function (endpointID, newValue) {};
     this.onStoredStateChanged        = function (key, value) {};
 
+    this.getResourceAddress         = function (url)                           { return url; }
+
     this.requestStatusUpdate        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_status" }); };
     this.requestEndpointValue       = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID }); };
     this.requestStoredState         = function (key)                           { window.cmaj_sendMessageToPatch ({ type: "req_state", key: key }); }
