@@ -219,7 +219,7 @@ inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePat
     else
     {
         if (auto manifest = patch.getManifest())
-            if (auto content = manifest->readFileContent (jsModuleFilename.parent_path() / relativePath.string()); ! content.empty())
+            if (auto content = manifest->readFileContent ((jsModuleFilename.parent_path() / relativePath.string()).string()); ! content.empty())
                 return toResource (content, toMimeType (relativePath.extension().string()));
     }
 
