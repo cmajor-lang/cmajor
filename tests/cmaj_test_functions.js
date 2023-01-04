@@ -662,6 +662,8 @@ function testPatch (file, expectedError)
     ## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"foo", patch: "path/to/patch.cmajorpatch" })
 
 */
+
+
 function runScript (options)
 {
     let testSection = getCurrentTestSection();
@@ -784,6 +786,9 @@ function runScript (options)
                 }
             }
 
+            if (! validateInputData (expectedStreamFilename, inputData, testSection, "value"))
+                return;
+
             inputEndpoints[i].values = inputData;
             inputEndpoints[i].nextValue = 0;
         }
@@ -800,6 +805,9 @@ function runScript (options)
                     return;
                 }
             }
+
+            if (! validateInputData (expectedStreamFilename, inputData, testSection, "event"))
+                return;
 
             inputEndpoints[i].events = inputData;
             inputEndpoints[i].nextEvent = 0;
@@ -1205,3 +1213,34 @@ function eventDataComparison (data, expectedData)
     return null;
 }
 
+// helper function to valid input data for event or value inputs
+function validateInputData (inputName, inputData, testSection, type)
+{
+    for (let i = 0; i < inputData.length; i++)
+    {
+        if (inputData[i].frameOffset == undefined)
+        {
+            testSection.reportFail (inputName + ": Failed validation, missing frameOffset attribute for item " + i);
+            return false;
+        }
+
+        if (type == "event")
+        {
+            if (inputData[i].event == undefined)
+            {
+                testSection.reportFail (inputName + ": Failed validation, missing event attribute for item " + i);
+                return false;
+            }
+        }
+        else if (type == "value")
+        {
+            if (inputData[i].value == undefined)
+            {
+                testSection.reportFail (inputName + ": Failed validation, missing event attribute for item " + i);
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
