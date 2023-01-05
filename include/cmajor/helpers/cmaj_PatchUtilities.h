@@ -253,6 +253,8 @@ struct Patch
     // These can be called by things like the GUI to control the patch
     bool handleCientMessage (const choc::value::ValueView&);
     void sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&, int32_t rampFrames = -1);
+    void sendMIDIInputEvent (choc::midi::ShortMessage);
+
     void sendGestureStart (const EndpointID&);
     void sendGestureEnd (const EndpointID&);
 
@@ -610,6 +612,7 @@ struct Patch::LoadedPatch
     std::unique_ptr<cmaj::AudioMIDIPerformer> performer;
     std::vector<PatchParameterPtr> parameterList;
     std::unordered_map<std::string, PatchParameterPtr> parameterIDMap;
+    std::vector<EndpointID> midiInputEndpointIDs;
     std::function<void(const EndpointID&, float newValue)> handleParameterChange;
     choc::threading::ThreadSafeFunctor<HandleOutputEventFn> handleOutputEvent;
 
@@ -688,6 +691,12 @@ struct Patch::LoadedPatch
 
         if (! performer->postEvent (endpointID, value))
             performer->postValue (endpointID, value, rampFrames > 0 ? (uint32_t) rampFrames : 0);
+    }
+
+    void sendMIDIInputEvent (choc::midi::ShortMessage value)
+    {
+        for (auto& endpointID : midiInputEndpointIDs)
+            performer->postEvent (endpointID, MIDIEvents::createMIDIMessageObject (value));
     }
 
     void sendGestureStart (const EndpointID& endpointID)
@@ -846,7 +855,7 @@ struct Patch::Build
 
             checkForStopSignal();
             performerBuilder = std::make_unique<AudioMIDIPerformer::Builder> (engine);
-            createParameterList();
+            scanEndpointList();
             checkForStopSignal();
             findEndpointIDs();
             connectPerformerEndpoints();
@@ -970,7 +979,7 @@ private:
     }
 
     //==============================================================================
-    void createParameterList()
+    void scanEndpointList()
     {
         for (auto& e : result->inputEndpoints)
         {
@@ -979,6 +988,10 @@ private:
                 auto patchParam = std::make_shared<PatchParameter> (result, e, engine.getEndpointHandle (e.endpointID));
                 result->parameterList.push_back (patchParam);
                 result->parameterIDMap[e.endpointID.toString()] = std::move (patchParam);
+            }
+            else if (e.isMIDI())
+            {
+                result->midiInputEndpointIDs.push_back (e.endpointID);
             }
         }
     }
@@ -1661,6 +1674,12 @@ inline void Patch::sendEventOrValueToPatch (const EndpointID& endpointID, const 
         currentPatch->sendEventOrValueToPatch (endpointID, value, rampFrames);
 }
 
+inline void Patch::sendMIDIInputEvent (choc::midi::ShortMessage message)
+{
+    if (currentPatch != nullptr)
+        currentPatch->sendMIDIInputEvent (message);
+}
+
 inline void Patch::sendGestureStart (const EndpointID& endpointID)
 {
     if (currentPatch != nullptr)
@@ -1695,6 +1714,15 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
                 auto endpointID = cmaj::EndpointID::create (endpointIDMember.getString());
                 sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
             }
+
+            return true;
+        }
+
+        if (type == "midi_input")
+        {
+            if (auto midiEvent = msg["midiEvent"]; ! midiEvent.isVoid())
+                if (auto value = midiEvent.getWithDefault<int32_t> (0))
+                    sendMIDIInputEvent (MIDIEvents::packedMIDIDataToMessage (value));
 
             return true;
         }

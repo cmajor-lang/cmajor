@@ -24,6 +24,7 @@
 #include "../../choc/containers/choc_SmallVector.h"
 #include "../../choc/containers/choc_COM.h"
 #include "../../choc/text/choc_JSON.h"
+#include "../../choc/audio/choc_MIDI.h"
 
 
 namespace cmaj
@@ -90,6 +91,37 @@ inline std::string_view getEndpointPurposeName (EndpointPurpose p)
 }
 
 inline constexpr std::string_view getConsoleEndpointID()   { return "console"; }
+
+/// Helper functions to deal with getting MIDI in and out of endpoints.
+namespace MIDIEvents
+{
+    inline int32_t midiMessageToPackedInt (choc::midi::ShortMessage m)
+    {
+        return static_cast<int32_t> (m.data[0]) << 16
+             | static_cast<int32_t> (m.data[1]) << 8
+             | static_cast<int32_t> (m.data[2]);
+    }
+
+    inline choc::midi::ShortMessage packedMIDIDataToMessage (int32_t packed)
+    {
+        return choc::midi::ShortMessage (static_cast<uint8_t> (packed >> 16),
+                                         static_cast<uint8_t> (packed >> 8),
+                                         static_cast<uint8_t> (packed));
+    }
+
+    inline bool isMIDIMessageType (const choc::value::Type& type)
+    {
+        return type.isObject()
+                && choc::text::contains (type.getObjectClassName(), "Message")
+                && type.getNumElements() == 1
+                && type.getObjectMember (0).type.isInt32();
+    }
+
+    inline choc::value::Value createMIDIMessageObject (choc::midi::ShortMessage m)
+    {
+        return choc::value::createObject ("Message", "message", midiMessageToPackedInt (m));
+    }
+}
 
 //==============================================================================
 /// This class holds an endpoint ID, which is basically a string containing the
@@ -174,7 +206,7 @@ struct EndpointDetails
     {
         return isEvent()
                 && dataTypes.size() == 1
-                && isMIDIMessageType (dataTypes.front());
+                && MIDIEvents::isMIDIMessageType (dataTypes.front());
     }
 
     /// Looks at the type of data that this endpoint uses, and if it's a floating
@@ -352,15 +384,6 @@ struct EndpointDetails
             d.annotation = v["annotation"];
 
         return d;
-    }
-
-    /// Helper function to check whether a given type seems to be a MIDI message
-    static bool isMIDIMessageType (const choc::value::Type& type)
-    {
-        return type.isObject()
-                && choc::text::contains (type.getObjectClassName(), "Message")
-                && type.getNumElements() == 1
-                && type.getObjectMember (0).type.isInt32();
     }
 };
 

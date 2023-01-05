@@ -695,11 +695,7 @@ inline void AudioMIDIPerformer::dispatchMIDIOutputEvents (const choc::audio::Aud
             (void) size;
             CMAJ_ASSERT (size >= (3 * sizeof (uint8_t)));
             auto packed = *static_cast<const int32_t*> (data);
-            auto m = choc::midi::ShortMessage (static_cast<uint8_t> (packed >> 16),
-                                                static_cast<uint8_t> (packed >> 8),
-                                                static_cast<uint8_t> (packed));
-
-            midiOutputMessages.push_back ({ m, frameOffset });
+            midiOutputMessages.push_back ({ MIDIEvents::packedMIDIDataToMessage (packed), frameOffset });
             return true;
         });
     }

@@ -152,7 +152,8 @@ function PatchConnection()
     this.sendEventOrValue           = function (endpointID, value, numFrames)  { window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: numFrames }); };
     this.sendParameterGestureStart  = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID }); };
     this.sendParameterGestureEnd    = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID }); };
-    this.sendStoredState            = function (key, newValue)                 { window.cmaj_sendMessageToPatch ({ type: "send_state", key : key, value: newValue }); }
+    this.sendMIDIInputEvent         = function (shortMIDICode)                 { window.cmaj_sendMessageToPatch ({ type: "midi_input", midiEvent: shortMIDICode }); };
+    this.sendStoredState            = function (key, newValue)                 { window.cmaj_sendMessageToPatch ({ type: "send_state", key : key, value: newValue }); };
 
     const self = this;
 
