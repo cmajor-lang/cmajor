@@ -121,7 +121,7 @@ private:
                                                                                           postRenderAddFunctions;
     std::vector<cmaj::EndpointHandle> midiInputEndpoints, midiOutputEndpoints;
     std::vector<std::pair<cmaj::EndpointHandle, std::string>> eventOutputHandles;
-    std::unordered_map<std::string, EndpointHandle> parameterHandles;
+    std::unordered_map<std::string, EndpointHandle> inputEndpointHandles;
     choc::fifo::VariableSizeFIFO eventQueue, valueQueue, outputEventQueue;
     Builder::OutputEventCallback outputEventCallback;
     std::vector<std::pair<choc::midi::ShortMessage, uint32_t>> midiOutputMessages;
@@ -475,8 +475,7 @@ inline AudioMIDIPerformer::AudioMIDIPerformer (cmaj::Engine e, uint32_t eventFIF
     endpointTypeCoercionHelpers.initialise (engine, maxFramesPerBlock, true, true);
 
     for (auto& endpoint : engine.getInputEndpoints())
-        if (endpoint.isParameter() || endpoint.isTimeline())
-            parameterHandles[endpoint.endpointID.toString()] = engine.getEndpointHandle (endpoint.endpointID);
+        inputEndpointHandles[endpoint.endpointID.toString()] = engine.getEndpointHandle (endpoint.endpointID);
 
     allocateScratch();
 }
@@ -527,9 +526,9 @@ inline bool AudioMIDIPerformer::postEvent (cmaj::EndpointHandle handle, const ch
 
 inline bool AudioMIDIPerformer::postEvent (const cmaj::EndpointID& endpointID, const choc::value::ValueView& value)
 {
-    auto activeHandle = parameterHandles.find (endpointID.toString());
+    auto activeHandle = inputEndpointHandles.find (endpointID.toString());
 
-    if (activeHandle != parameterHandles.end())
+    if (activeHandle != inputEndpointHandles.end())
         return postEvent (activeHandle->second, value);
 
     return false;
@@ -559,9 +558,9 @@ inline bool AudioMIDIPerformer::postValue (const EndpointHandle handle, const ch
 
 inline bool AudioMIDIPerformer::postValue (const cmaj::EndpointID& endpointID, const choc::value::ValueView& value, uint32_t framesToReachValue)
 {
-    auto activeHandle = parameterHandles.find (endpointID.toString());
+    auto activeHandle = inputEndpointHandles.find (endpointID.toString());
 
-    if (activeHandle != parameterHandles.end())
+    if (activeHandle != inputEndpointHandles.end())
         return postValue (activeHandle->second, value, framesToReachValue);
 
     return false;
