@@ -1239,6 +1239,12 @@ function validateInputData (inputName, inputData, testSection, type)
                 testSection.reportFail (inputName + ": Failed validation, missing event attribute for item " + i);
                 return false;
             }
+
+            if (inputData[i].framesToReachValue == undefined)
+            {
+                testSection.reportFail (inputName + ": Failed validation, missing framesToReachValue attribute for item " + i);
+                return false;
+            }
         }
     }
 
