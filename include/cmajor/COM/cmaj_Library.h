@@ -87,7 +87,7 @@ struct Library
    #if CMAJOR_DLL
 private:
     static EntryPoints& getEntryPoints();
-    static inline std::unique_ptr<choc::file::DynamicLibrary> library;
+    static std::unique_ptr<choc::file::DynamicLibrary>& getLibrary();
     static inline EntryPoints* entryPoints = nullptr;
    #endif
 };
@@ -112,6 +112,12 @@ private:
 /// accidental use of older (or newer) library versions.
 static constexpr const char* entryPointFunction = "cmajor_getEntryPointsV2";
 
+inline std::unique_ptr<choc::file::DynamicLibrary>& Library::getLibrary()
+{
+    static std::unique_ptr<choc::file::DynamicLibrary> library;
+    return library;
+}
+
 inline Library::EntryPoints& Library::getEntryPoints()
 {
     // Must call Library::initialise() to load the DLL before using any other functions!
@@ -121,6 +127,8 @@ inline Library::EntryPoints& Library::getEntryPoints()
 
 inline bool Library::initialise (std::string_view pathToDLL)
 {
+    auto& library = getLibrary();
+
     if (library != nullptr)
         return true;
 
@@ -168,6 +176,8 @@ inline const char* Library::getEngineTypes()            { return getEntryPoints(
 
 inline EngineFactoryPtr Library::createEngineFactory (const char* engineName)
 {
+    auto& library = getLibrary();
+
     if (library == nullptr)
         return {};
 
