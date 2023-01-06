@@ -3063,7 +3063,7 @@ graph test
     }
 }
 
-## expectError ("11:12: error: Cannot connect in (value) to gain.in (stream)")
+## testCompile()
 
 graph test
 {
