@@ -248,6 +248,8 @@ struct Patch
     void sendRealtimeParameterChangeToViews (const std::string&, float value);
     void sendCurrentParameterValueToViews (const EndpointID&);
     void sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView&);
+    void sendMIDIInputUpdateToViews (choc::midi::ShortMessage);
+    void sendAudioOutLevelsUpdateToViews (const float* minValues, const float* maxValues, uint32_t numChannels);
     void sendStoredStateToViews (const std::string& key);
 
     // These can be called by things like the GUI to control the patch
@@ -257,6 +259,9 @@ struct Patch
 
     void sendGestureStart (const EndpointID&);
     void sendGestureEnd (const EndpointID&);
+
+    void setExternalMIDIInputMonitoringActive (bool);
+    void setAudioOutputMonitorChunkSize (uint32_t);
 
 private:
     //==============================================================================
@@ -275,9 +280,8 @@ private:
     std::vector<PatchView*> activeViews;
     std::unordered_map<std::string, std::string> storedState;
 
-    choc::fifo::VariableSizeFIFO paramChangeQueue;
-    choc::threading::TaskThread paramChangeHandler;
-    choc::threading::ThreadSafeFunctor<std::function<void()>> deliverParamChangeMessage;
+    struct ClientEventQueue;
+    std::unique_ptr<ClientEventQueue> clientEventQueue;
 
     std::vector<choc::midi::ShortMessage> midiMessages;
     std::vector<int> midiMessageTimes;
@@ -292,7 +296,6 @@ private:
     void applyFinishedBuild (std::shared_ptr<LoadedPatch>);
     void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
     void startCheckingForChanges();
-    void dispatchParameterChanges();
 
     //==============================================================================
     std::unique_ptr<BuildThread> buildThread;
@@ -617,7 +620,8 @@ struct Patch::LoadedPatch
     choc::threading::ThreadSafeFunctor<HandleOutputEventFn> handleOutputEvent;
 
     bool hasMIDIInputs = false, hasMIDIOutputs = false;
-    bool hasAudioInputs = false, hasAudioOutputs = false;
+    uint32_t numAudioInputChans = 0;
+    uint32_t numAudioOutputChans = 0;
     bool hasTimecodeInputs = false;
     double sampleRate = 0, latencySamples = 0;
     cmaj::EndpointID timeSigEventID, tempoEventID, transportStateEventID, positionEventID;
@@ -1000,8 +1004,8 @@ private:
     {
         result->hasMIDIInputs = false;
         result->hasMIDIOutputs = false;
-        result->hasAudioInputs = false;
-        result->hasAudioOutputs = false;
+        result->numAudioInputChans = 0;
+        result->numAudioOutputChans = 0;
         result->hasTimecodeInputs = false;
 
         result->timeSigEventID = {};
@@ -1011,18 +1015,18 @@ private:
 
         for (auto& e : result->inputEndpoints)
         {
-            if (e.getNumAudioChannels() != 0)       result->hasAudioInputs = true;
-            else if (e.isMIDI())                    result->hasMIDIInputs = true;
-            else if (e.isTimelineTimeSignature())   { result->timeSigEventID = e.endpointID;        result->hasTimecodeInputs = true; }
-            else if (e.isTimelinePosition())        { result->positionEventID = e.endpointID;       result->hasTimecodeInputs = true; }
-            else if (e.isTimelineTransportState())  { result->transportStateEventID = e.endpointID; result->hasTimecodeInputs = true; }
-            else if (e.isTimelineTempo())           { result->tempoEventID = e.endpointID;          result->hasTimecodeInputs = true; }
+            if (auto numAudioChans = e.getNumAudioChannels())   result->numAudioInputChans += numAudioChans;
+            else if (e.isMIDI())                                result->hasMIDIInputs = true;
+            else if (e.isTimelineTimeSignature())               { result->timeSigEventID = e.endpointID;        result->hasTimecodeInputs = true; }
+            else if (e.isTimelinePosition())                    { result->positionEventID = e.endpointID;       result->hasTimecodeInputs = true; }
+            else if (e.isTimelineTransportState())              { result->transportStateEventID = e.endpointID; result->hasTimecodeInputs = true; }
+            else if (e.isTimelineTempo())                       { result->tempoEventID = e.endpointID;          result->hasTimecodeInputs = true; }
         }
 
         for (auto& e : result->outputEndpoints)
         {
-            if (e.getNumAudioChannels() != 0)
-                result->hasAudioOutputs = true;
+            if (auto numAudioChans = e.getNumAudioChannels())
+                result->numAudioOutputChans += numAudioChans;
             else if (e.isMIDI())
                 result->hasMIDIOutputs = true;
         }
@@ -1225,12 +1229,170 @@ private:
 };
 
 //==============================================================================
+struct Patch::ClientEventQueue
+{
+    ClientEventQueue (Patch& p) : patch (p) {}
+    ~ClientEventQueue() { stop(); }
+
+    void stop()
+    {
+        dispatchClientEventsCallback.reset();
+        clientEventHandlerThread.stop();
+    }
+
+    void restart (size_t numAudioOutChans)
+    {
+        audioOutMinMax.resize (numAudioOutChans * 2);
+        audioOutFramesMeasured = 0;
+        clientEventQueue.reset (8192);
+        dispatchClientEventsCallback = [this] { dispatchClientEvents(); };
+        clientEventHandlerThread.start (0, [this] { choc::messageloop::postMessage ([=] { dispatchClientEventsCallback(); }); });
+    }
+
+    void postRealtimeParameterChangeToViews (const std::string& endpointID, float value)
+    {
+        auto endpointChars = endpointID.data();
+        auto endpointLen = static_cast<uint32_t> (endpointID.length());
+
+        clientEventQueue.push (5 + endpointLen, [=] (void* dest)
+        {
+            auto d = static_cast<char*> (dest);
+            d[0] = static_cast<char> (EventType::paramChange);
+            choc::memory::writeNativeEndian (d + 1, value);
+            memcpy (d + 5, endpointChars, endpointLen);
+        });
+
+        clientEventHandlerThread.trigger();
+    }
+
+    void postAudioAndMIDIInputStatus (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+    {
+        bool triggered = false;
+
+        if (midiInputActive && ! block.midiMessages.empty())
+        {
+            for (auto m : block.midiMessages)
+            {
+                clientEventQueue.push (4, [=] (void* dest)
+                {
+                    auto d = static_cast<char*> (dest);
+                    d[0] = static_cast<char> (EventType::externalMIDIInputEvent);
+                    memcpy (d + 1, m.data, 3);
+                });
+            }
+
+            triggered = true;
+        }
+
+        if (audioOutFramesPerChunk != 0)
+        {
+            if (auto numChannels = block.audioOutput.getNumChannels())
+            {
+                auto numFrames = block.audioOutput.getNumFrames();
+
+                numChannels = std::min (numChannels, static_cast<uint32_t> (audioOutMinMax.size() / 2u));
+                auto mins = audioOutMinMax.data();
+                auto maxs = mins + numChannels;
+
+                for (uint32_t i = 0; i < numFrames; ++i)
+                {
+                    if (audioOutFramesMeasured == 0)
+                        std::fill (audioOutMinMax.begin(), audioOutMinMax.end(), 0);
+
+                    for (uint32_t chan = 0; chan < numChannels; ++chan)
+                    {
+                        auto level = block.audioOutput.getSample (chan, i);
+                        mins[chan] = std::min (level, mins[chan]);
+                        maxs[chan] = std::max (level, maxs[chan]);
+                    }
+
+                    if (++audioOutFramesMeasured == audioOutFramesPerChunk)
+                    {
+                        audioOutFramesMeasured = 0;
+                        triggered = true;
+
+                        clientEventQueue.push (1 + numChannels * 8, [&] (void* dest)
+                        {
+                            auto d = static_cast<char*> (dest);
+                            d[0] = static_cast<char> (EventType::audioOutputLevels);
+
+                            for (uint32_t chan = 0; chan < numChannels; ++chan)
+                            {
+                                choc::memory::writeNativeEndian (d + 1 + 8 * chan, mins[chan]);
+                                choc::memory::writeNativeEndian (d + 5 + 8 * chan, maxs[chan]);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        if (triggered)
+            clientEventHandlerThread.trigger();
+    }
+
+    void dispatchClientEvents()
+    {
+        clientEventQueue.popAllAvailable ([this] (const void* data, uint32_t size)
+        {
+            auto d = static_cast<const char*> (data);
+
+            switch (static_cast<EventType> (d[0]))
+            {
+                case EventType::paramChange:
+                {
+                    auto value = choc::memory::readNativeEndian<float> (d + 1);
+                    auto endpointID = std::string_view (d + 5, size - 5);
+                    patch.sendParameterChangeToViews (EndpointID::create (endpointID), value);
+                    break;
+                }
+
+                case EventType::externalMIDIInputEvent:
+                    patch.sendMIDIInputUpdateToViews (choc::midi::ShortMessage (d + 1, 3));
+                    break;
+
+                case EventType::audioOutputLevels:
+                {
+                    auto numItems = (size - 1) / 8;
+                    patch.sendAudioOutLevelsUpdateToViews (reinterpret_cast<const float*> (d + 1u),
+                                                           reinterpret_cast<const float*> (d + 1u + numItems),
+                                                           numItems);
+                    break;
+                }
+
+                default:
+                    break;
+            }
+        });
+    }
+
+    enum class EventType  : char
+    {
+        paramChange,
+        externalMIDIInputEvent,
+        audioOutputLevels
+    };
+
+    Patch& patch;
+    choc::fifo::VariableSizeFIFO clientEventQueue;
+    choc::threading::TaskThread clientEventHandlerThread;
+    choc::threading::ThreadSafeFunctor<std::function<void()>> dispatchClientEventsCallback;
+    std::atomic<bool> midiInputActive { false };
+    std::atomic<uint32_t> audioOutFramesPerChunk { 0 };
+    std::vector<float> audioOutMinMax;
+    uint32_t audioOutFramesMeasured = 0;
+};
+
+
+//==============================================================================
 inline Patch::Patch (bool buildSynchronously, bool keepCheckingFilesForChanges)
     : scanFilesForChanges (keepCheckingFilesForChanges)
 {
     const size_t midiBufferSize = 256;
     midiMessageTimes.reserve (midiBufferSize);
     midiMessages.reserve (midiBufferSize);
+
+    clientEventQueue = std::make_unique<ClientEventQueue> (*this);
 
     if (! buildSynchronously)
         buildThread = std::make_unique<BuildThread> (*this);
@@ -1328,8 +1490,7 @@ inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, cons
 
 inline void Patch::unload()
 {
-    deliverParamChangeMessage.reset();
-    paramChangeHandler.stop();
+    clientEventQueue->stop();
 
     if (currentPatch)
     {
@@ -1420,8 +1581,8 @@ inline std::string Patch::getPatchFile() const            { return isLoaded() ? 
 inline bool Patch::isInstrument() const                   { return isLoaded() && currentPatch->manifest.isInstrument; }
 inline bool Patch::hasMIDIInput() const                   { return isLoaded() && currentPatch->hasMIDIInputs; }
 inline bool Patch::hasMIDIOutput() const                  { return isLoaded() && currentPatch->hasMIDIOutputs; }
-inline bool Patch::hasAudioInput() const                  { return isLoaded() && currentPatch->hasAudioInputs; }
-inline bool Patch::hasAudioOutput() const                 { return isLoaded() && currentPatch->hasAudioOutputs; }
+inline bool Patch::hasAudioInput() const                  { return isLoaded() && currentPatch->numAudioInputChans != 0; }
+inline bool Patch::hasAudioOutput() const                 { return isLoaded() && currentPatch->numAudioOutputChans != 0; }
 inline bool Patch::wantsTimecodeEvents() const            { return currentPatch->hasTimecodeInputs; }
 inline uint32_t Patch::getFramesLatency() const           { return isLoaded() ? currentPatch->manifest.framesLatency : 0; }
 
@@ -1481,6 +1642,7 @@ void Patch::process (float* const* audioChannels, uint32_t numFrames, HandleMIDI
 inline void Patch::process (const choc::audio::AudioMIDIBlockDispatcher::Block& block, bool replaceOutput)
 {
     currentPatch->performer->process (block, replaceOutput);
+    clientEventQueue->postAudioAndMIDIInputStatus (block);
 }
 
 inline void Patch::sendTimeSig (int numerator, int denominator)
@@ -1531,8 +1693,8 @@ inline void Patch::sendPatchStatusChangeToViews()
 inline void Patch::sendSampleRateChangeToViews (double newRate)
 {
     sendMessageToViews (choc::value::createObject ({},
-                                                    "type", "sample_rate",
-                                                    "rate", newRate));
+                                                   "type", "sample_rate",
+                                                   "rate", newRate));
 }
 
 inline const std::unordered_map<std::string, std::string>& Patch::getStoredStateValues() const
@@ -1553,44 +1715,40 @@ inline void Patch::setStoredStateValue (const std::string& key, std::string newV
 
 inline void Patch::sendRealtimeParameterChangeToViews (const std::string& endpointID, float value)
 {
-    auto endpointChars = endpointID.data();
-    auto endpointLen = static_cast<uint32_t> (endpointID.length());
-
-    paramChangeQueue.push (4 + endpointLen, [=] (void* dest)
-    {
-        choc::memory::writeNativeEndian (dest, value);
-        memcpy (static_cast<char*> (dest) + 4, endpointChars, endpointLen);
-    });
-
-    paramChangeHandler.trigger();
-}
-
-inline void Patch::dispatchParameterChanges()
-{
-    paramChangeQueue.popAllAvailable ([this] (const void* data, uint32_t size)
-    {
-        float value = choc::memory::readNativeEndian<float> (data);
-        auto endpointID = std::string_view (static_cast<const char*> (data) + 4, size - 4);
-        sendParameterChangeToViews (EndpointID::create (endpointID), value);
-    });
+    clientEventQueue->postRealtimeParameterChangeToViews (endpointID, value);
 }
 
 inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, float value)
 {
     if (endpointID)
         sendMessageToViews (choc::value::createObject ({},
-                                                        "type", "param_value",
-                                                        "ID", endpointID.toString(),
-                                                        "value", value));
+                                                       "type", "param_value",
+                                                       "ID", endpointID.toString(),
+                                                       "value", value));
+}
+
+inline void Patch::sendMIDIInputUpdateToViews (choc::midi::ShortMessage m)
+{
+    sendMessageToViews (choc::value::createObject ({},
+                                                   "type", "external_midi_in",
+                                                   "message", MIDIEvents::midiMessageToPackedInt (m)));
+}
+
+inline void Patch::sendAudioOutLevelsUpdateToViews (const float* minValues, const float* maxValues, uint32_t numChannels)
+{
+    sendMessageToViews (choc::value::createObject ({},
+                                                   "type", "audio_out_levels",
+                                                   "minLevels", choc::value::createArrayView (const_cast<float*> (minValues), numChannels),
+                                                   "maxLevels", choc::value::createArrayView (const_cast<float*> (maxValues), numChannels)));
 }
 
 inline void Patch::sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView& value)
 {
     if (! (value.isVoid() || endpointID.empty()))
         sendMessageToViews (choc::value::createObject ({},
-                                                        "type", "output_event",
-                                                        "ID", endpointID,
-                                                        "value", value));
+                                                       "type", "output_event",
+                                                       "ID", endpointID,
+                                                       "value", value));
 }
 
 inline void Patch::sendStoredStateToViews (const std::string& key)
@@ -1638,9 +1796,7 @@ inline void Patch::applyFinishedBuild (std::shared_ptr<LoadedPatch> newPatch)
 
     if (isPlayable())
     {
-        paramChangeQueue.reset (4096);
-        deliverParamChangeMessage = [this] { dispatchParameterChanges(); };
-        paramChangeHandler.start (0, [this] { choc::messageloop::postMessage ([=] { deliverParamChangeMessage(); }); });
+        clientEventQueue->restart (currentPatch->numAudioOutputChans);
         startPlayback();
     }
 
@@ -1696,6 +1852,16 @@ inline void Patch::sendCurrentParameterValueToViews (const EndpointID& endpointI
 {
     if (auto param = findParameter (endpointID))
         sendParameterChangeToViews (endpointID, param->currentValue);
+}
+
+inline void Patch::setExternalMIDIInputMonitoringActive (bool shouldBeActive)
+{
+    clientEventQueue->midiInputActive = shouldBeActive;
+}
+
+inline void Patch::setAudioOutputMonitorChunkSize (uint32_t framesPerChunk)
+{
+    clientEventQueue->audioOutFramesPerChunk = framesPerChunk;
 }
 
 inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
@@ -1779,6 +1945,18 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
             if (auto file = msg["file"].getWithDefault<std::string>({}); ! file.empty())
                 loadPatchFromFile (file);
 
+            return true;
+        }
+
+        if (type == "set_external_midi_in_wanted")
+        {
+            setExternalMIDIInputMonitoringActive (msg["active"].getWithDefault<bool> (false));
+            return true;
+        }
+
+        if (type == "set_audio_out_level_chunk_size")
+        {
+            setAudioOutputMonitorChunkSize (static_cast<uint32_t> (msg["framesPerChunk"].getWithDefault<int64_t> (0)));
             return true;
         }
 
