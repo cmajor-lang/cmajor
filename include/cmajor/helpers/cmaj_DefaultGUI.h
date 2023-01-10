@@ -48,8 +48,12 @@ private:
     struct File { std::string_view name, content; };
 
     static constexpr const char* index_js =
-        R"(
-export default class PatchView  extends HTMLElement
+        R"(export default function createPatchView (patchConnection)
+{
+    return new PatchView (patchConnection);
+}
+
+class PatchView extends HTMLElement
 {
     constructor (patchConnection)
     {
@@ -92,9 +96,9 @@ export default class PatchView  extends HTMLElement
 
             performSingleEdit: (endpointID, value) =>
             {
-                this.patchConnection.sendParameterGestureStart (endpointID);
-                this.patchConnection.sendEventOrValue (endpointID, value);)"
+                this.patchConnection.sendParameterGestureStart (endpointID);)"
 R"(
+                this.patchConnection.sendEventOrValue (endpointID, value);
                 this.patchConnection.sendParameterGestureEnd (endpointID);
             },
         };
@@ -147,12 +151,12 @@ R"(
     onOutputEvent (endpointID, value)
     {
     }
-
+)"
+R"(
     onSampleRateChanged()
     {
     }
-)"
-R"(
+
     addParameterChangedListener (endpointID, update)
     {
         let listeners = this.parameterChangedListeners[endpointID];
@@ -221,9 +225,9 @@ R"(
             const control = this.makeControl (backend, { type, value, name, index, ...other });
 
             if (control)
-            {
-                const mapValue = control.mapValue ?? (v => v);)"
+            {)"
 R"(
+                const mapValue = control.mapValue ?? (v => v);
                 const wrapped = this.makeLabelledControl (control.control, {
                     initialValue: mapValue (other.defaultValue),
                     name,
@@ -271,9 +275,9 @@ R"(
                 const toIndex = (value, options) =>
                 {
                     const binarySearch = (arr, toValue, target) =>
-                    {
-                        let low = 0;)"
+                    {)"
 R"(
+                        let low = 0;
                         let high = arr.length - 1;
 
                         while (low <= high)
@@ -332,11 +336,11 @@ R"(
         const typeValueOffsets = { 1: 132, 2: 0 };
         const typePaths =
         {
-            1: "M20,76 A 40 40 0 1 1 80 76",
+            1: "M20,76 A 40 40 0 1 1 80 76",)"
+R"(
             2: "M50.01,10 A 40 40 0 1 1 50 10"
         };
-)"
-R"(
+
         const createSvgElement = ({ document = window.document, tag = "svg" } = {}) => document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
         const svg = createSvgElement();
@@ -383,10 +387,10 @@ R"(
         {
             rotation: toRotation (initialValue),
         };
-
-        const update = (degrees, force) =>
-        {)"
+)"
 R"(
+        const update = (degrees, force) =>
+        {
             if (! force && state.rotation === degrees) return;
 
             state.rotation = degrees;
@@ -440,9 +444,9 @@ R"(
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
         };
-
-        container.addEventListener ("mousedown", onMouseDown);)"
+)"
 R"(
+        container.addEventListener ("mousedown", onMouseDown);
         container.addEventListener ("mouseup", onMouseUp);
         container.addEventListener ("dblclick", () => onReset());
 
@@ -516,11 +520,11 @@ R"(
             selectedIndex: initialSelectedIndex,
         };
 
-        select.addEventListener ("change", (e) =>
+        select.addEventListener ("change", (e) =>)"
+R"(
         {
             const incomingIndex = e.target.selectedIndex;
-)"
-R"(
+
             // prevent local state change. the caller will update us when the backend actually applies the update
             e.target.selectedIndex = state.selectedIndex;
 
@@ -580,9 +584,9 @@ R"(
 
         titleValueHoverContainer.appendChild (nameText);
         titleValueHoverContainer.appendChild (valueText);
-
-        container.appendChild (centeredControl);)"
+)"
 R"(
+        container.appendChild (centeredControl);
         container.appendChild (titleValueHoverContainer);
 
         return {
@@ -662,12 +666,12 @@ R"(
     background-color: var(--foreground);
     mask: url(${this.patchConnection.getResourceAddress ("./assets/sound-stacks-logo.svg")});
     mask-repeat: no-repeat;
-    -webkit-mask: url(${this.patchConnection.getResourceAddress ("./assets/sound-stacks-logo.svg")});
+    -webkit-mask: url(${this.patchConnection.getResourceAddress ("./assets/sound-stacks-logo.svg")});)"
+R"(
     -webkit-mask-repeat: no-repeat;
     min-width: 100px;
 }
-)"
-R"(
+
 .header-filler {
     flex: 1;
 }
@@ -725,9 +729,9 @@ select option {
     background-color: var(--foreground);
     width: 1.4em;
     height: 1.4em;
-    mask: url(${this.patchConnection.getResourceAddress ("./assets/angle-down.svg")});
+    mask: url(${this.patchConnection.getResourceAddress ("./assets/unicons/angle-down.svg")});
     mask-repeat: no-repeat;
-    -webkit-mask: url(${this.patchConnection.getResourceAddress ("./assets/angle-down.svg")});
+    -webkit-mask: url(${this.patchConnection.getResourceAddress ("./assets/unicons/angle-down.svg")});
     -webkit-mask-repeat: no-repeat;
 }
 
@@ -767,12 +771,12 @@ select option {
     transform: translate(-50%,-50%);
     background-color: var(--knob-dial-background-color);
 }
-
+)"
+R"(
 .knob-dial-tick {
     position: absolute;
     display: inline-block;
-)"
-R"(
+
     height: 14px;
     width: 2px;
     background-color: var(--knob-dial-tick-color);
@@ -874,10 +878,10 @@ R"(
 
     opacity: 0;
 }
-
-.labelled-control:hover .labelled-control-name,
-.labelled-control:active .labelled-control-name {)"
+)"
 R"(
+.labelled-control:hover .labelled-control-name,
+.labelled-control:active .labelled-control-name {
     opacity: 0;
 }
 .labelled-control:hover .labelled-control-value,

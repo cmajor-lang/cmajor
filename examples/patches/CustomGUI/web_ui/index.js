@@ -1,5 +1,9 @@
+export default function createCustomPatchView (patchConnection)
+{
+    return new CustomPatchView (patchConnection);
+}
 
-export default class CustomPatchView  extends HTMLElement
+class CustomPatchView extends HTMLElement
 {
     constructor (patchConnection)
     {

@@ -169,11 +169,16 @@ function PatchConnection()
 
 function createConnection() { return new PatchConnection(); }
 
-const patchView = new PatchView (createConnection());
-patchView.style.display = "block";
-patchView.style.height = "100vh";
+async function appendPatchView (parent)
+{
+    const patchView = await createPatchView (createConnection());
+    patchView.style.display = "block";
+    patchView.style.height = "100vh";
 
-document.body.appendChild (patchView);
+    parent.appendChild (patchView);
+}
+
+appendPatchView (document.body);
 
 </script>
 </html>
@@ -207,7 +212,7 @@ inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePat
 
         return toResource (choc::text::replace (cmajor_patch_gui_html,
                                                 "IMPORT_VIEW",
-                                                "import PatchView from "
+                                                "import createPatchView from "
                                                    + choc::json::getEscapedQuotedString (viewLocation) + ";"),
                            toMimeType (".html"));
     }
