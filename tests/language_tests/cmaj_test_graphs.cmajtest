@@ -4343,3 +4343,75 @@ namespace params
         int stepIndex;
     }
 }
+
+
+## testCompile()
+
+processor P
+{
+    input event float in;
+	output stream float out;
+
+    event in (float f) {}
+
+    void main()
+    {
+        advance();
+    }
+}
+
+graph voice [[main]]
+{
+	input event float32 in;
+	output stream float out;
+
+	event in (float v)
+	{
+		P.in <- v;
+	}
+
+	connection
+		mydsp.out -> out;
+}
+
+
+## testCompile()
+
+processor P
+{
+    input event float in;
+	output stream float out;
+
+    event in (float f) {}
+}
+
+graph voice [[main]]
+{
+	input event float32 in;
+	output stream float out;
+
+	event in (float v)
+	{
+		P.in <- v;
+	}
+}
+
+
+## testCompile()
+
+processor P
+{
+    input event float in;
+	output stream float out;
+}
+
+graph voice [[main]]
+{
+	input event float32 in;
+	output stream float out;
+
+	event in (float v)
+	{
+		P.in <- v;
+	}
+}
