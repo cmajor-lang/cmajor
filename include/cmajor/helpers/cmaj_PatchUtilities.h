@@ -1355,7 +1355,7 @@ struct Patch::ClientEventQueue
                 {
                     auto numItems = (size - 1) / 8;
                     patch.sendAudioOutLevelsUpdateToViews (reinterpret_cast<const float*> (d + 1u),
-                                                           reinterpret_cast<const float*> (d + 1u + numItems),
+                                                           reinterpret_cast<const float*> (d + 1u) + numItems,
                                                            numItems);
                     break;
                 }
