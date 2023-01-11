@@ -4371,7 +4371,7 @@ graph voice [[main]]
 	}
 
 	connection
-		mydsp.out -> out;
+		P.out -> out;
 }
 
 
