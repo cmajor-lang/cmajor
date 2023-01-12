@@ -205,7 +205,7 @@ inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePat
     auto relativePath = std::filesystem::path (path).relative_path();
     bool usingDefaultView = jsModuleFilename.empty();
 
-    if (relativePath.empty() || relativePath == "index.html")
+    if (relativePath.empty())
     {
         auto viewLocation = usingDefaultView ? "/index.js"
                                              : "/" + jsModuleFilename.filename().string();
