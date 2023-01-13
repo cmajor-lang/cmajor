@@ -594,3 +594,16 @@ graph test [[main]]
     output stream int out;
     connection P -> Check -> out;
 }
+
+## testCompile()
+
+processor T
+{
+    output stream float out;
+
+    void main()
+    {
+        if const (2 > 1)
+            advance();
+    }
+}
