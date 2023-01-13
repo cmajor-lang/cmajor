@@ -193,7 +193,7 @@ To add a custom GUI to your patch, your `.cmajorpatch` file should include a `vi
   }
 ```
 
-The `view` property should contain a `src` property providing a relative URL to a javascript module. This module should have a single default export, which must be a HTMLElement class that can be used as the GUI element for the patch. The exported class's constructor will be passed a `PatchConnection` object which it can use for communication with the patch instance that it controls.
+The `view` property should contain a `src` property providing a relative URL to a javascript module. This module should have a default export, which must be a function returning a DOM Element that can be used as the GUI element for the patch. The exported function will be passed a `PatchConnection` object which it can use for communication with the patch instance that it controls.
 
 ### GUI Communication
 
