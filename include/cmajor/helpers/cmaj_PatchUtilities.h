@@ -1944,6 +1944,8 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
         {
             if (auto file = msg["file"].getWithDefault<std::string>({}); ! file.empty())
                 loadPatchFromFile (file);
+            else
+                unload();
 
             return true;
         }
