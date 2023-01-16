@@ -190,3 +190,15 @@ processor test
 
 void foo() { console <- "bang"; }
 
+
+## expectError ("10:1: error: Language feature not yet implemented: import statements!")
+
+// Testing imports in merging namespaces
+namespace a
+{
+}
+
+namespace a
+{
+    import something;
+}
