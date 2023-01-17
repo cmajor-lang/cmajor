@@ -1800,19 +1800,14 @@ inline void Patch::applyFinishedBuild (std::shared_ptr<LoadedPatch> newPatch)
         startPlayback();
     }
 
-    std::string status;
-
-    if (! getName().empty())
-        status = "Loaded: " + getName();
-
     if (! currentPatch->errors.empty())
     {
-        status += "\n\n" + currentPatch->errors.toString();
-        setStatusMessage (status, currentPatch->errors.hasErrors());
+        setStatusMessage (currentPatch->errors.toString(),
+                          currentPatch->errors.hasErrors());
     }
     else
     {
-        setStatusMessage (status, false);
+        setStatusMessage (getName().empty() ? std::string() : "Loaded: " + getName(), false);
     }
 
     startCheckingForChanges();
