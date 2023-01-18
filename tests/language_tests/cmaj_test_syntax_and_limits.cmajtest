@@ -69,7 +69,7 @@ namespace N { _Type foo() {} }
 
 namespace N { let $x = 123; }
 
-## expectError ("2:14: error: Found \"->\" when expecting \";\"")
+## expectError ("2:14: error: The '->' operator can only be used in connection declarations - did you mean to use the '<-' operator instead?")
 
 void f() { a -> b; }
 
