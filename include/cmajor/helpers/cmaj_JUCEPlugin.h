@@ -959,9 +959,9 @@ private:
                 }
             }
 
-            auto patchWebView = std::make_unique<PatchWebView> (*owner.patch,
-                                                                static_cast<uint32_t> (w),
-                                                                static_cast<uint32_t> (h));
+            auto patchWebView = PatchWebView::create (*owner.patch,
+                                                      static_cast<uint32_t> (w),
+                                                      static_cast<uint32_t> (h));
 
             patchGUIHolder = std::make_unique<PatchGUIHolder> (*this, std::move (patchWebView));
 

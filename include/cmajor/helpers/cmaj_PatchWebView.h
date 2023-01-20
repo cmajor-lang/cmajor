@@ -26,6 +26,8 @@
 #include "cmaj_PatchUtilities.h"
 #include "cmaj_DefaultGUI.h"
 
+#include <memory>
+
 namespace cmaj
 {
 
@@ -38,25 +40,19 @@ struct PatchWebView  : public PatchView
     /// it will be called first, falling back to the default implementation if an empty result is returned.
     using MimeTypeMappingFn = std::function<std::string(std::string_view extension)>;
 
-    PatchWebView (Patch&, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn = {});
+    static std::unique_ptr<PatchWebView> create (Patch&, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn = {});
+    ~PatchWebView() override;
 
-    choc::ui::WebView& getWebView()  { return webview; }
+    choc::ui::WebView& getWebView();
 
     void sendMessage (const choc::value::ValueView&) override;
 
 private:
-    MimeTypeMappingFn toMimeTypeCustomImpl;
-    choc::ui::WebView webview { { true, [this] (const auto& path) { return onRequest (path); } } };
-    std::filesystem::path jsModuleFilename;
+    struct Impl;
 
-    void initialiseFromFirstHTMLView();
-    void createBindings();
+    PatchWebView (std::unique_ptr<Impl>);
 
-    using ResourcePath = choc::ui::WebView::Options::Path;
-    using OptionalResource = std::optional<choc::ui::WebView::Options::Resource>;
-    OptionalResource onRequest (const ResourcePath&);
-
-    static std::string toMimeTypeDefaultImpl (std::string_view extension);
+    std::unique_ptr<Impl> pimpl;
 };
 
 
@@ -71,20 +67,44 @@ private:
 //
 //==============================================================================
 
-inline PatchWebView::PatchWebView (Patch& p, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn toMimeTypeFn)
-    : PatchView (p, viewWidth, viewHeight), toMimeTypeCustomImpl (std::move (toMimeTypeFn))
+struct PatchWebView::Impl
+{
+    Impl (Patch&, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn = {});
+
+    void sendMessage (const choc::value::ValueView&);
+
+    Patch& patch;
+    uint32_t width = 0, height = 0;
+    bool resizable = true;
+
+    MimeTypeMappingFn toMimeTypeCustomImpl;
+    choc::ui::WebView webview { { true, [this] (const auto& path) { return onRequest (path); } } };
+    std::filesystem::path jsModuleFilename;
+
+    void initialiseFromFirstHTMLView();
+    void createBindings();
+
+    using ResourcePath = choc::ui::WebView::Options::Path;
+    using OptionalResource = std::optional<choc::ui::WebView::Options::Resource>;
+    OptionalResource onRequest (const ResourcePath&);
+
+    static std::string toMimeTypeDefaultImpl (std::string_view extension);
+};
+
+inline PatchWebView::Impl::Impl (Patch& p, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn toMimeTypeFn)
+    : patch (p), width (viewWidth), height (viewHeight), toMimeTypeCustomImpl (std::move (toMimeTypeFn))
 {
     initialiseFromFirstHTMLView();
     createBindings();
 }
 
-inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
+inline void PatchWebView::Impl::sendMessage (const choc::value::ValueView& msg)
 {
     webview.evaluateJavascript ("if (window.cmaj_handleMessageFromPatch) window.cmaj_handleMessageFromPatch ("
                                   + choc::json::toString (msg, true) + ");");
 }
 
-inline void PatchWebView::initialiseFromFirstHTMLView()
+inline void PatchWebView::Impl::initialiseFromFirstHTMLView()
 {
     if (auto manifest = patch.getManifest())
     {
@@ -107,7 +127,7 @@ inline void PatchWebView::initialiseFromFirstHTMLView()
     }
 }
 
-inline void PatchWebView::createBindings()
+inline void PatchWebView::Impl::createBindings()
 {
     webview.bind ("cmaj_sendMessageToPatch", [this] (const choc::value::ValueView& args) -> choc::value::Value
     {
@@ -116,6 +136,29 @@ inline void PatchWebView::createBindings()
 
         return {};
     });
+}
+
+inline std::unique_ptr<PatchWebView> PatchWebView::create (Patch& p, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn toMimeType)
+{
+    auto impl = std::make_unique <PatchWebView::Impl> (p, viewWidth, viewHeight, std::move (toMimeType));
+    return std::unique_ptr<PatchWebView> (new PatchWebView (std::move (impl)));
+}
+
+inline PatchWebView::PatchWebView (std::unique_ptr<Impl> impl)
+    : PatchView (impl->patch, impl->width, impl->height), pimpl (std::move (impl))
+{
+}
+
+inline PatchWebView::~PatchWebView() = default;
+
+inline choc::ui::WebView& PatchWebView::getWebView()
+{
+    return pimpl->webview;
+}
+
+inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
+{
+    return pimpl->sendMessage (msg);
 }
 
 static constexpr auto cmajor_patch_gui_html = R"(
@@ -184,7 +227,7 @@ appendPatchView (document.body);
 </html>
 )";
 
-inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePath& path)
+inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const ResourcePath& path)
 {
     const auto toResource = [] (std::string_view content, const auto& mimeType) -> choc::ui::WebView::Options::Resource
     {
@@ -232,7 +275,7 @@ inline PatchWebView::OptionalResource PatchWebView::onRequest (const ResourcePat
     return {};
 }
 
-inline std::string PatchWebView::toMimeTypeDefaultImpl (std::string_view extension)
+inline std::string PatchWebView::Impl::toMimeTypeDefaultImpl (std::string_view extension)
 {
     if (extension == ".css")  return "text/css";
     if (extension == ".html") return "text/html";
