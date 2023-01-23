@@ -263,7 +263,7 @@ export default async function createPatchView (connection)
     // fetching remote resources for use in the view, before doing so.
     //
     // When using libraries such as React, this is where the call to
-    // `ReactDOM.createRoot` would go rendering into a container component
+    // `ReactDOM.createRoot` would go, rendering into a container component
     // before returning.
     const container = document.createElement ("div");
 
@@ -309,9 +309,7 @@ _Note: The patch player and plugin provide access to the dev tools / inspector o
 
 #### Known limitations
 
-- Currently, `PatchConnection` is effectively a singleton / the app is limited to a single instance. This is due to the current mechanism used by the runtime to invoke callbacks, and it will only notify the most recently created instance about changes. However, multiple instances can be used to communicate from the GUI to the runtime. More sophisticated abstractions can be built client-side to work around these limitations, allowing for multiple listeners etc.
 - The annotations are currently the raw annotations as written in the cmajor source file, and therefore do not contain the default properties picked by the C++ runtime
-- The patch player and plugins will only process input values for parameter and timeline related input endpoints
 
 ## Playing a Patch
 
