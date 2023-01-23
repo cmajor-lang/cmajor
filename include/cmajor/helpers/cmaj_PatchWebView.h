@@ -187,7 +187,8 @@ function PatchConnection()
     this.onOutputEvent               = function (endpointID, newValue) {};
     this.onStoredStateChanged        = function (key, value) {};
 
-    this.getResourceAddress         = function (url)                           { return url; }
+    this.getGenericGUIResourceAddress = function (path)                        { return path; }
+    this.getResourceAddress           = function (path)                        { return path; }
 
     this.requestStatusUpdate        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_status" }); };
     this.requestEndpointValue       = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID }); };
