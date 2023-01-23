@@ -132,7 +132,7 @@ private:
             generatedObject.initialise (sessionID, frequency);
         }
 
-        ~Performer() override {}
+        virtual ~Performer() = default;
 
         void setBlockSize (uint32_t numFramesForNextBlock) override
         {
