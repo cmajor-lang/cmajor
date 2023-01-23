@@ -51,7 +51,6 @@ struct SyntaxTreeOptions
 struct ProgramInterface  : public choc::com::Object
 {
     ProgramInterface() = default;
-    virtual ~ProgramInterface() = default;
 
     /// Parses some content, and returns either a nullptr or a JSON-encoded error
     /// that can be parsed with DiagnosticMessageList::fromJSONString()

@@ -46,7 +46,6 @@ using EndpointHandle = uint32_t;
 struct PerformerInterface   : public choc::com::Object
 {
     PerformerInterface() = default;
-    virtual ~PerformerInterface() = default;
 
     //==============================================================================
     /// Sets the number of frames which should be rendered during each subsequent call to advance().

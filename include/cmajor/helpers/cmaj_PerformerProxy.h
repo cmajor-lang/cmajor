@@ -31,6 +31,8 @@ namespace cmaj
 /// and intercept some of the calls it makes.
 struct PerformerProxy  : public PerformerInterface
 {
+    virtual ~PerformerProxy() = default;
+
     void setBlockSize (uint32_t numFramesForNextBlock) override                                     { target->setBlockSize (numFramesForNextBlock); }
     void setInputFrames (EndpointHandle e, const void* data, uint32_t numFrames) override           { target->setInputFrames (e, data, numFrames); }
     void setInputValue (EndpointHandle e, const void* data, uint32_t n) override                    { target->setInputValue (e, data, n); }
