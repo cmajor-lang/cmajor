@@ -154,7 +154,7 @@ processor GainProcessor
     {
         loop   // infinite loop
         {
-            out << in * 0.5f;  // read our next input value, multiply by 0.5, and send it to our output
+            out <- in * 0.5f;  // read our next input value, multiply by 0.5, and send it to our output
             advance();         // advance to the next frame
         }
     }
