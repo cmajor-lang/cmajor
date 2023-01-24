@@ -4415,3 +4415,36 @@ graph voice [[main]]
 		P.in <- v;
 	}
 }
+
+
+## testProcessor()
+
+graph test [[ main ]]
+{
+    output event int out;
+
+    node children = Child[5] * 4;
+
+    connection
+        children.out -> out;
+}
+
+processor Child
+{
+    output event int out;
+
+    void main()
+    {
+       if (processor.id == 3)
+       {
+            out <- 1;
+            advance();
+       }
+
+        loop (4)
+            advance();
+
+        out <- -1;
+        advance();
+    }
+}
