@@ -173,12 +173,12 @@ namespace std::oscillators
             this.phasor.setFrequency (outputFrequencyHz, oscillatorFrequencyHz);
         }
 
-        /// Returns the sample of a square wave.
         float32 nextSine()
         {
             return waveshape(float32)::sine (this.phasor.next());
         }
 
+        /// Returns the sample of a square wave.
         float32 nextSquare()
         {
             return waveshape(float32)::polyblep_square (this.phasor.next(), this.phasor.increment);
