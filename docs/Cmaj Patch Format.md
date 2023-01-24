@@ -197,7 +197,7 @@ The `view` property should contain a `src` property providing a relative URL to 
 
 ### GUI Communication
 
-Patch GUIs communicate with the runtime by passing serialised message structures back and forth over a communication channel. The specific implementation details are encapsulated inside a `PatchConnection` object, which is made available in the global scope by the runtime.
+Patch GUIs communicate with the runtime by passing serialised message structures back and forth over a communication channel. The specific implementation details are encapsulated inside a `PatchConnection` object.
 
 The `PatchConnection` API has methods for sending data to, and requesting data from, the runtime, and allows for setting up functions which the runtime will invoke when various aspects of the patch change (i.e in response to previous actions from the GUI, from external changes in a DAW, or because of recompilation).
 
@@ -232,7 +232,7 @@ _(note: for all methods below, `endpointID` is the endpoint name, as specified i
   - This will be called in response to a `requestStatusUpdate()` request, or following each recompile
   - `errorMessage` will contain any output from an unsuccessful compile run, or otherwise be empty
   - `patchManifest` is the same information specified in the `cmajorpatch` file
-  - `inputsList` and `outputsList` are arrays of javascript object representations of the `cmaj::EndpointDetails` structures described in the C++ API docs. See [`EndpointDetails::toJSON()`](https://github.com/SoundStacks/cmajor/blob/main/include/cmajor/API/cmaj_Endpoints.h#L290) for the specific implementation details
+  - `inputsList` and `outputsList` are arrays of javascript object representations of the `cmaj::EndpointDetails` structures described in the C++ API docs. See [`EndpointDetails::toJSON()`](https://github.com/SoundStacks/cmajor/blob/main/include/cmajor/API/cmaj_Endpoints.h#L322) for the specific implementation details
 - `onSampleRateChanged (newSampleRate)`
   - This will be called following changes to the sample rate within the host, or following each recompile
 - `onParameterEndpointChanged (endpointID, newValue)`
