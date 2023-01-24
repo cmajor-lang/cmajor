@@ -249,6 +249,7 @@ struct Patch
     void sendCurrentParameterValueToViews (const EndpointID&);
     void sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView&);
     void sendMIDIInputUpdateToViews (choc::midi::ShortMessage);
+    void sendCPUInfoToViews (float level);
     void sendAudioOutLevelsUpdateToViews (const float* minValues, const float* maxValues, uint32_t numChannels);
     void sendStoredStateToViews (const std::string& key);
 
@@ -262,6 +263,7 @@ struct Patch
 
     void setExternalMIDIInputMonitoringActive (bool);
     void setAudioOutputMonitorChunkSize (uint32_t);
+    void setCPUInfoMonitorChunkSize (uint32_t);
 
 private:
     //==============================================================================
@@ -1240,10 +1242,12 @@ struct Patch::ClientEventQueue
         clientEventHandlerThread.stop();
     }
 
-    void restart (size_t numAudioOutChans)
+    void restart (size_t numAudioOutChans, double sampleRate)
     {
         audioOutMinMax.resize (numAudioOutChans * 2);
         audioOutFramesMeasured = 0;
+        cpuFrameCount = 0;
+        cpu.reset (sampleRate);
         clientEventQueue.reset (8192);
         dispatchClientEventsCallback = [this] { dispatchClientEvents(); };
         clientEventHandlerThread.start (0, [this] { choc::messageloop::postMessage ([=] { dispatchClientEventsCallback(); }); });
@@ -1265,9 +1269,41 @@ struct Patch::ClientEventQueue
         clientEventHandlerThread.trigger();
     }
 
-    void postAudioAndMIDIInputStatus (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+    void startOfProcessCallback()
+    {
+        if (cpuInfoFramesPerCallback != 0)
+            cpu.startProcess();
+    }
+
+    void postClientStatusUpdates (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
     {
         bool triggered = false;
+
+        if (cpuInfoFramesPerCallback != 0)
+        {
+            auto numFrames = block.audioOutput.getNumFrames();
+            cpu.endProcess (numFrames);
+            cpuFrameCount += numFrames;
+
+            if (cpuFrameCount > cpuInfoFramesPerCallback)
+            {
+                cpuFrameCount = 0;
+                auto newLevel = static_cast<float> (cpu.average);
+
+                if (lastCPUSent != newLevel)
+                {
+                    lastCPUSent = newLevel;
+                    triggered = true;
+
+                    clientEventQueue.push (1 + sizeof (float), [&] (void* dest)
+                    {
+                        auto d = static_cast<char*> (dest);
+                        d[0] = static_cast<char> (EventType::cpuLevel);
+                        choc::memory::writeNativeEndian (d + 1, newLevel);
+                    });
+                }
+            }
+        }
 
         if (midiInputActive && ! block.midiMessages.empty())
         {
@@ -1360,6 +1396,13 @@ struct Patch::ClientEventQueue
                     break;
                 }
 
+                case EventType::cpuLevel:
+                {
+                    auto value = choc::memory::readNativeEndian<float> (d + 1);
+                    patch.sendCPUInfoToViews (value);
+                    break;
+                }
+
                 default:
                     break;
             }
@@ -1370,7 +1413,8 @@ struct Patch::ClientEventQueue
     {
         paramChange,
         externalMIDIInputEvent,
-        audioOutputLevels
+        audioOutputLevels,
+        cpuLevel
     };
 
     Patch& patch;
@@ -1378,9 +1422,48 @@ struct Patch::ClientEventQueue
     choc::threading::TaskThread clientEventHandlerThread;
     choc::threading::ThreadSafeFunctor<std::function<void()>> dispatchClientEventsCallback;
     std::atomic<bool> midiInputActive { false };
-    std::atomic<uint32_t> audioOutFramesPerChunk { 0 };
+    std::atomic<uint32_t> audioOutFramesPerChunk { 0 }, cpuInfoFramesPerCallback { 0 };
     std::vector<float> audioOutMinMax;
-    uint32_t audioOutFramesMeasured = 0;
+    uint32_t audioOutFramesMeasured = 0, cpuFrameCount = 0;
+    float lastCPUSent = 0;
+
+    struct CPUMeasure
+    {
+        void reset (double sampleRate)
+        {
+            inverseRate = 1.0 / sampleRate;
+            average = 0;
+        }
+
+        void startProcess()
+        {
+            processStartTime = Clock::now();
+        }
+
+        void endProcess (uint32_t numFrames)
+        {
+            Seconds secondsInBlock = Clock::now() - processStartTime;
+            auto blockLengthSeconds = Seconds (numFrames * inverseRate);
+            auto proportionInBlock = secondsInBlock / blockLengthSeconds;
+
+            average += (proportionInBlock - average) * 0.1;
+
+            if (average < 0.001)
+                average = 0;
+        }
+
+        double average = 0;
+
+    private:
+        using Clock = std::chrono::high_resolution_clock;
+        using TimePoint = Clock::time_point;
+        using Seconds = std::chrono::duration<double>;
+
+        double inverseRate = 0;
+        TimePoint processStartTime;
+    };
+
+    CPUMeasure cpu;
 };
 
 
@@ -1641,8 +1724,9 @@ void Patch::process (float* const* audioChannels, uint32_t numFrames, HandleMIDI
 
 inline void Patch::process (const choc::audio::AudioMIDIBlockDispatcher::Block& block, bool replaceOutput)
 {
+    clientEventQueue->startOfProcessCallback();
     currentPatch->performer->process (block, replaceOutput);
-    clientEventQueue->postAudioAndMIDIInputStatus (block);
+    clientEventQueue->postClientStatusUpdates (block);
 }
 
 inline void Patch::sendTimeSig (int numerator, int denominator)
@@ -1742,6 +1826,13 @@ inline void Patch::sendAudioOutLevelsUpdateToViews (const float* minValues, cons
                                                    "maxLevels", choc::value::createArrayView (const_cast<float*> (maxValues), numChannels)));
 }
 
+inline void Patch::sendCPUInfoToViews (float level)
+{
+    sendMessageToViews (choc::value::createObject ({},
+                                                   "type", "cpu_info",
+                                                   "level", level));
+}
+
 inline void Patch::sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView& value)
 {
     if (! (value.isVoid() || endpointID.empty()))
@@ -1796,7 +1887,8 @@ inline void Patch::applyFinishedBuild (std::shared_ptr<LoadedPatch> newPatch)
 
     if (isPlayable())
     {
-        clientEventQueue->restart (currentPatch->numAudioOutputChans);
+        clientEventQueue->restart (currentPatch->numAudioOutputChans,
+                                   currentPatch->sampleRate);
         startPlayback();
     }
 
@@ -1857,6 +1949,11 @@ inline void Patch::setExternalMIDIInputMonitoringActive (bool shouldBeActive)
 inline void Patch::setAudioOutputMonitorChunkSize (uint32_t framesPerChunk)
 {
     clientEventQueue->audioOutFramesPerChunk = framesPerChunk;
+}
+
+inline void Patch::setCPUInfoMonitorChunkSize (uint32_t framesPerCallback)
+{
+    clientEventQueue->cpuInfoFramesPerCallback = framesPerCallback;
 }
 
 inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
@@ -1954,6 +2051,12 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
         if (type == "set_audio_out_level_chunk_size")
         {
             setAudioOutputMonitorChunkSize (static_cast<uint32_t> (msg["framesPerChunk"].getWithDefault<int64_t> (0)));
+            return true;
+        }
+
+        if (type == "set_cpu_info_rate")
+        {
+            setCPUInfoMonitorChunkSize (static_cast<uint32_t> (msg["framesPerCallback"].getWithDefault<int64_t> (0)));
             return true;
         }
 
