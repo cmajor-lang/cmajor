@@ -663,7 +663,6 @@ function testPatch (file, expectedError)
 
 */
 
-
 function runScript (options)
 {
     let testSection = getCurrentTestSection();
@@ -676,8 +675,8 @@ function runScript (options)
 
     let program = new Program();
 
-    var error;
     var patch;
+    var parseTime;
 
     if (options.patch != null)
     {
@@ -693,11 +692,11 @@ function runScript (options)
     }
     else
     {
-        error = program.parse (testSection.source + testSection.globalSource);
+        parseTime = program.parse (testSection.source + testSection.globalSource);
 
-        if (isError (error))
+        if (isError (parseTime))
         {
-            testSection.reportFail (error);
+            testSection.reportFail (parseTime);
             return;
         }
     }
@@ -705,11 +704,11 @@ function runScript (options)
     let engine = createEngine (options);
     updateBuildSettings (engine, options.sampleRate, options.blockSize, false, options);
 
-    error = engine.load (program);
+    var loadTime = engine.load (program);
 
-    if (isError (error))
+    if (isError (loadTime))
     {
-        testSection.reportFail (error);
+        testSection.reportFail (loadTime);
         return;
     }
 
@@ -826,14 +825,14 @@ function runScript (options)
             outputEndpoints[i].events = [];
     }
 
-    error = engine.link (program);
+    var linkTime = engine.link (program);
 
-    if (isError (error))
+    if (isError (linkTime))
     {
         if (error.message == "Language feature not yet implemented: cpp performer on windows!")
-            testSection.reportUnsupported (error);
+            testSection.reportUnsupported (linkTime);
         else
-            testSection.reportFail (error);
+            testSection.reportFail (linkTime);
 
         return;
     }
@@ -1042,6 +1041,18 @@ function runScript (options)
         }
 
     }
+
+    let totalTime = loadTime + linkTime;
+
+    if (parseTime)
+    {
+        totalTime += parseTime;
+        testSection.logMessage ("Parse time: " + Math.round (parseTime * 1000) + " ms");
+    }
+
+    testSection.logMessage ("Load time : " + Math.round (loadTime * 1000) + " ms");
+    testSection.logMessage ("Link time : " + Math.round (linkTime * 1000) + " ms");
+    testSection.logMessage ("Total     : " + Math.round (totalTime * 1000) + " ms");
 
     testSection.reportSuccess();
 }
