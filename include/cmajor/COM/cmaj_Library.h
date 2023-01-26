@@ -110,7 +110,7 @@ private:
 /// This is the name of the single entry point function to the DLL - when
 /// there's a breaking change to the API, this will be updated to prevent
 /// accidental use of older (or newer) library versions.
-static constexpr const char* entryPointFunction = "cmajor_getEntryPointsV3";
+static constexpr const char* entryPointFunction = "cmajor_getEntryPointsV4";
 
 inline std::unique_ptr<choc::file::DynamicLibrary>& Library::getLibrary()
 {

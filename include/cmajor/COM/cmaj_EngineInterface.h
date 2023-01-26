@@ -78,6 +78,10 @@ struct EngineInterface   : public choc::com::Object
     /// If the ID isn't found, this will return an invalid handle.
     virtual EndpointHandle getEndpointHandle (const char* endpointID) = 0;
 
+    /// If a program has been successfully loaded, this returns a JSON object with
+    /// some details about it.
+    virtual choc::com::String* getProgramDetails() = 0;
+
     //==============================================================================
     /// Returns a JSON array with details about all the external variables.
     /// This may be called after successfully loading a program, at which point all these

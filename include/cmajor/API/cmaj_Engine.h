@@ -110,6 +110,10 @@ struct Engine
     /// such variable or other problems, then you can expect this method to return false.
     bool setExternalVariable (const char* name, const choc::value::ValueView& value);
 
+    /// If a program has been successfully loaded, this returns a JSON object with
+    /// some details about it.
+    std::string getProgramDetails() const;
+
     //==============================================================================
     /// Attempts to link the currently-loaded program into a state that can be executed.
     /// After loading and before linking, the caller must:
@@ -279,6 +283,14 @@ inline bool Engine::setExternalVariable (const char* name, const choc::value::Va
     s.data.reserve (2048);
     value.serialise (s);
     return engine->setExternalVariable (name, s.data.data(), s.data.size());
+}
+
+inline std::string Engine::getProgramDetails() const
+{
+    if (engine != nullptr)
+        return choc::com::StringPtr (engine->getProgramDetails());
+
+    return {};
 }
 
 inline bool Engine::link (DiagnosticMessageList& messages, CacheDatabaseInterface* cache)

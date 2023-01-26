@@ -181,7 +181,7 @@ IMPORT_VIEW
 
 function PatchConnection()
 {
-    this.onPatchStatusChanged        = function (errorMessage, patchManifest, inputsList, outputsList) {};
+    this.onPatchStatusChanged        = function (errorMessage, patchManifest, inputsList, outputsList, details) {};
     this.onSampleRateChanged         = function (newSampleRate) {};
     this.onParameterEndpointChanged  = function (endpointID, newValue) {};
     this.onOutputEvent               = function (endpointID, newValue) {};
@@ -203,11 +203,15 @@ function PatchConnection()
 
     window.cmaj_handleMessageFromPatch = function (msg)
     {
-        if (msg.type == "output_event")         self.onOutputEvent (msg.ID, msg.value);
-        else if (msg.type == "param_value")     self.onParameterEndpointChanged (msg.ID, msg.value);
-        else if (msg.type == "status")          self.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs);
-        else if (msg.type == "sample_rate")     self.onSampleRateChanged (msg.rate);
-        else if (msg.type == "state_changed")   self.onStoredStateChanged (msg.key, msg.value);
+        switch (msg.type)
+        {
+            case "output_event":    self.onOutputEvent (msg.ID, msg.value); break;
+            case "param_value":     self.onParameterEndpointChanged (msg.ID, msg.value); break;
+            case "status":          self.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs, msg.details); break;
+            case "sample_rate":     self.onSampleRateChanged (msg.rate); break;
+            case "state_changed":   self.onStoredStateChanged (msg.key, msg.value); break;
+            default: break;
+        }
     };
 }
 

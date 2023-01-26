@@ -183,6 +183,8 @@ struct Patch
     bool wantsTimecodeEvents() const;
     uint32_t getFramesLatency() const;
 
+    choc::value::Value getProgramDetails() const;
+    std::string getMainProcessorName() const;
     EndpointDetailsList getInputEndpoints() const;
     EndpointDetailsList getOutputEndpoints() const;
 
@@ -628,6 +630,7 @@ struct Patch::LoadedPatch
     double sampleRate = 0, latencySamples = 0;
     cmaj::EndpointID timeSigEventID, tempoEventID, transportStateEventID, positionEventID;
     cmaj::EndpointDetailsList inputEndpoints, outputEndpoints;
+    choc::value::Value programDetails;
 
     //==============================================================================
     void sendTimeSig (int numerator, int denominator)
@@ -827,6 +830,17 @@ struct Patch::Build
 
             if (engine.load (result->errors, program))
             {
+                auto details = engine.getProgramDetails();
+
+                if (! details.empty())
+                {
+                    try
+                    {
+                        result->programDetails = choc::json::parse (details);
+                    }
+                    catch (...) {}
+                }
+
                 result->inputEndpoints = engine.getInputEndpoints();
                 result->outputEndpoints = engine.getOutputEndpoints();
                 return true;
@@ -1654,20 +1668,29 @@ inline std::string Patch::getName() const
             : "Cmajor Patch Loader";
 }
 
-inline const PatchManifest* Patch::getManifest() const    { return currentPatch != nullptr ? std::addressof (currentPatch->manifest) : nullptr; }
-inline bool Patch::isPlayable() const                     { return currentPatch != nullptr && currentPatch->performer != nullptr; }
-inline std::string Patch::getDescription() const          { return isLoaded() ? currentPatch->manifest.description : std::string(); }
-inline std::string Patch::getManufacturer() const         { return isLoaded() ? currentPatch->manifest.manufacturer : std::string(); }
-inline std::string Patch::getVersion() const              { return isLoaded() ? currentPatch->manifest.version : std::string(); }
-inline std::string Patch::getCategory() const             { return isLoaded() ? currentPatch->manifest.category : std::string(); }
-inline std::string Patch::getPatchFile() const            { return isLoaded() ? currentPatch->manifest.manifestFile : std::string(); }
-inline bool Patch::isInstrument() const                   { return isLoaded() && currentPatch->manifest.isInstrument; }
-inline bool Patch::hasMIDIInput() const                   { return isLoaded() && currentPatch->hasMIDIInputs; }
-inline bool Patch::hasMIDIOutput() const                  { return isLoaded() && currentPatch->hasMIDIOutputs; }
-inline bool Patch::hasAudioInput() const                  { return isLoaded() && currentPatch->numAudioInputChans != 0; }
-inline bool Patch::hasAudioOutput() const                 { return isLoaded() && currentPatch->numAudioOutputChans != 0; }
-inline bool Patch::wantsTimecodeEvents() const            { return currentPatch->hasTimecodeInputs; }
-inline uint32_t Patch::getFramesLatency() const           { return isLoaded() ? currentPatch->manifest.framesLatency : 0; }
+inline const PatchManifest* Patch::getManifest() const      { return currentPatch != nullptr ? std::addressof (currentPatch->manifest) : nullptr; }
+inline bool Patch::isPlayable() const                       { return currentPatch != nullptr && currentPatch->performer != nullptr; }
+inline std::string Patch::getDescription() const            { return isLoaded() ? currentPatch->manifest.description : std::string(); }
+inline std::string Patch::getManufacturer() const           { return isLoaded() ? currentPatch->manifest.manufacturer : std::string(); }
+inline std::string Patch::getVersion() const                { return isLoaded() ? currentPatch->manifest.version : std::string(); }
+inline std::string Patch::getCategory() const               { return isLoaded() ? currentPatch->manifest.category : std::string(); }
+inline std::string Patch::getPatchFile() const              { return isLoaded() ? currentPatch->manifest.manifestFile : std::string(); }
+inline bool Patch::isInstrument() const                     { return isLoaded() && currentPatch->manifest.isInstrument; }
+inline bool Patch::hasMIDIInput() const                     { return isLoaded() && currentPatch->hasMIDIInputs; }
+inline bool Patch::hasMIDIOutput() const                    { return isLoaded() && currentPatch->hasMIDIOutputs; }
+inline bool Patch::hasAudioInput() const                    { return isLoaded() && currentPatch->numAudioInputChans != 0; }
+inline bool Patch::hasAudioOutput() const                   { return isLoaded() && currentPatch->numAudioOutputChans != 0; }
+inline bool Patch::wantsTimecodeEvents() const              { return currentPatch->hasTimecodeInputs; }
+inline uint32_t Patch::getFramesLatency() const             { return isLoaded() ? currentPatch->manifest.framesLatency : 0; }
+inline choc::value::Value Patch::getProgramDetails() const  { return isLoaded() ? currentPatch->programDetails : choc::value::Value(); }
+
+inline std::string Patch::getMainProcessorName() const
+{
+    if (currentPatch && currentPatch->programDetails.isObject())
+        return currentPatch->programDetails["mainProcessor"].getWithDefault<std::string>({});
+
+    return {};
+}
 
 inline EndpointDetailsList Patch::getInputEndpoints() const
 {
@@ -1767,6 +1790,7 @@ inline void Patch::sendPatchStatusChangeToViews()
                                                        "type", "status",
                                                        "error", currentPatch->errors.toString(),
                                                        "manifest", currentPatch->manifest.manifest,
+                                                       "details", currentPatch->programDetails,
                                                        "inputs", currentPatch->inputEndpoints.toJSON(),
                                                        "outputs", currentPatch->outputEndpoints.toJSON()));
 
