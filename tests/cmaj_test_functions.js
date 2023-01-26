@@ -1042,17 +1042,20 @@ function runScript (options)
 
     }
 
-    let totalTime = loadTime + linkTime;
-
-    if (parseTime != undefined)
+    if (options.displayTimings)
     {
-        totalTime += parseTime;
-        testSection.logMessage ("Parse time: " + Math.round (parseTime * 1000) + " ms");
-    }
+        let totalTime = loadTime + linkTime;
 
-    testSection.logMessage ("Load time : " + Math.round (loadTime * 1000) + " ms");
-    testSection.logMessage ("Link time : " + Math.round (linkTime * 1000) + " ms");
-    testSection.logMessage ("Total     : " + Math.round (totalTime * 1000) + " ms");
+        if (parseTime != undefined)
+        {
+            totalTime += parseTime;
+            testSection.logMessage ("Parse time: " + Math.round (parseTime * 1000) + " ms");
+        }
+
+        testSection.logMessage ("Load time : " + Math.round (loadTime * 1000) + " ms");
+        testSection.logMessage ("Link time : " + Math.round (linkTime * 1000) + " ms");
+        testSection.logMessage ("Total     : " + Math.round (totalTime * 1000) + " ms");
+    }
 
     testSection.reportSuccess();
 }
