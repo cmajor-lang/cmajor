@@ -829,7 +829,7 @@ function runScript (options)
 
     if (isError (linkTime))
     {
-        if (error.message == "Language feature not yet implemented: cpp performer on windows!")
+        if (linkTime.message == "Language feature not yet implemented: cpp performer on windows!")
             testSection.reportUnsupported (linkTime);
         else
             testSection.reportFail (linkTime);
@@ -1044,7 +1044,7 @@ function runScript (options)
 
     let totalTime = loadTime + linkTime;
 
-    if (parseTime)
+    if (parseTime != undefined)
     {
         totalTime += parseTime;
         testSection.logMessage ("Parse time: " + Math.round (parseTime * 1000) + " ms");
