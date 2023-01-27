@@ -207,7 +207,7 @@ function PatchConnection()
         {
             case "output_event":    self.onOutputEvent (msg.ID, msg.value); break;
             case "param_value":     self.onParameterEndpointChanged (msg.ID, msg.value); break;
-            case "status":          self.onPatchStatusChanged (msg.error, msg.manifest, msg.inputs, msg.outputs, msg.details); break;
+            case "status":          self.onPatchStatusChanged (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;
             case "sample_rate":     self.onSampleRateChanged (msg.rate); break;
             case "state_changed":   self.onStoredStateChanged (msg.key, msg.value); break;
             default: break;
