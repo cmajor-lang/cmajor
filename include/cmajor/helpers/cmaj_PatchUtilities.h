@@ -135,6 +135,10 @@ struct Patch
     /// Checks whether a patch is currently loaded and ready to play.
     bool isPlayable() const;
 
+    /// When the patch is loaded and playing, this resets it to the
+    /// state is has when initially loaded.
+    void resetToInitialState();
+
     /// Represents some basic information about the context in which the patch
     /// will be getting rendered.
     struct PlaybackParams
@@ -634,6 +638,10 @@ struct Patch::LoadedPatch
     cmaj::EndpointDetailsList inputEndpoints, outputEndpoints;
     choc::value::Value programDetails;
 
+    cmaj::Performer newPerformerToSwitchTo;
+    std::atomic<bool> needToSwitchToNewPerformer { false };
+    std::mutex performerSwitchLock;
+
     //==============================================================================
     void sendTimeSig (int numerator, int denominator)
     {
@@ -722,6 +730,42 @@ struct Patch::LoadedPatch
         if (auto param = findParameter (endpointID))
             if (param->gestureEnd)
                 param->gestureEnd();
+    }
+
+    void resetToInitialState()
+    {
+        auto newPerformer = performer->engine.createPerformer();
+        CMAJ_ASSERT (newPerformer);
+
+        std::lock_guard<decltype(performerSwitchLock)> lock (performerSwitchLock);
+        newPerformerToSwitchTo = std::move (newPerformer);
+        needToSwitchToNewPerformer = true;
+    }
+
+    void initNewPerformer()
+    {
+        for (auto& param : parameterList)
+            param->resetToDefaultValue (true);
+
+        Performer defunctPerformer;
+
+        {
+            std::lock_guard<decltype(performerSwitchLock)> lock (performerSwitchLock);
+
+            if (! needToSwitchToNewPerformer)
+                defunctPerformer = std::move (newPerformerToSwitchTo);
+        }
+    }
+
+    bool swapPerformerIfNeeded()
+    {
+        if (! needToSwitchToNewPerformer)
+            return false;
+
+        std::lock_guard<decltype(performerSwitchLock)> lock (performerSwitchLock);
+        std::swap (performer->performer, newPerformerToSwitchTo);
+        needToSwitchToNewPerformer = false;
+        return true;
     }
 
     //==============================================================================
@@ -1275,6 +1319,17 @@ struct Patch::ClientEventQueue
         clientEventHandlerThread.trigger();
     }
 
+    void postResetParamSignal()
+    {
+        clientEventQueue.push (1, [=] (void* dest)
+        {
+            auto d = static_cast<char*> (dest);
+            d[0] = static_cast<char> (EventType::resetParamsToDefault);
+        });
+
+        clientEventHandlerThread.trigger();
+    }
+
     void startOfProcessCallback()
     {
         if (cpuInfoFramesPerCallback != 0)
@@ -1409,6 +1464,12 @@ struct Patch::ClientEventQueue
                     break;
                 }
 
+                case EventType::resetParamsToDefault:
+                    if (patch.currentPatch)
+                        patch.currentPatch->initNewPerformer();
+
+                    break;
+
                 default:
                     break;
             }
@@ -1420,7 +1481,8 @@ struct Patch::ClientEventQueue
         paramChange,
         externalMIDIInputEvent,
         audioOutputLevels,
-        cpuLevel
+        cpuLevel,
+        resetParamsToDefault
     };
 
     Patch& patch;
@@ -1631,6 +1693,12 @@ inline void Patch::rebuild()
     }
 }
 
+inline void Patch::resetToInitialState()
+{
+    if (currentPatch)
+        currentPatch->resetToInitialState();
+}
+
 inline Patch::PlaybackParams::PlaybackParams (double rate, uint32_t bs, choc::buffer::ChannelCount ins, choc::buffer::ChannelCount outs)
     : sampleRate (rate), blockSize (bs), numInputChannels (ins), numOutputChannels (outs)
 {}
@@ -1739,6 +1807,9 @@ inline void Patch::addMIDIMessage (int frameIndex, const void* data, uint32_t le
 template <typename HandleMIDIOutFn>
 void Patch::process (float* const* audioChannels, uint32_t numFrames, HandleMIDIOutFn&& handleMIDIOut)
 {
+    if (currentPatch->swapPerformerIfNeeded())
+        clientEventQueue->postResetParamSignal();
+
     currentPatch->process (choc::buffer::createChannelArrayView (audioChannels, currentPlaybackParams.numInputChannels, numFrames),
                            choc::buffer::createChannelArrayView (audioChannels, currentPlaybackParams.numOutputChannels, numFrames),
                            midiMessages.data(), midiMessageTimes.data(), static_cast<uint32_t> (midiMessages.size()), handleMIDIOut);
@@ -1750,6 +1821,10 @@ void Patch::process (float* const* audioChannels, uint32_t numFrames, HandleMIDI
 inline void Patch::process (const choc::audio::AudioMIDIBlockDispatcher::Block& block, bool replaceOutput)
 {
     clientEventQueue->startOfProcessCallback();
+
+    if (currentPatch->swapPerformerIfNeeded())
+        clientEventQueue->postResetParamSignal();
+
     currentPatch->performer->process (block, replaceOutput);
     clientEventQueue->postClientStatusUpdates (block);
 }
@@ -2040,6 +2115,12 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
             if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
                 sendCurrentParameterValueToViews (cmaj::EndpointID::create (endpointIDMember.getString()));
 
+            return true;
+        }
+
+        if (type == "req_reset")
+        {
+            resetToInitialState();
             return true;
         }
 

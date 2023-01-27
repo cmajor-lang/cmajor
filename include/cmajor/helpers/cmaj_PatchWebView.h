@@ -191,6 +191,7 @@ function PatchConnection()
     this.getResourceAddress           = function (path)                        { return path; }
 
     this.requestStatusUpdate        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_status" }); };
+    this.resetToInitialState        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_reset" }); }
     this.requestEndpointValue       = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID }); };
     this.requestStoredState         = function (key)                           { window.cmaj_sendMessageToPatch ({ type: "req_state", key: key }); }
     this.sendEventOrValue           = function (endpointID, value, numFrames)  { window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: numFrames }); };
