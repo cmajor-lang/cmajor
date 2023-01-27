@@ -87,8 +87,10 @@ struct GeneratedCppEngine  : public choc::com::ObjectWithAtomicRefCount<EngineIn
     }
 
     //==============================================================================
-    choc::com::String* getInputEndpoints() override    { return choc::com::createRawString (GeneratedCppClass::inputEndpointDetailsJSON); }
-    choc::com::String* getOutputEndpoints() override   { return choc::com::createRawString (GeneratedCppClass::outputEndpointDetailsJSON); }
+    choc::com::String* getProgramDetails() override
+    {
+        return choc::com::createRawString (GeneratedCppClass::programDetailsJSON);
+    }
 
     EndpointHandle getEndpointHandle (const char* endpointName) override
     {
@@ -98,7 +100,6 @@ struct GeneratedCppEngine  : public choc::com::ObjectWithAtomicRefCount<EngineIn
         return {};
     }
 
-    choc::com::String* getExternalVariables() override                   { return nullptr; }
     bool setExternalVariable (const char*, const void*, size_t) override { return false; }
 
     const char* getAvailableCodeGenTargetTypes() override   { return ""; }

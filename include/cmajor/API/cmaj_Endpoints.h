@@ -409,24 +409,17 @@ struct EndpointDetailsList
         return list;
     }
 
-    /// Serialises the list into a JSON string in the form of a COM object
-    choc::com::String* toJSONCOMString() const
-    {
-        return choc::com::createRawString (choc::json::toString (toJSON(), true));
-    }
-
     /// Creates a list from some JSON that was created by the toJSON() method,
     /// returning an empty list if the JSON was invalid.
-    static EndpointDetailsList fromJSON (std::string_view json, bool isInput)
+    static EndpointDetailsList fromJSON (const choc::value::ValueView& json, bool isInput)
     {
         try
         {
             EndpointDetailsList result;
-            auto list = choc::json::parse (json);
-            result.endpoints.reserve (list.size());
+            result.endpoints.reserve (json.size());
 
-            for (uint32_t i = 0; i < list.size(); ++i)
-                result.endpoints.push_back (EndpointDetails::fromJSON (list[i], isInput));
+            for (uint32_t i = 0; i < json.size(); ++i)
+                result.endpoints.push_back (EndpointDetails::fromJSON (json[i], isInput));
 
             return result;
         }

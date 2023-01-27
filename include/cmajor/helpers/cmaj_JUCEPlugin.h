@@ -421,8 +421,10 @@ private:
     {
         if constexpr (EngineType::isPrecompiled)
         {
-            return getBusesProperties (EndpointDetailsList::fromJSON (EngineType::PerformerClass::inputEndpointDetailsJSON, true),
-                                       EndpointDetailsList::fromJSON (EngineType::PerformerClass::outputEndpointDetailsJSON, false));
+            auto programDetailsJSON = choc::json::parse (EngineType::PerformerClass::programDetailsJSON);
+
+            return getBusesProperties (EndpointDetailsList::fromJSON (programDetailsJSON["inputs"], true),
+                                       EndpointDetailsList::fromJSON (programDetailsJSON["outputs"], false));
         }
         else
         {

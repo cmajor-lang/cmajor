@@ -63,32 +63,17 @@ struct EngineInterface   : public choc::com::Object
     virtual void unload() = 0;
 
     //==============================================================================
-    /// Returns a JSON list of the input endpoints that the loaded program provides.
-    /// This may be called after successfully loading a program. Best thing to do with
-    /// the string that's returned is to turn it into an EndpointDetailsList.
-    [[nodiscard]] virtual choc::com::String* getInputEndpoints() = 0;
-
-    /// Returns a JSON list of the output endpoints that the loaded program provides.
-    /// This may be called after successfully loading a program. Best thing to do with
-    /// the string that's returned is to turn it into an EndpointDetailsList.
-    [[nodiscard]] virtual choc::com::String* getOutputEndpoints() = 0;
+    /// If a program has been successfully loaded, this returns a JSON object with
+    /// information about its properties.
+    /// This may be called after successfully loading a program.
+    [[nodiscard]] virtual choc::com::String* getProgramDetails() = 0;
 
     /// Returns a handle which can be used to communicate with an input or output endpoint.
     /// This may be called after successfully loading a program, and before linking has happened.
     /// If the ID isn't found, this will return an invalid handle.
     virtual EndpointHandle getEndpointHandle (const char* endpointID) = 0;
 
-    /// If a program has been successfully loaded, this returns a JSON object with
-    /// some details about it.
-    virtual choc::com::String* getProgramDetails() = 0;
-
     //==============================================================================
-    /// Returns a JSON array with details about all the external variables.
-    /// This may be called after successfully loading a program, at which point all these
-    /// variables must be given a value with setExternalVariable() before the program can be linked.
-    /// The string returned is best used to create an ExternalVariableList object.
-    [[nodiscard]] virtual choc::com::String* getExternalVariables() = 0;
-
     /// Sets the value of an external variable.
     /// This may be called after successfully loading a program, and before linking.
     /// If the type of object provided doesn't fit, the engine may return true here but

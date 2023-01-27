@@ -230,9 +230,10 @@ struct Patch
 
     // These are optional callbacks that the client can supply to be called when
     // various events occur:
-    std::function<void()> stopPlayback       = []{},
-                          startPlayback      = []{},
-                          handlePatchChange  = []{};
+    std::function<void()> stopPlayback,
+                          startPlayback,
+                          handlePatchChange,
+                          patchFilesChanged;
 
     /// The client can set this callback to be given patch status updates, such as
     /// build failures, etc.
@@ -300,6 +301,7 @@ private:
     void applyFinishedBuild (std::shared_ptr<LoadedPatch>);
     void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
     void startCheckingForChanges();
+    void handleFileChange();
 
     //==============================================================================
     std::unique_ptr<BuildThread> buildThread;
@@ -830,17 +832,7 @@ struct Patch::Build
 
             if (engine.load (result->errors, program))
             {
-                auto details = engine.getProgramDetails();
-
-                if (! details.empty())
-                {
-                    try
-                    {
-                        result->programDetails = choc::json::parse (details);
-                    }
-                    catch (...) {}
-                }
-
+                result->programDetails = engine.getProgramDetails();
                 result->inputEndpoints = engine.getInputEndpoints();
                 result->outputEndpoints = engine.getOutputEndpoints();
                 return true;
@@ -1591,7 +1583,9 @@ inline void Patch::unload()
 
     if (currentPatch)
     {
-        stopPlayback();
+        if (stopPlayback)
+            stopPlayback();
+
         currentPatch.reset();
         sendPatchChange();
     }
@@ -1603,7 +1597,15 @@ inline void Patch::startCheckingForChanges()
 
     if (scanFilesForChanges && lastLoadParams.manifest.needsToBuildSource)
         if (lastLoadParams.manifest.getFileModificationTime != nullptr)
-            fileChangeChecker = std::make_unique<FileChangeChecker> (lastLoadParams.manifest, [this] { rebuild(); });
+            fileChangeChecker = std::make_unique<FileChangeChecker> (lastLoadParams.manifest, [this] { handleFileChange(); });
+}
+
+inline void Patch::handleFileChange()
+{
+    rebuild();
+
+    if (patchFilesChanged)
+        patchFilesChanged();
 }
 
 inline void Patch::rebuild()
@@ -1790,9 +1792,7 @@ inline void Patch::sendPatchStatusChangeToViews()
                                                        "type", "status",
                                                        "error", currentPatch->errors.toString(),
                                                        "manifest", currentPatch->manifest.manifest,
-                                                       "details", currentPatch->programDetails,
-                                                       "inputs", currentPatch->inputEndpoints.toJSON(),
-                                                       "outputs", currentPatch->outputEndpoints.toJSON()));
+                                                       "details", currentPatch->programDetails));
 
         sendSampleRateChangeToViews (currentPatch->sampleRate);
     }
@@ -1884,14 +1884,16 @@ inline void Patch::sendPatchChange()
         sendSampleRateChangeToViews (currentPlaybackParams.sampleRate);
     }
 
-    handlePatchChange();
+    if (handlePatchChange)
+        handlePatchChange();
 }
 
 inline void Patch::applyFinishedBuild (std::shared_ptr<LoadedPatch> newPatch)
 {
     CHOC_ASSERT (newPatch != nullptr);
 
-    stopPlayback();
+    if (stopPlayback)
+        stopPlayback();
 
     currentPatch.reset();
     sendPatchChange();
@@ -1913,7 +1915,9 @@ inline void Patch::applyFinishedBuild (std::shared_ptr<LoadedPatch> newPatch)
     {
         clientEventQueue->restart (currentPatch->numAudioOutputChans,
                                    currentPatch->sampleRate);
-        startPlayback();
+
+        if (startPlayback)
+            startPlayback();
     }
 
     if (! currentPatch->errors.empty())

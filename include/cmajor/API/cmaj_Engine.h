@@ -111,8 +111,9 @@ struct Engine
     bool setExternalVariable (const char* name, const choc::value::ValueView& value);
 
     /// If a program has been successfully loaded, this returns a JSON object with
-    /// some details about it.
-    std::string getProgramDetails() const;
+    /// information about its properties.
+    /// This may be called after successfully loading a program.
+    choc::value::Value getProgramDetails() const;
 
     //==============================================================================
     /// Attempts to link the currently-loaded program into a state that can be executed.
@@ -229,20 +230,22 @@ inline void Engine::unload()
 
 inline EndpointDetailsList Engine::getInputEndpoints() const
 {
-    // This method is only valid on a loaded engine
-    if (! isLoaded())
-        return {};
+    auto details = getProgramDetails();
 
-    return EndpointDetailsList::fromJSON (choc::com::StringPtr (engine->getInputEndpoints()), true);
+    if (details.isObject())
+        return EndpointDetailsList::fromJSON (details["inputs"], true);
+
+    return {};
 }
 
 inline EndpointDetailsList Engine::getOutputEndpoints() const
 {
-    // This method is only valid on a loaded engine
-    if (! isLoaded())
-        return {};
+    auto details = getProgramDetails();
 
-    return EndpointDetailsList::fromJSON (choc::com::StringPtr (engine->getOutputEndpoints()), false);
+    if (details.isObject())
+        return EndpointDetailsList::fromJSON (details["outputs"], false);
+
+    return {};
 }
 
 inline EndpointHandle Engine::getEndpointHandle (const char* endpointID) const
@@ -260,7 +263,12 @@ inline ExternalVariableList Engine::getExternalVariables() const
     if (! isLoaded() || isLinked())
         return {};
 
-    return ExternalVariableList::fromJSON (choc::json::parse (choc::com::StringPtr (engine->getExternalVariables())));
+    auto details = getProgramDetails();
+
+    if (details.isObject())
+        return ExternalVariableList::fromJSON (details["externals"]);
+
+    return {};
 }
 
 inline bool Engine::setExternalVariable (const char* name, const choc::value::ValueView& value)
@@ -285,10 +293,23 @@ inline bool Engine::setExternalVariable (const char* name, const choc::value::Va
     return engine->setExternalVariable (name, s.data.data(), s.data.size());
 }
 
-inline std::string Engine::getProgramDetails() const
+inline choc::value::Value Engine::getProgramDetails() const
 {
+    // This method is only valid on a loaded engine
+    if (! isLoaded())
+        return {};
+
     if (engine != nullptr)
-        return choc::com::StringPtr (engine->getProgramDetails());
+    {
+        if (auto details = engine->getProgramDetails())
+        {
+            try
+            {
+                return choc::json::parse (choc::com::StringPtr (details));
+            }
+            catch (...) {}
+        }
+    }
 
     return {};
 }

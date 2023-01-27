@@ -46,25 +46,28 @@ struct ExternalVariableList
 
     static ExternalVariableList fromJSON (const choc::value::ValueView& json)
     {
-        try
+        if (json.isArray())
         {
-            ExternalVariableList list;
-
-            for (uint32_t i = 0; i < json.size(); ++i)
+            try
             {
-                list.externals.push_back ({});
-                auto& e = list.externals.back();
+                ExternalVariableList list;
 
-                auto element = json[i];
-                e.name = element["name"].getString();
-                e.type = choc::value::Type::fromValue (element["type"]);
-                e.annotation = element["annotation"];
+                for (uint32_t i = 0; i < json.size(); ++i)
+                {
+                    list.externals.push_back ({});
+                    auto& e = list.externals.back();
+
+                    auto element = json[i];
+                    e.name = element["name"].getString();
+                    e.type = choc::value::Type::fromValue (element["type"]);
+                    e.annotation = element["annotation"];
+                }
+
+                return list;
             }
-
-            return list;
+            catch (const std::exception&)
+            {}
         }
-        catch (const std::exception&)
-        {}
 
         return {};
     }
