@@ -82,14 +82,18 @@ class CustomPatchView extends HTMLElement
     onParameterEndpointChanged (endpointID, value)
     {
         const currentInputs = this.state.inputs;
-        const index = currentInputs.findIndex (p => p.endpointID === endpointID);
 
-        if (index < 0)
-            return;
+        if (currentInputs)
+        {
+            const index = currentInputs.findIndex (p => p.endpointID === endpointID);
 
-        const currentParameter = currentInputs[index];
-        currentParameter.value = value;
-        this.notifyParameterChangedListeners (endpointID, currentParameter);
+            if (index < 0)
+                return;
+
+            const currentParameter = currentInputs[index];
+            currentParameter.value = value;
+            this.notifyParameterChangedListeners (endpointID, currentParameter);
+        }
     }
 
     onOutputEvent (endpointID, value)
@@ -659,9 +663,10 @@ select option {
     background-color: var(--foreground);
     width: 1.4em;
     height: 1.4em;
-    mask: url(./angle-down.svg);
+    mask: url(${this.patchConnection.getResourceAddress ("./web_ui/angle-down.svg")});
+
     mask-repeat: no-repeat;
-    -webkit-mask: url(./angle-down.svg);
+    -webkit-mask: url(${this.patchConnection.getResourceAddress ("./web_ui/angle-down.svg")});
     -webkit-mask-repeat: no-repeat;
 }
 
