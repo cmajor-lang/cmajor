@@ -1,0 +1,62 @@
+/**
+    A simple synth using sine oscillators, showing use of the voice allocator,
+    message converter and envelopes
+*/
+
+graph SineSynth  [[main]]
+{
+    input event std::midi::Message midiIn;
+    output stream float out;
+
+    let voiceCount = 8;
+
+    node
+    {
+        voices = Voice[voiceCount];
+        voiceAllocator = std::voices::VoiceAllocator (voiceCount);
+    }
+
+    connection
+    {
+        // Convert the midi message to a our std::notes messages and forward to the voice allocator
+        midiIn -> std::midi::MPEConverter -> voiceAllocator;
+
+        // Plumb the voice allocator to the voices array
+        voiceAllocator.voiceEventOut -> voices.eventIn;
+
+        // Sum the voices audio out to the output
+        voices -> out;
+    }
+}
+
+graph Voice
+{
+    input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
+    output stream float out;
+
+    node
+    {
+        noteToFrequency = NoteToFrequency;
+        envelope = std::envelopes::FixedASR (0.01f, 0.1f);
+        oscillator = std::oscillators::Sine (float32);
+    }
+
+    connection
+    {
+        eventIn -> noteToFrequency -> oscillator.frequencyIn;
+        eventIn -> envelope.eventIn;
+        (envelope.gainOut * oscillator.out) -> out;
+    }
+}
+
+// Determine the note frequency from the pitch (midi note)
+processor NoteToFrequency
+{
+    input event std::notes::NoteOn eventIn;
+    output event float32 frequencyOut;
+
+    event eventIn (std::notes::NoteOn e)
+    {
+        frequencyOut <- std::notes::noteToFrequency (e.pitch);
+    }
+}

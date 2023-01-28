@@ -1,0 +1,11 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.sinesynth",
+    "version":          "1.0",
+    "name":             "SineSynth",
+    "description":      "A simple synth using the SineOscillator",
+    "manufacturer":     "Sound Stacks Ltd",
+    "isInstrument":     true,
+
+    "source":           "SineSynth.cmajor"
+}
