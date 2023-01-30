@@ -4448,3 +4448,18 @@ processor Child
         advance();
     }
 }
+
+## expectError ("10:14: error: Expressions can only be connected to a stream or value endpoint")
+
+graph Foo [[main]]
+{
+    output stream float out;
+
+    node sine = std::oscillators::Sine (float32);
+
+    connection
+    {
+        1.0f -> sine.frequencyIn;
+        sine.out -> out;
+    }
+}
