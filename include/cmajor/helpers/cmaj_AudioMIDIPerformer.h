@@ -674,8 +674,17 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
         numFramesProcessed += numFrames;
         return true;
     }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Exception thrown in audio process callback: " << e.what() << std::endl;
+    }
+    catch (cmaj::AbortCompilationException)
+    {
+        std::cerr << "Assertion in audio process callback" << std::endl;
+    }
     catch (...)
     {
+        std::cerr << "Unknown exception thrown in audio process callback" << std::endl;
     }
 
     return false;
