@@ -163,7 +163,7 @@ inline std::string readAudioFileAsValue (choc::value::Value& result,
                 return "Resampling ratio is out-of-range";
 
             auto ratio = targetRate / rate;
-            auto newFrameCount = static_cast<uint64_t> (ratio * numFrames + 0.5);
+            auto newFrameCount = static_cast<uint64_t> (ratio * static_cast<double> (numFrames) + 0.5);
 
             if (newFrameCount > maxNumFrames)
                 return "File too long";
