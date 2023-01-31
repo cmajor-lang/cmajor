@@ -185,7 +185,8 @@ function PatchConnection()
     this.onSampleRateChanged         = function (newSampleRate) {};
     this.onParameterEndpointChanged  = function (endpointID, newValue) {};
     this.onOutputEvent               = function (endpointID, newValue) {};
-    this.onStoredStateChanged        = function (key, value) {};
+    this.onStoredStateValueChanged   = function (key, value) {};
+    this.onFullStateValue            = function (state) {};
 
     this.getGenericGUIResourceAddress = function (path)                        { return path; }
     this.getResourceAddress           = function (path)                        { return path; }
@@ -193,12 +194,13 @@ function PatchConnection()
     this.requestStatusUpdate        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_status" }); };
     this.resetToInitialState        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_reset" }); }
     this.requestEndpointValue       = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID }); };
-    this.requestStoredState         = function (key)                           { window.cmaj_sendMessageToPatch ({ type: "req_state", key: key }); }
+    this.requestStoredStateValue    = function (key)                           { window.cmaj_sendMessageToPatch ({ type: "req_state_value", key: key }); }
     this.sendEventOrValue           = function (endpointID, value, numFrames)  { window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: numFrames }); };
     this.sendParameterGestureStart  = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID }); };
     this.sendParameterGestureEnd    = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID }); };
     this.sendMIDIInputEvent         = function (shortMIDICode)                 { window.cmaj_sendMessageToPatch ({ type: "midi_input", midiEvent: shortMIDICode }); };
-    this.sendStoredState            = function (key, newValue)                 { window.cmaj_sendMessageToPatch ({ type: "send_state", key : key, value: newValue }); };
+    this.sendStoredStateValue       = function (key, newValue)                 { window.cmaj_sendMessageToPatch ({ type: "send_state_value", key : key, value: newValue }); };
+    this.sendFullStoredState        = function (fullState)                     { window.cmaj_sendMessageToPatch ({ type: "send_full_state", value: fullState }); }
 
     const self = this;
 
@@ -206,11 +208,12 @@ function PatchConnection()
     {
         switch (msg.type)
         {
-            case "output_event":    self.onOutputEvent (msg.ID, msg.value); break;
-            case "param_value":     self.onParameterEndpointChanged (msg.ID, msg.value); break;
-            case "status":          self.onPatchStatusChanged (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;
-            case "sample_rate":     self.onSampleRateChanged (msg.rate); break;
-            case "state_changed":   self.onStoredStateChanged (msg.key, msg.value); break;
+            case "output_event":    self.onOutputEvent?. (msg.ID, msg.value); break;
+            case "param_value":     self.onParameterEndpointChanged?. (msg.ID, msg.value); break;
+            case "status":          self.onPatchStatusChanged?. (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;
+            case "sample_rate":     self.onSampleRateChanged?. (msg.rate); break;
+            case "state_key_value": self.onStoredStateValueChanged?. (msg.key, msg.value); break;
+            case "full_state":      this.onFullStateValue?. (msg.value); break;
             default: break;
         }
     };

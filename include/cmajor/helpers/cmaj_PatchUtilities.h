@@ -224,6 +224,13 @@ struct Patch
     /// Iterates any persistent state values that have been stored
     const std::unordered_map<std::string, std::string>& getStoredStateValues() const;
 
+    /// Returns an object containing the full state representing this patch,
+    /// which includes both parameter values and custom stored values
+    choc::value::Value getFullStoredState() const;
+
+    /// Applies a state which was previously returned by getFullStoredState()
+    bool setFullStoredState (const choc::value::ValueView& newState);
+
     //==============================================================================
     /// This must be supplied by the client using this class before trying to load a patch.
     std::function<cmaj::Engine()> createEngine;
@@ -258,7 +265,8 @@ struct Patch
     void sendMIDIInputUpdateToViews (choc::midi::ShortMessage);
     void sendCPUInfoToViews (float level);
     void sendAudioOutLevelsUpdateToViews (const float* minValues, const float* maxValues, uint32_t numChannels);
-    void sendStoredStateToViews (const std::string& key);
+    void sendStoredStateValueToViews (const std::string& key);
+    void sendFullStoredStateToViews();
 
     // These can be called by things like the GUI to control the patch
     bool handleCientMessage (const choc::value::ValueView&);
@@ -1892,8 +1900,72 @@ inline void Patch::setStoredStateValue (const std::string& key, std::string newV
     if (v != newValue)
     {
         v = std::move (newValue);
-        sendStoredStateToViews (key);
+        sendStoredStateValueToViews (key);
     }
+}
+
+inline choc::value::Value Patch::getFullStoredState() const
+{
+    auto values = choc::value::createObject ({});
+
+    for (auto& value : storedState)
+        values.addMember (value.first, value.second);
+
+    std::vector<PatchParameter*> paramsToSave;
+    paramsToSave.reserve (256);
+
+    for (auto& param : getParameterList())
+        if (param->currentValue != param->defaultValue)
+            paramsToSave.push_back (param.get());
+
+    auto parameters = choc::value::createArray (static_cast<uint32_t> (paramsToSave.size()),
+                                                [&] (uint32_t i)
+    {
+        return choc::value::createObject ({},
+                                          "name", paramsToSave[i]->name,
+                                          "value", paramsToSave[i]->currentValue);
+    });
+
+    return choc::value::createObject ({},
+                                      "parameters", parameters,
+                                      "values", values);
+}
+
+inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
+{
+    if (! newState.isObject())
+        return false;
+
+    if (auto params = newState["parameters"]; params.isArray())
+    {
+        for (auto paramValue : params)
+        {
+            if (! paramValue.isObject())
+                return false;
+
+            if (auto name = paramValue["name"].getWithDefault<std::string>({}); ! name.empty())
+            {
+                auto value = paramValue["value"];
+
+                if (value.isFloat() || value.isInt())
+                    if (auto param = findParameter (cmaj::EndpointID::create (name)))
+                        param->setValue (value.getWithDefault<float> (0), true);
+            }
+        }
+    }
+
+    storedState.clear();
+
+    if (auto values = newState["values"]; values.isObject())
+    {
+        for (uint32_t i = 0; i < values.size(); ++i)
+        {
+            auto member = values.getObjectMemberAt (i);
+            setStoredStateValue (member.name, member.value.getWithDefault<std::string>({}));
+        }
+    }
+
+    return true;
 }
 
 inline void Patch::sendRealtimeParameterChangeToViews (const std::string& endpointID, float value)
@@ -1941,14 +2013,21 @@ inline void Patch::sendOutputEventToViews (std::string_view endpointID, const ch
                                                        "value", value));
 }
 
-inline void Patch::sendStoredStateToViews (const std::string& key)
+inline void Patch::sendStoredStateValueToViews (const std::string& key)
 {
     if (! key.empty())
         if (auto found = storedState.find (key); found != storedState.end())
             sendMessageToViews (choc::value::createObject ({},
-                                                           "type", "state_changed",
+                                                           "type", "state_key_value",
                                                            "key", key,
                                                            "value", found->second));
+}
+
+inline void Patch::sendFullStoredStateToViews()
+{
+    sendMessageToViews (choc::value::createObject ({},
+                            "type", "full_state",
+                            "value", getFullStoredState()));
 }
 
 inline void Patch::sendPatchChange()
@@ -2124,15 +2203,32 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
             return true;
         }
 
-        if (type == "req_state")
+        if (type == "req_state_value")
         {
             if (auto key = msg["key"]; key.isString())
-                sendStoredStateToViews (key.toString());
+                sendStoredStateValueToViews (key.toString());
 
             return true;
         }
 
-        if (type == "send_state")
+        if (type == "req_full_state")
+        {
+            if (auto value = msg["value"]; ! value.isVoid())
+                sendFullStoredStateToViews();
+
+            return true;
+        }
+
+        if (type == "send_state_value")
+        {
+            if (auto key = msg["key"]; key.isString())
+                if (auto value = msg["value"]; value.isString() || value.isVoid())
+                    setStoredStateValue (key.toString(), value.get<std::string>());
+
+            return true;
+        }
+
+        if (type == "send_full_state")
         {
             if (auto key = msg["key"]; key.isString())
                 if (auto value = msg["value"]; value.isString() || value.isVoid())
