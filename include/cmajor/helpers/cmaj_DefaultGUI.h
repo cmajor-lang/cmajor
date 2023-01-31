@@ -34,9 +34,6 @@ struct DefaultGUI
 {
     static std::string_view findResource (std::string_view path)
     {
-        if (path.empty())
-            return findResource ("index.js");
-
         for (auto& file : files)
             if (path == file.name)
                 return file.content;

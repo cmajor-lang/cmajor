@@ -79,7 +79,7 @@ struct PatchWebView::Impl
 
     MimeTypeMappingFn toMimeTypeCustomImpl;
     choc::ui::WebView webview { { true, [this] (const auto& path) { return onRequest (path); } } };
-    std::filesystem::path jsModuleFilename;
+    std::filesystem::path customViewModulePath;
 
     void initialiseFromFirstHTMLView();
     void createBindings();
@@ -116,7 +116,7 @@ inline void PatchWebView::Impl::initialiseFromFirstHTMLView()
 
                 if (sourceFile.extension() == ".js")
                 {
-                    jsModuleFilename = sourceFile;
+                    customViewModulePath = sourceFile;
                     width  = view.width;
                     height = view.height;
                     resizable = view.resizable;
@@ -177,7 +177,7 @@ static constexpr auto cmajor_patch_gui_html = R"(
 
 <script type="module">
 
-IMPORT_VIEW
+import createPatchView from IMPORT_VIEW;
 
 function PatchConnection()
 {
@@ -188,7 +188,7 @@ function PatchConnection()
     this.onStoredStateValueChanged   = function (key, value) {};
     this.onFullStateValue            = function (state) {};
 
-    this.getGenericGUIResourceAddress = function (path)                        { return path; }
+    this.getGenericGUIResourceAddress = function (path)                        { return "./GENERIC_GUI_FOLDER" + path; }
     this.getResourceAddress           = function (path)                        { return path; }
 
     this.requestStatusUpdate        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_status" }); };
@@ -255,31 +255,32 @@ inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const
     };
 
     auto relativePath = std::filesystem::path (path).relative_path();
-    bool usingDefaultView = jsModuleFilename.empty();
+    bool wantsRootHTMLPage = relativePath.empty();
+    bool isGenericGUI = customViewModulePath.empty();
 
-    if (relativePath.empty())
+    auto genericGUIFolder = std::string ("generic_gui/");
+
+    if (wantsRootHTMLPage)
     {
-        auto viewLocation = usingDefaultView ? "/index.js"
-                                             : "/" + jsModuleFilename.filename().string();
+        auto viewModule = "/" + (isGenericGUI ? genericGUIFolder + "index.js"
+                                              : customViewModulePath.relative_path().generic_string());
 
         return toResource (choc::text::replace (cmajor_patch_gui_html,
-                                                "IMPORT_VIEW",
-                                                "import createPatchView from "
-                                                   + choc::json::getEscapedQuotedString (viewLocation) + ";"),
+                                                "GENERIC_GUI_FOLDER", genericGUIFolder,
+                                                "IMPORT_VIEW", choc::json::getEscapedQuotedString (viewModule)),
                            toMimeType (".html"));
     }
 
-    if (usingDefaultView)
-    {
-        if (auto content = DefaultGUI::findResource (relativePath.string()); ! content.empty())
-            return toResource (content, toMimeType (relativePath.extension().string()));
-    }
-    else
-    {
-        if (auto manifest = patch.getManifest())
-            if (auto content = manifest->readFileContent ((jsModuleFilename.parent_path() / relativePath).generic_string()); ! content.empty())
-                return toResource (content, toMimeType (relativePath.extension().string()));
-    }
+    auto pathToFind = relativePath.generic_string();
+    auto mimeType = toMimeType (relativePath.extension().string());
+
+    if (auto manifest = patch.getManifest())
+        if (auto content = manifest->readFileContent (pathToFind); ! content.empty())
+            return toResource (content, mimeType);
+
+    if (choc::text::startsWith (pathToFind, genericGUIFolder))
+        if (auto content = DefaultGUI::findResource (pathToFind.substr (genericGUIFolder.length())); ! content.empty())
+            return toResource (content, mimeType);
 
     return {};
 }
