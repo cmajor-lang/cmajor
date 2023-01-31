@@ -211,7 +211,10 @@ inline bool AudioMIDIPerformer::Builder::connectAudioInputTo (const std::vector<
 
     if (auto numChannelsInEndpoint = getNumFloatChannelsInStream (endpoint))
     {
-        result->audioInputScratchBuffer.buffer.resize ({ 1, maxFramesPerBlock });
+        auto& buffer = result->audioInputScratchBuffer.buffer;
+
+        buffer.resize ({ std::max (buffer.getNumChannels(), numChannelsInEndpoint),
+                         std::max (buffer.getNumFrames(), maxFramesPerBlock) });
 
         auto endpointHandle = result->engine.getEndpointHandle (endpoint.endpointID);
 
