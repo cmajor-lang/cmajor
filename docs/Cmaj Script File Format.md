@@ -200,7 +200,8 @@ class Patch
     generateCode (buildSettings, targetType, generatorOptions)
 }
 
-// This object takes care of opening a session to run a patch, and
+/// This helper class opens a patch and runs a timer to monitor any changes to
+/// the source files, re-loading a new session if anything changes.
 class PatchRunner
 {
     constructor (patch, shouldOpenGUI, serverAddress)
