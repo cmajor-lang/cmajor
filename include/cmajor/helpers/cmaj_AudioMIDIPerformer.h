@@ -24,6 +24,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <iostream>
 
 #include "../../choc/memory/choc_Endianness.h"
 #include "../../choc/containers/choc_VariableSizeFIFO.h"
@@ -680,10 +681,6 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
     catch (const std::exception& e)
     {
         std::cerr << "Exception thrown in audio process callback: " << e.what() << std::endl;
-    }
-    catch (cmaj::AbortCompilationException)
-    {
-        std::cerr << "Assertion in audio process callback" << std::endl;
     }
     catch (...)
     {
