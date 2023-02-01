@@ -1560,6 +1560,7 @@ inline Patch::Patch (bool buildSynchronously, bool keepCheckingFilesForChanges)
 inline Patch::~Patch()
 {
     unload();
+    clientEventQueue.reset();
 }
 
 inline bool Patch::preload (const PatchManifest& m)
