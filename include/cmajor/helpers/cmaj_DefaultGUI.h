@@ -135,21 +135,25 @@ R"(
     onParameterEndpointChanged (endpointID, value)
     {
         const currentInputs = this.state.inputs;
-        const index = currentInputs.findIndex (p => p.endpointID === endpointID);
 
-        if (index < 0)
-            return;
+        if (currentInputs)
+        {
+            const index = currentInputs.findIndex (p => p.endpointID === endpointID);
 
-        const currentParameter = currentInputs[index];
-        currentParameter.value = value;
-        this.notifyParameterChangedListeners (endpointID, currentParameter);
+            if (index >= 0)
+            {
+                const currentParameter = currentInputs[index];
+                currentParameter.value = value;)"
+R"(
+                this.notifyParameterChangedListeners (endpointID, currentParameter);
+            }
+        }
     }
 
     onOutputEvent (endpointID, value)
     {
     }
-)"
-R"(
+
     onSampleRateChanged()
     {
     }
@@ -218,12 +222,12 @@ R"(
         this.titleElement.innerText = this.state.title;
 
         this.state.inputs.forEach (({ type, value, name, ...other }, index) =>
-        {
+        {)"
+R"(
             const control = this.makeControl (backend, { type, value, name, index, ...other });
 
             if (control)
-            {)"
-R"(
+            {
                 const mapValue = control.mapValue ?? (v => v);
                 const wrapped = this.makeLabelledControl (control.control, {
                     initialValue: mapValue (other.defaultValue),
@@ -268,12 +272,12 @@ R"(
             case "options":
             {
                 const toDisplayValue = index => other.options[index].text;
-
+)"
+R"(
                 const toIndex = (value, options) =>
                 {
                     const binarySearch = (arr, toValue, target) =>
-                    {)"
-R"(
+                    {
                         let low = 0;
                         let high = arr.length - 1;
 
@@ -329,12 +333,12 @@ R"(
         const type = isBipolar ? 2 : 1;
 
         const maxKnobRotation = 132;
-        const typeDashLengths = { 1: 184, 2: 251.5 };
+        const typeDashLengths = { 1: 184, 2: 251.5 };)"
+R"(
         const typeValueOffsets = { 1: 132, 2: 0 };
         const typePaths =
         {
-            1: "M20,76 A 40 40 0 1 1 80 76",)"
-R"(
+            1: "M20,76 A 40 40 0 1 1 80 76",
             2: "M50.01,10 A 40 40 0 1 1 50 10"
         };
 
@@ -377,15 +381,15 @@ R"(
             return targetFrom + (source - sourceFrom) * (targetTo - targetFrom) / (sourceTo - sourceFrom);
         };
 
-        const toValue = (knobRotation) => remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);
+        const toValue = (knobRotation) => remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);)"
+R"(
         const toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);
 
         const state =
         {
             rotation: toRotation (initialValue),
         };
-)"
-R"(
+
         const update = (degrees, force) =>
         {
             if (! force && state.rotation === degrees) return;
@@ -435,14 +439,14 @@ R"(
 
         const onMouseDown = (event) =>
         {
-            previousScreenY = event.screenY;
+            previousScreenY = event.screenY;)"
+R"(
             accumlatedRotation = state.rotation;
             onBeginEdit();
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
         };
-)"
-R"(
+
         container.addEventListener ("mousedown", onMouseDown);
         container.addEventListener ("mouseup", onMouseUp);
         container.addEventListener ("dblclick", () => onReset());
@@ -508,7 +512,8 @@ R"(
         options.forEach ((option, index) =>
         {
             const optionElement = document.createElement ("option");
-            optionElement.innerText = toDisplayValue (index);
+            optionElement.innerText = toDisplayValue (index);)"
+R"(
             select.appendChild (optionElement);
         });
 
@@ -517,8 +522,7 @@ R"(
             selectedIndex: initialSelectedIndex,
         };
 
-        select.addEventListener ("change", (e) =>)"
-R"(
+        select.addEventListener ("change", (e) =>
         {
             const incomingIndex = e.target.selectedIndex;
 
@@ -575,14 +579,14 @@ R"(
         nameText.classList.add ("labelled-control-name");
         nameText.innerText = name;
 
-        const valueText = document.createElement ("div");
+        const valueText = document.createElement ("div");)"
+R"(
         valueText.classList.add ("labelled-control-value");
         valueText.innerText = toDisplayValue (initialValue);
 
         titleValueHoverContainer.appendChild (nameText);
         titleValueHoverContainer.appendChild (valueText);
-)"
-R"(
+
         container.appendChild (centeredControl);
         container.appendChild (titleValueHoverContainer);
 
@@ -660,11 +664,11 @@ R"(
 .logo {
     flex: 1;
     height: 100%;
-    background-color: var(--foreground);
+    background-color: var(--foreground);)"
+R"(
     mask: url(${this.patchConnection.getGenericGUIResourceAddress ("./assets/sound-stacks-logo.svg")});
     mask-repeat: no-repeat;
-    -webkit-mask: url(${this.patchConnection.getGenericGUIResourceAddress ("./assets/sound-stacks-logo.svg")});)"
-R"(
+    -webkit-mask: url(${this.patchConnection.getGenericGUIResourceAddress ("./assets/sound-stacks-logo.svg")});
     -webkit-mask-repeat: no-repeat;
     min-width: 100px;
 }
@@ -757,7 +761,8 @@ select option {
 
 .knob-dial {
     position: absolute;
-    text-align: center;
+    text-align: center;)"
+R"(
     height: 50px;
     width: 50px;
     top: 50%;
@@ -765,8 +770,7 @@ select option {
     border: 2px solid var(--knob-dial-border-color);
     border-radius: 100%;
     box-sizing: border-box;
-    transform: translate(-50%,-50%);)"
-R"(
+    transform: translate(-50%,-50%);
     background-color: var(--knob-dial-background-color);
 }
 
@@ -858,7 +862,8 @@ R"(
 
     cursor: default;
 }
-
+)"
+R"(
 .labelled-control-name {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -870,8 +875,7 @@ R"(
     left: 0;
     right: 0;
 
-    overflow: hidden;)"
-R"(
+    overflow: hidden;
     text-overflow: ellipsis;
 
     opacity: 0;
@@ -898,8 +902,8 @@ R"(
     }
 }
 
-if (! window.customElements.get ("default-patch-view"))
-    window.customElements.define ("default-patch-view", PatchView);
+if (! window.customElements.get ("cmaj-generic-patch-view"))
+    window.customElements.define ("cmaj-generic-patch-view", PatchView);
 )";
     static constexpr const char assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1i8q131njo_woff2[] = {
         119, 79, 70, 50, 0, 1, 0, 0, 0, 0, 35, (char)-32, 0, 14, 0, 0, 0, 0, 82, 36, 0, 0, 35, (char)-122, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 58, 27, 30, 28, (char)-124,
@@ -2187,7 +2191,7 @@ with others.
 
 The OFL allows the licensed fonts to be used, studied, modified and
 redistributed freely as long as they are not sold by themselves. The
-fonts, including any derivative works, can be bundled, embedded,
+fonts, including any derivative works, can be bundled, embedded, 
 redistributed and/or sold with any software provided that any reserved
 names are not used by derivative works. The fonts and derivatives,
 however, cannot be released under any other type of license. The
@@ -2210,8 +2214,7 @@ or substituting -- in part or in whole -- any of the components of the
 Original Version, by changing formats or by porting the Font Software to a
 new environment.
 
-"Author" refers to any designer, engineer, programmer, technical
-)"
+"Author" refers to any designer, engineer, programmer, technical)"
 R"(
 writer or other person who contributed to the Font Software.
 
@@ -2254,8 +2257,7 @@ not met.
 
 DISCLAIMER
 THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
-)"
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF)"
 R"(
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
 OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
