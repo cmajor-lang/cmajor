@@ -353,7 +353,7 @@ function testFunction (options)
 
     ## testCompile()
 */
-function testCompile (testLink)
+function testCompile (testLink, options)
 {
     if (testLink == null)
         testLink = true;
@@ -365,8 +365,8 @@ function testCompile (testLink)
 
     if (! isError (error))
     {
-        let engine = createEngine();
-        updateBuildSettings (engine, 44100, 1024, true);
+        let engine = createEngine (options);
+        updateBuildSettings (engine, 44100, 1024, true, options);
         error = engine.load (program);
 
         if (testLink && ! isError (error))
