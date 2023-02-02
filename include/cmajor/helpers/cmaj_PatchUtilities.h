@@ -1591,11 +1591,11 @@ inline bool Patch::loadPatch (const LoadParams& params)
 
     CHOC_ASSERT (createEngine);
     auto build = std::make_unique<Build> (createEngine(), params, currentPlaybackParams, cache);
+    setStatusMessage ("Loading: " + params.manifest.manifestFile, false);
 
     if (buildThread != nullptr)
     {
         buildThread->startBuild (std::move (build));
-        setStatusMessage ("Loading: " + params.manifest.manifestFile, false);
     }
     else
     {
@@ -1659,6 +1659,7 @@ inline void Patch::unload()
 
         currentPatch.reset();
         sendPatchChange();
+        setStatusMessage ({}, false);
     }
 }
 
