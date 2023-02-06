@@ -243,8 +243,7 @@ struct Patch
     // various events occur:
     std::function<void()> stopPlayback,
                           startPlayback,
-                          handlePatchChange,
-                          patchFilesChanged;
+                          handlePatchChange;
 
     /// The client can set this callback to be given patch status updates, such as
     /// build failures, etc.
@@ -280,6 +279,15 @@ struct Patch
     void setAudioOutputMonitorChunkSize (uint32_t);
     void setCPUInfoMonitorChunkSize (uint32_t);
 
+    struct FileChangeType
+    {
+        bool cmajorFilesChanged = false,
+             assetFilesChanged = false,
+             manifestChanged = false;
+    };
+
+    std::function<void(FileChangeType)> patchFilesChanged;
+
 private:
     //==============================================================================
     struct LoadedPatch;
@@ -313,7 +321,7 @@ private:
     void applyFinishedBuild (std::shared_ptr<LoadedPatch>);
     void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
     void startCheckingForChanges();
-    void handleFileChange();
+    void handleFileChange (FileChangeType);
 
     //==============================================================================
     std::unique_ptr<BuildThread> buildThread;
@@ -548,13 +556,17 @@ inline void PatchManifest::addView (const choc::value::ValueView& view)
 //==============================================================================
 struct Patch::FileChangeChecker
 {
-    FileChangeChecker (const PatchManifest& m, std::function<void()>&& onChange)
-        : manifest (m), currentState (manifest), callback (std::move (onChange))
+    FileChangeChecker (const PatchManifest& m, std::function<void(FileChangeType)>&& onChange)
+        : manifest (m), callback (std::move (onChange))
     {
+        checkAndReset();
+
         fileChangeCheckThread.start (1500, [this]
         {
-            if (checkAndReset())
-                choc::messageloop::postMessage ([cb = callback] { cb(); });
+            auto change = checkAndReset();
+
+            if (change.cmajorFilesChanged || change.assetFilesChanged || change.manifestChanged)
+                choc::messageloop::postMessage ([cb = callback, change] { cb (change); });
         });
     }
 
@@ -564,33 +576,31 @@ struct Patch::FileChangeChecker
         callback.reset();
     }
 
-    bool checkAndReset()
+    FileChangeType checkAndReset()
     {
-        auto newState = SourceFilesWithTimes (manifest);
+        SourceFilesWithTimes newManifests, newSources, newAssets;
 
-        if (newState != currentState)
-        {
-            currentState = std::move (newState);
-            return true;
-        }
+        newManifests.add (manifest, manifest.manifestFile);
 
-        return false;
+        for (auto& f : manifest.sourceFiles)
+            newSources.add (manifest, f);
+
+        for (auto& v : manifest.views)
+            newAssets.add (manifest, v.source);
+
+        FileChangeType changes;
+
+        if (manifestFiles != newManifests) { changes.manifestChanged    = true;  manifestFiles = std::move (newManifests); }
+        if (cmajorFiles != newSources)     { changes.cmajorFilesChanged = true;  cmajorFiles = std::move (newSources); }
+        if (assetFiles != newAssets)       { changes.assetFilesChanged  = true;  assetFiles = std::move (newAssets); }
+
+        return changes;
     }
 
 private:
     struct SourceFilesWithTimes
     {
-        SourceFilesWithTimes (const PatchManifest& m)
-        {
-            add (m, m.manifestFile);
-
-            for (auto& f : m.sourceFiles)
-                add (m, f);
-
-            for (auto& v : m.views)
-                add (m, v.source);
-        }
-
+        SourceFilesWithTimes() = default;
         SourceFilesWithTimes (SourceFilesWithTimes&&) = default;
         SourceFilesWithTimes& operator= (SourceFilesWithTimes&&) = default;
 
@@ -615,8 +625,8 @@ private:
     };
 
     const PatchManifest& manifest;
-    SourceFilesWithTimes currentState;
-    choc::threading::ThreadSafeFunctor<std::function<void()>> callback;
+    SourceFilesWithTimes manifestFiles, cmajorFiles, assetFiles;
+    choc::threading::ThreadSafeFunctor<std::function<void(FileChangeType)>> callback;
     choc::threading::TaskThread fileChangeCheckThread;
 };
 
@@ -1669,15 +1679,15 @@ inline void Patch::startCheckingForChanges()
 
     if (scanFilesForChanges && lastLoadParams.manifest.needsToBuildSource)
         if (lastLoadParams.manifest.getFileModificationTime != nullptr)
-            fileChangeChecker = std::make_unique<FileChangeChecker> (lastLoadParams.manifest, [this] { handleFileChange(); });
+            fileChangeChecker = std::make_unique<FileChangeChecker> (lastLoadParams.manifest, [this] (FileChangeType c) { handleFileChange (c); });
 }
 
-inline void Patch::handleFileChange()
+inline void Patch::handleFileChange (FileChangeType change)
 {
     rebuild();
 
     if (patchFilesChanged)
-        patchFilesChanged();
+        patchFilesChanged (change);
 }
 
 inline void Patch::rebuild()
