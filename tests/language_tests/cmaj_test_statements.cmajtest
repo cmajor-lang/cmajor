@@ -1,0 +1,27 @@
+
+## testFunction()
+
+bool test1()
+{
+    if (false)
+        {}
+
+    return true;
+}
+
+bool test2()
+{
+    if (false)
+        {}
+    else
+        {}
+
+    return true;
+}
+
+bool test3()
+{
+    {}
+
+    return true;
+}
