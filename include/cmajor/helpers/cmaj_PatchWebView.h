@@ -78,7 +78,14 @@ struct PatchWebView::Impl
     bool resizable = true;
 
     MimeTypeMappingFn toMimeTypeCustomImpl;
-    choc::ui::WebView webview { { true, [this] (const auto& path) { return onRequest (path); } } };
+
+   #if defined (DEBUG) || defined (_DEBUG) || ! (defined (NDEBUG) || defined (_NDEBUG))
+    static constexpr bool allowWebviewDevMode = true;
+   #else
+    static constexpr bool allowWebviewDevMode = false;
+   #endif
+
+    choc::ui::WebView webview { { allowWebviewDevMode, [this] (const auto& path) { return onRequest (path); } } };
     std::filesystem::path customViewModulePath;
 
     void initialiseFromFirstHTMLView();
