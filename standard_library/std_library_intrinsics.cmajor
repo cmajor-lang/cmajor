@@ -100,7 +100,7 @@ namespace intrinsics
     /// Returns the square root of its argument.
     T sqrt<T> (T n)                 { static_assert (T.isScalar && T.primitiveType.isFloat, "sqrt() requires floating point arguments");  if const (T.isVector) return internal::vec_sqrt (n); else return T(); }
     /// Raises a value to the given power.
-    T pow<T> (T a, T b)             { static_assert (T.isScalar && T.primitiveType.isFloat, "pow() requires floating point arguments");   if const (T.isVector) return internal::vec_pow (n); else return T(); }
+    T pow<T> (T a, T b)             { static_assert (T.isScalar && T.primitiveType.isFloat, "pow() requires floating point arguments");   if const (T.isVector) return internal::vec_pow (a, b); else return T(); }
     /// Returns the exponent of a scalar floating-point argument.
     T exp<T> (T n)                  { static_assert (T.isScalar && T.primitiveType.isFloat, "exp() requires floating point arguments");   if const (T.isVector) return internal::vec_exp (n); else return T(); }
     /// Returns the exponent of a complex number.
@@ -396,7 +396,6 @@ namespace intrinsics
 
         T vec_abs<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = abs   (n[i]);  return r; }
         T vec_sqrt<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = sqrt  (n[i]);  return r; }
-        T vec_pow<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = pow   (n[i]);  return r; }
         T vec_exp<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = exp   (n[i]);  return r; }
         T vec_log<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = log   (n[i]);  return r; }
         T vec_log10<T> (T n)  { T r;  for (wrap<T.size> i) r[i] = log10 (n[i]);  return r; }
@@ -404,6 +403,8 @@ namespace intrinsics
         T vec_cos<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = cos   (n[i]);  return r; }
         T vec_tan<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = tan   (n[i]);  return r; }
         T vec_atan<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = atan  (n[i]);  return r; }
+
+        T vec_pow<T>   (T v1, T v2)  { T r;  for (wrap<T.size> i) r[i] = pow   (v1[i], v2[i]);  return r; }
     }
 
 } // namespace intrinsics

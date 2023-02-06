@@ -771,6 +771,17 @@ bool test_sum_and_product()
         && test_sum_and_product (int64[18]());
 }
 
+bool test_pow()
+{
+    let p = pow (2.0f, 3.0f);
+    let p2 = pow (float<3> (1.0f, 2.0f, 3.0f), float<3> (1.0f, 3.0f, 5.0f));
+
+    return near (p, 8.0f) &&
+           near (p2[0], 1.0f) &&
+           near (p2[1], 8.0f) &&
+           near (p2[2], 243.0f);
+}
+
 ## expectError ("2:20: error: product() requires an array or vector of scalar values")
 
 void f() { let a = product (123); }
