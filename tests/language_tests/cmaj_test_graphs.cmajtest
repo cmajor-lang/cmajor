@@ -4463,3 +4463,27 @@ graph Foo [[main]]
         sine.out -> out;
     }
 }
+
+## testCompile()
+
+graph Test  [[main]]
+{
+    input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
+    output stream float<2> out;
+
+    node engine = Engine;
+
+    connection
+    {
+        eventIn -> engine.eventIn;
+        engine.out -> out;
+    }
+}
+
+processor Engine
+{
+    input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
+    output stream float<2> out;
+
+    void main() { advance(); }
+}
