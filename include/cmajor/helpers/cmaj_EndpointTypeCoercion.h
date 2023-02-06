@@ -163,18 +163,10 @@ struct EndpointTypeCoercionHelperList
         {
             if (e->endpointType == requiredType)
             {
-                auto numTypes = static_cast<uint32_t> (e->scratchSpaces.size());
+                if (doesObjectHaveTypeAsProperty (source))
+                    return e->coerceValueToMatchingType (convertTypePropertyToObjectType (source));
 
-                if (numTypes == 1)
-                    return { e->scratchSpaces.front().getCoercedValue (source), 0 };
-
-                for (uint32_t i = 0; i < numTypes; ++i)
-                    if (e->scratchSpaces[i].type == source.getType())
-                        return { e->scratchSpaces[i].getCoercedValue (source), i };
-
-                for (uint32_t i = 0; i < numTypes; ++i)
-                    if (auto coerced = e->scratchSpaces[i].getCoercedValue (source))
-                        return { coerced, i };
+                return e->coerceValueToMatchingType (source);
             }
         }
 
@@ -429,6 +421,24 @@ private:
         {
             for (auto& s : scratchSpaces)
                 s.scratchView.setRawData (data);
+        }
+
+        CoercedDataWithIndex coerceValueToMatchingType (const choc::value::ValueView& source)
+        {
+            auto numTypes = static_cast<uint32_t> (scratchSpaces.size());
+
+            if (numTypes == 1)
+                return { scratchSpaces.front().getCoercedValue (source), 0 };
+
+            for (uint32_t i = 0; i < numTypes; ++i)
+                if (scratchSpaces[i].type == source.getType())
+                    return { scratchSpaces[i].getCoercedValue (source), i };
+
+            for (uint32_t i = 0; i < numTypes; ++i)
+                if (auto coerced = scratchSpaces[i].getCoercedValue (source))
+                    return { coerced, i };
+
+            return {};
         }
 
         EndpointID endpointID;

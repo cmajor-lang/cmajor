@@ -439,6 +439,40 @@ struct EndpointDetailsList
 };
 
 //==============================================================================
+inline choc::value::Value addTypeToValueAsProperty (const choc::value::ValueView& v)
+{
+    choc::value::Value value (v);
+
+    if (v.isObject() && ! v.getType().getObjectClassName().empty())
+        value.setMember ("_type", v.getType().getObjectClassName());
+
+    return value;
+}
+
+inline bool doesObjectHaveTypeAsProperty (const choc::value::ValueView& source)
+{
+    return source.isObject()
+            && source.getObjectClassName().empty()
+            && source["_type"].isString();
+}
+
+inline choc::value::Value convertTypePropertyToObjectType (const choc::value::ValueView& source)
+{
+    auto v = choc::value::createObject (source["_type"].toString());
+    auto numMembers = source.getType().getNumElements();
+
+    for (uint32_t i = 0; i < numMembers; ++i)
+    {
+        const auto& m = source.getType().getObjectMember (i);
+
+        if (m.name != "_type")
+            v.addMember (m.name, source[m.name]);
+    }
+
+    return v;
+}
+
+//==============================================================================
 inline std::string convertConsoleMessageToString (const choc::value::ValueView& v)
 {
     if (v.isString())   return std::string (v.getString());

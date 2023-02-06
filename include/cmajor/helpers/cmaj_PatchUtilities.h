@@ -948,7 +948,7 @@ struct Patch::Build
             {
                 choc::messageloop::postMessage ([handler = p->handleOutputEvent,
                                                 frame, endpointID = std::string (endpointID),
-                                                value = choc::value::Value (value)]
+                                                value = addTypeToValueAsProperty (value)]
                                                 {
                                                     handler (frame, endpointID, value);
                                                 });
