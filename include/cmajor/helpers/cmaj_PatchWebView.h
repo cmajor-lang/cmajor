@@ -24,7 +24,7 @@
 #include "../../choc/gui/choc_WebView.h"
 
 #include "cmaj_PatchUtilities.h"
-#include "cmaj_DefaultGUI.h"
+#include "cmaj_EmbeddedWebAssets.h"
 
 #include <memory>
 
@@ -195,8 +195,7 @@ function PatchConnection()
     this.onStoredStateValueChanged   = function (key, value) {};
     this.onFullStateValue            = function (state) {};
 
-    this.getGenericGUIResourceAddress = function (path)                        { return "./GENERIC_GUI_FOLDER" + path; }
-    this.getResourceAddress           = function (path)                        { return path; }
+    this.getResourceAddress         = function (path)                          { return path; }
 
     this.requestStatusUpdate        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_status" }); };
     this.resetToInitialState        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_reset" }); }
@@ -265,15 +264,12 @@ inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const
     bool wantsRootHTMLPage = relativePath.empty();
     bool isGenericGUI = customViewModulePath.empty();
 
-    auto genericGUIFolder = std::string ("generic_gui/");
-
     if (wantsRootHTMLPage)
     {
-        auto viewModule = "/" + (isGenericGUI ? genericGUIFolder + "index.js"
+        auto viewModule = "/" + (isGenericGUI ? "cmaj_api/generic_patch_view.js"
                                               : customViewModulePath.relative_path().generic_string());
 
         return toResource (choc::text::replace (cmajor_patch_gui_html,
-                                                "GENERIC_GUI_FOLDER", genericGUIFolder,
                                                 "IMPORT_VIEW", choc::json::getEscapedQuotedString (viewModule)),
                            toMimeType (".html"));
     }
@@ -285,8 +281,8 @@ inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const
         if (auto content = manifest->readFileContent (pathToFind); ! content.empty())
             return toResource (content, mimeType);
 
-    if (choc::text::startsWith (pathToFind, genericGUIFolder))
-        if (auto content = DefaultGUI::findResource (pathToFind.substr (genericGUIFolder.length())); ! content.empty())
+    if (choc::text::startsWith (pathToFind, "cmaj_api/"))
+        if (auto content = EmbeddedWebAssets::findResource (pathToFind.substr (std::string_view ("cmaj_api/").length())); ! content.empty())
             return toResource (content, mimeType);
 
     return {};

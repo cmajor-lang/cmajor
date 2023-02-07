@@ -663,10 +663,9 @@ select option {
     background-color: var(--foreground);
     width: 1.4em;
     height: 1.4em;
-    mask: url(${this.patchConnection.getResourceAddress ("./web_ui/angle-down.svg")});
-
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17,9.17a1,1,0,0,0-1.41,0L12,12.71,8.46,9.17a1,1,0,0,0-1.41,0,1,1,0,0,0,0,1.42l4.24,4.24a1,1,0,0,0,1.42,0L17,10.59A1,1,0,0,0,17,9.17Z'/%3E%3C/svg%3E");
     mask-repeat: no-repeat;
-    -webkit-mask: url(${this.patchConnection.getResourceAddress ("./web_ui/angle-down.svg")});
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17,9.17a1,1,0,0,0-1.41,0L12,12.71,8.46,9.17a1,1,0,0,0-1.41,0,1,1,0,0,0,0,1.42l4.24,4.24a1,1,0,0,0,1.42,0L17,10.59A1,1,0,0,0,17,9.17Z'/%3E%3C/svg%3E");
     -webkit-mask-repeat: no-repeat;
 }
 
