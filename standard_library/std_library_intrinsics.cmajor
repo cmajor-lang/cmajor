@@ -253,6 +253,7 @@ namespace intrinsics
 
     //==============================================================================
     /// Takes a bool vector, and returns true if any of its elements are true.
+    bool anyTrue (bool b) { return b; }
     bool anyTrue<BoolVector> (BoolVector boolVector)
     {
         static_assert (BoolVector.isVector && BoolVector.elementType.isBool, "anyTrue() expects a bool vector for its argument");
@@ -265,6 +266,7 @@ namespace intrinsics
     }
 
     /// Takes a bool vector, and returns true if all of its elements are true.
+    bool allTrue (bool b) { return b; }
     bool allTrue<BoolVector> (BoolVector boolVector)
     {
         static_assert (BoolVector.isVector && BoolVector.elementType.isBool, "allTrue() expects a bool vector for its argument");
@@ -288,7 +290,7 @@ namespace intrinsics
                 return false;
             else
                 for (wrap<array1.size> i)
-                    if (array1[i] != array2[i])
+                    if (anyTrue (array1[i] != array2[i]))
                         return false;
         }
         else
@@ -297,7 +299,7 @@ namespace intrinsics
                 return false;
 
             for (int i = 0; i < array1.size; ++i)
-                if (array1.at(i) != array2.at(i))
+                if (anyTrue (array1.at(i) != array2.at(i)))
                     return false;
         }
 
