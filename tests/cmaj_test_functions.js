@@ -369,6 +369,18 @@ function testCompile (testLink, options)
         updateBuildSettings (engine, 44100, 1024, true, options);
         error = engine.load (program);
 
+        if (! isError (error))
+        {
+            let inputs = engine.getInputEndpoints();
+            let outputs = engine.getOutputEndpoints();
+
+            for (let i = 0; i < inputs.length; i++)
+                engine.getEndpointHandle (inputs[i].endpointID);
+
+            for (let i = 0; i < outputs.length; ++i)
+                engine.getEndpointHandle (outputs[i].endpointID);
+        }
+
         if (testLink && ! isError (error))
             error = engine.link();
 
