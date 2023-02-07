@@ -226,6 +226,106 @@ R"(
     return controllerNumber.toString();
 }
 )";
+    static constexpr const char* cmaj_image_strip_control_js =
+        R"(//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+
+export default class ImageStripControl extends HTMLElement
+{
+    constructor()
+    {
+        super();
+
+        this.currentValue = 0;
+        this.rangeMin = this.getAttribute ("min-value");
+        this.rangeMax = this.getAttribute ("max-value");
+        this.label    = this.getAttribute ("label");
+
+        this.addEventListener('mousedown', this.startDrag);
+        this.addEventListener ("dblclick", this.onReset);
+    }
+
+    setImage ({ imageURL, numImagesPerStrip, imageHeightPixels, sensitivity })
+    {
+        this.imageURL = imageURL;
+        this.numImagesPerStrip = numImagesPerStrip;
+        this.imageHeightPixels = imageHeightPixels;
+        this.sensitivity = sensitivity;
+
+        this.innerHTML = `<img draggable="false" class="strip" style="display:block; position: absolute;" src="${imageURL}"></img>`;
+        this.imageStrip = this.children[0];
+        this.updateKnobImage();
+    }
+
+    /// This updates the knob with a new value
+    setCurrentValue (newValue)
+    {
+        this.currentValue = newValue;
+        this.updateKnobImage();
+    }
+
+    /// These are called when the user drags the knob - override them to handle it
+    onStartDrag() {}
+    onEndDrag() {}
+    onValueDragged (newValue)   {}
+    onReset() {}
+
+    updateKnobImage()
+    {
+        const proportion = (this.currentValue - this.rangeMin) / (this.rangeMax - this.rangeMin);)"
+R"(
+        const imageIndex = Math.max (0, Math.min (this.numImagesPerStrip - 1, Math.floor (this.numImagesPerStrip * proportion)));
+        this.imageStrip.style.top = `${imageIndex * -this.imageHeightPixels}px`;
+    }
+
+    startDrag (event)
+    {
+        this.dragStartValue = this.currentValue;
+        this.dragStartY = event.screenY;
+        this.dragging = true;
+
+        this.onStartDrag();
+
+        const dragTo = (event) =>
+        {
+            const deltaY = event.screenY - this.dragStartY;
+            const deltaProportion = deltaY / -this.sensitivity;
+            const newValue = this.dragStartValue + deltaProportion * (this.rangeMax - this.rangeMin);
+            const clippedValue = Math.min (this.rangeMax, Math.max (this.rangeMin, newValue));
+            this.onValueDragged (clippedValue);
+            event.preventDefault();
+        }
+
+        const endDrag = (event) =>
+        {
+            this.dragging = false;
+            this.onEndDrag();
+            window.removeEventListener('mousemove', dragTo);
+            window.removeEventListener('mouseup', endDrag);
+            event.preventDefault();
+        }
+
+        window.addEventListener('mousemove', dragTo);
+        window.addEventListener('mouseup', endDrag);
+
+        event.preventDefault();
+    }
+
+    static get observedAttributes()
+    {
+        return ["min-value", "max-value", "label"];
+    }
+}
+)";
     static constexpr const char* cmaj_level_meter_js =
         R"(//  //
 //  //     ,ad888ba,                                88
@@ -1252,17 +1352,21 @@ import * as midi from "./cmaj_midi_helpers.js"
 
 export default class PianoKeyboard extends HTMLElement
 {
-    constructor()
+    constructor ({ naturalNoteWidth,
+                   accidentalWidth,
+                   accidentalPercentageHeight,
+                   naturalNoteBorder,
+                   accidentalNoteBorder,
+                   pressedNoteColour } = {})
     {
         super();
 
-        this.naturalWidth = 20;
-        this.accidentalWidth = 12;
-        this.accidentalPercentageHeight = 66;
-
-        this.naturalBorder = "2px solid #333";
-        this.accidentalBorder = "2px solid #333";
-        this.pressedColour = "#8ad";
+        this.naturalWidth = naturalNoteWidth || 20;
+        this.accidentalWidth = accidentalWidth || 12;
+        this.accidentalPercentageHeight = accidentalPercentageHeight || 66;
+        this.naturalBorder = naturalNoteBorder || "2px solid #333";
+        this.accidentalBorder = accidentalNoteBorder || "2px solid #333";
+        this.pressedColour = pressedNoteColour || "#8ad";
 
         this.root = this.attachShadow({ mode: "open" });
 
@@ -1272,7 +1376,8 @@ export default class PianoKeyboard extends HTMLElement
         this.root.addEventListener('mouseenter', (event) => this.handleMouse (event, false, false) );
         this.root.addEventListener('mouseout',   (event) => this.handleMouse (event, false, false) );
 
-        this.addEventListener('keydown',  (event) => this.handleKey (event, true));
+        this.addEventListener('keydown',  (event) => this.handleKey (event, true));)"
+R"(
         this.addEventListener('keyup',    (event) => this.handleKey (event, false));
         this.addEventListener('focusout', (event) => this.allNotesOff());
 
@@ -1282,10 +1387,6 @@ export default class PianoKeyboard extends HTMLElement
         this.currentPlayedNotes = new Set();
         this.currentDisplayedNotes = new Set();
         this.notes = [];
-)"
-R"(
-        this.getNoteColour = (note) => undefined;
-        this.createNoteLabel = (note) => midi.getChromaticScaleIndex (note) == 0 ? midi.getNoteNameWithOctaveNumber (note) : "";
 
         this.refreshHTML();
     }
@@ -1304,28 +1405,8 @@ R"(
         };
     }
 
-    setNoteSizes (naturalWidth, accidentalWidth, accidentalPercentageHeight)
-    {
-        this.naturalWidth = naturalWidth;
-        this.accidentalWidth = accidentalWidth;
-        this.accidentalPercentageHeight = accidentalPercentageHeight;
-        this.refreshHTML();
-    }
-
-    setKeyLabelFunction (newFunction)
-    {
-        this.createNoteLabel = newFunction;
-        this.refreshHTML();
-    }
-
-    setNoteColours (naturalBorder, accidentalBorder, pressedColour, noteColorFn)
-    {
-        this.naturalBorder = naturalBorder;
-        this.accidentalBorder = accidentalBorder;
-        this.pressedColour = pressedColour;
-        this.getNoteColour = noteColorFn;
-        this.refreshHTML();
-    }
+    getNoteColour (note)    { return undefined; }
+    getNoteLabel (note)     { return midi.getChromaticScaleIndex (note) == 0 ? midi.getNoteNameWithOctaveNumber (note) : ""; }
 
     refreshHTML()
     {
@@ -1350,8 +1431,7 @@ R"(
             let newActiveNote = -1;
 
             if (event.buttons != 0 && event.type != "mouseout")
-            {)"
-R"(
+            {
                 const note = event.target.id.substring (4);
 
                 if (note !== undefined)
@@ -1363,7 +1443,8 @@ R"(
             if (! isDown)
                 event.preventDefault();
         }
-
+)"
+R"(
         if (isUp)
             this.isDragging = false;
     }
@@ -1430,8 +1511,7 @@ R"(
     addKeyboardNote (note)
     {
         if (! this.currentKeyboardNotes.has (note))
-        {)"
-R"(
+        {
             this.sendNoteOn (note);
             this.currentKeyboardNotes.add (note);
             this.refreshActiveNoteElements();
@@ -1442,7 +1522,8 @@ R"(
     {
         if (this.currentKeyboardNotes.has (note))
         {
-            this.sendNoteOff (note);
+            this.sendNoteOff (note);)"
+R"(
             this.currentKeyboardNotes.delete (note);
             this.refreshActiveNoteElements();
         }
@@ -1482,7 +1563,7 @@ R"(
         for (let i = 0; i < config.numNotes; ++i)
         {
             const note = config.rootNote + i;
-            const name = this.createNoteLabel (note);
+            const name = this.getNoteLabel (note);
 
             if (midi.isNatural (note))
                 naturals += `<div class="natural-note note" id="note${note}" style=" left: ${x + 1}px"><p>${name}</p></div>`;
@@ -1494,8 +1575,7 @@ R"(
         }
 
         this.style.maxWidth = (x + 1) + "px";
-)"
-R"(
+
         return `<div class="note-holder" style="width: ${x + 1}px;">
                 ${naturals}
                 ${accidentals}
@@ -1508,7 +1588,8 @@ R"(
         const config = this.config;
 
         for (let i = 0; i < config.numNotes; ++i)
-        {
+        {)"
+R"(
             const note = config.rootNote + i;
             const colourOverride = this.getNoteColour (note);
 
@@ -1574,8 +1655,7 @@ R"(
             `
     }
 }
-)"
-R"(
+
 customElements.define ("cmaj-piano-keyboard", PianoKeyboard);
 )";
     static constexpr const char* assets_cmajorlogo_svg =
@@ -2689,9 +2769,10 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj_midi_helpers.js", std::string_view (cmaj_midi_helpers_js, 12552) },
+        File { "cmaj_image_strip_control.js", std::string_view (cmaj_image_strip_control_js, 3303) },
         File { "cmaj_level_meter.js", std::string_view (cmaj_level_meter_js, 4226) },
         File { "generic_patch_view.js", std::string_view (generic_patch_view_js, 25765) },
-        File { "cmaj_piano_keyboard.js", std::string_view (cmaj_piano_keyboard_js, 10148) },
+        File { "cmaj_piano_keyboard.js", std::string_view (cmaj_piano_keyboard_js, 9800) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2981) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6659) },
         File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iAq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iAq131njotFQ_woff2, 3504) },
