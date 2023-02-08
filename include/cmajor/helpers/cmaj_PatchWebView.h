@@ -266,7 +266,7 @@ inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const
 
     if (wantsRootHTMLPage)
     {
-        auto viewModule = "/" + (isGenericGUI ? "cmaj_api/generic_patch_view.js"
+        auto viewModule = "/" + (isGenericGUI ? "cmaj_api/cmaj-generic-patch-view.js"
                                               : customViewModulePath.relative_path().generic_string());
 
         return toResource (choc::text::replace (cmajor_patch_gui_html,
