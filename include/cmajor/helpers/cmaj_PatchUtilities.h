@@ -1881,10 +1881,10 @@ inline void Patch::sendPatchStatusChangeToViews()
     if (currentPatch)
     {
         sendMessageToViews (choc::value::createObject ({},
-                                                       "type", "status",
-                                                       "error", currentPatch->errors.toString(),
-                                                       "manifest", currentPatch->manifest.manifest,
-                                                       "details", currentPatch->programDetails));
+                                "type", "status",
+                                "error", currentPatch->errors.toString(),
+                                "manifest", currentPatch->manifest.manifest,
+                                "details", currentPatch->programDetails));
 
         sendSampleRateChangeToViews (currentPatch->sampleRate);
     }
@@ -1893,8 +1893,8 @@ inline void Patch::sendPatchStatusChangeToViews()
 inline void Patch::sendSampleRateChangeToViews (double newRate)
 {
     sendMessageToViews (choc::value::createObject ({},
-                                                   "type", "sample_rate",
-                                                   "rate", newRate));
+                            "type", "sample_rate",
+                            "rate", newRate));
 }
 
 inline const std::unordered_map<std::string, std::string>& Patch::getStoredStateValues() const
@@ -1908,7 +1908,11 @@ inline void Patch::setStoredStateValue (const std::string& key, std::string newV
 
     if (v != newValue)
     {
-        v = std::move (newValue);
+        if (newValue.empty())
+            storedState.erase (key);
+        else
+            v = std::move (newValue);
+
         sendStoredStateValueToViews (key);
     }
 }
@@ -1931,13 +1935,13 @@ inline choc::value::Value Patch::getFullStoredState() const
                                                 [&] (uint32_t i)
     {
         return choc::value::createObject ({},
-                                          "name", paramsToSave[i]->name,
-                                          "value", paramsToSave[i]->currentValue);
+                    "name", paramsToSave[i]->endpointID.toString(),
+                    "value", paramsToSave[i]->currentValue);
     });
 
     return choc::value::createObject ({},
-                                      "parameters", parameters,
-                                      "values", values);
+              "parameters", parameters,
+              "values", values);
 }
 
 inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
@@ -1945,25 +1949,36 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
     if (! newState.isObject())
         return false;
 
-    if (auto params = newState["parameters"]; params.isArray())
+    if (auto params = newState["parameters"]; params.isArray() && params.size() != 0)
     {
+        std::unordered_map<std::string, float> explicitParamValues;
+
         for (auto paramValue : params)
+            if (paramValue.isObject())
+                if (auto name = paramValue["name"].getWithDefault<std::string>({}); ! name.empty())
+                    if (auto value = paramValue["value"]; value.isFloat() || value.isInt())
+                        explicitParamValues[name] = value.getWithDefault<float> (0);
+
+        for (auto& param : getParameterList())
         {
-            if (! paramValue.isObject())
-                return false;
+            auto newValue = explicitParamValues.find (param->endpointID.toString());
 
-            if (auto name = paramValue["name"].getWithDefault<std::string>({}); ! name.empty())
-            {
-                auto value = paramValue["value"];
-
-                if (value.isFloat() || value.isInt())
-                    if (auto param = findParameter (cmaj::EndpointID::create (name)))
-                        param->setValue (value.getWithDefault<float> (0), true);
-            }
+            if (newValue != explicitParamValues.end())
+                param->setValue (newValue->second, true);
+            else
+                param->resetToDefaultValue (true);
         }
     }
+    else
+    {
+        for (auto& param : getParameterList())
+            param->resetToDefaultValue (true);
+    }
 
-    storedState.clear();
+    std::unordered_set<std::string> storedValuesToRemove;
+
+    for (auto& state : storedState)
+        storedValuesToRemove.insert (state.first);
 
     if (auto values = newState["values"]; values.isObject())
     {
@@ -1971,8 +1986,12 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
         {
             auto member = values.getObjectMemberAt (i);
             setStoredStateValue (member.name, member.value.getWithDefault<std::string>({}));
+            storedValuesToRemove.erase (member.name);
         }
     }
+
+    for (auto& key : storedValuesToRemove)
+        setStoredStateValue (key, {});
 
     return true;
 }
@@ -1986,40 +2005,40 @@ inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, flo
 {
     if (endpointID)
         sendMessageToViews (choc::value::createObject ({},
-                                                       "type", "param_value",
-                                                       "ID", endpointID.toString(),
-                                                       "value", value));
+                                "type", "param_value",
+                                "ID", endpointID.toString(),
+                                "value", value));
 }
 
 inline void Patch::sendMIDIInputUpdateToViews (choc::midi::ShortMessage m)
 {
     sendMessageToViews (choc::value::createObject ({},
-                                                   "type", "external_midi_in",
-                                                   "message", MIDIEvents::midiMessageToPackedInt (m)));
+                            "type", "external_midi_in",
+                            "message", MIDIEvents::midiMessageToPackedInt (m)));
 }
 
 inline void Patch::sendAudioOutLevelsUpdateToViews (const float* minValues, const float* maxValues, uint32_t numChannels)
 {
     sendMessageToViews (choc::value::createObject ({},
-                                                   "type", "audio_out_levels",
-                                                   "minLevels", choc::value::createArrayView (const_cast<float*> (minValues), numChannels),
-                                                   "maxLevels", choc::value::createArrayView (const_cast<float*> (maxValues), numChannels)));
+                            "type", "audio_out_levels",
+                            "minLevels", choc::value::createArrayView (const_cast<float*> (minValues), numChannels),
+                            "maxLevels", choc::value::createArrayView (const_cast<float*> (maxValues), numChannels)));
 }
 
 inline void Patch::sendCPUInfoToViews (float level)
 {
     sendMessageToViews (choc::value::createObject ({},
-                                                   "type", "cpu_info",
-                                                   "level", level));
+                            "type", "cpu_info",
+                            "level", level));
 }
 
 inline void Patch::sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView& value)
 {
     if (! (value.isVoid() || endpointID.empty()))
         sendMessageToViews (choc::value::createObject ({},
-                                                       "type", "output_event",
-                                                       "ID", endpointID,
-                                                       "value", value));
+                                "type", "output_event",
+                                "ID", endpointID,
+                                "value", value));
 }
 
 inline void Patch::sendStoredStateValueToViews (const std::string& key)
@@ -2027,9 +2046,9 @@ inline void Patch::sendStoredStateValueToViews (const std::string& key)
     if (! key.empty())
         if (auto found = storedState.find (key); found != storedState.end())
             sendMessageToViews (choc::value::createObject ({},
-                                                           "type", "state_key_value",
-                                                           "key", key,
-                                                           "value", found->second));
+                                    "type", "state_key_value",
+                                    "key", key,
+                                    "value", found->second));
 }
 
 inline void Patch::sendFullStoredStateToViews()
@@ -2220,14 +2239,6 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
             return true;
         }
 
-        if (type == "req_full_state")
-        {
-            if (auto value = msg["value"]; ! value.isVoid())
-                sendFullStoredStateToViews();
-
-            return true;
-        }
-
         if (type == "send_state_value")
         {
             if (auto key = msg["key"]; key.isString())
@@ -2237,11 +2248,16 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
             return true;
         }
 
+        if (type == "req_full_state")
+        {
+            sendFullStoredStateToViews();
+            return true;
+        }
+
         if (type == "send_full_state")
         {
-            if (auto key = msg["key"]; key.isString())
-                if (auto value = msg["value"]; value.isString() || value.isVoid())
-                    setStoredStateValue (key.toString(), value.get<std::string>());
+            if (auto value = msg["value"]; value.isObject())
+                setFullStoredState (value);
 
             return true;
         }

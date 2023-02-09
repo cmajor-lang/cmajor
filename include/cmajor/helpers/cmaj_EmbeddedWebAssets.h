@@ -87,7 +87,7 @@ class PatchView extends HTMLElement
         this.connection.requestStatusUpdate();
 
         const font = document.createElement ("link");
-        font.href = this.patchConnection.getResourceAddress ("./assets/ibmplexmono/v12/ibmplexmono.css");
+        font.href = "/cmaj_api/assets/ibmplexmono/v12/ibmplexmono.css";
         font.rel = "stylesheet"
         document.head.appendChild (font);
     }
@@ -97,10 +97,10 @@ class PatchView extends HTMLElement
         this.patchConnection.onPatchStatusChanged       = this.onPatchStatusChanged.bind (this);
         this.patchConnection.onSampleRateChanged        = this.onSampleRateChanged.bind (this);
         this.patchConnection.onParameterEndpointChanged = this.onParameterEndpointChanged.bind (this);
-        this.patchConnection.onOutputEvent              = this.onOutputEvent.bind (this);
-
-        return {)"
+        this.patchConnection.onOutputEvent              = this.onOutputEvent.bind (this);)"
 R"(
+
+        return {
             requestStatusUpdate:       this.patchConnection.requestStatusUpdate.bind (this.patchConnection),
             sendParameterGestureStart: this.patchConnection.sendParameterGestureStart.bind (this.patchConnection),
             sendEventOrValue:          this.patchConnection.sendEventOrValue.bind (this.patchConnection),
@@ -134,14 +134,14 @@ R"(
         const clear = object => Object.keys (object).forEach (key => delete object[key]);
         clear (this.parameterChangedListeners);
         clear (this.state);
-        Object.assign (this.state, initialState);
+        Object.assign (this.state, initialState);)"
+R"(
 
         this.renderInitialState ({
                 onBeginEdit: (endpointID)              => this.connection.sendParameterGestureStart (endpointID),
                 onEdit: (endpointID, value)            => this.connection.sendEventOrValue (endpointID, value),
                 onEndEdit: (endpointID)                => this.connection.sendParameterGestureEnd (endpointID),
-                performSingleEdit: (endpointID, value) => this.connection.performSingleEdit (endpointID, value),)"
-R"(
+                performSingleEdit: (endpointID, value) => this.connection.performSingleEdit (endpointID, value),
             });
 
         this.state.inputs.forEach (({ endpointID }) => this.patchConnection.requestEndpointValue (endpointID))
@@ -196,7 +196,8 @@ R"(
         if (annotation.boolean)
         {
             return { type: "switch", ...common, };
-        }
+        })"
+R"(
 
         const textOptions = annotation.text?.split?.("|");
         if (textOptions?.length > 1)
@@ -207,8 +208,7 @@ R"(
                 : { min: 0, step: 1 };
 
             return {
-                type: "options",)"
-R"(
+                type: "options",
                 options: textOptions.map ((text, index) => ({ value: min + (step * index), text })),
                 ...common,
             };
@@ -248,7 +248,8 @@ R"(
                 this.parametersElement.appendChild (wrapped.element);
             }
         });
-    }
+    })"
+R"(
 
     makeControl (backend, { type, min, max, defaultValue, index, ...other })
     {
@@ -267,8 +268,7 @@ R"(
                 toDisplayValue: v => `${v.toFixed (2)} ${other.unit ?? ""}`
             }
             case "switch":
-            {)"
-R"(
+            {
                 const mapValue = v => v > 0.5;
                 return {
                     control: this.makeSwitch ({
@@ -298,7 +298,8 @@ R"(
                             if (value < target) low = mid + 1;
                             else if (value > target) high = mid - 1;
                             else return mid;
-                        }
+                        })"
+R"(
 
                         return high;
                     };
@@ -319,8 +320,7 @@ R"(
                     }),
                     toDisplayValue,
                     mapValue: (v) => toIndex (v, other.options),
-                };)"
-R"(
+                };
             }
         }
 
@@ -354,7 +354,8 @@ R"(
         const createSvgElement = ({ document = window.document, tag = "svg" } = {}) => document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
         const svg = createSvgElement();
-        svg.setAttribute ("viewBox", "0 0 100 100");
+        svg.setAttribute ("viewBox", "0 0 100 100");)"
+R"(
 
         const trackBackground = createSvgElement ({ tag: "path" });
         trackBackground.setAttribute ("d", "M20,76 A 40 40 0 1 1 80 76");
@@ -378,8 +379,7 @@ R"(
 
         const container = document.createElement ("div");
         container.className = "knob-container";
-)"
-R"(
+
         svg.appendChild (trackBackground);
         svg.appendChild (trackValue);
 
@@ -403,7 +403,8 @@ R"(
         {
             if (! force && state.rotation === degrees) return;
 
-            state.rotation = degrees;
+            state.rotation = degrees;)"
+R"(
 
             trackValue.setAttribute ("stroke-dashoffset", getDashOffset (state.rotation, type));
             dial.style.transform = `translate(-50%,-50%) rotate(${state.rotation}deg)`
@@ -433,8 +434,7 @@ R"(
             previousScreenY = event.screenY;
 
             const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
-            accumlatedRotation = nextRotation (accumlatedRotation, movementY * speedMultiplier);)"
-R"(
+            accumlatedRotation = nextRotation (accumlatedRotation, movementY * speedMultiplier);
             onEdit (toValue (accumlatedRotation));
         };
 
@@ -454,7 +454,8 @@ R"(
             onBeginEdit();
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
-        };
+        };)"
+R"(
 
         container.addEventListener ("mousedown", onMouseDown);
         container.addEventListener ("mouseup", onMouseUp);
@@ -503,8 +504,7 @@ R"(
         const force = true;
         update (initialValue, force);
 
-        return {)"
-R"(
+        return {
             element: container,
             update,
         };
@@ -529,7 +529,8 @@ R"(
         const state =
         {
             selectedIndex: initialSelectedIndex,
-        };
+        };)"
+R"(
 
         select.addEventListener ("change", (e) =>
         {
@@ -578,8 +579,7 @@ R"(
 
         const centeredControl = document.createElement ("div");
         centeredControl.className = "labelled-control-centered-control";
-)"
-R"(
+
         centeredControl.appendChild (childControl.element);
 
         const titleValueHoverContainer = document.createElement ("div");
@@ -591,7 +591,8 @@ R"(
 
         const valueText = document.createElement ("div");
         valueText.classList.add ("labelled-control-value");
-        valueText.innerText = toDisplayValue (initialValue);
+        valueText.innerText = toDisplayValue (initialValue);)"
+R"(
 
         titleValueHoverContainer.appendChild (nameText);
         titleValueHoverContainer.appendChild (valueText);
@@ -650,8 +651,7 @@ R"(
     font-family: 'IBM Plex Mono', monospace;
     background-color: var(--background);
 }
-)"
-R"(
+
 .header {
     width: 100%;
     height: var(--header-height);
@@ -669,15 +669,16 @@ R"(
     overflow: hidden;
 
     cursor: default;
-}
+})"
+R"(
 
 .logo {
     flex: 1;
     height: 100%;
     background-color: var(--foreground);
-    mask: url(${this.patchConnection.getResourceAddress ("./assets/sound-stacks-logo.svg")});
+    mask: url(cmaj_api/assets/sound-stacks-logo.svg);
     mask-repeat: no-repeat;
-    -webkit-mask: url(${this.patchConnection.getResourceAddress ("./assets/sound-stacks-logo.svg")});
+    -webkit-mask: url(cmaj_api/assets/sound-stacks-logo.svg);
     -webkit-mask-repeat: no-repeat;
     min-width: 100px;
 }
@@ -740,8 +741,7 @@ select option {
     width: 1.4em;
     height: 1.4em;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17,9.17a1,1,0,0,0-1.41,0L12,12.71,8.46,9.17a1,1,0,0,0-1.41,0,1,1,0,0,0,0,1.42l4.24,4.24a1,1,0,0,0,1.42,0L17,10.59A1,1,0,0,0,17,9.17Z'/%3E%3C/svg%3E");
-    mask-repeat: no-repeat;)"
-R"(
+    mask-repeat: no-repeat;
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17,9.17a1,1,0,0,0-1.41,0L12,12.71,8.46,9.17a1,1,0,0,0-1.41,0,1,1,0,0,0,0,1.42l4.24,4.24a1,1,0,0,0,1.42,0L17,10.59A1,1,0,0,0,17,9.17Z'/%3E%3C/svg%3E");
     -webkit-mask-repeat: no-repeat;
 }
@@ -749,7 +749,8 @@ R"(
 /* knob */
 .knob-container {
     position: relative;
-    display: inline-block;
+    display: inline-block;)"
+R"(
 
     height: 80px;
     width: 80px;
@@ -832,8 +833,7 @@ R"(
 .switch-container {
     position: relative;
     display: flex;
-    align-items: center;)"
-R"(
+    align-items: center;
     justify-content: center;
 
     height: 100%;
@@ -848,7 +848,8 @@ R"(
     margin: 0 0.5rem 0.5rem;
     vertical-align: top;
     text-align: left;
-}
+})"
+R"(
 
 .labelled-control-centered-control {
     position: relative;
@@ -915,7 +916,7 @@ if (! window.customElements.get ("cmaj-generic-patch-view"))
     window.customElements.define ("cmaj-generic-patch-view", PatchView);
 )";
     static constexpr const char* assets_cmajorlogo_svg =
-        R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 1720 750">
+        R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="150 140 1620 670">
    <g id="fe54d652-402d-4071-afab-d8a6918b9a1f" data-name="Logo">
       <path
          d="M944.511,462.372V587.049H896.558V469.165c0-27.572-13.189-44.757-35.966-44.757-23.577,0-39.958,19.183-39.958,46.755V587.049H773.078V469.165c0-27.572-13.185-44.757-35.962-44.757-22.378,0-39.162,19.581-39.162,46.755V587.049H650.4v-201.4h47.551v28.77c8.39-19.581,28.771-32.766,54.346-32.766,27.572,0,46.353,11.589,56.343,35.166,11.589-23.577,33.57-35.166,65.934-35.166C918.937,381.652,944.511,412.42,944.511,462.372Zm193.422-76.724h47.953v201.4h-47.953V557.876c-6.794,19.581-31.167,33.567-64.335,33.567q-42.558,0-71.928-29.969c-19.183-20.381-28.771-45.155-28.771-75.128s9.588-54.743,28.771-74.726c19.581-20.377,43.556-30.366,71.928-30.366,33.168,0,57.541,13.985,64.335,33.566Zm3.6,100.7c0-17.579-5.993-32.368-17.981-43.953-11.589-11.59-26.374-17.583-43.559-17.583s-31.167,5.993-42.756,17.583c-11.187,11.585-16.783,26.374-16.783,43.953s5.6,32.369,16.783,43.958c11.589,11.589,25.575,17.583,42.756,17.583s31.97-5.994,43.559-17.583C1135.537,518.715,1141.53,503.929,1141.53,486.346Zm84.135,113.49c0,21.177-7.594,29.571-25.575,29.571-2.8,0-7.192-.4-13.185-.8v42.357c4.393.8,11.187,1.2,19.979,1.2,44.355,0,66.734-22.776,66.734-67.932V385.648h-47.953Zm23.978-294.108c-15.987,0-28.774,12.385-28.774,28.372s12.787,28.369,28.774,28.369a28.371,28.371,0,0,0,0-56.741Zm239.674,104.694c21.177,20.381,31.966,45.956,31.966,75.924s-10.789,55.547-31.966,75.928-47.154,30.769-77.926,30.769-56.741-10.392-77.922-30.769-31.966-45.955-31.966-75.928,10.789-55.543,31.966-75.924,47.154-30.768,77.922-30.768S1468.136,390.041,1489.317,410.422Zm-15.585,75.924c0-17.981-5.994-32.766-17.985-44.753-11.988-12.39-26.773-18.383-44.356-18.383-17.981,0-32.766,5.993-44.754,18.383-11.589,11.987-17.583,26.772-17.583,44.753s5.994,32.77,17.583,45.156c11.988,11.987,26.773,17.985,44.754,17.985q26.374,0,44.356-17.985C1467.738,519.116,1473.732,504.331,1473.732,486.346Zm184.122-104.694c-28.373,0-50.349,12.787-59.941,33.964V38)"
@@ -2024,7 +2025,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 25741) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 25627) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2981) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6659) },
         File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iAq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iAq131njotFQ_woff2, 3504) },
