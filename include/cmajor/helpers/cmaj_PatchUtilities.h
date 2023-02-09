@@ -204,6 +204,18 @@ struct Patch
     template <typename HandleMIDIOutFn>
     void process (float* const* audioChannels, uint32_t numFrames, HandleMIDIOutFn&&);
 
+    /// Instead of calling process(), if you're performing multiple small chunked render ops
+    /// as part of a larger chunk, you can improve performance by calling beginChunkedProcess(),
+    /// then making multiple calls to processChunk(), and then endChunkedProcess() at the end.
+    void beginChunkedProcess();
+    /// Called to render the next sub-chunk. Must only be called after beginChunkedProcess()
+    /// has been called, but may be called multiple times. After all chunks are done, call
+    /// endChunkedProcess() to finish.
+    void processChunk (const choc::audio::AudioMIDIBlockDispatcher::Block&, bool replaceOutput);
+    /// Called after beginChunkedProcess() and processChunk() have been used, to clear up
+    /// after a sequence of chunks have been rendered.
+    void endChunkedProcess();
+
     /// Queues a MIDI message for use by the next call to process(). This isn't
     /// needed if you use the version of process that takes a Block object.
     void addMIDIMessage (int frameIndex, const void* data, uint32_t length);
@@ -1352,37 +1364,13 @@ struct Patch::ClientEventQueue
     {
         if (cpuInfoFramesPerCallback != 0)
             cpu.startProcess();
+
+        framesProcessedInBlock = 0;
     }
 
-    void postClientStatusUpdates (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+    void postProcessChunk (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
     {
-        bool triggered = false;
-
-        if (cpuInfoFramesPerCallback != 0)
-        {
-            auto numFrames = block.audioOutput.getNumFrames();
-            cpu.endProcess (numFrames);
-            cpuFrameCount += numFrames;
-
-            if (cpuFrameCount > cpuInfoFramesPerCallback)
-            {
-                cpuFrameCount = 0;
-                auto newLevel = static_cast<float> (cpu.average);
-
-                if (lastCPUSent != newLevel)
-                {
-                    lastCPUSent = newLevel;
-                    triggered = true;
-
-                    clientEventQueue.push (1 + sizeof (float), [&] (void* dest)
-                    {
-                        auto d = static_cast<char*> (dest);
-                        d[0] = static_cast<char> (EventType::cpuLevel);
-                        choc::memory::writeNativeEndian (d + 1, newLevel);
-                    });
-                }
-            }
-        }
+        framesProcessedInBlock += block.audioOutput.getNumFrames();
 
         if (midiInputActive && ! block.midiMessages.empty())
         {
@@ -1396,7 +1384,7 @@ struct Patch::ClientEventQueue
                 });
             }
 
-            triggered = true;
+            needToTriggerEventHandler = true;
         }
 
         if (audioOutFramesPerChunk != 0)
@@ -1424,7 +1412,7 @@ struct Patch::ClientEventQueue
                     if (++audioOutFramesMeasured == audioOutFramesPerChunk)
                     {
                         audioOutFramesMeasured = 0;
-                        triggered = true;
+                        needToTriggerEventHandler = true;
 
                         clientEventQueue.push (1 + numChannels * 8, [&] (void* dest)
                         {
@@ -1438,9 +1426,40 @@ struct Patch::ClientEventQueue
                 }
             }
         }
+    }
 
-        if (triggered)
+    void endOfProcessCallback()
+    {
+        if (cpuInfoFramesPerCallback != 0)
+        {
+            cpu.endProcess (framesProcessedInBlock);
+            cpuFrameCount += framesProcessedInBlock;
+
+            if (cpuFrameCount > cpuInfoFramesPerCallback)
+            {
+                cpuFrameCount = 0;
+                auto newLevel = static_cast<float> (cpu.average);
+
+                if (lastCPUSent != newLevel)
+                {
+                    lastCPUSent = newLevel;
+                    needToTriggerEventHandler = true;
+
+                    clientEventQueue.push (1 + sizeof (float), [&] (void* dest)
+                    {
+                        auto d = static_cast<char*> (dest);
+                        d[0] = static_cast<char> (EventType::cpuLevel);
+                        choc::memory::writeNativeEndian (d + 1, newLevel);
+                    });
+                }
+            }
+        }
+
+        if (needToTriggerEventHandler)
+        {
+            needToTriggerEventHandler = false;
             clientEventHandlerThread.trigger();
+        }
     }
 
     void dispatchClientEvents()
@@ -1509,6 +1528,8 @@ struct Patch::ClientEventQueue
     std::vector<float> audioOutMinMax;
     uint32_t audioOutFramesMeasured = 0, cpuFrameCount = 0;
     float lastCPUSent = 0;
+    bool needToTriggerEventHandler = false;
+    uint32_t framesProcessedInBlock = 0;
 
     struct CPUMeasure
     {
@@ -1824,8 +1845,7 @@ inline void Patch::addMIDIMessage (int frameIndex, const void* data, uint32_t le
 template <typename HandleMIDIOutFn>
 void Patch::process (float* const* audioChannels, uint32_t numFrames, HandleMIDIOutFn&& handleMIDIOut)
 {
-    if (currentPatch->swapPerformerIfNeeded())
-        clientEventQueue->postResetParamSignal();
+    beginChunkedProcess();
 
     currentPatch->process (choc::buffer::createChannelArrayView (audioChannels, currentPlaybackParams.numInputChannels, numFrames),
                            choc::buffer::createChannelArrayView (audioChannels, currentPlaybackParams.numOutputChannels, numFrames),
@@ -1833,17 +1853,33 @@ void Patch::process (float* const* audioChannels, uint32_t numFrames, HandleMIDI
 
     midiMessages.clear();
     midiMessageTimes.clear();
+    endChunkedProcess();
 }
 
 inline void Patch::process (const choc::audio::AudioMIDIBlockDispatcher::Block& block, bool replaceOutput)
+{
+    beginChunkedProcess();
+    processChunk (block, replaceOutput);
+    endChunkedProcess();
+}
+
+inline void Patch::beginChunkedProcess()
 {
     clientEventQueue->startOfProcessCallback();
 
     if (currentPatch->swapPerformerIfNeeded())
         clientEventQueue->postResetParamSignal();
+}
 
+inline void Patch::processChunk (const choc::audio::AudioMIDIBlockDispatcher::Block& block, bool replaceOutput)
+{
     currentPatch->performer->process (block, replaceOutput);
-    clientEventQueue->postClientStatusUpdates (block);
+    clientEventQueue->postProcessChunk (block);
+}
+
+inline void Patch::endChunkedProcess()
+{
+    clientEventQueue->endOfProcessCallback();
 }
 
 inline void Patch::sendTimeSig (int numerator, int denominator)
