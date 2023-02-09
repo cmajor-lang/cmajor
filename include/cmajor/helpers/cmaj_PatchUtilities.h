@@ -32,6 +32,8 @@
 
 #include "cmaj_AudioMIDIPerformer.h"
 
+#include <unordered_set>
+
 namespace cmaj
 {
 
