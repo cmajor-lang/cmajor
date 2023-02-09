@@ -77,7 +77,6 @@ struct Library
     /// (Used internally)
     struct EntryPoints
     {
-        virtual ~EntryPoints() {}
         virtual const char* getVersion() = 0;
         virtual cmaj::ProgramInterface* createProgram() = 0;
         virtual const char* getEngineTypes() = 0;
@@ -110,7 +109,7 @@ private:
 /// This is the name of the single entry point function to the DLL - when
 /// there's a breaking change to the API, this will be updated to prevent
 /// accidental use of older (or newer) library versions.
-static constexpr const char* entryPointFunction = "cmajor_getEntryPointsV4";
+static constexpr const char* entryPointFunction = "cmajor_getEntryPointsV5";
 
 inline std::unique_ptr<choc::file::DynamicLibrary>& Library::getLibrary()
 {
