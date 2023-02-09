@@ -1431,11 +1431,8 @@ struct Patch::ClientEventQueue
                             auto d = static_cast<char*> (dest);
                             d[0] = static_cast<char> (EventType::audioOutputLevels);
 
-                            for (uint32_t chan = 0; chan < numChannels; ++chan)
-                            {
-                                choc::memory::writeNativeEndian (d + 1 + 8 * chan, mins[chan]);
-                                choc::memory::writeNativeEndian (d + 5 + 8 * chan, maxs[chan]);
-                            }
+                            for (uint32_t v = 0; v < audioOutMinMax.size(); ++v)
+                                choc::memory::writeLittleEndian (d + 1 + sizeof (float) * v, audioOutMinMax[v]);
                         });
                     }
                 }
