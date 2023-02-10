@@ -177,66 +177,163 @@ static constexpr auto cmajor_patch_gui_html = R"(
 </head>
 
 <style>
-  body { overflow: hidden; margin: 0; padding: 0; }
+  * { box-sizing: border-box; padding: 0; margin: 0; }
+  html { background: black; overflow: hidden; }
+  body { display: block; position: absolute; width: 100%; height: 100%; padding: 8px; }
+  #cmaj-container { display: block; position: relative; width: 100%; height: 100%; overflow: auto; }
+  cmaj-patch-view { display: block; position: relative; width: 100%; height: 100%; }
 </style>
 
-<body></body>
+<body>
+  <div id="cmaj-container">
+    <cmaj-patch-view id="cmaj-view"></cmaj-patch-view>
+  </div>
+</body>
 
 <script type="module">
 
 import createPatchView from IMPORT_VIEW;
 
-function PatchConnection()
+class PatchConnection
 {
-    this.onPatchStatusChanged        = function (errorMessage, patchManifest, inputsList, outputsList, details) {};
-    this.onSampleRateChanged         = function (newSampleRate) {};
-    this.onParameterEndpointChanged  = function (endpointID, newValue) {};
-    this.onOutputEvent               = function (endpointID, newValue) {};
-    this.onStoredStateValueChanged   = function (key, value) {};
-    this.onFullStateValue            = function (state) {};
-
-    this.getResourceAddress         = function (path)                          { return path; }
-
-    this.requestStatusUpdate        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_status" }); };
-    this.resetToInitialState        = function()                               { window.cmaj_sendMessageToPatch ({ type: "req_reset" }); }
-    this.requestEndpointValue       = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID }); };
-    this.requestStoredStateValue    = function (key)                           { window.cmaj_sendMessageToPatch ({ type: "req_state_value", key: key }); }
-    this.sendEventOrValue           = function (endpointID, value, numFrames)  { window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: numFrames }); };
-    this.sendParameterGestureStart  = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID }); };
-    this.sendParameterGestureEnd    = function (endpointID)                    { window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID }); };
-    this.sendMIDIInputEvent         = function (shortMIDICode)                 { window.cmaj_sendMessageToPatch ({ type: "midi_input", midiEvent: shortMIDICode }); };
-    this.sendStoredStateValue       = function (key, newValue)                 { window.cmaj_sendMessageToPatch ({ type: "send_state_value", key : key, value: newValue }); };
-    this.sendFullStoredState        = function (fullState)                     { window.cmaj_sendMessageToPatch ({ type: "send_full_state", value: fullState }); }
-
-    const self = this;
-
-    window.cmaj_handleMessageFromPatch = function (msg)
+    constructor()
     {
-        switch (msg.type)
+        window.cmaj_handleMessageFromPatch = (msg) =>
         {
-            case "output_event":    self.onOutputEvent?. (msg.ID, msg.value); break;
-            case "param_value":     self.onParameterEndpointChanged?. (msg.ID, msg.value); break;
-            case "status":          self.onPatchStatusChanged?. (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;
-            case "sample_rate":     self.onSampleRateChanged?. (msg.rate); break;
-            case "state_key_value": self.onStoredStateValueChanged?. (msg.key, msg.value); break;
-            case "full_state":      this.onFullStateValue?. (msg.value); break;
-            default: break;
-        }
-    };
+            switch (msg.type)
+            {
+                case "output_event":    this.onOutputEvent?. (msg.ID, msg.value); break;
+                case "param_value":     this.onParameterEndpointChanged?. (msg.ID, msg.value); break;
+                case "status":          this.onPatchStatusChanged?. (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;
+                case "sample_rate":     this.onSampleRateChanged?. (msg.rate); break;
+                case "state_key_value": this.onStoredStateValueChanged?. (msg.key, msg.value); break;
+                case "full_state":      this.onFullStateValue?. (msg.value); break;
+                default: break;
+            }
+        };
+    }
+
+    onPatchStatusChanged (errorMessage, patchManifest, inputsList, outputsList, details) {}
+    onSampleRateChanged (newSampleRate) {}
+    onParameterEndpointChanged (endpointID, newValue) {}
+    onOutputEvent (endpointID, newValue) {}
+    onStoredStateValueChanged (key, value) {}
+    onFullStateValue (state) {}
+
+    getResourceAddress (path)                        { return path; }
+    requestStatusUpdate()                            { window.cmaj_sendMessageToPatch ({ type: "req_status" }); }
+    resetToInitialState()                            { window.cmaj_sendMessageToPatch ({ type: "req_reset" }); }
+    requestEndpointValue (endpointID)                { window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID }); }
+    requestStoredStateValue (key)                    { window.cmaj_sendMessageToPatch ({ type: "req_state_value", key: key }); }
+    sendEventOrValue (endpointID, value, numFrames)  { window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: numFrames }); }
+    sendParameterGestureStart (endpointID)           { window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID }); }
+    sendParameterGestureEnd (endpointID)             { window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID }); }
+    sendMIDIInputEvent (shortMIDICode)               { window.cmaj_sendMessageToPatch ({ type: "midi_input", midiEvent: shortMIDICode }); }
+    sendStoredStateValue (key, newValue)             { window.cmaj_sendMessageToPatch ({ type: "send_state_value", key : key, value: newValue }); }
+    sendFullStoredState (fullState)                  { window.cmaj_sendMessageToPatch ({ type: "send_full_state", value: fullState }); }
+
+    async createView (type)
+    {
+        return await createPatchView (this);
+    }
 }
 
 function createConnection() { return new PatchConnection(); }
 
-async function appendPatchView (parent)
+class PatchViewHolder extends HTMLElement
 {
-    const patchView = await createPatchView (createConnection());
-    patchView.style.display = "block";
-    patchView.style.height = "100vh";
+    constructor()
+    {
+        super();
 
-    parent.appendChild (patchView);
+        this.innerHTML = this.getHTML();
+        this.container = this.querySelector ("#cmaj-view-container");
+    }
+
+    connectedCallback()
+    {
+        this.resizeObserver = new ResizeObserver (() => this.updateViewScale());
+        this.resizeObserver.observe (this.parentElement);
+        this.updateViewScale();
+    }
+
+    disconnectedCallback()
+    {
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = undefined;
+    }
+
+    updateViewScale()
+    {
+        const parentToFitTo = this.parentElement;
+
+        if (this.currentView && parentToFitTo)
+        {
+            const scaleLimits = this.currentView.getScaleFactorLimits?.();
+
+            if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
+            {
+                const parentStyle = getComputedStyle (parentToFitTo);
+                const parentW = parentToFitTo.clientWidth - parseFloat (parentStyle.paddingLeft) - parseFloat (parentStyle.paddingRight);
+                const parentH = parentToFitTo.clientHeight - parseFloat (parentStyle.paddingTop) - parseFloat (parentStyle.paddingBottom);
+
+                let viewW = WIDTH;
+                let viewH = HEIGHT;
+
+                const scaleW = parentW / viewW;
+                const scaleH = parentH / viewH;
+
+                const minScale = scaleLimits.minScale || 0.25;
+                const maxScale = scaleLimits.maxScale || 5.0;
+
+                const scaleFactor = Math.min (maxScale, Math.max (minScale, Math.min (scaleW, scaleH)));
+
+                this.container.style.transformOrigin = "0% 0%";
+                this.container.style.transform = `scale(${scaleFactor})`;
+
+                return;
+            }
+        }
+
+        this.container.style.width = "100%";
+        this.container.style.height = "100%";
+    }
+
+    async createView (patchConnection, type)
+    {
+        this.viewPatchConnection = patchConnection;
+        this.currentView = await this.viewPatchConnection.createView (type);
+
+        if (this.currentView)
+        {
+            this.container.appendChild (this.currentView);
+            this.updateViewScale();
+        }
+    }
+
+    getHTML()
+    {
+        return `
+<style>
+  :host {
+    position: relative;
+    display: block;
+  }
+
+  #cmaj-view-container {
+    position: relative;
+    overflow: visible;
+  }
+</style>
+
+<div id="cmaj-view-container"></div>
+`;
+    }
 }
 
-appendPatchView (document.body);
+customElements.define ("cmaj-patch-view", PatchViewHolder);
+
+document.getElementById ("cmaj-view").createView (createConnection());
 
 </script>
 </html>
@@ -270,7 +367,9 @@ inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const
                                               : customViewModulePath.relative_path().generic_string());
 
         return toResource (choc::text::replace (cmajor_patch_gui_html,
-                                                "IMPORT_VIEW", choc::json::getEscapedQuotedString (viewModule)),
+                                                "IMPORT_VIEW", choc::json::getEscapedQuotedString (viewModule),
+                                                "WIDTH", std::to_string (width),
+                                                "HEIGHT", std::to_string (height)),
                            toMimeType (".html"));
     }
 

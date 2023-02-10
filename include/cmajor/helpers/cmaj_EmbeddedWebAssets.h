@@ -652,6 +652,10 @@ R"(
     background-color: var(--background);
 }
 
+.main {
+    background: var(--background);
+}
+
 .header {
     width: 100%;
     height: var(--header-height);
@@ -902,12 +906,14 @@ R"(
 
 </style>
 
-<div class="header">
- <span class="logo"></span>
- <h2 id="patch-title" class="header-title"></h2>
- <div class="header-filler"></div>
+<div class="main">
+  <div class="header">
+   <span class="logo"></span>
+   <h2 id="patch-title" class="header-title"></h2>
+   <div class="header-filler"></div>
+  </div>
+  <div id="patch-parameters" class="app-body"></div>
 </div>
-<div id="patch-parameters" class="app-body"></div>
 `;
     }
 }
@@ -2025,7 +2031,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 25627) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 25711) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2981) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6659) },
         File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iAq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iAq131njotFQ_woff2, 3504) },
