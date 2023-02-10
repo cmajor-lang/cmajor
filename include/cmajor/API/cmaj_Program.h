@@ -62,6 +62,9 @@ struct Program
     //==============================================================================
     /// The underlying program object.
     ProgramPtr program;
+
+private:
+    Library::SharedLibraryPtr library;
 };
 
 
@@ -81,6 +84,7 @@ inline Program::Program() = default;
 inline void Program::reset()
 {
     program = {};
+    library = {};
 }
 
 inline bool Program::parse (DiagnosticMessageList& messages,
@@ -88,7 +92,10 @@ inline bool Program::parse (DiagnosticMessageList& messages,
                             const std::string& fileContent)
 {
     if (program == nullptr)
+    {
         program = Library::createProgram();
+        library = Library::getSharedLibraryPtr();
+    }
 
     if (auto result = choc::com::StringPtr (program->parse (filename.c_str(), fileContent.data(), fileContent.length())))
         return messages.addFromJSONString (result);

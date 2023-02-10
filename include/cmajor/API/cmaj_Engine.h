@@ -41,7 +41,7 @@ struct Engine
     Engine() = default;
     ~Engine() = default;
 
-    Engine (EnginePtr p) : engine (p) {}
+    Engine (EnginePtr);
 
     /// Returns true if this is a valid engine.
     operator bool() const                           { return engine; }
@@ -161,6 +161,9 @@ struct Engine
     //==============================================================================
     /// The underlying COM engine object that this helper object is wrapping.
     EnginePtr engine;
+
+private:
+    Library::SharedLibraryPtr library;
 };
 
 
@@ -175,6 +178,8 @@ struct Engine
 //   Code beyond this point is implementation detail...
 //
 //==============================================================================
+
+inline Engine::Engine (EnginePtr p) : engine (p), library (Library::getSharedLibraryPtr()) {}
 
 inline Engine Engine::create (const std::string& engineType, const choc::value::Value* engineCreationOptions)
 {

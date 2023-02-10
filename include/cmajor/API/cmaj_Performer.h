@@ -46,7 +46,7 @@ struct Performer
     Performer() = default;
     ~Performer() = default;
 
-    Performer (PerformerPtr p) : performer (p) {}
+    Performer (PerformerPtr);
 
     /// Returns true if this is a valid performer.
     operator bool() const                           { return performer; }
@@ -168,6 +168,9 @@ struct Performer
     //==============================================================================
     /// The underlying performer that this helper object is wrapping.
     PerformerPtr performer;
+
+private:
+    Library::SharedLibraryPtr library;
 };
 
 
@@ -182,6 +185,8 @@ struct Performer
 //   Code beyond this point is implementation detail...
 //
 //==============================================================================
+
+inline Performer::Performer (PerformerPtr p) : performer (p), library (Library::getSharedLibraryPtr()) {}
 
 inline void Performer::setBlockSize (uint32_t numFramesForNextBlock)
 {

@@ -56,6 +56,11 @@ struct Library
     /// Returns true if it was successfully loaded.
     static bool initialise (std::string_view pathToDLL);
 
+    /// Frees the global instance of the library (although if there are engine objects
+    /// still using it, the library that they're using will remain active until they
+    /// are all destroyed).
+    static void shutdown();
+
     /// Returns the Cmajor engine version number
     static const char* getVersion();
 
@@ -84,9 +89,19 @@ struct Library
     };
 
    #if CMAJOR_DLL
+    using SharedLibraryPtr = std::shared_ptr<choc::file::DynamicLibrary>;
+   #else
+    struct SharedLibraryPtr {};
+   #endif
+
+    /// This returns an opaque ref-counted pointer that a client can use to make
+    /// sure the library doesn't go out of scope while it's in use.
+    static SharedLibraryPtr getSharedLibraryPtr();
+
 private:
+   #if CMAJOR_DLL
+    static SharedLibraryPtr& getSharedLibraryPtrRef();
     static EntryPoints& getEntryPoints();
-    static std::unique_ptr<choc::file::DynamicLibrary>& getLibrary();
     static inline EntryPoints* entryPoints = nullptr;
    #endif
 };
@@ -111,10 +126,15 @@ private:
 /// accidental use of older (or newer) library versions.
 static constexpr const char* entryPointFunction = "cmajor_getEntryPointsV5";
 
-inline std::unique_ptr<choc::file::DynamicLibrary>& Library::getLibrary()
+inline Library::SharedLibraryPtr& Library::getSharedLibraryPtrRef()
 {
-    static std::unique_ptr<choc::file::DynamicLibrary> library;
+    static SharedLibraryPtr library;
     return library;
+}
+
+inline Library::SharedLibraryPtr Library::getSharedLibraryPtr()
+{
+    return getSharedLibraryPtrRef();
 }
 
 inline Library::EntryPoints& Library::getEntryPoints()
@@ -126,7 +146,7 @@ inline Library::EntryPoints& Library::getEntryPoints()
 
 inline bool Library::initialise (std::string_view pathToDLL)
 {
-    auto& library = getLibrary();
+    auto& library = getSharedLibraryPtrRef();
 
     if (library != nullptr)
         return true;
@@ -134,7 +154,7 @@ inline bool Library::initialise (std::string_view pathToDLL)
     if (pathToDLL.empty())
         return false;
 
-    library = std::make_unique<choc::file::DynamicLibrary> (pathToDLL);
+    library = std::make_shared<choc::file::DynamicLibrary> (pathToDLL);
 
     if (library->handle == nullptr)
     {
@@ -149,7 +169,7 @@ inline bool Library::initialise (std::string_view pathToDLL)
         if (path.back() != separator)
             path += separator;
 
-        library = std::make_unique<choc::file::DynamicLibrary> (path + getDLLName());
+        library = std::make_shared<choc::file::DynamicLibrary> (path + getDLLName());
     }
 
     if (library->handle != nullptr)
@@ -169,15 +189,19 @@ inline bool Library::initialise (std::string_view pathToDLL)
     return false;
 }
 
+inline void Library::shutdown()
+{
+    entryPoints = {};
+    getSharedLibraryPtrRef().reset();
+}
+
 inline const char* Library::getVersion()                { return getEntryPoints().getVersion(); }
 inline cmaj::ProgramPtr Library::createProgram()        { return cmaj::ProgramPtr (getEntryPoints().createProgram()); }
 inline const char* Library::getEngineTypes()            { return getEntryPoints().getEngineTypes(); }
 
 inline EngineFactoryPtr Library::createEngineFactory (const char* engineName)
 {
-    auto& library = getLibrary();
-
-    if (library == nullptr)
+    if (getSharedLibraryPtr() == nullptr)
         return {};
 
     return cmaj::EngineFactoryPtr (getEntryPoints().createEngineFactory (engineName));
@@ -186,6 +210,8 @@ inline EngineFactoryPtr Library::createEngineFactory (const char* engineName)
 #else
 
 inline bool Library::initialise (std::string_view) { return true; }
+inline void Library::shutdown() {}
+inline Library::SharedLibraryPtr Library::getSharedLibraryPtr() { return {}; }
 
 #endif
 
