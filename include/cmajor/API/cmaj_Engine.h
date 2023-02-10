@@ -39,7 +39,7 @@ struct Engine
     /// This creates an empty engine, which is basically a null pointer.
     /// To create a usable Engine, use the Engine::create() function.
     Engine() = default;
-    ~Engine() = default;
+    ~Engine();
 
     Engine (EnginePtr);
 
@@ -180,6 +180,12 @@ private:
 //==============================================================================
 
 inline Engine::Engine (EnginePtr p) : engine (p), library (Library::getSharedLibraryPtr()) {}
+
+inline Engine::~Engine()
+{
+    engine = {};   // explicitly release the engine before the library
+    library = {};
+}
 
 inline Engine Engine::create (const std::string& engineType, const choc::value::Value* engineCreationOptions)
 {

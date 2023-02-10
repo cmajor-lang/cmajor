@@ -42,7 +42,7 @@ namespace cmaj
 struct Program
 {
     Program();
-    ~Program() = default;
+    ~Program();
 
     /// Resets this program to an empty state.
     void reset();
@@ -80,10 +80,11 @@ private:
 //==============================================================================
 
 inline Program::Program() = default;
+inline Program::~Program()  { reset(); }
 
 inline void Program::reset()
 {
-    program = {};
+    program = {};  // explicitly release the program before the library
     library = {};
 }
 

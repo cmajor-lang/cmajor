@@ -44,7 +44,7 @@ struct Performer
     /// To get a usable Performer, get yourself an Engine object, use it to
     /// build a program, and call its Engine::createPerformer() method.
     Performer() = default;
-    ~Performer() = default;
+    ~Performer();
 
     Performer (PerformerPtr);
 
@@ -187,6 +187,12 @@ private:
 //==============================================================================
 
 inline Performer::Performer (PerformerPtr p) : performer (p), library (Library::getSharedLibraryPtr()) {}
+
+inline Performer::~Performer()
+{
+    performer = {};  // explicitly release the performer before the library
+    library = {};
+}
 
 inline void Performer::setBlockSize (uint32_t numFramesForNextBlock)
 {
