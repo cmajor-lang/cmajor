@@ -2163,3 +2163,20 @@ processor Test
     }
 }
 
+
+## testCompile()
+
+processor Test
+{
+    output event EmptyStruct out;
+
+    struct EmptyStruct
+    {
+    }
+
+    void main()
+    {
+        out <- EmptyStruct();
+        advance();
+    }
+}
