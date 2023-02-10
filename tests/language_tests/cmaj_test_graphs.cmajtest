@@ -4382,7 +4382,18 @@ processor P
     input event float in;
 	output stream float out;
 
-    event in (float f) {}
+    event in (float f) { v = f;}
+
+    float v;
+
+    void main()
+    {
+        loop
+        {
+            out <- v;
+            advance();
+        }
+    }
 }
 
 graph voice [[main]]
@@ -4394,6 +4405,9 @@ graph voice [[main]]
 	{
 		P.in <- v;
 	}
+
+    connection
+        P.out -> out;
 }
 
 

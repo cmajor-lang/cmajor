@@ -2124,3 +2124,42 @@ bool test3()
 
     return r == reserved::this;
 }
+
+
+## expectError ("6:12: error: Top level endpoints cannot include slices")
+
+processor Test [[ main ]]
+{
+    output event S out;
+
+    struct S
+    {
+        int[] x;
+    }
+
+    void main()
+    {
+        advance();
+    }
+}
+
+
+
+## expectError ("7:12: error: Top level endpoints cannot include slices")
+
+processor Test
+{
+    input event S in;
+    output event int out;
+
+    struct S
+    {
+        int[] x;
+    }
+
+    void main()
+    {
+        advance();
+    }
+}
+

@@ -695,7 +695,7 @@ graph G [[main]]
 
 ## testCompile()
 
-namespace P2 (using SampleType = float) { struct S { SampleType[] x; } }
+namespace P2 (using SampleType = float) { struct S { SampleType[4] x; } }
 
 graph G [[main]]
 {

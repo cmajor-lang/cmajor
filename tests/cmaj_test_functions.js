@@ -384,13 +384,16 @@ function testCompile (testLink, options)
         if (testLink && ! isError (error))
             error = engine.link();
 
-        // now we'll load and link all over again as a test of using
-        // the same program object more than once.
-        engine.unload();
-        error = engine.load (program);
+        if (! isError (error))
+        {
+            // now we'll load and link all over again as a test of using
+            // the same program object more than once.
+            engine.unload();
+            error = engine.load (program);
 
-        if (testLink && ! isError (error))
-            error = engine.link();
+            if (testLink && ! isError (error))
+                error = engine.link();
+        }
     }
 
     if (! isError (error))
