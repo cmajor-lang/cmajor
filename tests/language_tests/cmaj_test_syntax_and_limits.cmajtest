@@ -2012,6 +2012,17 @@ graph Test
         out -> in;
 }
 
+## expectError ("8:26: error: A delay line length must be a constant")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+        in -> [processor.session] -> out;
+}
+
 ## expectError ("7:11: error: Event Handlers for event arrays need a first argument index integer type")
 
 graph Test
