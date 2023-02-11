@@ -177,16 +177,16 @@ static constexpr auto cmajor_patch_gui_html = R"(
 </head>
 
 <style>
-  * { box-sizing: border-box; padding: 0; margin: 0; }
+  * { box-sizing: border-box; padding: 0; margin: 0; border: 0; }
   html { background: black; overflow: hidden; }
   body { display: block; position: absolute; width: 100%; height: 100%; padding: 8px; }
-  #cmaj-container { display: block; position: relative; width: 100%; height: 100%; overflow: auto; }
-  cmaj-patch-view { display: block; position: relative; width: 100%; height: 100%; }
+  #cmaj-outer-container { display: block; position: relative; width: 100%; height: 100%; overflow: auto; }
+  #cmaj-inner-container { display: block; position: relative; width: 100%; height: 100%; overflow: visible; }
 </style>
 
 <body>
-  <div id="cmaj-container">
-    <cmaj-patch-view id="cmaj-view"></cmaj-patch-view>
+  <div id="cmaj-outer-container">
+    <div id="cmaj-inner-container"></div>
   </div>
 </body>
 
@@ -231,109 +231,64 @@ class PatchConnection
     sendMIDIInputEvent (shortMIDICode)               { window.cmaj_sendMessageToPatch ({ type: "midi_input", midiEvent: shortMIDICode }); }
     sendStoredStateValue (key, newValue)             { window.cmaj_sendMessageToPatch ({ type: "send_state_value", key : key, value: newValue }); }
     sendFullStoredState (fullState)                  { window.cmaj_sendMessageToPatch ({ type: "send_full_state", value: fullState }); }
-
-    async createView (type)
-    {
-        return await createPatchView (this);
-    }
 }
+
+const outer = document.getElementById ("cmaj-outer-container");
+const inner = document.getElementById ("cmaj-inner-container");
+
+let currentView = null;
 
 function createConnection() { return new PatchConnection(); }
 
-class PatchViewHolder extends HTMLElement
+async function createView()
 {
-    constructor()
-    {
-        super();
+    currentView = await createPatchView (createConnection());
 
-        this.innerHTML = this.getHTML();
-        this.container = this.querySelector ("#cmaj-view-container");
-    }
-
-    connectedCallback()
-    {
-        this.resizeObserver = new ResizeObserver (() => this.updateViewScale());
-        this.resizeObserver.observe (this.parentElement);
-        this.updateViewScale();
-    }
-
-    disconnectedCallback()
-    {
-        this.resizeObserver?.disconnect();
-        this.resizeObserver = undefined;
-    }
-
-    updateViewScale()
-    {
-        const parentToFitTo = this.parentElement;
-
-        if (this.currentView && parentToFitTo)
-        {
-            const scaleLimits = this.currentView.getScaleFactorLimits?.();
-
-            if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
-            {
-                const parentStyle = getComputedStyle (parentToFitTo);
-                const parentW = parentToFitTo.clientWidth - parseFloat (parentStyle.paddingLeft) - parseFloat (parentStyle.paddingRight);
-                const parentH = parentToFitTo.clientHeight - parseFloat (parentStyle.paddingTop) - parseFloat (parentStyle.paddingBottom);
-
-                let viewW = WIDTH;
-                let viewH = HEIGHT;
-
-                const scaleW = parentW / viewW;
-                const scaleH = parentH / viewH;
-
-                const minScale = scaleLimits.minScale || 0.25;
-                const maxScale = scaleLimits.maxScale || 5.0;
-
-                const scaleFactor = Math.min (maxScale, Math.max (minScale, Math.min (scaleW, scaleH)));
-
-                this.container.style.transformOrigin = "0% 0%";
-                this.container.style.transform = `scale(${scaleFactor})`;
-
-                return;
-            }
-        }
-
-        this.container.style.width = "100%";
-        this.container.style.height = "100%";
-    }
-
-    async createView (patchConnection, type)
-    {
-        this.viewPatchConnection = patchConnection;
-        this.currentView = await this.viewPatchConnection.createView (type);
-
-        if (this.currentView)
-        {
-            this.container.appendChild (this.currentView);
-            this.updateViewScale();
-        }
-    }
-
-    getHTML()
-    {
-        return `
-<style>
-  :host {
-    position: relative;
-    display: block;
-  }
-
-  #cmaj-view-container {
-    position: relative;
-    overflow: visible;
-  }
-</style>
-
-<div id="cmaj-view-container"></div>
-`;
-    }
+    if (currentView)
+        inner.appendChild (currentView);
 }
 
-customElements.define ("cmaj-patch-view", PatchViewHolder);
+function updateViewScale()
+{
+    const parentToFitTo = document.body;
 
-document.getElementById ("cmaj-view").createView (createConnection());
+    if (currentView && parentToFitTo)
+    {
+        const scaleLimits = currentView.getScaleFactorLimits?.();
+
+        if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
+        {
+            const parentStyle = getComputedStyle (parentToFitTo);
+            const parentW = parentToFitTo.clientWidth - parseFloat (parentStyle.paddingLeft) - parseFloat (parentStyle.paddingRight);
+            const parentH = parentToFitTo.clientHeight - parseFloat (parentStyle.paddingTop) - parseFloat (parentStyle.paddingBottom);
+
+            let viewW = WIDTH;
+            let viewH = HEIGHT;
+
+            const scaleW = parentW / viewW;
+            const scaleH = parentH / viewH;
+
+            const minScale = scaleLimits.minScale || 0.25;
+            const maxScale = scaleLimits.maxScale || 5.0;
+
+            const scaleFactor = Math.min (maxScale, Math.max (minScale, Math.min (scaleW, scaleH)));
+
+            inner.style.transformOrigin = "0% 0%";
+            inner.style.transform = `scale(${scaleFactor})`;
+
+            return;
+        }
+    }
+
+    inner.style.transform = "none";
+}
+
+createView();
+
+const resizeObserver = new ResizeObserver (() => updateViewScale());
+resizeObserver.observe (document.body);
+
+updateViewScale();
 
 </script>
 </html>
