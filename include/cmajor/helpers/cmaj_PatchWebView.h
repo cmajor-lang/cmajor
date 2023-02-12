@@ -170,7 +170,7 @@ inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
 
 static constexpr auto cmajor_patch_gui_html = R"(
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>Cmajor Patch Controls</title>
@@ -181,7 +181,7 @@ static constexpr auto cmajor_patch_gui_html = R"(
   html { background: black; overflow: hidden; }
   body { display: block; position: absolute; width: 100%; height: 100%; padding: 8px; }
   #cmaj-outer-container { display: block; position: relative; width: 100%; height: 100%; overflow: auto; }
-  #cmaj-inner-container { display: block; position: relative; width: 100%; height: 100%; overflow: visible; }
+  #cmaj-inner-container { display: block; position: relative; width: 100%; height: 100%; overflow: visible; transform-origin: 0% 0%; }
 </style>
 
 <body>
@@ -194,6 +194,7 @@ static constexpr auto cmajor_patch_gui_html = R"(
 
 import createPatchView from IMPORT_VIEW;
 
+//==============================================================================
 class PatchConnection
 {
     constructor()
@@ -233,54 +234,53 @@ class PatchConnection
     sendFullStoredState (fullState)                  { window.cmaj_sendMessageToPatch ({ type: "send_full_state", value: fullState }); }
 }
 
+//==============================================================================
 const outer = document.getElementById ("cmaj-outer-container");
 const inner = document.getElementById ("cmaj-inner-container");
 
 let currentView = null;
 
-function createConnection() { return new PatchConnection(); }
-
 async function createView()
 {
-    currentView = await createPatchView (createConnection());
+    currentView = await createPatchView (new PatchConnection());
 
     if (currentView)
         inner.appendChild (currentView);
 }
 
-function updateViewScale()
+function getScaleToApplyToView (view, originalViewW, originalViewH, parentToFitTo)
 {
-    const parentToFitTo = document.body;
-
-    if (currentView && parentToFitTo)
+    if (view && parentToFitTo)
     {
-        const scaleLimits = currentView.getScaleFactorLimits?.();
+        const scaleLimits = view.getScaleFactorLimits?.();
 
         if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
         {
+            const minScale = scaleLimits.minScale || 0.25;
+            const maxScale = scaleLimits.maxScale || 5.0;
+
             const parentStyle = getComputedStyle (parentToFitTo);
             const parentW = parentToFitTo.clientWidth - parseFloat (parentStyle.paddingLeft) - parseFloat (parentStyle.paddingRight);
             const parentH = parentToFitTo.clientHeight - parseFloat (parentStyle.paddingTop) - parseFloat (parentStyle.paddingBottom);
 
-            let viewW = WIDTH;
-            let viewH = HEIGHT;
+            const scaleW = parentW / originalViewW;
+            const scaleH = parentH / originalViewH;
 
-            const scaleW = parentW / viewW;
-            const scaleH = parentH / viewH;
-
-            const minScale = scaleLimits.minScale || 0.25;
-            const maxScale = scaleLimits.maxScale || 5.0;
-
-            const scaleFactor = Math.min (maxScale, Math.max (minScale, Math.min (scaleW, scaleH)));
-
-            inner.style.transformOrigin = "0% 0%";
-            inner.style.transform = `scale(${scaleFactor})`;
-
-            return;
+            return Math.min (maxScale, Math.max (minScale, Math.min (scaleW, scaleH)));
         }
     }
 
-    inner.style.transform = "none";
+    return undefined;
+}
+
+function updateViewScale()
+{
+    const scale = getScaleToApplyToView (currentView, WIDTH, HEIGHT, document.body);
+
+    if (scale)
+        inner.style.transform = `scale(${scale})`;
+    else
+        inner.style.transform = "none";
 }
 
 createView();
