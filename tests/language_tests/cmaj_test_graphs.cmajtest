@@ -4501,3 +4501,25 @@ processor Engine
 
     void main() { advance(); }
 }
+
+
+## testCompile()
+
+processor P
+{
+    input event float in;
+	output stream float out;
+
+    event in (float f) {}
+}
+
+graph voice [[main]]
+{
+	input event float32 in;
+	output stream float out;
+
+	event in (float v)
+	{
+		P.in <- v;
+	}
+}
