@@ -50,6 +50,15 @@ struct AudioMIDIPerformer
 {
     ~AudioMIDIPerformer();
 
+    /// This is a base class for snooping on the data that's flowing through endpoints
+    /// as they're being processed.
+    struct AudioDataListener
+    {
+        virtual ~AudioDataListener() = default;
+        virtual void process (const choc::buffer::InterleavedView<float>&) = 0;
+        virtual void process (const choc::buffer::InterleavedView<double>&) = 0;
+    };
+
     //==============================================================================
     // To create an AudioMIDIPerformer, create a Builder object, set up its connections,
     // and then call Builder::createPerformer() to get the performer object.
@@ -62,8 +71,9 @@ struct AudioMIDIPerformer
                                   const std::vector<uint32_t>& endpointChannels);
 
         bool connectAudioOutputTo (const cmaj::EndpointDetails&,
-                                  const std::vector<uint32_t>& endpointChannels,
-                                  const std::vector<uint32_t>& outputChannels);
+                                   const std::vector<uint32_t>& endpointChannels,
+                                   const std::vector<uint32_t>& outputChannels,
+                                   std::shared_ptr<AudioDataListener> listener);
 
         bool connectMIDIInputTo (const cmaj::EndpointDetails&);
         bool connectMIDIOutputTo (const cmaj::EndpointDetails&);
@@ -86,7 +96,8 @@ struct AudioMIDIPerformer
         template <typename SampleType>
         void addOutputCopyFunction (EndpointHandle, uint32_t numChannelsInEndpoint,
                                     const std::vector<uint32_t>& endpointChannels,
-                                    const std::vector<uint32_t>& outputChannels);
+                                    const std::vector<uint32_t>& outputChannels,
+                                    std::shared_ptr<AudioDataListener> listener);
         void createOutputChannelClearAction();
     };
 
@@ -292,12 +303,41 @@ template <typename SampleType>
 void AudioMIDIPerformer::Builder::addOutputCopyFunction (EndpointHandle endpointHandle,
                                                          uint32_t numChannelsInEndpoint,
                                                          const std::vector<uint32_t>& endpointChannels,
-                                                         const std::vector<uint32_t>& outputChannels)
+                                                         const std::vector<uint32_t>& outputChannels,
+                                                         std::shared_ptr<AudioDataListener> listener)
 {
     CMAJ_ASSERT (endpointChannels.size() == outputChannels.size());
 
+    auto scratch = choc::buffer::createInterleavedView (reinterpret_cast<SampleType*> (result->audioOutputScratchSpace.data()),
+                                                        numChannelsInEndpoint, maxFramesPerBlock);
+
     if (endpointChannels.empty())
+    {
+        if (listener)
+        {
+            result->postRenderAddFunctions.push_back ([amp = result.get(), endpointHandle, scratch, listener]
+                                                      (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+            {
+                auto destSize = block.audioOutput.getSize();
+                auto source = scratch.getStart (destSize.numFrames);
+
+                amp->performer.copyOutputFrames (endpointHandle, source);
+                listener->process (source);
+            });
+
+            result->postRenderReplaceFunctions.push_back ([amp = result.get(), endpointHandle, scratch, listener]
+                                                          (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+            {
+                auto destSize = block.audioOutput.getSize();
+                auto source = scratch.getStart (destSize.numFrames);
+
+                amp->performer.copyOutputFrames (endpointHandle, source);
+                listener->process (source);
+            });
+        }
+
         return;
+    }
 
     struct ChannelMap
     {
@@ -327,16 +367,16 @@ void AudioMIDIPerformer::Builder::addOutputCopyFunction (EndpointHandle endpoint
         allMappings.push_back ({ src, dest });
     }
 
-    auto scratch = choc::buffer::createInterleavedView (reinterpret_cast<SampleType*> (result->audioOutputScratchSpace.data()),
-                                                        numChannelsInEndpoint, maxFramesPerBlock);
-
-    result->postRenderAddFunctions.push_back ([amp = result.get(), endpointHandle, scratch, allMappings]
+    result->postRenderAddFunctions.push_back ([amp = result.get(), endpointHandle, scratch, allMappings, listener]
                                               (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
     {
         auto destSize = block.audioOutput.getSize();
         auto source = scratch.getStart (destSize.numFrames);
 
         amp->performer.copyOutputFrames (endpointHandle, source);
+
+        if (listener)
+            listener->process (source);
 
         auto dest = block.audioOutput.getStart (destSize.numFrames);
 
@@ -348,16 +388,19 @@ void AudioMIDIPerformer::Builder::addOutputCopyFunction (EndpointHandle endpoint
     {
         if (channelsToOverwrite.size() == 1)
         {
-            result->postRenderReplaceFunctions.push_back ([amp = result.get(), endpointHandle, destChannel = channelsToOverwrite.front().dest]
+            result->postRenderReplaceFunctions.push_back ([amp = result.get(), endpointHandle, listener, destChannel = channelsToOverwrite.front().dest]
                                                           (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
             {
                 auto dest = block.audioOutput.getChannel (destChannel);
                 amp->performer.copyOutputFrames (endpointHandle, dest.data.data, dest.getNumFrames());
+
+                if (listener)
+                    listener->process (choc::buffer::createInterleavedView (reinterpret_cast<SampleType*> (dest.data.data), 1u, dest.getNumFrames()));
             });
         }
         else
         {
-            result->postRenderReplaceFunctions.push_back ([amp = result.get(), endpointHandle, channelsToOverwrite]
+            result->postRenderReplaceFunctions.push_back ([amp = result.get(), endpointHandle, listener, channelsToOverwrite]
                                                           (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
             {
                 auto firstIndex = channelsToOverwrite.front().dest;
@@ -367,6 +410,9 @@ void AudioMIDIPerformer::Builder::addOutputCopyFunction (EndpointHandle endpoint
                 {
                     auto firstChan = block.audioOutput.getChannel (firstIndex);
                     amp->performer.copyOutputFrames (endpointHandle, firstChan.data.data, firstChan.getNumFrames());
+
+                    if (listener)
+                        listener->process (choc::buffer::createInterleavedView (reinterpret_cast<SampleType*> (firstChan.data.data), 1u, firstChan.getNumFrames()));
 
                     for (size_t i = 1; i < channelsToOverwrite.size(); ++i)
                     {
@@ -378,31 +424,35 @@ void AudioMIDIPerformer::Builder::addOutputCopyFunction (EndpointHandle endpoint
                 }
             });
         }
-
-        return;
     }
-
-    result->postRenderReplaceFunctions.push_back ([amp = result.get(), endpointHandle, scratch, channelsToOverwrite, channelsToAddTo]
-                                                  (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+    else
     {
-        auto destSize = block.audioOutput.getSize();
-        auto source = scratch.getStart (destSize.numFrames);
+        result->postRenderReplaceFunctions.push_back ([amp = result.get(), endpointHandle, scratch, channelsToOverwrite, channelsToAddTo, listener]
+                                                      (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+        {
+            auto destSize = block.audioOutput.getSize();
+            auto source = scratch.getStart (destSize.numFrames);
 
-        amp->performer.copyOutputFrames (endpointHandle, source);
+            amp->performer.copyOutputFrames (endpointHandle, source);
 
-        auto dest = block.audioOutput.getStart (destSize.numFrames);
+            if (listener)
+                listener->process (source);
 
-        for (auto c : channelsToOverwrite)
-            copy (dest.getChannel (c.dest), source.getChannel (c.source));
+            auto dest = block.audioOutput.getStart (destSize.numFrames);
 
-        for (auto c : channelsToAddTo)
-            add (dest.getChannel (c.dest), source.getChannel (c.source));
-    });
+            for (auto c : channelsToOverwrite)
+                copy (dest.getChannel (c.dest), source.getChannel (c.source));
+
+            for (auto c : channelsToAddTo)
+                add (dest.getChannel (c.dest), source.getChannel (c.source));
+        });
+    }
 }
 
 inline bool AudioMIDIPerformer::Builder::connectAudioOutputTo (const cmaj::EndpointDetails& endpoint,
                                                                const std::vector<uint32_t>& endpointChannels,
-                                                               const std::vector<uint32_t>& outputChannels)
+                                                               const std::vector<uint32_t>& outputChannels,
+                                                               std::shared_ptr<AudioDataListener> listener)
 {
     CMAJ_ASSERT (outputChannels.size() == endpointChannels.size());
 
@@ -411,9 +461,9 @@ inline bool AudioMIDIPerformer::Builder::connectAudioOutputTo (const cmaj::Endpo
         auto endpointHandle = result->engine.getEndpointHandle (endpoint.endpointID);
 
         if (isFloat32 (endpoint.dataTypes.front()))
-            addOutputCopyFunction<float> (endpointHandle, numChannelsInEndpoint, endpointChannels, outputChannels);
+            addOutputCopyFunction<float> (endpointHandle, numChannelsInEndpoint, endpointChannels, outputChannels, listener);
         else
-            addOutputCopyFunction<double> (endpointHandle, numChannelsInEndpoint, endpointChannels, outputChannels);
+            addOutputCopyFunction<double> (endpointHandle, numChannelsInEndpoint, endpointChannels, outputChannels, listener);
 
         return true;
     }

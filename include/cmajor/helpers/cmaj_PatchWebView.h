@@ -229,7 +229,7 @@ class PatchConnection
     sendEventOrValue (endpointID, value, numFrames)  { window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: numFrames }); }
     sendParameterGestureStart (endpointID)           { window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID }); }
     sendParameterGestureEnd (endpointID)             { window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID }); }
-    sendMIDIInputEvent (shortMIDICode)               { window.cmaj_sendMessageToPatch ({ type: "midi_input", midiEvent: shortMIDICode }); }
+    sendMIDIInputEvent (endpointID, shortMIDICode)   { window.cmaj_sendMessageToPatch ({ type: "send_midi_input", id: endpointID, midiEvent: shortMIDICode }); }
     sendStoredStateValue (key, newValue)             { window.cmaj_sendMessageToPatch ({ type: "send_state_value", key : key, value: newValue }); }
     sendFullStoredState (fullState)                  { window.cmaj_sendMessageToPatch ({ type: "send_full_state", value: fullState }); }
 }
