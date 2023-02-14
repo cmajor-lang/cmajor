@@ -577,6 +577,8 @@ class CustomPatchView extends HTMLElement
     --labelled-control-font-color: var(--foreground);
     --labelled-control-font-size: 12px;
 
+    display: block;
+    height: 100%;
     font-family: 'IBM Plex Mono', monospace;
     background-color: var(--background);
 }

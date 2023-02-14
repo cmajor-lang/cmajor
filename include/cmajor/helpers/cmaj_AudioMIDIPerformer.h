@@ -68,7 +68,8 @@ struct AudioMIDIPerformer
 
         bool connectAudioInputTo (const std::vector<uint32_t>& inputChannels,
                                   const cmaj::EndpointDetails& endpoint,
-                                  const std::vector<uint32_t>& endpointChannels);
+                                  const std::vector<uint32_t>& endpointChannels,
+                                  std::shared_ptr<AudioDataListener> listener);
 
         bool connectAudioOutputTo (const cmaj::EndpointDetails&,
                                    const std::vector<uint32_t>& endpointChannels,
@@ -217,7 +218,8 @@ inline AudioMIDIPerformer::Builder::Builder (cmaj::Engine e, uint32_t eventFIFOS
 
 inline bool AudioMIDIPerformer::Builder::connectAudioInputTo (const std::vector<uint32_t>& inputChannels,
                                                               const cmaj::EndpointDetails& endpoint,
-                                                              const std::vector<uint32_t>& endpointChannels)
+                                                              const std::vector<uint32_t>& endpointChannels,
+                                                              std::shared_ptr<AudioDataListener> listener)
 {
     CMAJ_ASSERT (inputChannels.size() == endpointChannels.size());
 
@@ -230,7 +232,8 @@ inline bool AudioMIDIPerformer::Builder::connectAudioInputTo (const std::vector<
 
         auto endpointHandle = result->engine.getEndpointHandle (endpoint.endpointID);
 
-        result->preRenderFunctions.push_back ([amp = result.get(), endpointHandle, numChannelsInEndpoint, endpointChannels, inputChannels]
+        result->preRenderFunctions.push_back ([amp = result.get(), endpointHandle, numChannelsInEndpoint,
+                                               endpointChannels, inputChannels, listener]
                                               (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
         {
             auto numFrames = block.audioInput.getNumFrames();
@@ -238,6 +241,9 @@ inline bool AudioMIDIPerformer::Builder::connectAudioInputTo (const std::vector<
 
             for (uint32_t i = 0; i < inputChannels.size(); i++)
                 copy (interleavedBuffer.getChannel (endpointChannels[i]), block.audioInput.getChannel (inputChannels[i]));
+
+            if (listener)
+                listener->process (interleavedBuffer);
 
             amp->performer.setInputFrames (endpointHandle, interleavedBuffer.data.data, numFrames);
         });

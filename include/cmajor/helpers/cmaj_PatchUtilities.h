@@ -1267,6 +1267,7 @@ private:
             else if (auto numAudioChans = e.getNumAudioChannels())
             {
                 result->numAudioInputChans += numAudioChans;
+                result->audioEndpointMonitors.push_back (std::make_unique<AudioLevelMonitor> (e));
             }
             else if (e.isTimelineTimeSignature())   { result->timeSigEventID = e.endpointID;        result->hasTimecodeInputs = true; }
             else if (e.isTimelinePosition())        { result->positionEventID = e.endpointID;       result->hasTimecodeInputs = true; }
@@ -1310,7 +1311,8 @@ private:
                         ++inputChanIndex;
                 }
 
-                performerBuilder->connectAudioInputTo (inChans, e, endpointChans);
+                performerBuilder->connectAudioInputTo (inChans, e, endpointChans,
+                                                       createDataListener (e.endpointID.toString()));
             }
             else if (e.isMIDI())
             {

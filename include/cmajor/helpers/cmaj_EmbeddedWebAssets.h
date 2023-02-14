@@ -648,6 +648,8 @@ R"(
     --labelled-control-font-color: var(--foreground);
     --labelled-control-font-size: 12px;
 
+    display: block;
+    height: 100%;
     font-family: 'IBM Plex Mono', monospace;
     background-color: var(--background);
 }
@@ -2031,7 +2033,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 25711) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 25749) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2981) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6659) },
         File { "assets/ibmplexmono/v12/-F63fjptAgt5VM-kVkqdyU8n1iAq131nj-otFQ.woff2", std::string_view (assets_ibmplexmono_v12_F63fjptAgt5VMkVkqdyU8n1iAq131njotFQ_woff2, 3504) },

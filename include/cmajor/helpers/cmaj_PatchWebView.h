@@ -179,7 +179,7 @@ static constexpr auto cmajor_patch_gui_html = R"(
 <style>
   * { box-sizing: border-box; padding: 0; margin: 0; border: 0; }
   html { background: black; overflow: hidden; }
-  body { display: block; position: absolute; width: 100%; height: 100%; padding: 8px; }
+  body { display: block; position: absolute; width: 100%; height: 100%; }
   #cmaj-outer-container { display: block; position: relative; width: 100%; height: 100%; overflow: auto; }
   #cmaj-inner-container { display: block; position: relative; width: 100%; height: 100%; overflow: visible; transform-origin: 0% 0%; }
 </style>
