@@ -285,22 +285,10 @@ inline ExternalVariableList Engine::getExternalVariables() const
 inline bool Engine::setExternalVariable (const char* name, const choc::value::ValueView& value)
 {
     // This method is only valid on a loaded but not-yet-linked engine
-   if (! isLoaded() || isLinked())
-       return false;
+    if (! isLoaded() || isLinked())
+        return false;
 
-    struct Serialiser
-    {
-        void write (const void* d, size_t num)
-        {
-            data.insert (data.end(), static_cast<const char*> (d), static_cast<const char*> (d) + num);
-        }
-
-        std::vector<uint8_t> data;
-    };
-
-    Serialiser s;
-    s.data.reserve (2048);
-    value.serialise (s);
+    auto s = value.serialise();
     return engine->setExternalVariable (name, s.data.data(), s.data.size());
 }
 
