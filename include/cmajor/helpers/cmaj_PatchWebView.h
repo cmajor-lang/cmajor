@@ -222,15 +222,19 @@ class PatchConnection
     onFullStateValue (state) {}
 
     getResourceAddress (path)                        { return path; }
+
     requestStatusUpdate()                            { window.cmaj_sendMessageToPatch ({ type: "req_status" }); }
     resetToInitialState()                            { window.cmaj_sendMessageToPatch ({ type: "req_reset" }); }
+
     requestEndpointValue (endpointID)                { window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID }); }
-    requestStoredStateValue (key)                    { window.cmaj_sendMessageToPatch ({ type: "req_state_value", key: key }); }
     sendEventOrValue (endpointID, value, numFrames)  { window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: numFrames }); }
     sendParameterGestureStart (endpointID)           { window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID }); }
     sendParameterGestureEnd (endpointID)             { window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID }); }
     sendMIDIInputEvent (endpointID, shortMIDICode)   { window.cmaj_sendMessageToPatch ({ type: "send_midi_input", id: endpointID, midiEvent: shortMIDICode }); }
+
+    requestStoredStateValue (key)                    { window.cmaj_sendMessageToPatch ({ type: "req_state_value", key: key }); }
     sendStoredStateValue (key, newValue)             { window.cmaj_sendMessageToPatch ({ type: "send_state_value", key : key, value: newValue }); }
+    requestFullStoredState()                         { window.cmaj_sendMessageToPatch ({ type: "req_full_state" }); }
     sendFullStoredState (fullState)                  { window.cmaj_sendMessageToPatch ({ type: "send_full_state", value: fullState }); }
 }
 
