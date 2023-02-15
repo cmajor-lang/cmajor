@@ -199,25 +199,17 @@ class PatchConnection
 {
     constructor()
     {
-        window.cmaj_handleMessageFromPatch = (msg) =>
-        {
-            switch (msg.type)
-            {
-                case "output_event":    this.onOutputEvent?. (msg.ID, msg.value); break;
-                case "param_value":     this.onParameterEndpointChanged?. (msg.ID, msg.value); break;
-                case "status":          this.onPatchStatusChanged?. (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;
-                case "sample_rate":     this.onSampleRateChanged?. (msg.rate); break;
-                case "state_key_value": this.onStoredStateValueChanged?. (msg.key, msg.value); break;
-                case "full_state":      this.onFullStateValue?. (msg.value); break;
-                default: break;
-            }
-        };
+        this.endpointAudioMinMaxListeners = {};
+        this.endpointMIDIListeners = {};
+        this.endpointEventListeners = {};
+
+        window.cmaj_handleMessageFromPatch = (msg) => this.deliverMessageToClient (msg);
     }
 
     onPatchStatusChanged (errorMessage, patchManifest, inputsList, outputsList, details) {}
     onSampleRateChanged (newSampleRate) {}
     onParameterEndpointChanged (endpointID, newValue) {}
-    onOutputEvent (endpointID, newValue) {}
+    onEndpointEvent (endpointID, newValue) {}
     onStoredStateValueChanged (key, value) {}
     onFullStateValue (state) {}
 
@@ -236,6 +228,51 @@ class PatchConnection
     sendStoredStateValue (key, newValue)             { window.cmaj_sendMessageToPatch ({ type: "send_state_value", key : key, value: newValue }); }
     requestFullStoredState()                         { window.cmaj_sendMessageToPatch ({ type: "req_full_state" }); }
     sendFullStoredState (fullState)                  { window.cmaj_sendMessageToPatch ({ type: "send_full_state", value: fullState }); }
+
+    setEndpointAudioListener (endpointID, granularity, listener)
+    {
+        this.endpointAudioMinMaxListeners[endpointID] = listener;
+
+        const gran = listener ? ((granularity && granularity > 0 && granularity <= 96000) ? granularity : 1024) : 0;
+
+        this.session.sendMessageToServer ({ type: "set_endpoint_audio_monitoring",
+                                            endpoint: endpointID,
+                                            granularity: gran });
+    }
+
+    setEndpointMIDIListener (endpointID, listener)
+    {
+        this.endpointMIDIListeners[endpointID] = listener;
+
+        this.session.sendMessageToServer ({ type: "set_endpoint_midi_monitoring",
+                                            endpoint: endpointID,
+                                            active: !! listener });
+    }
+
+    setEndpointEventListener (endpointID, listener)
+    {
+        this.endpointEventListeners[endpointID] = listener;
+
+        this.session.sendMessageToServer ({ type: "set_endpoint_event_monitoring",
+                                            endpoint: endpointID,
+                                            active: !! listener });
+    }
+
+    deliverMessageToClient (msg)
+    {
+        switch (msg.type)
+        {
+            case "endpoint_event":          this.onEndpointEvent?. (msg.ID, msg.value); break;
+            case "param_value":             this.onParameterEndpointChanged?. (msg.ID, msg.value); break;
+            case "endpoint_audio_min_max":  this.endpointAudioMinMaxListeners[msg.endpoint]?.(msg.min, msg.max); break;
+            case "endpoint_midi":           this.endpointMIDIListeners[msg.endpoint]?.(msg.message); break;
+            case "status":                  this.onPatchStatusChanged?. (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;
+            case "sample_rate":             this.onSampleRateChanged?. (msg.rate); break;
+            case "state_key_value":         this.onStoredStateValueChanged?. (msg.key, msg.value); break;
+            case "full_state":              this.onFullStateValue?. (msg.value); break;
+            default: break;
+        }
+    }
 }
 
 //==============================================================================

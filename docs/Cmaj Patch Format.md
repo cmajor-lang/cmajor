@@ -237,7 +237,7 @@ _(note: for all methods below, `endpointID` is the endpoint name, as specified i
   - This will be called following changes to the sample rate within the host, or following each recompile
 - `onParameterEndpointChanged (endpointID, newValue)`
   - This will be called following a change to an input endpoint parameter (i.e. after processing a `sendEventOrValue` call, or from an external change via the host), or following a `requestEndpointValue` request
-- `onOutputEvent (endpointID, newValue)`
+- `onEndpointEvent (endpointID, newValue)`
   - The value here can be a scalar value (a primitive number or boolean), an array, or a javascript object. If the endpoint type is an aggregate / `struct`, the runtime will convert it to a javascript object, i.e there will be a key for each field name in the struct
 
 #### Typical use cases
@@ -291,7 +291,7 @@ export default async function createPatchView (connection)
         // ...update UI state for endpoint, typically some kind of knob, slider, etc
     };
 
-    connection.onOutputEvent = (endpointID, newValue) =>
+    connection.onEndpointEvent = (endpointID, newValue) =>
     {
         // ...update UI state for endpoint, typically some kind of visualisation
     };
