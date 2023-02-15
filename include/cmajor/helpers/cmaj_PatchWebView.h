@@ -262,8 +262,8 @@ class PatchConnection
     {
         switch (msg.type)
         {
-            case "endpoint_event":          this.onEndpointEvent?. (msg.ID, msg.value); break;
-            case "param_value":             this.onParameterEndpointChanged?. (msg.ID, msg.value); break;
+            case "endpoint_event":          this.onEndpointEvent?. (msg.endpoint, msg.value); this.endpointEventListeners[msg.endpoint]?.(msg.value); break;
+            case "param_value":             this.onParameterEndpointChanged?. (msg.endpoint, msg.value); break;
             case "endpoint_audio_min_max":  this.endpointAudioMinMaxListeners[msg.endpoint]?.(msg.min, msg.max); break;
             case "endpoint_midi":           this.endpointMIDIListeners[msg.endpoint]?.(msg.message); break;
             case "status":                  this.onPatchStatusChanged?. (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;

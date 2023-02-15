@@ -1730,7 +1730,7 @@ struct Patch::ClientEventQueue
 
         patch.sendMessageToViews (choc::value::createObject ({},
                                     "type", "endpoint_event",
-                                    "ID", std::string_view (d + 2, endpointLen),
+                                    "endpoint", std::string_view (d + 2, endpointLen),
                                     "value", choc::value::Value::deserialise (valueData)));
     }
 
@@ -2275,7 +2275,7 @@ inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, flo
     if (endpointID)
         sendMessageToViews (choc::value::createObject ({},
                                 "type", "param_value",
-                                "ID", endpointID.toString(),
+                                "endpoint", endpointID.toString(),
                                 "value", value));
 }
 
@@ -2291,7 +2291,7 @@ inline void Patch::sendOutputEventToViews (std::string_view endpointID, const ch
     if (! (value.isVoid() || endpointID.empty()))
         sendMessageToViews (choc::value::createObject ({},
                                 "type", "endpoint_event",
-                                "ID", endpointID,
+                                "endpoint", endpointID,
                                 "value", value));
 }
 
