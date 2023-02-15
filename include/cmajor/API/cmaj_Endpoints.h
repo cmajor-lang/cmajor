@@ -294,7 +294,7 @@ struct EndpointDetails
         return type.isObject()
                 && choc::text::contains (type.getObjectClassName(), "TransportState")
                 && type.getNumElements() == 1
-                && type.getObjectMember (0).name == "state"
+                && type.getObjectMember (0).name == "flags"
                 && type.getObjectMember (0).type.isInt();
     }
 
@@ -309,11 +309,11 @@ struct EndpointDetails
         return type.isObject()
                 && choc::text::contains (type.getObjectClassName(), "Position")
                 && type.getNumElements() == 3
-                && type.getObjectMember (0).name == "currentFrame"
+                && type.getObjectMember (0).name == "frameIndex"
                 && type.getObjectMember (0).type.isInt64()
-                && type.getObjectMember (1).name == "currentQuarterNote"
+                && type.getObjectMember (1).name == "quarterNote"
                 && type.getObjectMember (1).type.isFloat64()
-                && type.getObjectMember (2).name == "lastBarStartQuarterNote"
+                && type.getObjectMember (2).name == "barStartQuarterNote"
                 && type.getObjectMember (2).type.isFloat64();
     }
 
