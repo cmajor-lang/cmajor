@@ -278,6 +278,7 @@ struct Patch
     void sendCPUInfoToViews (float level);
     void sendStoredStateValueToViews (const std::string& key);
     void sendFullStoredStateToViews();
+    void sendGeneratedCodeToViews (const std::string& type, const choc::value::ValueView& options);
 
     // These can be called by things like the GUI to control the patch
     bool handleCientMessage (const choc::value::ValueView&);
@@ -2020,7 +2021,7 @@ inline choc::value::Value Patch::getProgramDetails() const  { return isLoaded() 
 inline std::string Patch::getMainProcessorName() const
 {
     if (currentPatch && currentPatch->programDetails.isObject())
-        return currentPatch->programDetails["mainProcessor"].getWithDefault<std::string>({});
+        return currentPatch->programDetails["mainProcessor"].toString();
 
     return {};
 }
@@ -2224,7 +2225,7 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
 
         for (auto paramValue : params)
             if (paramValue.isObject())
-                if (auto name = paramValue["name"].getWithDefault<std::string>({}); ! name.empty())
+                if (auto name = paramValue["name"].toString(); ! name.empty())
                     if (auto value = paramValue["value"]; value.isFloat() || value.isInt())
                         explicitParamValues[name] = value.getWithDefault<float> (0);
 
@@ -2254,7 +2255,7 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
         for (uint32_t i = 0; i < values.size(); ++i)
         {
             auto member = values.getObjectMemberAt (i);
-            setStoredStateValue (member.name, member.value.getWithDefault<std::string>({}));
+            setStoredStateValue (member.name, member.value.toString());
             storedValuesToRemove.erase (member.name);
         }
     }
@@ -2439,38 +2440,29 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
 
         if (type == "send_value")
         {
-            if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-            {
-                auto endpointID = cmaj::EndpointID::create (endpointIDMember.getString());
-                sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
-            }
-
+            auto endpointID = cmaj::EndpointID::create (msg["id"].getString());
+            sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
             return true;
         }
 
         if (type == "send_midi_input")
         {
-            if (auto midiEvent = msg["midiEvent"]; ! midiEvent.isVoid())
-                if (auto value = midiEvent.getWithDefault<int32_t> (0))
-                    sendMIDIInputEvent (EndpointID::create (msg["id"].getWithDefault<std::string> ({})),
-                                        MIDIEvents::packedMIDIDataToMessage (value));
+            if (auto value = msg["midiEvent"].getWithDefault<int32_t> (0))
+                sendMIDIInputEvent (cmaj::EndpointID::create (msg["id"].toString()),
+                                    MIDIEvents::packedMIDIDataToMessage (value));
 
             return true;
         }
 
         if (type == "send_gesture_start")
         {
-            if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                sendGestureStart (cmaj::EndpointID::create (endpointIDMember.getString()));
-
+            sendGestureStart (cmaj::EndpointID::create (msg["id"].getString()));
             return true;
         }
 
         if (type == "send_gesture_end")
         {
-            if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                sendGestureEnd (cmaj::EndpointID::create (endpointIDMember.getString()));
-
+            sendGestureEnd (cmaj::EndpointID::create (msg["id"].getString()));
             return true;
         }
 
@@ -2482,9 +2474,7 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
 
         if (type == "req_endpoint")
         {
-            if (auto endpointIDMember = msg["id"]; endpointIDMember.isString())
-                sendCurrentParameterValueToViews (cmaj::EndpointID::create (endpointIDMember.getString()));
-
+            sendCurrentParameterValueToViews (cmaj::EndpointID::create (msg["id"].getString()));
             return true;
         }
 
@@ -2496,18 +2486,13 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
 
         if (type == "req_state_value")
         {
-            if (auto key = msg["key"]; key.isString())
-                sendStoredStateValueToViews (key.toString());
-
+            sendStoredStateValueToViews (msg["key"].toString());
             return true;
         }
 
         if (type == "send_state_value")
         {
-            if (auto key = msg["key"]; key.isString())
-                if (auto value = msg["value"]; value.isString() || value.isVoid())
-                    setStoredStateValue (key.toString(), value.get<std::string>());
-
+            setStoredStateValue (msg["key"].toString(), msg["value"].toString());
             return true;
         }
 
@@ -2527,7 +2512,7 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
 
         if (type == "load_patch")
         {
-            if (auto file = msg["file"].getWithDefault<std::string>({}); ! file.empty())
+            if (auto file = msg["file"].toString(); ! file.empty())
                 loadPatchFromFile (file);
             else
                 unload();
@@ -2537,21 +2522,21 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
 
         if (type == "set_endpoint_event_monitoring")
         {
-            setEndpointEventsNeeded (cmaj::EndpointID::create (msg["endpoint"].getWithDefault<std::string> ({})),
+            setEndpointEventsNeeded (cmaj::EndpointID::create (msg["endpoint"].toString()),
                                      msg["active"].getWithDefault<bool> (false));
             return true;
         }
 
         if (type == "set_endpoint_midi_monitoring")
         {
-            setEndpointMIDINeeded (cmaj::EndpointID::create (msg["endpoint"].getWithDefault<std::string> ({})),
+            setEndpointMIDINeeded (cmaj::EndpointID::create (msg["endpoint"].toString()),
                                    msg["active"].getWithDefault<bool> (false));
             return true;
         }
 
         if (type == "set_endpoint_audio_monitoring")
         {
-            setEndpointAudioMinMaxNeeded (cmaj::EndpointID::create (msg["endpoint"].getWithDefault<std::string> ({})),
+            setEndpointAudioMinMaxNeeded (cmaj::EndpointID::create (msg["endpoint"].toString()),
                                           static_cast<uint32_t> (msg["granularity"].getWithDefault<int64_t> (0)));
             return true;
         }

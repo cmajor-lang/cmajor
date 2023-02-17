@@ -138,8 +138,15 @@ inline void PatchWebView::Impl::createBindings()
 {
     webview.bind ("cmaj_sendMessageToPatch", [this] (const choc::value::ValueView& args) -> choc::value::Value
     {
-        if (args.isArray() && args.size() != 0)
-            patch.handleCientMessage (args[0]);
+        try
+        {
+            if (args.isArray() && args.size() != 0)
+                patch.handleCientMessage (args[0]);
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << "Error processing message from client: " << e.what() << std::endl;
+        }
 
         return {};
     });
