@@ -1690,6 +1690,98 @@ graph test [[main]]
     }
 }
 
+
+## testProcessor()
+
+processor source
+{
+    output event int out[3];
+
+    void main()
+    {
+        out[0] <- 0;
+        out[1] <- 1;
+        out[2] <- 2;
+        advance();
+    }
+}
+
+processor filter
+{
+    input event int in_many_to_many[3];
+    input event int in_one_to_many[3];
+    input event int in_many_to_one[3];
+    input event int in_one_to_one[3];
+
+    output event int[3] out_v1, out_v2, out_v3, out_v4;
+
+    event in_many_to_many (int index, int v)   { v1[index] += v; }
+    event in_one_to_many (int index, int v)    { v2[index] += v; }
+    event in_many_to_one (int index, int v)    { v3[index] += v; }
+    event in_one_to_one (int index, int v)     { v4[index] += v; }
+
+    int[3] v1, v2, v3, v4;
+
+    void main()
+    {
+        out_v1 <- v1;
+        out_v2 <- v2;
+        out_v3 <- v3;
+        out_v4 <- v4;
+        advance();
+    }
+}
+
+processor combiner
+{
+    input event int[3] in_v1, in_v2, in_v3, in_v4;
+    output event int out;
+
+    event in_v1 (int[3] i)  { v1[0] += i[0]; v1[1] += i[1]; v1[2] += i[2];}
+    event in_v2 (int[3] i)  { v2[0] += i[0]; v2[1] += i[1]; v2[2] += i[2];}
+    event in_v3 (int[3] i)  { v3[0] += i[0]; v3[1] += i[1]; v3[2] += i[2];}
+    event in_v4 (int[3] i)  { v4[0] += i[0]; v4[1] += i[1]; v4[2] += i[2];}
+
+    int[3] v1, v2, v3, v4;
+
+    void main()
+    {
+        if (v1[0] == 0 && v1[1] == 1 && v1[2] == 2 &&
+            v2[0] == 1 && v2[1] == 1 && v2[2] == 1 &&
+            v3[0] == 0 && v3[1] == 3 && v3[2] == 0 &&
+            v4[0] == 0 && v4[1] == 0 && v4[2] == 1)
+        {
+            out <- 1;
+            advance();
+        }
+
+        out <- -1;
+        advance();
+    }
+}
+
+graph test [[main]]
+{
+    output event int out;
+
+    node filters = filter[3];
+
+    connection
+    {
+        source.out    -> filters[0].in_many_to_many;
+        source.out[1] -> filters[1].in_one_to_many;
+        source.out    -> filters[2].in_many_to_one[1];
+        source.out[1] -> filters[0].in_one_to_one[2];
+
+        filters.out_v1 -> combiner.in_v1;
+        filters.out_v2 -> combiner.in_v2;
+        filters.out_v3 -> combiner.in_v3;
+        filters.out_v4 -> combiner.in_v4;
+
+        combiner.out -> out;
+    }
+}
+
 ## testProcessor()
 
 processor source
