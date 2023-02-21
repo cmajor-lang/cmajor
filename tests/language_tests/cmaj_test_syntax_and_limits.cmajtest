@@ -229,6 +229,14 @@ namespace N
     let array2 = int[-1] (123);
 }
 
+## expectError ("5:22: error: Illegal array size")
+
+namespace N
+{
+    let array1 = int[1] (123);
+    let array2 = int[0] (123);
+}
+
 ## expectError ("5:18: error: Too many elements")
 
 namespace N
@@ -267,6 +275,30 @@ namespace N
 {
      let array1 = float[2147483647L] (1);
      let array2 = float[2147483648L] (1);
+}
+
+## expectError ("5:26: error: Illegal vector size")
+
+namespace N
+{
+     let vector1 = float<256> (1);
+     let vector2 = float<257> (1);
+}
+
+## expectError ("5:26: error: Illegal vector size")
+
+namespace N
+{
+     let vector1 = float<1> (1);
+     let vector2 = float<0> (1);
+}
+
+## expectError ("5:27: error: Illegal vector size")
+
+namespace N
+{
+     let vector1 = float<1> (1);
+     let vector2 = float< -1> (1);
 }
 
 ## expectError ("1:19: error: Unterminated '/*' comment")
