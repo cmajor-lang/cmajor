@@ -40,7 +40,7 @@ struct PatchWebView  : public PatchView
     /// it will be called first, falling back to the default implementation if an empty result is returned.
     using MimeTypeMappingFn = std::function<std::string(std::string_view extension)>;
 
-    static std::unique_ptr<PatchWebView> create (Patch&, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn = {});
+    static std::unique_ptr<PatchWebView> create (Patch&, const PatchManifest::View*, MimeTypeMappingFn = {});
     ~PatchWebView() override;
 
     choc::ui::WebView& getWebView();
@@ -50,7 +50,7 @@ struct PatchWebView  : public PatchView
 private:
     struct Impl;
 
-    PatchWebView (std::unique_ptr<Impl>);
+    PatchWebView (std::unique_ptr<Impl>, const PatchManifest::View*);
 
     std::unique_ptr<Impl> pimpl;
 };
@@ -69,14 +69,41 @@ private:
 
 struct PatchWebView::Impl
 {
-    Impl (Patch&, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn = {});
+    Impl (Patch& p, const PatchManifest::View* v, MimeTypeMappingFn toMimeTypeFn)
+        : patch (p), toMimeTypeCustomImpl (std::move (toMimeTypeFn))
+    {
+        if (v != nullptr)
+            view = std::move (*v);
 
-    void sendMessage (const choc::value::ValueView&);
+        createBindings();
+    }
+
+    void sendMessage (const choc::value::ValueView& msg)
+    {
+        webview.evaluateJavascript ("if (window.cmaj_handleMessageFromPatch) window.cmaj_handleMessageFromPatch ("
+                                    + choc::json::toString (msg, true) + ");");
+    }
+
+    void createBindings()
+    {
+        webview.bind ("cmaj_sendMessageToPatch", [this] (const choc::value::ValueView& args) -> choc::value::Value
+        {
+            try
+            {
+                if (args.isArray() && args.size() != 0)
+                    patch.handleCientMessage (args[0]);
+            }
+            catch (const std::exception& e)
+            {
+                std::cout << "Error processing message from client: " << e.what() << std::endl;
+            }
+
+            return {};
+        });
+    }
 
     Patch& patch;
-    uint32_t width = 0, height = 0;
-    bool resizable = true;
-
+    PatchManifest::View view;
     MimeTypeMappingFn toMimeTypeCustomImpl;
 
    #if defined (DEBUG) || defined (_DEBUG) || ! (defined (NDEBUG) || defined (_NDEBUG))
@@ -86,10 +113,6 @@ struct PatchWebView::Impl
    #endif
 
     choc::ui::WebView webview { { allowWebviewDevMode, [this] (const auto& path) { return onRequest (path); } } };
-    std::filesystem::path customViewModulePath;
-
-    void initialiseFromFirstHTMLView();
-    void createBindings();
 
     using ResourcePath = choc::ui::WebView::Options::Path;
     using OptionalResource = std::optional<choc::ui::WebView::Options::Resource>;
@@ -98,68 +121,14 @@ struct PatchWebView::Impl
     static std::string toMimeTypeDefaultImpl (std::string_view extension);
 };
 
-inline PatchWebView::Impl::Impl (Patch& p, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn toMimeTypeFn)
-    : patch (p), width (viewWidth), height (viewHeight), toMimeTypeCustomImpl (std::move (toMimeTypeFn))
+inline std::unique_ptr<PatchWebView> PatchWebView::create (Patch& p, const PatchManifest::View* view, MimeTypeMappingFn toMimeType)
 {
-    initialiseFromFirstHTMLView();
-    createBindings();
+    auto impl = std::make_unique <PatchWebView::Impl> (p, view, std::move (toMimeType));
+    return std::unique_ptr<PatchWebView> (new PatchWebView (std::move (impl), view));
 }
 
-inline void PatchWebView::Impl::sendMessage (const choc::value::ValueView& msg)
-{
-    webview.evaluateJavascript ("if (window.cmaj_handleMessageFromPatch) window.cmaj_handleMessageFromPatch ("
-                                  + choc::json::toString (msg, true) + ");");
-}
-
-inline void PatchWebView::Impl::initialiseFromFirstHTMLView()
-{
-    if (auto manifest = patch.getManifest())
-    {
-        for (auto& view : manifest->views)
-        {
-            if (manifest->fileExists (view.source))
-            {
-                auto sourceFile = std::filesystem::path (view.source);
-
-                if (sourceFile.extension() == ".js")
-                {
-                    customViewModulePath = sourceFile;
-                    width  = view.width;
-                    height = view.height;
-                    resizable = view.resizable;
-                    return;
-                }
-            }
-        }
-    }
-}
-
-inline void PatchWebView::Impl::createBindings()
-{
-    webview.bind ("cmaj_sendMessageToPatch", [this] (const choc::value::ValueView& args) -> choc::value::Value
-    {
-        try
-        {
-            if (args.isArray() && args.size() != 0)
-                patch.handleCientMessage (args[0]);
-        }
-        catch (const std::exception& e)
-        {
-            std::cout << "Error processing message from client: " << e.what() << std::endl;
-        }
-
-        return {};
-    });
-}
-
-inline std::unique_ptr<PatchWebView> PatchWebView::create (Patch& p, uint32_t viewWidth, uint32_t viewHeight, MimeTypeMappingFn toMimeType)
-{
-    auto impl = std::make_unique <PatchWebView::Impl> (p, viewWidth, viewHeight, std::move (toMimeType));
-    return std::unique_ptr<PatchWebView> (new PatchWebView (std::move (impl)));
-}
-
-inline PatchWebView::PatchWebView (std::unique_ptr<Impl> impl)
-    : PatchView (impl->patch, impl->width, impl->height), pimpl (std::move (impl))
+inline PatchWebView::PatchWebView (std::unique_ptr<Impl> impl, const PatchManifest::View* view)
+    : PatchView (impl->patch, view), pimpl (std::move (impl))
 {
 }
 
@@ -199,13 +168,13 @@ static constexpr auto cmajor_patch_gui_html = R"(
 
 <script type="module">
 
-import createPatchView from IMPORT_VIEW;
-
 //==============================================================================
 class PatchConnection
 {
     constructor()
     {
+        this.manifest = MANIFEST;
+
         this.endpointAudioMinMaxListeners = {};
         this.endpointMIDIListeners = {};
         this.endpointEventListeners = {};
@@ -220,7 +189,7 @@ class PatchConnection
     onStoredStateValueChanged (key, value) {}
     onFullStateValue (state) {}
 
-    getResourceAddress (path)                        { return path; }
+    getResourceAddress (path)                        { return path.startsWith ("/") ? path : ("/" + path); }
 
     requestStatusUpdate()                            { window.cmaj_sendMessageToPatch ({ type: "req_status" }); }
     resetToInitialState()                            { window.cmaj_sendMessageToPatch ({ type: "req_reset" }); }
@@ -280,6 +249,27 @@ class PatchConnection
             default: break;
         }
     }
+
+    async createView (view)
+    {
+        const viewModuleURL = view && view.src ? view.src : "cmaj_api/cmaj-generic-patch-view.js";
+        const viewModule = await import (this.getResourceAddress (viewModuleURL));
+
+        const patchView = await viewModule.default (this);
+        patchView.style.display = "block";
+
+        if (view && view.width && view.width > 10)
+            patchView.style.width = view.width + "px";
+        else
+            patchView.style.width = undefined;
+
+        if (view && view.height && view.height > 10)
+            patchView.style.height = view.height + "px";
+        else
+            patchView.style.height = undefined;
+
+        return patchView;
+    }
 }
 
 //==============================================================================
@@ -287,10 +277,16 @@ const outer = document.getElementById ("cmaj-outer-container");
 const inner = document.getElementById ("cmaj-inner-container");
 
 let currentView = null;
+let defaultViewWidth = 0, defaultViewHeight = 0;
 
 async function createView()
 {
-    currentView = await createPatchView (new PatchConnection());
+    const view = VIEW_TYPE;
+    defaultViewWidth = view?.width || 600;
+    defaultViewHeight = view?.height || 400;
+
+    const patchConnection = new PatchConnection();
+    currentView = await patchConnection.createView (view);
 
     if (currentView)
         inner.appendChild (currentView);
@@ -323,7 +319,7 @@ function getScaleToApplyToView (view, originalViewW, originalViewH, parentToFitT
 
 function updateViewScale()
 {
-    const scale = getScaleToApplyToView (currentView, WIDTH, HEIGHT, document.body);
+    const scale = getScaleToApplyToView (currentView, defaultViewWidth, defaultViewHeight, document.body);
 
     if (scale)
         inner.style.transform = `scale(${scale})`;
@@ -362,17 +358,23 @@ inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const
 
     auto relativePath = std::filesystem::path (path).relative_path();
     bool wantsRootHTMLPage = relativePath.empty();
-    bool isGenericGUI = customViewModulePath.empty();
 
     if (wantsRootHTMLPage)
     {
-        auto viewModule = "/" + (isGenericGUI ? "cmaj_api/cmaj-generic-patch-view.js"
-                                              : customViewModulePath.relative_path().generic_string());
+        choc::value::Value manifestObject;
+        cmaj::PatchManifest::View viewToUse;
+
+        if (auto manifest = patch.getManifest())
+        {
+            manifestObject = manifest->manifest;
+
+            if (auto v = manifest->findDefaultView())
+                viewToUse = *v;
+        }
 
         return toResource (choc::text::replace (cmajor_patch_gui_html,
-                                                "IMPORT_VIEW", choc::json::getEscapedQuotedString (viewModule),
-                                                "WIDTH", std::to_string (width),
-                                                "HEIGHT", std::to_string (height)),
+                                                "MANIFEST", choc::json::toString (manifestObject),
+                                                "VIEW_TYPE", choc::json::toString (viewToUse.view)),
                            toMimeType (".html"));
     }
 

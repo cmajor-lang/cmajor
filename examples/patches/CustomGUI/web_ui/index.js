@@ -31,7 +31,6 @@ class CustomPatchView extends HTMLElement
         this.patchConnection.onPatchStatusChanged       = this.onPatchStatusChanged.bind (this);
         this.patchConnection.onSampleRateChanged        = this.onSampleRateChanged.bind (this);
         this.patchConnection.onParameterEndpointChanged = this.onParameterEndpointChanged.bind (this);
-        this.patchConnection.onEndpointEvent            = this.onEndpointEvent.bind (this);
 
         return {
             requestStatusUpdate:       this.patchConnection.requestStatusUpdate.bind (this.patchConnection),

@@ -84,12 +84,18 @@ struct PatchManifest
     struct View
     {
         /// A (possibly relative) URL for the view content
-        std::string source;
-        uint32_t width = 0, height = 0;
-        bool resizable = false;
+        std::string getSource() const;
+        uint32_t getWidth() const;
+        uint32_t getHeight() const;
+        bool isResizable() const;
+
+        choc::value::Value view;
     };
 
     std::vector<View> views;
+
+    const View* findDefaultView() const;
+    const View* findGenericView() const;
 
 private:
     void addSource (const choc::value::ValueView&);
@@ -387,7 +393,7 @@ struct PatchParameter  : public std::enable_shared_from_this<PatchParameter>
 /// Base class for a GUI for a patch.
 struct PatchView
 {
-    PatchView (Patch&, uint32_t width, uint32_t height);
+    PatchView (Patch&, const PatchManifest::View*);
     virtual ~PatchView();
 
     bool isViewOf (Patch&) const;
@@ -568,15 +574,32 @@ inline void PatchManifest::addView (const choc::value::ValueView& view)
     }
     else if (view.isObject())
     {
-        View v;
-
-        v.source    = view["src"].toString();
-        v.width     = view["width"].getWithDefault<uint32_t> (0);
-        v.height    = view["height"].getWithDefault<uint32_t> (0);
-        v.resizable = view["resizable"].getWithDefault<bool> (true);
-        views.push_back (std::move (v));
+        views.push_back (View { choc::value::Value (view) });
     }
 }
+
+inline const PatchManifest::View* PatchManifest::findDefaultView() const
+{
+    for (auto& view : views)
+        if (view.getSource().empty() || fileExists (view.getSource()))
+            return std::addressof (view);
+
+    return {};
+}
+
+inline const PatchManifest::View* PatchManifest::findGenericView() const
+{
+    for (auto& view : views)
+        if (view.getSource().empty())
+            return std::addressof (view);
+
+    return {};
+}
+
+inline std::string PatchManifest::View::getSource() const  { return view["src"].toString(); }
+inline uint32_t PatchManifest::View::getWidth() const      { return view["width"].getWithDefault<uint32_t> (0); }
+inline uint32_t PatchManifest::View::getHeight() const     { return view["height"].getWithDefault<uint32_t> (0); }
+inline bool PatchManifest::View::isResizable() const       { return view["resizable"].getWithDefault<bool> (true); }
 
 //==============================================================================
 struct Patch::FileChangeChecker
@@ -611,7 +634,7 @@ struct Patch::FileChangeChecker
             newSources.add (manifest, f);
 
         for (auto& v : manifest.views)
-            newAssets.add (manifest, v.source);
+            newAssets.add (manifest, v.getSource());
 
         FileChangeType changes;
 
@@ -2762,11 +2785,14 @@ inline float PatchParameter::getStringAsValue (std::string_view text) const
 }
 
 //==============================================================================
-inline PatchView::PatchView (Patch& p, uint32_t viewWidth, uint32_t viewHeight)
-  : patch (p)
+inline PatchView::PatchView (Patch& p, const PatchManifest::View* view) : patch (p)
 {
-    width  = viewWidth;
-    height = viewHeight;
+    if (view != nullptr)
+    {
+        width = view->getWidth();
+        height = view->getHeight();
+        resizable = view->isResizable();
+    }
 
     if (width < 50  || width > 10000)  width = 600;
     if (height < 50 || height > 10000) height = 400;
