@@ -616,7 +616,7 @@ private:
     {
         if (auto manifest = patch->getManifest())
             for (auto& v : manifest->views)
-                if (! v.resizable)
+                if (! v.isResizable())
                     return false;
 
         return true;
@@ -936,34 +936,24 @@ private:
 
         void createPatchGUIHolder()
         {
-            auto w = owner.lastEditorWidth;
-            auto h = owner.lastEditorHeight;
+            cmaj::PatchManifest::View view;
 
-            if (w <= 0 || h <= 0)
+            if (auto manifest = owner.patch->getManifest())
+                if (auto v = manifest->findDefaultView())
+                    view = *v;
+
+            if (owner.lastEditorWidth > 0 && owner.lastEditorHeight > 0)
             {
-                if (auto manifest = owner.patch->getManifest())
-                {
-                    for (auto& view : manifest->views)
-                    {
-                        if (view.width > 0 && view.height > 0)
-                        {
-                            w = static_cast<int> (view.width);
-                            h = static_cast<int> (view.height);
-                            break;
-                        }
-                    }
-                }
-
-                if (w <= 0 || h <= 0)
-                {
-                    w = defaultWidth;
-                    h = defaultHeight;
-                }
+                view.view.setMember ("width", owner.lastEditorWidth);
+                view.view.setMember ("height", owner.lastEditorHeight);
+            }
+            else
+            {
+                if (view.getWidth()  == 0)  view.view.setMember ("width", defaultWidth);
+                if (view.getHeight() == 0)  view.view.setMember ("height", defaultHeight);
             }
 
-            auto patchWebView = PatchWebView::create (*owner.patch,
-                                                      static_cast<uint32_t> (w),
-                                                      static_cast<uint32_t> (h));
+            auto patchWebView = PatchWebView::create (*owner.patch, std::addressof (view));
 
             patchGUIHolder = std::make_unique<PatchGUIHolder> (*this, std::move (patchWebView));
 
