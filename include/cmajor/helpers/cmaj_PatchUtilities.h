@@ -89,7 +89,7 @@ struct PatchManifest
         uint32_t getHeight() const;
         bool isResizable() const;
 
-        choc::value::Value view;
+        choc::value::Value view = choc::value::createObject ({});
     };
 
     std::vector<View> views;
