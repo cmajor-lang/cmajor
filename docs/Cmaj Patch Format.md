@@ -350,3 +350,54 @@ To use this feature, run the command line app in `generate` mode, e.g.
 ```
 
 It will create a folder containing some source files and a JUCE cmake project. This can be built as you would any other C++ cmake project, to produce VST/AU/AAX/standalone binaries.
+
+### Building a Web Audio `AudioWorkletNode` from a patch
+
+The `cmaj` tool supports code-generation of a Javascript module which contains code for instantiating a node for use in a Web Audio API graph. This is enabled via our WebAssembly (WASM) backend. As with the `plugin` target, the resulting code doesn't do any JIT compilation, it is self-contained Javascript with some embedded WASM code. Any external data declared in the `externals` property of the manifest is also embedded, including decoded audio sample data from audio files.
+
+The module has a default exported function which can be used to jointly construct a Web Audio node and a `PatchConnection` instance. The `PatchConnection` instance can be used when constructing a custom Patch GUI.
+
+To use this feature, run the command line app in `generate` mode, e.g.
+
+```
+% cmaj generate --target=wasm-worklet
+                --output=/path/to/MyAmazingSynthPatchWorklet.js
+                MyAmazingSynthPatch.cmajorpatch
+```
+
+The generated Javascript module can be used like this:
+
+```js
+
+import createAudioWorkletNodePatchConnection from "./MyAmazingSynthPatchWorklet.js";
+
+async function setupExample()
+{
+    const audioContext = new AudioContext();
+
+    const { node, connection } = await createAudioWorkletNodePatchConnection ({
+        audioContext,
+        workletName: "my-amazing-synth-patch-id",
+    });
+
+    node.connect (audioContext.destination);
+
+    // The `connection` instance can be used with an existing patch gui.
+    // The `wasm-worklet` target doesn't embed the view from the manifest, but
+    // if the view module is shipped alongside the worklet module, the following
+    // code can be used to setup the view.
+    const viewModule = await import ("./gui/index.js");
+    const patchView = await viewModule.default (connection);
+
+    document.body.appendChild (patchView);
+}
+
+setupExample();
+```
+
+#### Known limitations
+
+- It is the responsibility of the consuming code to supply a `workletName` on construction. This is to ensure the names are globally unique when using multiple nodes from various generated patches in the same web app
+- Due to various security restrictions in browsers, any app consuming the generated module must be served from a web server (i.e. a local server is needed for development, loading from a `file://` URL will likely not work)
+- For patches that have more than one input or output stream, only the first is mapped to Web Audio inputs / outputs
+- The WebAssembly backend is a work in progress, and some of our examples (for example the `ElectricPiano`) run slow enough to produce underruns
