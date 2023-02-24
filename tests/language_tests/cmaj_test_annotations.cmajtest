@@ -144,11 +144,14 @@ graph G
     connection x->out;
 }
 
-## testInputEndpoints ('[{"endpointID":"in","endpointType":"stream","dataType":{"type":"int32"},"annotation":{"name":"Input","min":0,"max":100,"init":50,"unit":"%","step":1},"purpose":"parameter"}]')
+## testInputEndpoints ('[{"endpointID":"in1","endpointType":"stream","dataType":{"type":"int32"},"annotation":{"name":"Input","min":0,"max":100,"init":50,"unit":"%","step":1}},{"endpointID":"in2","endpointType":"event","dataType":{"type":"int32"},"annotation":{"name":"Input","min":0,"max":100,"init":50,"unit":"%","step":1},"purpose":"parameter"},{"endpointID":"in3","endpointType":"value","dataType":{"type":"int32"},"annotation":{"name":"Input","min":0,"max":100,"init":50,"unit":"%","step":1},"purpose":"parameter"}]')
 
 processor test
 {
-    input stream int in [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
+    input stream int in1 [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
+    input event int in2 [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
+    input value int in3 [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
+
     output stream int out;
 
     void main()
@@ -157,17 +160,21 @@ processor test
     }
 }
 
-## testInputEndpoints ("[{\"endpointID\":\"in\",\"endpointType\":\"stream\",\"dataType\":{\"type\":\"int32\"},\"annotation\":{\"extra\":1,\"min\":5,\"name\":\"Input\",\"max\":100,\"init\":50,\"unit\":\"%\",\"step\":1},\"purpose\":\"parameter\"}]")
+## testInputEndpoints ('[{"endpointID":"in1","endpointType":"stream","dataType":{"type":"int32"},"annotation":{"extra":1,"min":5,"name":"Input","max":100,"init":50,"unit":"%","step":1}},{"endpointID":"in2","endpointType":"event","dataType":{"type":"int32"},"annotation":{"extra":1,"min":5,"name":"Input","max":100,"init":50,"unit":"%","step":1},"purpose":"parameter"},{"endpointID":"in3","endpointType":"value","dataType":{"type":"int32"},"annotation":{"extra":1,"min":5,"name":"Input","max":100,"init":50,"unit":"%","step":1},"purpose":"parameter"}]')
 
 graph test
 {
-    input WrappedProcessor.in [[ extra: 1, min: 5 ]];
+    input WrappedProcessor.in1 [[ extra: 1, min: 5 ]];
+    input WrappedProcessor.in2 [[ extra: 1, min: 5 ]];
+    input WrappedProcessor.in3 [[ extra: 1, min: 5 ]];
     output stream int out;
 }
 
 processor WrappedProcessor
 {
-    input stream int in [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
+    input stream int in1 [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
+    input event int in2 [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
+    input value int in3 [[ name: "Input", min: 0, max: 100, init: 50, unit: "%",  step: 1 ]];
     output stream int out;
 
     void main()
