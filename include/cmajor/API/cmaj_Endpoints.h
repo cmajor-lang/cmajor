@@ -233,6 +233,7 @@ struct EndpointDetails
     bool isParameter() const
     {
         return isInput
+                && ! isStream()
                 && annotation.isObject()
                 && annotation.hasObjectMember ("name")
                 && dataTypes.size() == 1
