@@ -1862,11 +1862,11 @@ inline bool Patch::preload (const PatchManifest& m)
 
 inline bool Patch::loadPatch (const LoadParams& params)
 {
-    if (std::addressof (lastLoadParams) != std::addressof (params))
-        lastLoadParams = params;
-
     if (! currentPlaybackParams.isValid())
         return false;
+
+    if (std::addressof (lastLoadParams) != std::addressof (params))
+        lastLoadParams = params;
 
     CHOC_ASSERT (createEngine);
     auto build = std::make_unique<Build> (*this, createEngine(), params, currentPlaybackParams, cache);
