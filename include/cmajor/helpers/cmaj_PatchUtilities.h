@@ -674,7 +674,7 @@ private:
         std::vector<File> files;
     };
 
-    const PatchManifest& manifest;
+    PatchManifest manifest;
     SourceFilesWithTimes manifestFiles, cmajorFiles, assetFiles;
     choc::threading::ThreadSafeFunctor<std::function<void(FileChangeType)>> callback;
     choc::threading::TaskThread fileChangeCheckThread;
