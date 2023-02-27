@@ -1865,6 +1865,8 @@ inline bool Patch::loadPatch (const LoadParams& params)
     if (! currentPlaybackParams.isValid())
         return false;
 
+    fileChangeChecker.reset();
+
     if (std::addressof (lastLoadParams) != std::addressof (params))
         lastLoadParams = params;
 
