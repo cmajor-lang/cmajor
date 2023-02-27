@@ -39,18 +39,7 @@ enum class EndpointType
     event    = 3
 };
 
-inline std::string_view getEndpointTypeName (EndpointType type)
-{
-    switch (type)
-    {
-        case EndpointType::stream:   return "stream";
-        case EndpointType::value:    return "value";
-        case EndpointType::event:    return "event";
-
-        case EndpointType::unknown:
-        default:                     return {};
-    }
-}
+std::string_view getEndpointTypeName (EndpointType);
 
 //==============================================================================
 /// This set of endpoint categories are used to hint to the host on what the
@@ -71,56 +60,20 @@ enum class EndpointPurpose
     timelinePosition
 };
 
-inline std::string_view getEndpointPurposeName (EndpointPurpose p)
-{
-    switch (p)
-    {
-        case EndpointPurpose::unknown:              return {};
-        case EndpointPurpose::console:              return "console";
-        case EndpointPurpose::audioIn:              return "audio in";
-        case EndpointPurpose::audioOut:             return "audio out";
-        case EndpointPurpose::midiIn:               return "midi in";
-        case EndpointPurpose::midiOut:              return "midi out";
-        case EndpointPurpose::parameterControl:     return "parameter";
-        case EndpointPurpose::timeSignature:        return "time signature";
-        case EndpointPurpose::tempo:                return "tempo";
-        case EndpointPurpose::transportState:       return "transport state";
-        case EndpointPurpose::timelinePosition:     return "timeline position";
-        default:                                    return {};
-    }
-}
+std::string_view getEndpointPurposeName (EndpointPurpose);
 
-inline constexpr std::string_view getConsoleEndpointID()   { return "console"; }
+constexpr std::string_view getConsoleEndpointID()       { return "console"; }
 
 /// Helper functions to deal with getting MIDI in and out of endpoints.
 namespace MIDIEvents
 {
-    inline int32_t midiMessageToPackedInt (choc::midi::ShortMessage m)
-    {
-        return static_cast<int32_t> (m.data[0]) << 16
-             | static_cast<int32_t> (m.data[1]) << 8
-             | static_cast<int32_t> (m.data[2]);
-    }
+    int32_t midiMessageToPackedInt (choc::midi::ShortMessage);
 
-    inline choc::midi::ShortMessage packedMIDIDataToMessage (int32_t packed)
-    {
-        return choc::midi::ShortMessage (static_cast<uint8_t> (packed >> 16),
-                                         static_cast<uint8_t> (packed >> 8),
-                                         static_cast<uint8_t> (packed));
-    }
+    choc::midi::ShortMessage packedMIDIDataToMessage (int32_t packed);
 
-    inline bool isMIDIMessageType (const choc::value::Type& type)
-    {
-        return type.isObject()
-                && choc::text::contains (type.getObjectClassName(), "Message")
-                && type.getNumElements() == 1
-                && type.getObjectMember (0).type.isInt32();
-    }
+    bool isMIDIMessageType (const choc::value::Type&);
 
-    inline choc::value::Value createMIDIMessageObject (choc::midi::ShortMessage m)
-    {
-        return choc::value::createObject ("Message", "message", midiMessageToPackedInt (m));
-    }
+    choc::value::Value createMIDIMessageObject (choc::midi::ShortMessage);
 }
 
 //==============================================================================
@@ -163,6 +116,9 @@ struct EndpointDetails
     choc::SmallVector<choc::value::Type, 2> dataTypes;
     choc::value::Value annotation;
 
+    /// If known, this will contain the location of the endpoint's declaration
+    std::string sourceFileLocation;
+
     bool isOutput() const       { return ! isInput; }
     bool isStream() const       { return endpointType == EndpointType::stream; }
     bool isEvent() const        { return endpointType == EndpointType::event; }
@@ -170,222 +126,48 @@ struct EndpointDetails
 
     /// Attempts to make an informed guess about what kind of purpose the author
     /// intended this endpoint to be used for.
-    EndpointPurpose getSuggestedPurpose() const
-    {
-        if (isConsole())
-            return EndpointPurpose::console;
-
-        if (isMIDI())
-            return isInput ? EndpointPurpose::midiIn
-                           : EndpointPurpose::midiOut;
-
-        if (isParameter())
-            return EndpointPurpose::parameterControl;
-
-        if (getNumAudioChannels() > 0)
-            return isInput ? EndpointPurpose::audioIn
-                           : EndpointPurpose::audioOut;
-
-        if (isTimelineTimeSignature())  return EndpointPurpose::timeSignature;
-        if (isTimelineTempo())          return EndpointPurpose::tempo;
-        if (isTimelineTransportState()) return EndpointPurpose::transportState;
-        if (isTimelinePosition())       return EndpointPurpose::timelinePosition;
-
-        return EndpointPurpose::unknown;
-    }
+    EndpointPurpose getSuggestedPurpose() const;
 
     /// Checks whether this endpoint has the name of the standard console output
-    bool isConsole() const
-    {
-        return ! isInput && endpointID.toString() == "console";
-    }
+    bool isConsole() const;
 
     /// Looks at the type of data that this endpoint uses, and returns true if it
     /// seems to be passing MIDI event objects
-    bool isMIDI() const
-    {
-        return isEvent()
-                && dataTypes.size() == 1
-                && MIDIEvents::isMIDIMessageType (dataTypes.front());
-    }
+    bool isMIDI() const;
 
     /// Looks at the type of data that this endpoint uses, and if it's a floating
     /// point or vector, returns the number of channels. If it doesn't seem to be
     /// audio data, then this will just return 0.
-    uint32_t getNumAudioChannels() const
-    {
-        if (isStream())
-        {
-            auto& frameType = dataTypes.front();
-
-            if (frameType.isFloat())
-                return 1;
-
-            if (frameType.isVector() && frameType.getElementType().isFloat())
-                return frameType.getNumElements();
-        }
-
-        return 0;
-    }
+    uint32_t getNumAudioChannels() const;
 
     /// Uses some heuristics to make a guess at whether this endpoint appears
     /// to be a plugin parameter
-    bool isParameter() const
-    {
-        return isInput
-                && ! isStream()
-                && annotation.isObject()
-                && annotation.hasObjectMember ("name")
-                && dataTypes.size() == 1
-                && (dataTypes.front().isFloat()
-                     || dataTypes.front().isInt()
-                     || dataTypes.front().isBool());
-    }
+    bool isParameter() const;
 
     /// Attempts to say whether this endpoint is passing some kind of timeline data
-    bool isTimeline() const
-    {
-        return isTimelineTimeSignature()
-            || isTimelineTempo()
-            || isTimelineTransportState()
-            || isTimelinePosition();
-    }
+    bool isTimeline() const;
 
     /// Returns true if this endpoint seems to be dealing with time signature objects
-    bool isTimelineTimeSignature() const
-    {
-        if (dataTypes.size() != 1)
-            return false;
-
-        const auto& type = dataTypes.front();
-
-        return type.isObject()
-                && choc::text::contains (type.getObjectClassName(), "TimeSignature")
-                && type.getNumElements() == 2
-                && type.getObjectMember (0).name == "numerator"
-                && type.getObjectMember (0).type.isInt()
-                && type.getObjectMember (1).name == "denominator"
-                && type.getObjectMember (1).type.isInt();
-    }
+    bool isTimelineTimeSignature() const;
 
     /// Returns true if this endpoint seems to be dealing with tempo objects
-    bool isTimelineTempo() const
-    {
-        if (dataTypes.size() != 1)
-            return false;
-
-        const auto& type = dataTypes.front();
-
-        return type.isObject()
-                && choc::text::contains (type.getObjectClassName(), "Tempo")
-                && type.getNumElements() == 1
-                && type.getObjectMember (0).name == "bpm"
-                && type.getObjectMember (0).type.isFloat32();
-    }
+    bool isTimelineTempo() const;
 
     /// Returns true if this endpoint seems to be dealing with transport
     /// state change objects
-    bool isTimelineTransportState() const
-    {
-        if (dataTypes.size() != 1)
-            return false;
-
-        const auto& type = dataTypes.front();
-
-        return type.isObject()
-                && choc::text::contains (type.getObjectClassName(), "TransportState")
-                && type.getNumElements() == 1
-                && type.getObjectMember (0).name == "flags"
-                && type.getObjectMember (0).type.isInt();
-    }
+    bool isTimelineTransportState() const;
 
     /// Returns true if this endpoint seems to be dealing with timeline positions
-    bool isTimelinePosition() const
-    {
-        if (dataTypes.size() != 1)
-            return false;
-
-        const auto& type = dataTypes.front();
-
-        return type.isObject()
-                && choc::text::contains (type.getObjectClassName(), "Position")
-                && type.getNumElements() == 3
-                && type.getObjectMember (0).name == "frameIndex"
-                && type.getObjectMember (0).type.isInt64()
-                && type.getObjectMember (1).name == "quarterNote"
-                && type.getObjectMember (1).type.isFloat64()
-                && type.getObjectMember (2).name == "barStartQuarterNote"
-                && type.getObjectMember (2).type.isFloat64();
-    }
+    bool isTimelinePosition() const;
 
     //==============================================================================
     /// Creates a JSON reporesentation of the endpoint's properties
-    choc::value::Value toJSON() const
-    {
-        auto o = choc::value::createObject ({},
-                                            "endpointID",   endpointID.toString(),
-                                            "endpointType", getEndpointTypeName (endpointType));
-
-
-        if (dataTypes.size() == 1)
-        {
-            o.addMember ("dataType", dataTypes.front().toValue());
-        }
-        else
-        {
-            auto types = choc::value::createEmptyArray();
-
-            for (auto& d : dataTypes)
-                types.addArrayElement (d.toValue());
-
-            o.addMember ("dataTypes", types);
-        }
-
-        if (! annotation.isVoid())
-            o.addMember ("annotation", annotation);
-
-        if (auto purpose = getSuggestedPurpose(); purpose != EndpointPurpose::unknown)
-            o.addMember ("purpose", getEndpointPurposeName (purpose));
-
-        if (auto numAudioChans = getNumAudioChannels())
-            o.addMember ("numAudioChannels", static_cast<int32_t> (numAudioChans));
-
-        return o;
-    }
+    choc::value::Value toJSON() const;
 
     /// Creates an EndpointDetails object from a JSON representation that was
     /// creates with EndpointDetails::toJSON(). This may throw an exception if
     /// the JSON format isn't correct.
-    static EndpointDetails fromJSON (const choc::value::ValueView& v, bool isIn)
-    {
-        EndpointDetails d;
-        d.endpointID = EndpointID::create (v["endpointID"].getString());
-        d.isInput = isIn;
-
-        auto type = v["endpointType"].getString();
-
-        if (type == "stream")       d.endpointType = EndpointType::stream;
-        else if (type == "value")   d.endpointType = EndpointType::value;
-        else if (type == "event")   d.endpointType = EndpointType::event;
-        else throw std::runtime_error ("Unknown endpoint type");
-
-        auto dataTypes = v["dataTypes"];
-
-        if (dataTypes.isArray())
-        {
-            for (uint32_t i = 0; i < dataTypes.size(); ++i)
-                d.dataTypes.push_back (choc::value::Type::fromValue (dataTypes[i]));
-        }
-        else
-        {
-            d.dataTypes.push_back (choc::value::Type::fromValue (v["dataType"]));
-        }
-
-        if (v.hasObjectMember ("annotation"))
-            d.annotation = v["annotation"];
-
-        return d;
-    }
+    static EndpointDetails fromJSON (const choc::value::ValueView&, bool isInput);
 };
 
 //==============================================================================
@@ -394,41 +176,14 @@ struct EndpointDetails
 struct EndpointDetailsList
 {
     /// Returns a JSON string containing the items in this list.
-    std::string getDescription() const
-    {
-        return choc::json::toString (toJSON(), true);
-    }
+    std::string getDescription() const;
 
     /// Serialises the list into a JSON object
-    choc::value::Value toJSON() const
-    {
-        auto list = choc::value::createEmptyArray();
-
-        for (auto& e : endpoints)
-            list.addArrayElement (e.toJSON());
-
-        return list;
-    }
+    choc::value::Value toJSON() const;
 
     /// Creates a list from some JSON that was created by the toJSON() method,
     /// returning an empty list if the JSON was invalid.
-    static EndpointDetailsList fromJSON (const choc::value::ValueView& json, bool isInput)
-    {
-        try
-        {
-            EndpointDetailsList result;
-            result.endpoints.reserve (json.size());
-
-            for (uint32_t i = 0; i < json.size(); ++i)
-                result.endpoints.push_back (EndpointDetails::fromJSON (json[i], isInput));
-
-            return result;
-        }
-        catch (const std::exception&)
-        {}
-
-        return {};
-    }
+    static EndpointDetailsList fromJSON (const choc::value::ValueView& json, bool isInput);
 
     // Thsee let you iterate each EndpointDetails object in the list
     auto begin() const      { return endpoints.begin(); }
@@ -440,6 +195,329 @@ struct EndpointDetailsList
 };
 
 //==============================================================================
+/// Helper function to interpret a console message value as a readable string.
+std::string convertConsoleMessageToString (const choc::value::ValueView&);
+
+//==============================================================================
+/// Adds a special "_type" member to an object with a representation of its type
+choc::value::Value addTypeToValueAsProperty (const choc::value::ValueView&);
+
+/// Checks for our special "_type" property
+bool doesObjectHaveTypeAsProperty (const choc::value::ValueView&);
+
+/// Applies a special "_type" property from an ojbect to its own type
+choc::value::Value convertTypePropertyToObjectType (const choc::value::ValueView&);
+
+
+
+//==============================================================================
+//        _        _           _  _
+//     __| |  ___ | |_   __ _ (_)| | ___
+//    / _` | / _ \| __| / _` || || |/ __|
+//   | (_| ||  __/| |_ | (_| || || |\__ \ _  _  _
+//    \__,_| \___| \__| \__,_||_||_||___/(_)(_)(_)
+//
+//   Code beyond this point is implementation detail...
+//
+//==============================================================================
+
+inline std::string_view getEndpointTypeName (EndpointType type)
+{
+    switch (type)
+    {
+        case EndpointType::stream:   return "stream";
+        case EndpointType::value:    return "value";
+        case EndpointType::event:    return "event";
+
+        case EndpointType::unknown:
+        default:                     return {};
+    }
+}
+
+inline std::string_view getEndpointPurposeName (EndpointPurpose p)
+{
+    switch (p)
+    {
+        case EndpointPurpose::unknown:              return {};
+        case EndpointPurpose::console:              return "console";
+        case EndpointPurpose::audioIn:              return "audio in";
+        case EndpointPurpose::audioOut:             return "audio out";
+        case EndpointPurpose::midiIn:               return "midi in";
+        case EndpointPurpose::midiOut:              return "midi out";
+        case EndpointPurpose::parameterControl:     return "parameter";
+        case EndpointPurpose::timeSignature:        return "time signature";
+        case EndpointPurpose::tempo:                return "tempo";
+        case EndpointPurpose::transportState:       return "transport state";
+        case EndpointPurpose::timelinePosition:     return "timeline position";
+        default:                                    return {};
+    }
+}
+
+inline int32_t MIDIEvents::midiMessageToPackedInt (choc::midi::ShortMessage m)
+{
+    return static_cast<int32_t> (m.data[0]) << 16
+            | static_cast<int32_t> (m.data[1]) << 8
+            | static_cast<int32_t> (m.data[2]);
+}
+
+inline choc::midi::ShortMessage MIDIEvents::packedMIDIDataToMessage (int32_t packed)
+{
+    return choc::midi::ShortMessage (static_cast<uint8_t> (packed >> 16),
+                                        static_cast<uint8_t> (packed >> 8),
+                                        static_cast<uint8_t> (packed));
+}
+
+inline bool MIDIEvents::isMIDIMessageType (const choc::value::Type& type)
+{
+    return type.isObject()
+            && choc::text::contains (type.getObjectClassName(), "Message")
+            && type.getNumElements() == 1
+            && type.getObjectMember (0).type.isInt32();
+}
+
+inline choc::value::Value MIDIEvents::createMIDIMessageObject (choc::midi::ShortMessage m)
+{
+    return choc::value::createObject ("Message", "message", midiMessageToPackedInt (m));
+}
+
+inline EndpointPurpose EndpointDetails::getSuggestedPurpose() const
+{
+    if (isConsole())
+        return EndpointPurpose::console;
+
+    if (isMIDI())
+        return isInput ? EndpointPurpose::midiIn
+                        : EndpointPurpose::midiOut;
+
+    if (isParameter())
+        return EndpointPurpose::parameterControl;
+
+    if (getNumAudioChannels() > 0)
+        return isInput ? EndpointPurpose::audioIn
+                        : EndpointPurpose::audioOut;
+
+    if (isTimelineTimeSignature())  return EndpointPurpose::timeSignature;
+    if (isTimelineTempo())          return EndpointPurpose::tempo;
+    if (isTimelineTransportState()) return EndpointPurpose::transportState;
+    if (isTimelinePosition())       return EndpointPurpose::timelinePosition;
+
+    return EndpointPurpose::unknown;
+}
+
+inline bool EndpointDetails::isConsole() const
+{
+    return ! isInput && endpointID.toString() == "console";
+}
+
+inline bool EndpointDetails::isMIDI() const
+{
+    return isEvent()
+            && dataTypes.size() == 1
+            && MIDIEvents::isMIDIMessageType (dataTypes.front());
+}
+
+inline uint32_t EndpointDetails::getNumAudioChannels() const
+{
+    if (isStream())
+    {
+        auto& frameType = dataTypes.front();
+
+        if (frameType.isFloat())
+            return 1;
+
+        if (frameType.isVector() && frameType.getElementType().isFloat())
+            return frameType.getNumElements();
+    }
+
+    return 0;
+}
+
+inline bool EndpointDetails::isParameter() const
+{
+    return isInput
+            && ! isStream()
+            && annotation.isObject()
+            && annotation.hasObjectMember ("name")
+            && dataTypes.size() == 1
+            && (dataTypes.front().isFloat()
+                    || dataTypes.front().isInt()
+                    || dataTypes.front().isBool());
+}
+
+inline bool EndpointDetails::isTimeline() const
+{
+    return isTimelineTimeSignature()
+        || isTimelineTempo()
+        || isTimelineTransportState()
+        || isTimelinePosition();
+}
+
+inline bool EndpointDetails::isTimelineTimeSignature() const
+{
+    if (dataTypes.size() != 1)
+        return false;
+
+    const auto& type = dataTypes.front();
+
+    return type.isObject()
+            && choc::text::contains (type.getObjectClassName(), "TimeSignature")
+            && type.getNumElements() == 2
+            && type.getObjectMember (0).name == "numerator"
+            && type.getObjectMember (0).type.isInt()
+            && type.getObjectMember (1).name == "denominator"
+            && type.getObjectMember (1).type.isInt();
+}
+
+inline bool EndpointDetails::isTimelineTempo() const
+{
+    if (dataTypes.size() != 1)
+        return false;
+
+    const auto& type = dataTypes.front();
+
+    return type.isObject()
+            && choc::text::contains (type.getObjectClassName(), "Tempo")
+            && type.getNumElements() == 1
+            && type.getObjectMember (0).name == "bpm"
+            && type.getObjectMember (0).type.isFloat32();
+}
+
+inline bool EndpointDetails::isTimelineTransportState() const
+{
+    if (dataTypes.size() != 1)
+        return false;
+
+    const auto& type = dataTypes.front();
+
+    return type.isObject()
+            && choc::text::contains (type.getObjectClassName(), "TransportState")
+            && type.getNumElements() == 1
+            && type.getObjectMember (0).name == "flags"
+            && type.getObjectMember (0).type.isInt();
+}
+
+inline bool EndpointDetails::isTimelinePosition() const
+{
+    if (dataTypes.size() != 1)
+        return false;
+
+    const auto& type = dataTypes.front();
+
+    return type.isObject()
+            && choc::text::contains (type.getObjectClassName(), "Position")
+            && type.getNumElements() == 3
+            && type.getObjectMember (0).name == "frameIndex"
+            && type.getObjectMember (0).type.isInt64()
+            && type.getObjectMember (1).name == "quarterNote"
+            && type.getObjectMember (1).type.isFloat64()
+            && type.getObjectMember (2).name == "barStartQuarterNote"
+            && type.getObjectMember (2).type.isFloat64();
+}
+
+inline choc::value::Value EndpointDetails::toJSON() const
+{
+    auto o = choc::value::createObject ({},
+                                        "endpointID",   endpointID.toString(),
+                                        "endpointType", getEndpointTypeName (endpointType));
+
+
+    if (dataTypes.size() == 1)
+    {
+        o.addMember ("dataType", dataTypes.front().toValue());
+    }
+    else
+    {
+        auto types = choc::value::createEmptyArray();
+
+        for (auto& d : dataTypes)
+            types.addArrayElement (d.toValue());
+
+        o.addMember ("dataTypes", types);
+    }
+
+    if (! annotation.isVoid())
+        o.addMember ("annotation", annotation);
+
+    if (auto purpose = getSuggestedPurpose(); purpose != EndpointPurpose::unknown)
+        o.addMember ("purpose", getEndpointPurposeName (purpose));
+
+    if (auto numAudioChans = getNumAudioChannels())
+        o.addMember ("numAudioChannels", static_cast<int32_t> (numAudioChans));
+
+    if (! sourceFileLocation.empty())
+        o.addMember ("source", sourceFileLocation);
+
+    return o;
+}
+
+inline EndpointDetails EndpointDetails::fromJSON (const choc::value::ValueView& v, bool isIn)
+{
+    EndpointDetails d;
+    d.endpointID = EndpointID::create (v["endpointID"].getString());
+    d.isInput = isIn;
+
+    auto type = v["endpointType"].getString();
+
+    if (type == "stream")       d.endpointType = EndpointType::stream;
+    else if (type == "value")   d.endpointType = EndpointType::value;
+    else if (type == "event")   d.endpointType = EndpointType::event;
+    else throw std::runtime_error ("Unknown endpoint type");
+
+    auto dataTypes = v["dataTypes"];
+
+    if (dataTypes.isArray())
+    {
+        for (uint32_t i = 0; i < dataTypes.size(); ++i)
+            d.dataTypes.push_back (choc::value::Type::fromValue (dataTypes[i]));
+    }
+    else
+    {
+        d.dataTypes.push_back (choc::value::Type::fromValue (v["dataType"]));
+    }
+
+    if (v.hasObjectMember ("annotation"))
+        d.annotation = v["annotation"];
+
+    if (v.hasObjectMember ("source"))
+        d.sourceFileLocation = v["source"].toString();
+
+    return d;
+}
+
+//==============================================================================
+inline std::string EndpointDetailsList::getDescription() const
+{
+    return choc::json::toString (toJSON(), true);
+}
+
+inline choc::value::Value EndpointDetailsList::toJSON() const
+{
+    auto list = choc::value::createEmptyArray();
+
+    for (auto& e : endpoints)
+        list.addArrayElement (e.toJSON());
+
+    return list;
+}
+
+inline EndpointDetailsList EndpointDetailsList::fromJSON (const choc::value::ValueView& json, bool isInput)
+{
+    try
+    {
+        EndpointDetailsList result;
+        result.endpoints.reserve (json.size());
+
+        for (uint32_t i = 0; i < json.size(); ++i)
+            result.endpoints.push_back (EndpointDetails::fromJSON (json[i], isInput));
+
+        return result;
+    }
+    catch (const std::exception&)
+    {}
+
+    return {};
+}
+
 inline choc::value::Value addTypeToValueAsProperty (const choc::value::ValueView& v)
 {
     choc::value::Value value (v);
@@ -473,7 +551,6 @@ inline choc::value::Value convertTypePropertyToObjectType (const choc::value::Va
     return v;
 }
 
-//==============================================================================
 inline std::string convertConsoleMessageToString (const choc::value::ValueView& v)
 {
     if (v.isString())   return std::string (v.getString());
@@ -483,6 +560,5 @@ inline std::string convertConsoleMessageToString (const choc::value::ValueView& 
 
     return choc::json::toString (v);
 }
-
 
 } // namespace cmaj
