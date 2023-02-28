@@ -1587,7 +1587,10 @@ struct Patch::ClientEventQueue
         cpu.reset (sampleRate);
         fifo.reset (8192);
         dispatchClientEventsCallback = [this] { dispatchClientEvents(); };
-        clientEventHandlerThread.start (0, [this] { choc::messageloop::postMessage ([=] { dispatchClientEventsCallback(); }); });
+        clientEventHandlerThread.start (0, [this]
+        {
+            choc::messageloop::postMessage ([dispatchEvents = dispatchClientEventsCallback] { dispatchEvents(); });
+        });
     }
 
     void postParameterChange (const std::string& endpointID, float value)
