@@ -520,8 +520,6 @@ inline bool PatchManifest::reload()
         addSource (manifest["source"]);
         addView (manifest["view"]);
 
-        manifest.addMember ("manifestFile", getFullPathForFile (manifestFile));
-
         return true;
     }
 
