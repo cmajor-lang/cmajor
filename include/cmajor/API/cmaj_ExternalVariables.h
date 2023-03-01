@@ -113,75 +113,46 @@ inline std::string readAudioFileAsValue (choc::value::Value& result,
                                          uint32_t maxNumChannels = 16,
                                          uint64_t maxNumFrames = 48000 * 100)
 {
-    auto reader = fileFormatList.createReader (fileReader);
-
-    if (reader == nullptr)
-        return "Cannot open file";
-
-    auto rate = reader->getProperties().sampleRate;
-    auto numFrames = reader->getProperties().numFrames;
-    auto numChannels = reader->getProperties().numChannels;
-
-    if (rate <= 0)                      return "Cannot open file";
-    if (numFrames > maxNumFrames)       return "File too long";
-    if (numChannels > maxNumChannels)   return "Too many channels";
-
-    if (numFrames == 0)
-        return {};
-
-    choc::buffer::ChannelArrayBuffer<float> buffer (numChannels, static_cast<choc::buffer::FrameCount> (numFrames));
-
-    bool ok = reader->readFrames (0, buffer.getView());
-
-    if (! ok)
-        return "Failed to read from file";
-
-    if (annotation.isObject())
+    try
     {
-        auto channelToUse = annotation["sourceChannel"];
+        double targetSampleRate = 0;
+        int32_t channelToExtract = -1;
 
-        if (channelToUse.isInt())
+        if (annotation.isObject())
         {
-            auto channel = channelToUse.getWithDefault<int64_t> (-1);
+            targetSampleRate = annotation["resample"].getWithDefault<double> (0);
+            auto channelToUse = annotation["sourceChannel"];
 
-            if (channel < 0 || channel >= numChannels)
-                return "sourceChannel index is out-of-range";
-
-            choc::buffer::ChannelArrayBuffer<float> extractedChannel (1u, static_cast<choc::buffer::FrameCount> (numFrames));
-            copy (extractedChannel, buffer.getChannel (static_cast<choc::buffer::ChannelCount> (channel)));
-            buffer = std::move (extractedChannel);
-            numChannels = 1;
-        }
-
-        auto targetRate = annotation["resample"].getWithDefault<double> (0);
-
-        if (targetRate != 0)
-        {
-            static constexpr double maxRatio = 64.0;
-
-            if (targetRate > rate * maxRatio || targetRate < rate / maxRatio)
-                return "Resampling ratio is out-of-range";
-
-            auto ratio = targetRate / rate;
-            auto newFrameCount = static_cast<uint64_t> (ratio * static_cast<double> (numFrames) + 0.5);
-
-            if (newFrameCount > maxNumFrames)
-                return "File too long";
-
-            if (newFrameCount != numFrames)
+            if (channelToUse.isInt())
             {
-                choc::buffer::ChannelArrayBuffer<float> resampledData (numChannels, static_cast<uint32_t> (newFrameCount));
-                choc::interpolation::sincInterpolate (resampledData, buffer);
-                buffer = std::move (resampledData);
-                rate = targetRate;
+                channelToExtract = channelToUse.getWithDefault<int32_t> (-1);
+
+                if (channelToExtract < 0)
+                    return "sourceChannel index is out-of-range";
             }
         }
+
+        auto data = fileFormatList.loadFileContent (fileReader, targetSampleRate, maxNumFrames, maxNumChannels);
+
+        if (channelToExtract >= 0)
+        {
+            if (channelToExtract >= static_cast<int32_t> (data.frames.getNumChannels()))
+                return "sourceChannel index is out-of-range";
+
+            choc::buffer::ChannelArrayBuffer<float> extractedChannel (1u, data.frames.getNumFrames());
+            copy (extractedChannel, data.frames.getChannel (static_cast<choc::buffer::ChannelCount> (channelToExtract)));
+            data.frames = std::move (extractedChannel);
+        }
+
+        result = convertAudioDataToObject (data.frames, data.sampleRate);
+
+        if (result.isVoid())
+            return "Failed to encode file";
     }
-
-    result = convertAudioDataToObject (buffer, rate);
-
-    if (result.isVoid())
-        return "Failed to encode file";
+    catch (const std::exception& e)
+    {
+        return e.what();
+    }
 
     return {};
 }

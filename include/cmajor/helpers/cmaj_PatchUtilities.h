@@ -164,6 +164,10 @@ struct Patch
         /// Number of channels that the host will provide/expect
         choc::buffer::ChannelCount numInputChannels = 0,
                                    numOutputChannels = 0;
+
+        /// A map of endpoint IDs to custom audio data providers that
+        /// should be used instead of audio input data
+        std::unordered_map<std::string, cmaj::AudioMIDIPerformer::CustomAudioSourcePtr> customAudioInputSources;
     };
 
     /// Updates the playback parameters, which may trigger a rebuild if
@@ -309,6 +313,9 @@ struct Patch
 
     /// Enables/disables MIDI monitoring for an endpoint.
     void setEndpointMIDINeeded (const EndpointID&, bool active);
+
+    /// Sets (or clears) the custom audio source to attach to an audio input endpoint.
+    void setCustomAudioSourceForInput (const EndpointID&, AudioMIDIPerformer::CustomAudioSourcePtr);
 
     struct FileChangeType
     {
@@ -1359,22 +1366,31 @@ private:
         {
             if (auto numChans = e.getNumAudioChannels())
             {
-                std::vector<uint32_t> inChans, endpointChans;
+                auto listener = createDataListener (e.endpointID.toString());
+                auto customSource = playbackParams.customAudioInputSources.find (e.endpointID.toString());
 
-                for (uint32_t i = 0; i < numChans; ++i)
+                if (customSource == playbackParams.customAudioInputSources.end())
                 {
-                    if (inputChanIndex >= playbackParams.numInputChannels)
-                        break;
+                    std::vector<uint32_t> inChans, endpointChans;
 
-                    endpointChans.push_back (i);
-                    inChans.push_back (inputChanIndex);
+                    for (uint32_t i = 0; i < numChans; ++i)
+                    {
+                        if (inputChanIndex >= playbackParams.numInputChannels)
+                            break;
 
-                    if (playbackParams.numInputChannels != 1)
-                        ++inputChanIndex;
+                        endpointChans.push_back (i);
+                        inChans.push_back (inputChanIndex);
+
+                        if (playbackParams.numInputChannels != 1)
+                            ++inputChanIndex;
+                    }
+
+                    performerBuilder->connectAudioInputTo (inChans, e, endpointChans, std::move (listener));
                 }
-
-                performerBuilder->connectAudioInputTo (inChans, e, endpointChans,
-                                                       createDataListener (e.endpointID.toString()));
+                else
+                {
+                    performerBuilder->connectCustomSourceToAudioInput (e, customSource->second, std::move (listener));
+                }
             }
             else if (e.isMIDI())
             {
@@ -2000,7 +2016,8 @@ inline bool Patch::PlaybackParams::operator== (const PlaybackParams& other) cons
     return sampleRate == other.sampleRate
         && blockSize == other.blockSize
         && numInputChannels == other.numInputChannels
-        && numOutputChannels == other.numOutputChannels;
+        && numOutputChannels == other.numOutputChannels
+        && customAudioInputSources == other.customAudioInputSources;
 }
 
 inline bool Patch::PlaybackParams::operator!= (const PlaybackParams& other) const
@@ -2450,6 +2467,23 @@ inline void Patch::setEndpointAudioMinMaxNeeded (const EndpointID& endpointID, u
         for (auto& m : currentPatch->audioEndpointMonitors)
             if (endpointID.toString() == m->endpointID)
                 m->granularity = granularity;
+}
+
+inline void Patch::setCustomAudioSourceForInput (const EndpointID& e, AudioMIDIPerformer::CustomAudioSourcePtr source)
+{
+    auto params = getPlaybackParams();
+
+    if (source != nullptr)
+    {
+        source->prepare (params.sampleRate);
+        params.customAudioInputSources[e.toString()] = source;
+    }
+    else
+    {
+        params.customAudioInputSources.erase (e.toString());
+    }
+
+    setPlaybackParams (params);
 }
 
 inline void Patch::setCPUInfoMonitorChunkSize (uint32_t framesPerCallback)
