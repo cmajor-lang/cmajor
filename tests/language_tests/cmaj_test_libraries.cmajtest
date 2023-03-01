@@ -12,7 +12,9 @@
 
 namespace helpers
 {
-    bool near<T> (T n1, T n2)      { return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.0001f; }
+    bool near<T> (T n1, T n2)               { return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.0001f; }
+    bool near (float<2> n1, float<2> n2)    { return near (n1[0], n2[0]) && near (n1[1], n2[1]); }
+
     bool nearish<T> (T n1, T n2)   { return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.01f; }
 
     bool all_near<T> (const T& array1, const T& array2)
@@ -242,4 +244,129 @@ namespace Test (using SampleType, using CoeffType)
             f1.out, f2.out, f3.out, f4.out, f5.out, f6.lowOut, f6.highOut, f6.bandOut, f7.lowOut, f7.highOut, f8.out -> out;
         }
     }
+}
+
+## testFunction()
+
+float getSmoothedMidpoint (float start, float end, int steps)
+{
+    std::smoothing::SmoothedValue v;
+
+    v.reset (start);
+    v.setTarget (end, steps);
+
+    loop (steps / 2 - 1)
+        v.getNext();
+
+    return v.getNext();
+}
+
+bool levelSmoothing1()
+{
+    return helpers::near (getSmoothedMidpoint (1.0f, 2.0f, 100), 1.5f);
+}
+
+bool levelSmoothing2()
+{
+    return helpers::near (getSmoothedMidpoint (1.0f, 3.0f, 10000), 2.0f);
+}
+
+bool levelSmoothing3()
+{
+    return helpers::near (getSmoothedMidpoint (1.0f, 5.0f, 100000), 3.0f);
+}
+
+bool levelSmoothing4()
+{
+    return helpers::near (getSmoothedMidpoint (1.0f, 7.0f, 1000000), 4.0f);
+}
+
+bool testSmootherFloat()
+{
+    std::smoothing::SmoothedValue v;
+
+    v.reset (1.0f);
+
+    wrap<12> i;
+    float[12] values;
+
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    v.setTarget (2.0f, 2);
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    v.setTarget (0.0f, 4);
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    v.setTarget (2.0f, 4);
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    v.reset (2.0f);
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    float[12] expectedValues = (1.0f, 1.0f,
+                                1.5f, 2.0f, 2.0f, 2.0f,
+                                1.5f, 1.0f,
+                                1.25f, 1.5f,
+                                2.0f, 2.0f);
+
+    return helpers::all_near (values, expectedValues);
+}
+
+
+bool testSmootherFloat2()
+{
+    std::smoothing(float<2>)::SmoothedValue v;
+
+    v.reset (float <2> (1.0f, 2.0f));
+
+    wrap<12> i;
+    float<2>[12] values;
+
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    v.setTarget (float<2> (2.0f, 2.0f), 2);
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    v.setTarget (0.0f, 4);
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    v.setTarget (float<2> (2.0f, 5.0f), 4);
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    v.reset (float<2> (2.0f, 1.0f));
+    values[i++] = v.getNext();
+    values[i++] = v.getNext();
+
+    float<2>[12] expectedValues = (float<2> (1.0f, 2.0f),
+                                   float<2> (1.0f, 2.0f),
+
+                                   float<2> (1.5f, 2.0f),
+                                   float<2> (2.0f, 2.0f),
+                                   float<2> (2.0f, 2.0f),
+                                   float<2> (2.0f, 2.0f),
+
+                                   float<2> (1.5f, 1.5f),
+                                   float<2> (1.0f, 1.0f),
+
+                                   float<2> (1.25f, 2.0f),
+                                   float<2> (1.5f, 3.0f),
+
+                                   float<2> (2.0f, 1.0f),
+                                   float<2> (2.0f, 1.0f));
+
+    return helpers::all_near (values, expectedValues);
 }

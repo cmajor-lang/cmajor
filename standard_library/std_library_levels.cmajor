@@ -12,8 +12,11 @@
 
 /**
     Utilities for calculating and applying smoothing ramps and gain levels.
+    The `std::smoothing` namespace is parameterised. `FrameType` defaults to float32,
+    but can be specified to allow support for different precision types (e.g. `float64`)
+    as well as smoothed values for multi-channel use (e.g. `float32<2>`)
 */
-namespace std::smoothing
+namespace std::smoothing (using FrameType = float32)
 {
     //==============================================================================
     /// Utilities for smoothing non-audio signals, such as control parameters.
@@ -23,7 +26,7 @@ namespace std::smoothing
     struct SmoothedValue
     {
         /// Immediately resets the value to the given argument
-        void reset (float32 newValue)
+        void reset (FrameType newValue)
         {
             this.value = newValue;
             this.target = newValue;
@@ -33,32 +36,34 @@ namespace std::smoothing
 
         /// Gives the object a target value and the number of steps it should take
         /// to reach it.
-        void setTarget (float32 targetValue, int32 numStepsToReachTarget)
+        void setTarget (FrameType targetValue, int32 stepsToReachTarget)
         {
+            stepsToReachTarget = max (1, stepsToReachTarget);
+
             this.target = targetValue;
-            this.increment = (targetValue - this.value) / numStepsToReachTarget;
-            this.remainingSteps = numStepsToReachTarget;
+            this.increment = (targetValue - this.currentValue()) / stepsToReachTarget;
+            this.remainingSteps = stepsToReachTarget;
+            this.value = targetValue;
         }
 
         /// Returns the current value and increments it towards the current target.
-        float32 getNext()
+        FrameType getNext()
         {
-            let remaining = this.remainingSteps;
-
-            if (remaining != 0)
+            if (this.remainingSteps > 0)
             {
-                if (remaining == 1)
-                    this.value = this.target;
-                else
-                    this.value += this.increment;
-
-                this.remainingSteps = remaining - 1;
+                this.remainingSteps--;
+                return this.currentValue();
             }
 
             return this.value;
         }
 
-        float32 value, target, increment;
+        FrameType currentValue()
+        {
+            return this.value - this.increment * this.remainingSteps;
+        }
+
+        FrameType value, target, increment;
         int32 remainingSteps;
     }
 
@@ -66,15 +71,15 @@ namespace std::smoothing
     /// Takes an input that receives floating point events, and produces a continuous
     /// output stream of floats which are smoothed by a specified amount.
     /// This is handy for smoothing plugin parameters
-    processor SmoothedValueStream (float32 smoothingTimeSeconds = 0.2f, float32 initialValue = 0.0f)
+    processor SmoothedValueStream (float32 smoothingTimeSeconds = 0.2f, FrameType initialValue = 0.0f)
     {
         /// Receives a new desired value. The processor's output will ramp towards
         /// this target level over the length of time specified by smoothingTimeSeconds.
-        input event float32 in;
+        input event FrameType in;
         /// This is the stream of smoothed output values
-        output stream float32 out;
+        output stream FrameType out;
 
-        event in (float32 newTarget)
+        event in (FrameType newTarget)
         {
             smoothedValue.setTarget (newTarget, max (1, int32 (smoothingTimeSeconds / float32 (processor.period))));
         }
@@ -96,6 +101,7 @@ namespace std::smoothing
         SmoothedValue smoothedValue;
     }
 }
+
 
 //==============================================================================
 /// Utilities relating to gain levels
