@@ -1103,12 +1103,13 @@ function updateBuildSettings (engine, defaultFrequency, defaultBlockSize, ignore
 
     if (options)
     {
-        if (options.sampleRate)       buildSettings.sampleRate = options.sampleRate;
-        if (options.blockSize)        buildSettings.blockSize = options.blockSize;
-        if (options.eventBufferSize)  buildSettings.eventBufferSize = options.eventBufferSize;
-        if (options.maxStateSize)     buildSettings.maxStateSize = options.maxStateSize;
-        if (options.maxStackSize)     buildSettings.maxStackSize = options.maxStackSize;
-        if (options.sessionID)        buildSettings.sessionID = options.sessionID;
+        if (options.sampleRate)         buildSettings.sampleRate = options.sampleRate;
+        if (options.blockSize)          buildSettings.blockSize = options.blockSize;
+        if (options.eventBufferSize)    buildSettings.eventBufferSize = options.eventBufferSize;
+        if (options.maxStateSize)       buildSettings.maxStateSize = options.maxStateSize;
+        if (options.maxStackSize)       buildSettings.maxStackSize = options.maxStackSize;
+        if (options.sessionID)          buildSettings.sessionID = options.sessionID;
+        if (options.optimisationLevel)  buildSettings.optimisationLevel = options.optimisationLevel;
     }
 
     engine.setBuildSettings (buildSettings);
