@@ -492,7 +492,13 @@ bool allTrue()
     return allTrue (d == float<3> (1, 3, 10));
 }
 
-bool near<T> (T a, T b) { return abs (a - b) < T(0.00001f); }
+bool near<T> (T n1, T n2)
+{
+    if const (T.isVector)
+        return allTrue (select (n1 > n2, (n1 - n2), (n2 - n1)) < 0.0001f);
+    else
+        return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.0001f;
+}
 
 bool test_wrap()
 {
@@ -512,6 +518,12 @@ bool test_lerp()
 {
     return near (lerp (100.0f, 200.0f, 0.2f), 120.0f);
 }
+
+bool test_lerpVector()
+{
+    return near (lerp (float64<2> (1.0, 2.0), float64<2> (2.0, 4.0), 0.5), float64<2> (1.5, 3.0));
+}
+
 
 bool test_remainder()
 {

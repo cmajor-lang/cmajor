@@ -12,8 +12,13 @@
 
 namespace helpers
 {
-    bool near<T> (T n1, T n2)               { return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.0001f; }
-    bool near (float<2> n1, float<2> n2)    { return near (n1[0], n2[0]) && near (n1[1], n2[1]); }
+    bool near<T> (T n1, T n2)
+    {
+        if const (T.isVector)
+            return allTrue (select (n1 > n2, (n1 - n2), (n2 - n1)) < 0.0001f);
+        else
+            return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.0001f;
+    }
 
     bool nearish<T> (T n1, T n2)   { return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.01f; }
 
@@ -369,4 +374,38 @@ bool testSmootherFloat2()
                                    float<2> (2.0f, 1.0f));
 
     return helpers::all_near (values, expectedValues);
+}
+
+## testCompile()
+
+graph Mixer (using FrameType)
+{
+    input stream FrameType in1, in2;
+    input stream float32 mix;
+    output stream FrameType out;
+
+    node mixer = std::mixers::Interpolator (FrameType, 1.0f);
+
+    connection
+    {
+        in1 -> mixer.in1;
+        in2 -> mixer.in2;
+        mix -> mixer.mix;
+        mixer.out -> out;
+    }
+}
+
+graph Test [[ main ]]
+{
+    output stream float out1;
+    output stream float<2> out2;
+
+    node mixer1 = Mixer (float32);
+    node mixer2 = Mixer (float32<2>);
+
+    connection
+    {
+        mixer1.out -> out1;
+        mixer2.out -> out2;
+    }
 }
