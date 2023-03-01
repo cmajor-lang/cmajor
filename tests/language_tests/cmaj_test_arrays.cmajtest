@@ -807,6 +807,33 @@ void f()
     var b = s1[1];
 }
 
+## expectError ("24:13: error: Only slices which refer to global data can be returned from functions //// 23:13: note: See context where local data is assigned")
+
+struct S { int[] x; }
+
+struct T
+{
+    S s;
+    int i;
+}
+
+const int[] a = (1, 2, 3);
+
+S f1()
+{
+    T t;
+    t.s.x = a;
+    return t.s;
+}
+
+S f2()
+{
+    var a = int[] (1, 2, 3);
+    T t;
+    t.s.x = a;
+    return t.s;
+}
+
 ## expectError ("12:10: error: Values which may contain slices of local data cannot be assigned to variables which may outlive them")
 
 let global = int[] (2, 3);
