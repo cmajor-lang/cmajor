@@ -840,8 +840,10 @@ struct CPUMonitor
                 frameCount = 0;
                 auto newLevel = static_cast<float> (average);
 
-                if (std::fabs (lastLevelSent - newLevel) > 0.002)
+                if (++lastLevelConstantCounter > 10
+                    || std::fabs (lastLevelSent - newLevel) > 0.002)
                 {
+                    lastLevelConstantCounter = 0;
                     lastLevelSent = newLevel;
                     queue.postCPULevel (newLevel);
                 }
@@ -861,6 +863,7 @@ private:
     double average = 0;
     uint32_t frameCount = 0;
     float lastLevelSent = 0;
+    uint32_t lastLevelConstantCounter = 0;
 };
 
 //==============================================================================
