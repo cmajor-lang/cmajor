@@ -4777,7 +4777,6 @@ processor Engine
     void main() { advance(); }
 }
 
-
 ## testCompile()
 
 processor P
@@ -4797,4 +4796,19 @@ graph voice [[main]]
 	{
 		P.in <- v;
 	}
+}
+
+## testCompile()
+
+processor Test
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        float i = in;
+        out <- i;
+        advance();
+    }
 }
