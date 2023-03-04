@@ -4812,3 +4812,36 @@ processor Test
         advance();
     }
 }
+
+
+## testCompile()
+
+processor DelayLine
+{
+    output stream float out;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+graph Graph
+{
+    output stream float out;
+
+    node delayLines = DelayLine[2];
+
+    connection
+        delayLines[0].out -> out;
+}
+
+graph Test [[ main ]]
+{
+    output stream float audioOut;
+
+    node g = Graph;
+
+    connection
+        g -> audioOut;
+}
