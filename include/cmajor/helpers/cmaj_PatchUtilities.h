@@ -213,8 +213,7 @@ struct Patch
 
     /// Renders a block using a juce-style single array of input + output audio channels.
     /// For this one, make calls to addMIDIMessage() beforehand to provide the MIDI.
-    template <typename HandleMIDIOutFn>
-    void process (float* const* audioChannels, uint32_t numFrames, HandleMIDIOutFn&&);
+    void process (float* const* audioChannels, uint32_t numFrames, const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn&);
 
     /// Instead of calling process(), if you're performing multiple small chunked render ops
     /// as part of a larger chunk, you can improve performance by calling beginChunkedProcess(),
@@ -1044,7 +1043,7 @@ struct Patch::LoadedPatch
                   const choc::midi::ShortMessage* midiInMessages,
                   const int* midiInMessageTimes,
                   uint32_t totalNumMIDIMessages,
-                  const std::function<void(uint32_t frame, choc::midi::ShortMessage)>& sendMidiOut)
+                  const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn& sendMidiOut)
     {
         if (totalNumMIDIMessages == 0)
         {
@@ -2120,8 +2119,8 @@ inline void Patch::addMIDIMessage (int frameIndex, const void* data, uint32_t le
     }
 }
 
-template <typename HandleMIDIOutFn>
-void Patch::process (float* const* audioChannels, uint32_t numFrames, HandleMIDIOutFn&& handleMIDIOut)
+inline void Patch::process (float* const* audioChannels, uint32_t numFrames,
+                            const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn& handleMIDIOut)
 {
     beginChunkedProcess();
 
