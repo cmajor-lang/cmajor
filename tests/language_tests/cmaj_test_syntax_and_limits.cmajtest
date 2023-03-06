@@ -1708,6 +1708,20 @@ graph Engine [[main]]
     }
 }
 
+## expectError ("10:13: error: This endpoint is not an array")
+
+graph Source [[ main ]]
+{
+    input event float in;
+    output event float<32> out;
+
+    event in (float f)
+    {
+        wrap<32> i;
+        out[i] <- f;
+    }
+}
+
 ## expectError ("7:20: error: Expected a vector or array to the left of the bracket operator")
 
 graph test
@@ -2223,3 +2237,4 @@ processor Test
         advance();
     }
 }
+
