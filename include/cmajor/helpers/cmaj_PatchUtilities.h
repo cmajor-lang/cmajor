@@ -517,7 +517,7 @@ inline bool PatchManifest::reload()
         if (ID.length() < 4)
             throw std::runtime_error ("The manifest must contain a valid and globally unique \"ID\" property");
 
-        if (name.length() > 128 || name.length() < 3)
+        if (name.length() > 128 || name.empty())
             throw std::runtime_error ("The manifest must contain a valid \"name\" property");
 
         if (version.length() > 24 || version.empty())
