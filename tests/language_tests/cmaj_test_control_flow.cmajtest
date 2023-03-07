@@ -230,6 +230,30 @@ bool foo()
     return true;
 }
 
+bool returnFromIf()
+{
+    int r = 0;
+
+    if (r < 0)
+       return true;
+    else
+        r = 1;
+
+    return true;
+}
+
+bool returnFromElse()
+{
+    int r = 0;
+
+    if (r < 0)
+        r = 1;
+    else
+       return true;
+
+    return true;
+}
+
 ## expectError ("2:16: error: Expected a label name to be followed by a loop statement or braced block")
 
 void f() { l1: int x; }
