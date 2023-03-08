@@ -181,6 +181,7 @@ struct Patch
 
     //==============================================================================
     const PatchManifest* getManifest() const;
+    std::string getManifestFile() const;
 
     std::string getUID() const;
     std::string getName() const;
@@ -1927,12 +1928,16 @@ inline bool Patch::loadPatchFromFile (const std::string& patchFile)
     }
     catch (const choc::json::ParseError& e)
     {
-        setStatusMessage ("error: " + std::string (e.what()) + ":" + e.lineAndColumn.toString(), true);
+        setStatusMessage (patchFile + ":" + e.lineAndColumn.toString() + ": error: " + std::string (e.what()), true);
+        lastLoadParams = params;
+        startCheckingForChanges();
         return false;
     }
     catch (const std::runtime_error& e)
     {
-        setStatusMessage ("error: " + std::string (e.what()), true);
+        setStatusMessage (patchFile + ": error: " + std::string (e.what()), true);
+        lastLoadParams = params;
+        startCheckingForChanges();
         return false;
     }
 
@@ -2000,18 +2005,28 @@ inline void Patch::rebuild()
                 lastLoadParams.parameterValues[param->endpointID.toString()] = param->currentValue;
 
         if (lastLoadParams.manifest.reload())
+        {
             loadPatch (lastLoadParams);
-        else
-            startCheckingForChanges();
+            return;
+        }
     }
     catch (const choc::json::ParseError& e)
     {
-        setStatusMessage ("error: " + std::string (e.what()) + ":" + e.lineAndColumn.toString(), true);
+        if (auto f = getManifestFile(); ! f.empty())
+            setStatusMessage (f + ":" + e.lineAndColumn.toString() + ": error: " + std::string (e.what()), true);
+        else
+            setStatusMessage ("error: " + std::string (e.what()) + ":" + e.lineAndColumn.toString(), true);
     }
     catch (const std::runtime_error& e)
     {
-        setStatusMessage ("error: " + std::string (e.what()), true);
+        if (auto f = getManifestFile(); ! f.empty())
+            setStatusMessage (f + ": error: " + std::string (e.what()), true);
+        else
+            setStatusMessage ("error: " + std::string (e.what()), true);
     }
+
+    unload();
+    startCheckingForChanges();
 }
 
 inline void Patch::resetToInitialState()
@@ -2060,6 +2075,18 @@ inline std::string Patch::getName() const
 }
 
 inline const PatchManifest* Patch::getManifest() const      { return currentPatch != nullptr ? std::addressof (currentPatch->manifest) : nullptr; }
+
+inline std::string Patch::getManifestFile() const
+{
+    if (auto m = getManifest())
+        return m->getFullPathForFile (m->manifestFile);
+
+    if (lastLoadParams.manifest.getFullPathForFile)
+        return lastLoadParams.manifest.getFullPathForFile (lastLoadParams.manifest.manifestFile);
+
+    return {};
+}
+
 inline bool Patch::isPlayable() const                       { return currentPatch != nullptr && currentPatch->performer != nullptr; }
 inline std::string Patch::getDescription() const            { return isLoaded() ? currentPatch->manifest.description : std::string(); }
 inline std::string Patch::getManufacturer() const           { return isLoaded() ? currentPatch->manifest.manufacturer : std::string(); }
