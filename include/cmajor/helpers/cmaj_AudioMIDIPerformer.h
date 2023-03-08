@@ -21,9 +21,6 @@
 
 #pragma once
 
-#include <thread>
-#include <mutex>
-#include <condition_variable>
 #include <iostream>
 
 #include "../../choc/memory/choc_Endianness.h"
@@ -59,16 +56,6 @@ struct AudioMIDIPerformer
         virtual void process (const choc::buffer::InterleavedView<double>&) = 0;
     };
 
-    /// Base class for a generator that can be attached to an input endpoint
-    struct CustomAudioSource
-    {
-        virtual ~CustomAudioSource() = default;
-        virtual void prepare (double sampleRate) = 0;
-        virtual void read (choc::buffer::InterleavedView<float>) = 0;
-    };
-
-    using CustomAudioSourcePtr = std::shared_ptr<CustomAudioSource>;
-
     //==============================================================================
     // To create an AudioMIDIPerformer, create a Builder object, set up its connections,
     // and then call Builder::createPerformer() to get the performer object.
@@ -80,10 +67,6 @@ struct AudioMIDIPerformer
                                   const cmaj::EndpointDetails& endpoint,
                                   const std::vector<uint32_t>& endpointChannels,
                                   std::shared_ptr<AudioDataListener> listener);
-
-        bool connectCustomSourceToAudioInput (const cmaj::EndpointDetails&,
-                                              CustomAudioSourcePtr,
-                                              std::shared_ptr<AudioDataListener> listener);
 
         bool connectAudioOutputTo (const cmaj::EndpointDetails&,
                                    const std::vector<uint32_t>& endpointChannels,
@@ -259,38 +242,8 @@ inline bool AudioMIDIPerformer::Builder::connectAudioInputTo (const std::vector<
             auto interleavedBuffer = amp->audioInputScratchBuffer.getInterleavedBuffer ({ numChannelsInEndpoint, numFrames });
 
             for (uint32_t i = 0; i < inputChannels.size(); i++)
-                copy (interleavedBuffer.getChannel (endpointChannels[i]), block.audioInput.getChannel (inputChannels[i]));
-
-            if (listener)
-                listener->process (interleavedBuffer);
-
-            amp->performer.setInputFrames (endpointHandle, interleavedBuffer.data.data, numFrames);
-        });
-
-        return true;
-    }
-
-    return false;
-}
-
-inline bool AudioMIDIPerformer::Builder::connectCustomSourceToAudioInput (const cmaj::EndpointDetails& endpoint,
-                                                                          AudioMIDIPerformer::CustomAudioSourcePtr source,
-                                                                          std::shared_ptr<AudioDataListener> listener)
-{
-    CMAJ_ASSERT (source != nullptr);
-
-    if (auto numChannelsInEndpoint = getNumFloatChannelsInStream (endpoint))
-    {
-        ensureInputScratchBufferChannelCount (numChannelsInEndpoint);
-        auto endpointHandle = result->engine.getEndpointHandle (endpoint.endpointID);
-
-        result->preRenderFunctions.push_back ([amp = result.get(), endpointHandle, numChannelsInEndpoint, source, listener]
-                                              (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
-        {
-            auto numFrames = block.audioInput.getNumFrames();
-            auto interleavedBuffer = amp->audioInputScratchBuffer.getInterleavedBuffer ({ numChannelsInEndpoint, numFrames });
-
-            source->read (interleavedBuffer);
+                copy (interleavedBuffer.getChannel (endpointChannels[i]),
+                        block.audioInput.getChannel (inputChannels[i]));
 
             if (listener)
                 listener->process (interleavedBuffer);

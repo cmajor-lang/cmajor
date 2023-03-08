@@ -32,6 +32,8 @@
 
 #include "cmaj_AudioMIDIPerformer.h"
 
+#include <mutex>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace cmaj
@@ -164,10 +166,6 @@ struct Patch
         /// Number of channels that the host will provide/expect
         choc::buffer::ChannelCount numInputChannels = 0,
                                    numOutputChannels = 0;
-
-        /// A map of endpoint IDs to custom audio data providers that
-        /// should be used instead of audio input data
-        std::unordered_map<std::string, cmaj::AudioMIDIPerformer::CustomAudioSourcePtr> customAudioInputSources;
     };
 
     /// Updates the playback parameters, which may trigger a rebuild if
@@ -313,8 +311,19 @@ struct Patch
     /// Enables/disables MIDI monitoring for an endpoint.
     void setEndpointMIDINeeded (const EndpointID&, bool active);
 
+    struct CustomAudioSource
+    {
+        virtual ~CustomAudioSource() = default;
+        virtual void prepare (double sampleRate) = 0;
+        virtual void read (choc::buffer::InterleavedView<float>) = 0;
+    };
+
+    using CustomAudioSourcePtr = std::shared_ptr<CustomAudioSource>;
+
     /// Sets (or clears) the custom audio source to attach to an audio input endpoint.
-    void setCustomAudioSourceForInput (const EndpointID&, AudioMIDIPerformer::CustomAudioSourcePtr);
+    void setCustomAudioSourceForInput (const EndpointID&, CustomAudioSourcePtr);
+
+    CustomAudioSourcePtr getCustomAudioSourceForInput (const EndpointID&) const;
 
     struct FileChangeType
     {
@@ -338,6 +347,7 @@ private:
     LoadParams lastLoadParams;
     std::shared_ptr<LoadedPatch> currentPatch;
     PlaybackParams currentPlaybackParams;
+    std::unordered_map<std::string, CustomAudioSourcePtr> customAudioInputSources;
     std::unique_ptr<FileChangeChecker> fileChangeChecker;
     std::vector<PatchView*> activeViews;
     std::unordered_map<std::string, std::string> storedState;
@@ -866,6 +876,240 @@ private:
 };
 
 //==============================================================================
+struct Patch::ClientEventQueue
+{
+    ClientEventQueue (Patch& p) : patch (p) {}
+    ~ClientEventQueue() { stop(); }
+
+    void stop()
+    {
+        dispatchClientEventsCallback.reset();
+        clientEventHandlerThread.stop();
+    }
+
+    void prepare (double sampleRate)
+    {
+        cpu.reset (sampleRate);
+        fifo.reset (8192);
+        dispatchClientEventsCallback = [this] { dispatchClientEvents(); };
+        clientEventHandlerThread.start (0, [this]
+        {
+            choc::messageloop::postMessage ([dispatchEvents = dispatchClientEventsCallback] { dispatchEvents(); });
+        });
+    }
+
+    void postParameterChange (const std::string& endpointID, float value)
+    {
+        auto endpointChars = endpointID.data();
+        auto endpointLen = static_cast<uint32_t> (endpointID.length());
+
+        fifo.push (5 + endpointLen, [=] (void* dest)
+        {
+            auto d = static_cast<char*> (dest);
+            d[0] = static_cast<char> (EventType::paramChange);
+            choc::memory::writeNativeEndian (d + 1, value);
+            memcpy (d + 5, endpointChars, endpointLen);
+        });
+
+        clientEventHandlerThread.trigger();
+    }
+
+    void dispatchParameterChange (const char* d, uint32_t size)
+    {
+        auto value = choc::memory::readNativeEndian<float> (d + 1);
+        auto endpointID = std::string_view (d + 5, size - 5);
+        patch.sendParameterChangeToViews (EndpointID::create (endpointID), value);
+    }
+
+    void postCPULevel (float level)
+    {
+        fifo.push (1 + sizeof (float), [&] (void* dest)
+        {
+            auto d = static_cast<char*> (dest);
+            d[0] = static_cast<char> (EventType::cpuLevel);
+            choc::memory::writeNativeEndian (d + 1, level);
+        });
+
+        triggerDispatchOnEndOfBlock = true;
+    }
+
+    void dispatchCPULevel (const char* d)
+    {
+        auto value = choc::memory::readNativeEndian<float> (d + 1);
+        patch.sendCPUInfoToViews (value);
+    }
+
+    void postAudioMinMaxUpdate (const std::string& endpointID, const choc::buffer::ChannelArrayBuffer<float>& levels)
+    {
+        triggerDispatchOnEndOfBlock = true;
+        auto numChannels = levels.getNumChannels();
+
+        auto endpointChars = endpointID.data();
+        auto endpointLen = static_cast<uint32_t> (endpointID.length());
+
+        fifo.push (2 + numChannels * sizeof (float) * 2 + endpointLen, [&] (void* dest)
+        {
+            auto d = static_cast<char*> (dest);
+            *d++ = static_cast<char> (EventType::audioLevels);
+            *d++ = static_cast<char> (numChannels);
+
+            for (uint32_t chan = 0; chan < numChannels; ++chan)
+            {
+                auto i = levels.getIterator (chan);
+                choc::memory::writeNativeEndian (d, *i);
+                d += sizeof (float);
+                ++i;
+                choc::memory::writeNativeEndian (d, *i);
+                d += sizeof (float);
+            }
+
+            memcpy (d, endpointChars, endpointLen);
+        });
+    }
+
+    void dispatchAudioMinMaxUpdate (const char* d, const char* end)
+    {
+        ++d;
+        auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
+        choc::SmallVector<float, 8> mins, maxs;
+
+        for (uint32_t chan = 0; chan < numChannels; ++chan)
+        {
+            mins.push_back (choc::memory::readNativeEndian<float> (d));
+            d += sizeof (float);
+            maxs.push_back (choc::memory::readNativeEndian<float> (d));
+            d += sizeof (float);
+        }
+
+        CMAJ_ASSERT (end > d);
+
+        patch.sendMessageToViews (choc::value::createObject ({},
+                                    "type", "endpoint_audio_min_max",
+                                    "endpoint", std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
+                                    "min", choc::value::createArrayView (mins.data(), static_cast<uint32_t> (mins.size())),
+                                    "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size()))));
+    }
+
+    void postMIDIEndpointEvent (const std::string& endpointID, choc::midi::ShortMessage message)
+    {
+        auto endpointChars = endpointID.data();
+        auto endpointLen = static_cast<uint32_t> (endpointID.length());
+
+        fifo.push (4 + endpointLen, [=] (void* dest)
+        {
+            auto d = static_cast<char*> (dest);
+            d[0] = static_cast<char> (EventType::midiEvent);
+            memcpy (d + 1, message.data, 3);
+            memcpy (d + 4, endpointChars, endpointLen);
+        });
+
+        triggerDispatchOnEndOfBlock = true;
+    }
+
+    void dispatchMIDIEndpointEvent (const char* d, uint32_t size)
+    {
+        CMAJ_ASSERT (size > 4);
+        patch.sendMessageToViews (choc::value::createObject ({},
+                                    "type", "endpoint_midi",
+                                    "endpoint", std::string_view (d + 4, size - 4),
+                                    "message", MIDIEvents::midiMessageToPackedInt (choc::midi::ShortMessage (d + 1, 3))));
+    }
+
+    void postEndpointEvent (const std::string& endpointID, const choc::value::ValueView& message)
+    {
+        auto serialisedMessage = message.serialise();
+        auto messageData = serialisedMessage.data.data();
+        auto messageSize = static_cast<uint32_t> (serialisedMessage.data.size());
+
+        auto endpointChars = endpointID.data();
+        auto endpointLen = static_cast<uint32_t> (endpointID.length());
+
+        fifo.push (2 + endpointLen + messageSize, [=] (void* dest)
+        {
+            auto d = static_cast<char*> (dest);
+            d[0] = static_cast<char> (EventType::endpointEvent);
+            d[1] = static_cast<char> (endpointLen);
+            memcpy (d + 2, endpointChars, endpointLen);
+            memcpy (d + 2 + endpointLen, messageData, messageSize);
+        });
+
+        triggerDispatchOnEndOfBlock = true;
+    }
+
+    void dispatchEndpointEvent (const char* d, uint32_t size)
+    {
+        auto endpointLen = d[1] == 0 ? 256u : static_cast<uint32_t> (static_cast<uint8_t> (d[1]));
+        CMAJ_ASSERT (endpointLen + 4 < size);
+        auto valueData = choc::value::InputData { reinterpret_cast<const uint8_t*> (d + 2 + endpointLen),
+                                                  reinterpret_cast<const uint8_t*> (d + size) };
+
+        patch.sendMessageToViews (choc::value::createObject ({},
+                                    "type", "endpoint_event",
+                                    "endpoint", std::string_view (d + 2, endpointLen),
+                                    "value", choc::value::Value::deserialise (valueData)));
+    }
+
+    void startOfProcessCallback()
+    {
+        cpu.startProcess();
+        framesProcessedInBlock = 0;
+    }
+
+    void postProcessChunk (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+    {
+        framesProcessedInBlock += block.audioOutput.getNumFrames();
+    }
+
+    void endOfProcessCallback()
+    {
+        cpu.endProcess (*this, framesProcessedInBlock);
+
+        if (triggerDispatchOnEndOfBlock)
+        {
+            triggerDispatchOnEndOfBlock = false;
+            clientEventHandlerThread.trigger();
+        }
+    }
+
+    void dispatchClientEvents()
+    {
+        fifo.popAllAvailable ([this] (const void* data, uint32_t size)
+        {
+            auto d = static_cast<const char*> (data);
+
+            switch (static_cast<EventType> (d[0]))
+            {
+                case EventType::paramChange:            dispatchParameterChange (d, size); break;
+                case EventType::midiEvent:              dispatchMIDIEndpointEvent (d, size); break;
+                case EventType::audioLevels:            dispatchAudioMinMaxUpdate (d, d + size); break;
+                case EventType::endpointEvent:          dispatchEndpointEvent (d, size); break;
+                case EventType::cpuLevel:               dispatchCPULevel (d); break;
+                default:                                break;
+            }
+        });
+    }
+
+    enum class EventType  : char
+    {
+        paramChange,
+        midiEvent,
+        audioLevels,
+        endpointEvent,
+        cpuLevel
+    };
+
+    Patch& patch;
+    choc::fifo::VariableSizeFIFO fifo;
+    choc::threading::TaskThread clientEventHandlerThread;
+    choc::threading::ThreadSafeFunctor<std::function<void()>> dispatchClientEventsCallback;
+    bool triggerDispatchOnEndOfBlock = false;
+    uint32_t framesProcessedInBlock = 0;
+
+    CPUMonitor cpu;
+};
+
+
+//==============================================================================
 struct Patch::LoadedPatch
 {
     ~LoadedPatch()
@@ -894,9 +1138,48 @@ struct Patch::LoadedPatch
     std::vector<std::unique_ptr<AudioLevelMonitor>> audioEndpointMonitors;
     std::vector<std::unique_ptr<MIDIMonitor>> midiEndpointMonitors;
 
-    cmaj::Performer newPerformerToSwitchTo;
-    std::atomic<bool> needToSwitchToNewPerformer { false };
-    std::mutex performerSwitchLock;
+    std::mutex processLock;
+
+    //==============================================================================
+    struct DataListener  : public AudioMIDIPerformer::AudioDataListener
+    {
+        DataListener (ClientEventQueue& c, AudioLevelMonitor& m) : queue (c), monitor (m) {}
+
+        void process (const choc::buffer::InterleavedView<float>&  block) override
+        {
+            if (customSource != nullptr)
+                customSource->read (block);
+
+            monitor.process (queue, block);
+        }
+
+        void process (const choc::buffer::InterleavedView<double>& block) override
+        {
+            // TODO: handle custom source here
+            monitor.process (queue, block);
+        }
+
+        CustomAudioSourcePtr customSource;
+        ClientEventQueue& queue;
+        AudioLevelMonitor& monitor;
+    };
+
+    std::unordered_map<std::string, std::shared_ptr<DataListener>> dataListeners;
+
+    bool setCustomAudioSource (const EndpointID& e, CustomAudioSourcePtr source)
+    {
+        auto l = dataListeners.find (e.toString());
+
+        if (l == dataListeners.end())
+            return false;
+
+        if (source != nullptr)
+            source->prepare (sampleRate);
+
+        std::lock_guard<decltype(processLock)> lock (processLock);
+        l->second->customSource = source;
+        return true;
+    }
 
     //==============================================================================
     void sendTimeSig (int numerator, int denominator)
@@ -1006,35 +1289,23 @@ struct Patch::LoadedPatch
         auto newPerformer = performer->engine.createPerformer();
         CMAJ_ASSERT (newPerformer);
 
-        std::lock_guard<decltype(performerSwitchLock)> lock (performerSwitchLock);
-        newPerformerToSwitchTo = std::move (newPerformer);
-        needToSwitchToNewPerformer = true;
-    }
+        {
+            std::lock_guard<decltype(processLock)> lock (processLock);
+            std::swap (performer->performer, newPerformer);
+        }
 
-    void initNewPerformer()
-    {
         for (auto& param : parameterList)
             param->resetToDefaultValue (true);
-
-        Performer defunctPerformer;
-
-        {
-            std::lock_guard<decltype(performerSwitchLock)> lock (performerSwitchLock);
-
-            if (! needToSwitchToNewPerformer)
-                defunctPerformer = std::move (newPerformerToSwitchTo);
-        }
     }
 
-    bool swapPerformerIfNeeded()
+    void beginProcessBlock()
     {
-        if (! needToSwitchToNewPerformer)
-            return false;
+        processLock.lock();
+    }
 
-        std::lock_guard<decltype(performerSwitchLock)> lock (performerSwitchLock);
-        std::swap (performer->performer, newPerformerToSwitchTo);
-        needToSwitchToNewPerformer = false;
-        return true;
+    void endProcessBlock()
+    {
+        processLock.unlock();
     }
 
     //==============================================================================
@@ -1368,31 +1639,22 @@ private:
         {
             if (auto numChans = e.getNumAudioChannels())
             {
-                auto listener = createDataListener (e.endpointID.toString());
-                auto customSource = playbackParams.customAudioInputSources.find (e.endpointID.toString());
+                std::vector<uint32_t> inChans, endpointChans;
 
-                if (customSource == playbackParams.customAudioInputSources.end())
+                for (uint32_t i = 0; i < numChans; ++i)
                 {
-                    std::vector<uint32_t> inChans, endpointChans;
+                    if (inputChanIndex >= playbackParams.numInputChannels)
+                        break;
 
-                    for (uint32_t i = 0; i < numChans; ++i)
-                    {
-                        if (inputChanIndex >= playbackParams.numInputChannels)
-                            break;
+                    endpointChans.push_back (i);
+                    inChans.push_back (inputChanIndex);
 
-                        endpointChans.push_back (i);
-                        inChans.push_back (inputChanIndex);
-
-                        if (playbackParams.numInputChannels != 1)
-                            ++inputChanIndex;
-                    }
-
-                    performerBuilder->connectAudioInputTo (inChans, e, endpointChans, std::move (listener));
+                    if (playbackParams.numInputChannels != 1)
+                        ++inputChanIndex;
                 }
-                else
-                {
-                    performerBuilder->connectCustomSourceToAudioInput (e, customSource->second, std::move (listener));
-                }
+
+                performerBuilder->connectAudioInputTo (inChans, e, endpointChans,
+                                                       createDataListener (e.endpointID));
             }
             else if (e.isMIDI())
             {
@@ -1437,7 +1699,7 @@ private:
                 }
 
                 performerBuilder->connectAudioOutputTo (e, endpointChans, outChans,
-                                                        createDataListener (e.endpointID.toString()));
+                                                        createDataListener (e.endpointID));
             }
             else if (e.isMIDI())
             {
@@ -1446,22 +1708,24 @@ private:
         }
     }
 
-    std::shared_ptr<AudioMIDIPerformer::AudioDataListener> createDataListener (const std::string& endpointID)
+    std::shared_ptr<AudioMIDIPerformer::AudioDataListener> createDataListener (const EndpointID& endpointID)
     {
-        struct DataListener  : public AudioMIDIPerformer::AudioDataListener
-        {
-            DataListener (ClientEventQueue& c, AudioLevelMonitor& m) : queue (c), monitor (m) {}
-
-            void process (const choc::buffer::InterleavedView<float>&  block) override   { monitor.process (queue, block); }
-            void process (const choc::buffer::InterleavedView<double>& block) override   { monitor.process (queue, block); }
-
-            ClientEventQueue& queue;
-            AudioLevelMonitor& monitor;
-        };
-
         for (auto& m : result->audioEndpointMonitors)
-            if (endpointID == m->endpointID)
-                return std::make_shared<DataListener> (*patch.clientEventQueue, *m);
+        {
+            if (endpointID.toString() == m->endpointID)
+            {
+                auto l = std::make_shared<LoadedPatch::DataListener> (*patch.clientEventQueue, *m);
+                result->dataListeners[endpointID.toString()] = l;
+
+                if (auto s = patch.getCustomAudioSourceForInput (endpointID))
+                {
+                    l->customSource = s;
+                    s->prepare (playbackParams.sampleRate);
+                }
+
+                return l;
+            }
+        }
 
         CMAJ_ASSERT_FALSE;
         return {};
@@ -1587,259 +1851,6 @@ private:
         activeTasks.clear();
     }
 };
-
-//==============================================================================
-struct Patch::ClientEventQueue
-{
-    ClientEventQueue (Patch& p) : patch (p) {}
-    ~ClientEventQueue() { stop(); }
-
-    void stop()
-    {
-        dispatchClientEventsCallback.reset();
-        clientEventHandlerThread.stop();
-    }
-
-    void prepare (double sampleRate)
-    {
-        cpu.reset (sampleRate);
-        fifo.reset (8192);
-        dispatchClientEventsCallback = [this] { dispatchClientEvents(); };
-        clientEventHandlerThread.start (0, [this]
-        {
-            choc::messageloop::postMessage ([dispatchEvents = dispatchClientEventsCallback] { dispatchEvents(); });
-        });
-    }
-
-    void postParameterChange (const std::string& endpointID, float value)
-    {
-        auto endpointChars = endpointID.data();
-        auto endpointLen = static_cast<uint32_t> (endpointID.length());
-
-        fifo.push (5 + endpointLen, [=] (void* dest)
-        {
-            auto d = static_cast<char*> (dest);
-            d[0] = static_cast<char> (EventType::paramChange);
-            choc::memory::writeNativeEndian (d + 1, value);
-            memcpy (d + 5, endpointChars, endpointLen);
-        });
-
-        clientEventHandlerThread.trigger();
-    }
-
-    void dispatchParameterChange (const char* d, uint32_t size)
-    {
-        auto value = choc::memory::readNativeEndian<float> (d + 1);
-        auto endpointID = std::string_view (d + 5, size - 5);
-        patch.sendParameterChangeToViews (EndpointID::create (endpointID), value);
-    }
-
-    void postResetAllParameters()
-    {
-        fifo.push (1, [=] (void* dest)
-        {
-            auto d = static_cast<char*> (dest);
-            d[0] = static_cast<char> (EventType::resetParamsToDefault);
-        });
-
-        clientEventHandlerThread.trigger();
-    }
-
-    void dispatchResetAllParameters()
-    {
-        if (patch.currentPatch)
-            patch.currentPatch->initNewPerformer();
-    }
-
-    void postCPULevel (float level)
-    {
-        fifo.push (1 + sizeof (float), [&] (void* dest)
-        {
-            auto d = static_cast<char*> (dest);
-            d[0] = static_cast<char> (EventType::cpuLevel);
-            choc::memory::writeNativeEndian (d + 1, level);
-        });
-
-        triggerDispatchOnEndOfBlock = true;
-    }
-
-    void dispatchCPULevel (const char* d)
-    {
-        auto value = choc::memory::readNativeEndian<float> (d + 1);
-        patch.sendCPUInfoToViews (value);
-    }
-
-    void postAudioMinMaxUpdate (const std::string& endpointID, const choc::buffer::ChannelArrayBuffer<float>& levels)
-    {
-        triggerDispatchOnEndOfBlock = true;
-        auto numChannels = levels.getNumChannels();
-
-        auto endpointChars = endpointID.data();
-        auto endpointLen = static_cast<uint32_t> (endpointID.length());
-
-        fifo.push (2 + numChannels * sizeof (float) * 2 + endpointLen, [&] (void* dest)
-        {
-            auto d = static_cast<char*> (dest);
-            *d++ = static_cast<char> (EventType::audioLevels);
-            *d++ = static_cast<char> (numChannels);
-
-            for (uint32_t chan = 0; chan < numChannels; ++chan)
-            {
-                auto i = levels.getIterator (chan);
-                choc::memory::writeNativeEndian (d, *i);
-                d += sizeof (float);
-                ++i;
-                choc::memory::writeNativeEndian (d, *i);
-                d += sizeof (float);
-            }
-
-            memcpy (d, endpointChars, endpointLen);
-        });
-    }
-
-    void dispatchAudioMinMaxUpdate (const char* d, const char* end)
-    {
-        ++d;
-        auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
-        choc::SmallVector<float, 8> mins, maxs;
-
-        for (uint32_t chan = 0; chan < numChannels; ++chan)
-        {
-            mins.push_back (choc::memory::readNativeEndian<float> (d));
-            d += sizeof (float);
-            maxs.push_back (choc::memory::readNativeEndian<float> (d));
-            d += sizeof (float);
-        }
-
-        CMAJ_ASSERT (end > d);
-
-        patch.sendMessageToViews (choc::value::createObject ({},
-                                    "type", "endpoint_audio_min_max",
-                                    "endpoint", std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
-                                    "min", choc::value::createArrayView (mins.data(), static_cast<uint32_t> (mins.size())),
-                                    "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size()))));
-    }
-
-    void postMIDIEndpointEvent (const std::string& endpointID, choc::midi::ShortMessage message)
-    {
-        auto endpointChars = endpointID.data();
-        auto endpointLen = static_cast<uint32_t> (endpointID.length());
-
-        fifo.push (4 + endpointLen, [=] (void* dest)
-        {
-            auto d = static_cast<char*> (dest);
-            d[0] = static_cast<char> (EventType::midiEvent);
-            memcpy (d + 1, message.data, 3);
-            memcpy (d + 4, endpointChars, endpointLen);
-        });
-
-        triggerDispatchOnEndOfBlock = true;
-    }
-
-    void dispatchMIDIEndpointEvent (const char* d, uint32_t size)
-    {
-        CMAJ_ASSERT (size > 4);
-        patch.sendMessageToViews (choc::value::createObject ({},
-                                    "type", "endpoint_midi",
-                                    "endpoint", std::string_view (d + 4, size - 4),
-                                    "message", MIDIEvents::midiMessageToPackedInt (choc::midi::ShortMessage (d + 1, 3))));
-    }
-
-    void postEndpointEvent (const std::string& endpointID, const choc::value::ValueView& message)
-    {
-        auto serialisedMessage = message.serialise();
-        auto messageData = serialisedMessage.data.data();
-        auto messageSize = static_cast<uint32_t> (serialisedMessage.data.size());
-
-        auto endpointChars = endpointID.data();
-        auto endpointLen = static_cast<uint32_t> (endpointID.length());
-
-        fifo.push (2 + endpointLen + messageSize, [=] (void* dest)
-        {
-            auto d = static_cast<char*> (dest);
-            d[0] = static_cast<char> (EventType::endpointEvent);
-            d[1] = static_cast<char> (endpointLen);
-            memcpy (d + 2, endpointChars, endpointLen);
-            memcpy (d + 2 + endpointLen, messageData, messageSize);
-        });
-
-        triggerDispatchOnEndOfBlock = true;
-    }
-
-    void dispatchEndpointEvent (const char* d, uint32_t size)
-    {
-        auto endpointLen = d[1] == 0 ? 256u : static_cast<uint32_t> (static_cast<uint8_t> (d[1]));
-        CMAJ_ASSERT (endpointLen + 4 < size);
-        auto valueData = choc::value::InputData { reinterpret_cast<const uint8_t*> (d + 2 + endpointLen),
-                                                  reinterpret_cast<const uint8_t*> (d + size) };
-
-        patch.sendMessageToViews (choc::value::createObject ({},
-                                    "type", "endpoint_event",
-                                    "endpoint", std::string_view (d + 2, endpointLen),
-                                    "value", choc::value::Value::deserialise (valueData)));
-    }
-
-    void startOfProcessCallback()
-    {
-        cpu.startProcess();
-        framesProcessedInBlock = 0;
-    }
-
-    void postProcessChunk (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
-    {
-        framesProcessedInBlock += block.audioOutput.getNumFrames();
-    }
-
-    void endOfProcessCallback()
-    {
-        cpu.endProcess (*this, framesProcessedInBlock);
-
-        if (triggerDispatchOnEndOfBlock)
-        {
-            triggerDispatchOnEndOfBlock = false;
-            clientEventHandlerThread.trigger();
-        }
-    }
-
-    void dispatchClientEvents()
-    {
-        fifo.popAllAvailable ([this] (const void* data, uint32_t size)
-        {
-            auto d = static_cast<const char*> (data);
-
-            switch (static_cast<EventType> (d[0]))
-            {
-                case EventType::paramChange:            dispatchParameterChange (d, size); break;
-                case EventType::midiEvent:              dispatchMIDIEndpointEvent (d, size); break;
-                case EventType::audioLevels:            dispatchAudioMinMaxUpdate (d, d + size); break;
-                case EventType::endpointEvent:          dispatchEndpointEvent (d, size); break;
-                case EventType::cpuLevel:               dispatchCPULevel (d); break;
-                case EventType::resetParamsToDefault:   dispatchResetAllParameters(); break;
-                default:                                break;
-            }
-        });
-    }
-
-    enum class EventType  : char
-    {
-        paramChange,
-        midiEvent,
-        audioLevels,
-        endpointEvent,
-        cpuLevel,
-        resetParamsToDefault
-    };
-
-    Patch& patch;
-    choc::fifo::VariableSizeFIFO fifo;
-    choc::threading::TaskThread clientEventHandlerThread;
-    choc::threading::ThreadSafeFunctor<std::function<void()>> dispatchClientEventsCallback;
-    bool triggerDispatchOnEndOfBlock = false;
-    uint32_t framesProcessedInBlock = 0;
-
-    CPUMonitor cpu;
-};
-
 
 //==============================================================================
 inline Patch::Patch (bool buildSynchronously, bool keepCheckingFilesForChanges)
@@ -2018,8 +2029,7 @@ inline bool Patch::PlaybackParams::operator== (const PlaybackParams& other) cons
     return sampleRate == other.sampleRate
         && blockSize == other.blockSize
         && numInputChannels == other.numInputChannels
-        && numOutputChannels == other.numOutputChannels
-        && customAudioInputSources == other.customAudioInputSources;
+        && numOutputChannels == other.numOutputChannels;
 }
 
 inline bool Patch::PlaybackParams::operator!= (const PlaybackParams& other) const
@@ -2143,9 +2153,7 @@ inline void Patch::process (const choc::audio::AudioMIDIBlockDispatcher::Block& 
 inline void Patch::beginChunkedProcess()
 {
     clientEventQueue->startOfProcessCallback();
-
-    if (currentPatch->swapPerformerIfNeeded())
-        clientEventQueue->postResetAllParameters();
+    currentPatch->beginProcessBlock();
 }
 
 inline void Patch::processChunk (const choc::audio::AudioMIDIBlockDispatcher::Block& block, bool replaceOutput)
@@ -2161,6 +2169,7 @@ inline void Patch::processChunk (const choc::audio::AudioMIDIBlockDispatcher::Bl
 inline void Patch::endChunkedProcess()
 {
     clientEventQueue->endOfProcessCallback();
+    currentPatch->endProcessBlock();
 }
 
 inline void Patch::sendTimeSig (int numerator, int denominator)
@@ -2471,21 +2480,23 @@ inline void Patch::setEndpointAudioMinMaxNeeded (const EndpointID& endpointID, u
                 m->granularity = granularity;
 }
 
-inline void Patch::setCustomAudioSourceForInput (const EndpointID& e, AudioMIDIPerformer::CustomAudioSourcePtr source)
+inline Patch::CustomAudioSourcePtr Patch::getCustomAudioSourceForInput (const EndpointID& e) const
 {
-    auto params = getPlaybackParams();
+    if (auto s = customAudioInputSources.find (e.toString()); s != customAudioInputSources.end())
+        return s->second;
 
+    return {};
+}
+
+inline void Patch::setCustomAudioSourceForInput (const EndpointID& e, Patch::CustomAudioSourcePtr source)
+{
     if (source != nullptr)
-    {
-        source->prepare (params.sampleRate);
-        params.customAudioInputSources[e.toString()] = source;
-    }
+        customAudioInputSources[e.toString()] = source;
     else
-    {
-        params.customAudioInputSources.erase (e.toString());
-    }
+        customAudioInputSources.erase (e.toString());
 
-    setPlaybackParams (params);
+    if (currentPatch != nullptr)
+        currentPatch->setCustomAudioSource (e, source);
 }
 
 inline void Patch::setCPUInfoMonitorChunkSize (uint32_t framesPerCallback)
