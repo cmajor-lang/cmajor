@@ -168,107 +168,26 @@ static constexpr auto cmajor_patch_gui_html = R"(
 
 <script type="module">
 
+import { PatchConnectionBase } from "/cmaj_api/cmaj-patch-connection-base.js"
+
 //==============================================================================
-class PatchConnection
+class PatchConnection  extends PatchConnectionBase
 {
     constructor()
     {
+        super();
         this.manifest = MANIFEST;
-
-        this.endpointAudioMinMaxListeners = {};
-        this.endpointMIDIListeners = {};
-        this.endpointEventListeners = {};
-
-        window.cmaj_handleMessageFromPatch = (msg) => this.deliverMessageToClient (msg);
+        window.cmaj_handleMessageFromPatch = msg => this.deliverMessageToClient (msg);
     }
 
-    onPatchStatusChanged (errorMessage, patchManifest, inputsList, outputsList, details) {}
-    onSampleRateChanged (newSampleRate) {}
-    onParameterEndpointChanged (endpointID, newValue) {}
-    onEndpointEvent (endpointID, newValue) {}
-    onStoredStateValueChanged (key, value) {}
-    onFullStateValue (state) {}
-
-    getResourceAddress (path)                        { return path.startsWith ("/") ? path : ("/" + path); }
-
-    requestStatusUpdate()                            { window.cmaj_sendMessageToPatch ({ type: "req_status" }); }
-    resetToInitialState()                            { window.cmaj_sendMessageToPatch ({ type: "req_reset" }); }
-
-    requestEndpointValue (endpointID)                { window.cmaj_sendMessageToPatch ({ type: "req_endpoint", id: endpointID }); }
-    sendEventOrValue (endpointID, value, numFrames)  { window.cmaj_sendMessageToPatch ({ type: "send_value", id: endpointID, value: value, rampFrames: numFrames }); }
-    sendParameterGestureStart (endpointID)           { window.cmaj_sendMessageToPatch ({ type: "send_gesture_start", id: endpointID }); }
-    sendParameterGestureEnd (endpointID)             { window.cmaj_sendMessageToPatch ({ type: "send_gesture_end", id: endpointID }); }
-    sendMIDIInputEvent (endpointID, shortMIDICode)   { window.cmaj_sendMessageToPatch ({ type: "send_midi_input", id: endpointID, midiEvent: shortMIDICode }); }
-
-    requestStoredStateValue (key)                    { window.cmaj_sendMessageToPatch ({ type: "req_state_value", key: key }); }
-    sendStoredStateValue (key, newValue)             { window.cmaj_sendMessageToPatch ({ type: "send_state_value", key : key, value: newValue }); }
-    requestFullStoredState()                         { window.cmaj_sendMessageToPatch ({ type: "req_full_state" }); }
-    sendFullStoredState (fullState)                  { window.cmaj_sendMessageToPatch ({ type: "send_full_state", value: fullState }); }
-
-    setEndpointAudioListener (endpointID, granularity, listener)
+    getResourceAddress (path)
     {
-        this.endpointAudioMinMaxListeners[endpointID] = listener;
-
-        const gran = listener ? ((granularity && granularity > 0 && granularity <= 96000) ? granularity : 1024) : 0;
-
-        this.session.sendMessageToServer ({ type: "set_endpoint_audio_monitoring",
-                                            endpoint: endpointID,
-                                            granularity: gran });
+        return path.startsWith ("/") ? path : ("/" + path);
     }
 
-    setEndpointMIDIListener (endpointID, listener)
+    sendMessageToServer (message)
     {
-        this.endpointMIDIListeners[endpointID] = listener;
-
-        this.session.sendMessageToServer ({ type: "set_endpoint_midi_monitoring",
-                                            endpoint: endpointID,
-                                            active: !! listener });
-    }
-
-    setEndpointEventListener (endpointID, listener)
-    {
-        this.endpointEventListeners[endpointID] = listener;
-
-        this.session.sendMessageToServer ({ type: "set_endpoint_event_monitoring",
-                                            endpoint: endpointID,
-                                            active: !! listener });
-    }
-
-    deliverMessageToClient (msg)
-    {
-        switch (msg.type)
-        {
-            case "endpoint_event":          this.onEndpointEvent?. (msg.endpoint, msg.value); this.endpointEventListeners[msg.endpoint]?.(msg.value); break;
-            case "param_value":             this.onParameterEndpointChanged?. (msg.endpoint, msg.value); break;
-            case "endpoint_audio_min_max":  this.endpointAudioMinMaxListeners[msg.endpoint]?.(msg.min, msg.max); break;
-            case "endpoint_midi":           this.endpointMIDIListeners[msg.endpoint]?.(msg.message); break;
-            case "status":                  this.onPatchStatusChanged?. (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;
-            case "sample_rate":             this.onSampleRateChanged?. (msg.rate); break;
-            case "state_key_value":         this.onStoredStateValueChanged?. (msg.key, msg.value); break;
-            case "full_state":              this.onFullStateValue?. (msg.value); break;
-            default: break;
-        }
-    }
-
-    async createView (view)
-    {
-        const viewModuleURL = view && view.src ? view.src : "cmaj_api/cmaj-generic-patch-view.js";
-        const viewModule = await import (this.getResourceAddress (viewModuleURL));
-
-        const patchView = await viewModule.default (this);
-        patchView.style.display = "block";
-
-        if (view && view.width && view.width > 10)
-            patchView.style.width = view.width + "px";
-        else
-            patchView.style.width = undefined;
-
-        if (view && view.height && view.height > 10)
-            patchView.style.height = view.height + "px";
-        else
-            patchView.style.height = undefined;
-
-        return patchView;
+        window.cmaj_sendMessageToPatch (message);
     }
 }
 

@@ -47,6 +47,117 @@ struct EmbeddedWebAssets
 private:
     struct File { std::string_view name, content; };
 
+    static constexpr const char* cmajpatchconnectionbase_js =
+        R"(//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+//==============================================================================
+export class PatchConnectionBase
+{
+    constructor()
+    {
+        this.endpointAudioMinMaxListeners = {};
+        this.endpointMIDIListeners = {};
+        this.endpointEventListeners = {};
+    }
+
+    onPatchStatusChanged (errorMessage, patchManifest, inputsList, outputsList, details) {}
+    onSampleRateChanged (newSampleRate) {}
+    onParameterEndpointChanged (endpointID, newValue) {}
+    onEndpointEvent (endpointID, newValue) {}
+    onStoredStateValueChanged (key, value) {}
+    onFullStateValue (state) {}
+
+    getResourceAddress (path)                         { return path; }
+
+    requestStatusUpdate()                             { this.sendMessageToServer ({ type: "req_status" }); }
+    resetToInitialState()                             { this.sendMessageToServer ({ type: "req_reset" }); })"
+R"(
+
+    requestEndpointValue (endpointID)                 { this.sendMessageToServer ({ type: "req_endpoint", id: endpointID }); }
+    sendEventOrValue (endpointID, value, rampFrames)  { this.sendMessageToServer ({ type: "send_value", id: endpointID, value: value, rampFrames: rampFrames }); }
+    sendParameterGestureStart (endpointID)            { this.sendMessageToServer ({ type: "send_gesture_start", id: endpointID }); }
+    sendParameterGestureEnd (endpointID)              { this.sendMessageToServer ({ type: "send_gesture_end", id: endpointID }); }
+    sendMIDIInputEvent (endpointID, shortMIDICode)    { this.sendMessageToServer ({ type: "send_midi_input", id: endpointID, midiEvent: shortMIDICode })}
+
+    requestStoredStateValue (key)                     { this.sendMessageToServer ({ type: "req_state_value", key: key }); }
+    sendStoredStateValue (key, newValue)              { this.sendMessageToServer ({ type: "send_state_value", key : key, value: newValue }); }
+    requestFullStoredState()                          { this.sendMessageToServer ({ type: "req_full_state" }); }
+    sendFullStoredState (fullState)                   { this.sendMessageToServer ({ type: "send_full_state", value: fullState }); }
+
+    setEndpointAudioListener (endpointID, granularity, listener)
+    {
+        this.endpointAudioMinMaxListeners[endpointID] = listener;
+        const gran = listener ? ((granularity && granularity > 0 && granularity <= 96000) ? granularity : 1024) : 0;
+        this.sendMessageToServer ({ type: "set_endpoint_audio_monitoring", endpoint: endpointID, granularity: gran });
+    }
+
+    setEndpointMIDIListener (endpointID, listener)
+    {
+        this.endpointMIDIListeners[endpointID] = listener;
+        this.sendMessageToServer ({ type: "set_endpoint_midi_monitoring", endpoint: endpointID, active: !! listener });
+    })"
+R"(
+
+    setEndpointEventListener (endpointID, listener)
+    {
+        this.endpointEventListeners[endpointID] = listener;
+        this.sendMessageToServer ({ type: "set_endpoint_event_monitoring", endpoint: endpointID, active: !! listener });
+    }
+
+    deliverMessageToClient (msg)
+    {
+        switch (msg.type)
+        {
+            case "endpoint_event":          this.onEndpointEvent?. (msg.endpoint, msg.value); this.endpointEventListeners[msg.endpoint]?.(msg.value); break;
+            case "param_value":             this.onParameterEndpointChanged?. (msg.endpoint, msg.value); break;
+            case "endpoint_audio_min_max":  this.endpointAudioMinMaxListeners[msg.endpoint]?.(msg.min, msg.max); break;
+            case "endpoint_midi":           this.endpointMIDIListeners[msg.endpoint]?.(msg.message); break;
+            case "status":                  this.manifest = msg.manifest; this.onPatchStatusChanged?. (msg.error, msg.manifest, msg.details?.inputs, msg.details?.outputs, msg.details); break;
+            case "sample_rate":             this.onSampleRateChanged?. (msg.rate); break;
+            case "state_key_value":         this.onStoredStateValueChanged?. (msg.key, msg.value); break;
+            case "full_state":              this.onFullStateValue?. (msg.value); break;
+            default: break;
+        }
+    }
+
+    async createView (view)
+    {
+        if (this.manifest)
+        {
+            const viewModuleURL = view && view.src ? view.src : "cmaj_api/cmaj-generic-patch-view.js";
+            const viewModule = await import (this.getResourceAddress (viewModuleURL));
+
+            const patchView = await viewModule.default (this);
+            patchView.style.display = "block";
+
+            if (view && view.width && view.width > 10)
+                patchView.style.width = view.width + "px";
+            else
+                patchView.style.width = undefined;)"
+R"(
+
+            if (view && view.height && view.height > 10)
+                patchView.style.height = view.height + "px";
+            else
+                patchView.style.height = undefined;
+
+            return patchView;
+        }
+
+        return undefined;
+    }
+}
+
+)";
     static constexpr const char* cmajgenericpatchview_js =
         R"(//  //
 //  //     ,ad888ba,                                88
@@ -2031,6 +2142,7 @@ R"(
 
     static constexpr std::array files =
     {
+        File { "cmaj-patch-connection-base.js", std::string_view (cmajpatchconnectionbase_js, 5438) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 25618) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2981) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6659) },
