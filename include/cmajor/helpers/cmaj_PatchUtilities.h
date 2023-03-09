@@ -422,9 +422,14 @@ struct PatchParameter  : public std::enable_shared_from_this<PatchParameter>
 /// Base class for a GUI for a patch.
 struct PatchView
 {
-    PatchView (Patch&, const PatchManifest::View*);
+    PatchView (Patch&);
+    PatchView (Patch&, const PatchManifest::View&);
     virtual ~PatchView();
 
+    void update (const PatchManifest::View&);
+
+    void setActive (bool);
+    bool isActive() const;
     bool isViewOf (Patch&) const;
     virtual void sendMessage (const choc::value::ValueView&) = 0;
 
@@ -2876,26 +2881,48 @@ inline float PatchParameter::getStringAsValue (std::string_view text) const
 }
 
 //==============================================================================
-inline PatchView::PatchView (Patch& p, const PatchManifest::View* view) : patch (p)
+inline PatchView::PatchView (Patch& p) : PatchView (p, {})
+{}
+
+inline PatchView::PatchView (Patch& p, const PatchManifest::View& view) : patch (p)
 {
-    if (view != nullptr)
-    {
-        width = view->getWidth();
-        height = view->getHeight();
-        resizable = view->isResizable();
-    }
+    update (view);
 
-    if (width < 50  || width > 10000)  width = 600;
-    if (height < 50 || height > 10000) height = 400;
-
-    patch.activeViews.push_back (this);
+    setActive (true);
 }
 
 inline PatchView::~PatchView()
 {
-    auto i = std::find (patch.activeViews.begin(), patch.activeViews.end(), this);
-    CHOC_ASSERT (i != patch.activeViews.end());
-    patch.activeViews.erase (i);
+    setActive (false);
+}
+
+inline void PatchView::update (const PatchManifest::View& view)
+{
+    width = view.getWidth();
+    height = view.getHeight();
+    resizable = view.isResizable();
+
+    if (width < 50  || width > 10000)  width = 600;
+    if (height < 50 || height > 10000) height = 400;
+}
+
+inline void PatchView::setActive (bool active)
+{
+    const auto i = std::find (patch.activeViews.begin(), patch.activeViews.end(), this);
+    const auto isCurrentlyActive = i != patch.activeViews.end();
+
+    if (active == isCurrentlyActive)
+        return;
+
+    if (active)
+        patch.activeViews.push_back (this);
+    else
+        patch.activeViews.erase (i);
+}
+
+inline bool PatchView::isActive() const
+{
+    return std::find (patch.activeViews.begin(), patch.activeViews.end(), this) != patch.activeViews.end();
 }
 
 inline bool PatchView::isViewOf (Patch& p) const

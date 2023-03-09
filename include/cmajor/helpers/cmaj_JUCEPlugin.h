@@ -63,8 +63,7 @@ public:
             patch->stopPlayback    = [this] { suspendProcessing (true); };
             patch->startPlayback   = [this] { suspendProcessing (false); };
             patch->patchChanged    = [this] { handlePatchChange(); };
-            patch->statusChanged   = [this] (const cmaj::Patch::Status& s) { setStatusMessage (s.statusMessage,
-                                                                                               s.messageList.hasErrors()); };
+            patch->statusChanged   = [this] (const auto& s) { setStatusMessage (s.statusMessage, s.messageList.hasErrors()); };
 
             patch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
             {
@@ -93,9 +92,6 @@ public:
 
     ~JUCEPluginBase() override
     {
-        if (auto e = dynamic_cast<Editor*> (getActiveEditor()))
-            e->removeEditor();
-
         patch->patchChanged = [] {};
         patch->unload();
         patch.reset();
@@ -397,8 +393,8 @@ private:
     {
         if constexpr (! EngineType::isPrecompiled)
         {
-            setStatusMessage (message, isError);
             patch->unload();
+            setStatusMessage (message, isError);
         }
     }
 
@@ -454,7 +450,7 @@ private:
         changes.nonParameterStateChanged = true;
 
         setLatencySamples (newLatency);
-        sendStatusUpdateToViews();
+        notifyEditorPatchChanged();
         updateHostDisplay (changes);
 
         if (patchChangeCallback)
@@ -467,14 +463,20 @@ private:
         {
             statusMessage = newMessage;
             isStatusMessageError = isError;
-            sendStatusUpdateToViews();
+            notifyEditorStatusMessageChanged();
         }
     }
 
-    void sendStatusUpdateToViews()
+    void notifyEditorStatusMessageChanged()
     {
         if (auto e = dynamic_cast<Editor*> (getActiveEditor()))
-            e->refreshEditor();
+            e->onStatusMessageChanged();
+    }
+
+    void notifyEditorPatchChanged()
+    {
+        if (auto* e = dynamic_cast<Editor*> (getActiveEditor()))
+            e->onPatchChanged();
     }
 
     //==============================================================================
@@ -891,14 +893,18 @@ private:
     struct Editor  : public juce::AudioProcessorEditor
     {
         Editor (JUCEPluginBase& p)
-            : juce::AudioProcessorEditor (p), owner (p)
+            : juce::AudioProcessorEditor (p), owner (p),
+              patchGUIHolder (PatchWebView::create (*p.patch, derivePatchViewSize (p)))
         {
             lookAndFeel.setColour (juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
             lookAndFeel.setColour (juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
             setLookAndFeel (&lookAndFeel);
 
+            onPatchChanged (false);
+
             addAndMakeVisible (extraComp);
-            refreshEditor();
+            onStatusMessageChanged();
+
             juce::Font::setDefaultMinimumHorizontalScaleFactor (1.0f);
         }
 
@@ -908,34 +914,12 @@ private:
             setLookAndFeel (nullptr);
         }
 
-        void removeEditor()
+        void onStatusMessageChanged()
         {
-            patchGUIHolder.reset();
-            setSize (defaultWidth, defaultHeight);
-            setResizable (true, false);
             extraComp.refresh();
         }
 
-        void refreshEditor()
-        {
-            extraComp.refresh();
-
-            if (owner.patch->isPlayable())
-            {
-                if (patchGUIHolder != nullptr
-                     && patchGUIHolder->patchView->isViewOf (*owner.patch))
-                    return;
-
-                removeEditor();
-                createPatchGUIHolder();
-            }
-            else
-            {
-                removeEditor();
-            }
-        }
-
-        void createPatchGUIHolder()
+        static cmaj::PatchManifest::View derivePatchViewSize (const JUCEPluginBase& owner)
         {
             cmaj::PatchManifest::View view;
 
@@ -954,21 +938,43 @@ private:
                 if (view.getHeight() == 0)  view.view.setMember ("height", defaultHeight);
             }
 
-            auto patchWebView = PatchWebView::create (*owner.patch, std::addressof (view));
+            return view;
+        }
 
-            patchGUIHolder = std::make_unique<PatchGUIHolder> (*this, std::move (patchWebView));
+        void onPatchChanged (bool forceReload = true)
+        {
+            const auto loaded = owner.patch->isPlayable();
 
-            setResizable (patchGUIHolder->patchView->resizable, false);
+            if (loaded)
+            {
+                patchGUIHolder.patchView->setActive (true);
+                patchGUIHolder.update (derivePatchViewSize (owner));
 
-            addAndMakeVisible (*patchGUIHolder);
-            childBoundsChanged (nullptr);
+                setResizable (patchGUIHolder.patchView->resizable, false);
+
+                addAndMakeVisible (patchGUIHolder);
+                childBoundsChanged (nullptr);
+            }
+            else
+            {
+                removeChildComponent (std::addressof (patchGUIHolder));
+
+                patchGUIHolder.patchView->setActive (false);
+                patchGUIHolder.setVisible (false);
+
+                setSize (defaultWidth, defaultHeight);
+                setResizable (true, false);
+            }
+
+            if (forceReload)
+                patchGUIHolder.patchView->reload();
         }
 
         void childBoundsChanged (Component*) override
         {
-            if (! isResizing && patchGUIHolder != nullptr)
-                setSize (std::max (50, patchGUIHolder->getWidth()),
-                         std::max (50, patchGUIHolder->getHeight() + extraComp.height));
+            if (! isResizing && patchGUIHolder.isVisible())
+                setSize (std::max (50, patchGUIHolder.getWidth()),
+                         std::max (50, patchGUIHolder.getHeight() + extraComp.height));
         }
 
         void resized() override
@@ -978,15 +984,15 @@ private:
 
             auto r = getLocalBounds();
 
-            if (patchGUIHolder != nullptr)
+            if (patchGUIHolder.isVisible())
             {
-                patchGUIHolder->setBounds (r.removeFromTop (getHeight() - extraComp.height));
+                patchGUIHolder.setBounds (r.removeFromTop (getHeight() - extraComp.height));
                 r.removeFromTop (4);
 
                 if (getWidth() > 0 && getHeight() > 0)
                 {
-                    owner.lastEditorWidth = patchGUIHolder->getWidth();
-                    owner.lastEditorHeight = patchGUIHolder->getHeight();
+                    owner.lastEditorWidth = patchGUIHolder.getWidth();
+                    owner.lastEditorHeight = patchGUIHolder.getHeight();
                 }
             }
 
@@ -1010,11 +1016,11 @@ private:
 
         struct PatchGUIHolder  : public NativeUIBase
         {
-            PatchGUIHolder (Editor& e, std::unique_ptr<PatchWebView> webView) :
+            PatchGUIHolder (std::unique_ptr<PatchWebView> webView) :
                #if JUCE_LINUX
                 juce::XEmbedComponent (getWindowID (*webView), true, false),
                #endif
-                editor (e), patchView (std::move (webView))
+                patchView (std::move (webView))
             {
                 setSize ((int) patchView->width, (int) patchView->height);
 
@@ -1047,7 +1053,12 @@ private:
             }
            #endif
 
-            Editor& editor;
+            void update (const PatchManifest::View& view)
+            {
+                patchView->update (view);
+                setSize ((int) patchView->width, (int) patchView->height);
+            }
+
             std::unique_ptr<PatchWebView> patchView;
 
             JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PatchGUIHolder)
@@ -1057,7 +1068,7 @@ private:
         JUCEPluginBase& owner;
         typename EngineType::template ExtraEditorComponent<JUCEPluginBase> extraComp { owner };
 
-        std::unique_ptr<PatchGUIHolder> patchGUIHolder;
+        PatchGUIHolder patchGUIHolder;
         juce::LookAndFeel_V4 lookAndFeel;
         bool isResizing = false;
 

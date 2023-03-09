@@ -40,17 +40,19 @@ struct PatchWebView  : public PatchView
     /// it will be called first, falling back to the default implementation if an empty result is returned.
     using MimeTypeMappingFn = std::function<std::string(std::string_view extension)>;
 
-    static std::unique_ptr<PatchWebView> create (Patch&, const PatchManifest::View*, MimeTypeMappingFn = {});
+    static std::unique_ptr<PatchWebView> create (Patch&, const PatchManifest::View&, MimeTypeMappingFn = {});
     ~PatchWebView() override;
 
     choc::ui::WebView& getWebView();
 
     void sendMessage (const choc::value::ValueView&) override;
 
+    void reload();
+
 private:
     struct Impl;
 
-    PatchWebView (std::unique_ptr<Impl>, const PatchManifest::View*);
+    PatchWebView (std::unique_ptr<Impl>, const PatchManifest::View&);
 
     std::unique_ptr<Impl> pimpl;
 };
@@ -69,12 +71,9 @@ private:
 
 struct PatchWebView::Impl
 {
-    Impl (Patch& p, const PatchManifest::View* v, MimeTypeMappingFn toMimeTypeFn)
+    Impl (Patch& p, MimeTypeMappingFn toMimeTypeFn)
         : patch (p), toMimeTypeCustomImpl (std::move (toMimeTypeFn))
     {
-        if (v != nullptr)
-            view = std::move (*v);
-
         createBindings();
     }
 
@@ -102,7 +101,6 @@ struct PatchWebView::Impl
     }
 
     Patch& patch;
-    PatchManifest::View view;
     MimeTypeMappingFn toMimeTypeCustomImpl;
 
    #if CMAJ_ENABLE_WEBVIEW_DEV_TOOLS
@@ -120,13 +118,13 @@ struct PatchWebView::Impl
     static std::string toMimeTypeDefaultImpl (std::string_view extension);
 };
 
-inline std::unique_ptr<PatchWebView> PatchWebView::create (Patch& p, const PatchManifest::View* view, MimeTypeMappingFn toMimeType)
+inline std::unique_ptr<PatchWebView> PatchWebView::create (Patch& p, const PatchManifest::View& view, MimeTypeMappingFn toMimeType)
 {
-    auto impl = std::make_unique <PatchWebView::Impl> (p, view, std::move (toMimeType));
+    auto impl = std::make_unique <PatchWebView::Impl> (p, std::move (toMimeType));
     return std::unique_ptr<PatchWebView> (new PatchWebView (std::move (impl), view));
 }
 
-inline PatchWebView::PatchWebView (std::unique_ptr<Impl> impl, const PatchManifest::View* view)
+inline PatchWebView::PatchWebView (std::unique_ptr<Impl> impl, const PatchManifest::View& view)
     : PatchView (impl->patch, view), pimpl (std::move (impl))
 {
 }
@@ -141,6 +139,11 @@ inline choc::ui::WebView& PatchWebView::getWebView()
 inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
 {
     return pimpl->sendMessage (msg);
+}
+
+inline void PatchWebView::reload()
+{
+    getWebView().evaluateJavascript ("document.location.reload()");
 }
 
 static constexpr auto cmajor_patch_gui_html = R"(
