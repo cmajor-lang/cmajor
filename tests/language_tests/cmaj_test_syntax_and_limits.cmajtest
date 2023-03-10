@@ -2238,3 +2238,24 @@ processor Test
     }
 }
 
+## expectError ("7:22: error: Invalid endpoint specifier")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    connection in -> 1;
+}
+
+## expectError ("9:22: error: Invalid endpoint specifier")
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    let x = 1;
+
+    connection in -> x;
+}
