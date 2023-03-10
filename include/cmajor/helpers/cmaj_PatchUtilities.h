@@ -1480,10 +1480,7 @@ struct Patch::Build
             result->performer = performerBuilder->createPerformer();
 
             if (result->performer->prepareToStart())
-            {
-                applyParameterValues();
                 result->latencySamples = result->performer->performer.getLatency();
-            }
         }
         catch (const choc::json::ParseError& e)
         {
@@ -1492,6 +1489,19 @@ struct Patch::Build
         catch (const std::runtime_error& e)
         {
             result->errors.add (cmaj::DiagnosticMessage::createError (e.what(), {}));
+        }
+    }
+
+    void applyParameterValues()
+    {
+        for (auto& p : result->parameterIDMap)
+        {
+            auto oldValue = loadParams.parameterValues.find (p.first);
+
+            if (oldValue != loadParams.parameterValues.end())
+                p.second->setValue (oldValue->second, true);
+            else
+                p.second->resetToDefaultValue (true);
         }
     }
 
@@ -1731,19 +1741,6 @@ private:
         CMAJ_ASSERT_FALSE;
         return {};
     }
-
-    void applyParameterValues()
-    {
-        for (auto& p : result->parameterIDMap)
-        {
-            auto oldValue = loadParams.parameterValues.find (p.first);
-
-            if (oldValue != loadParams.parameterValues.end())
-                p.second->setValue (oldValue->second, true);
-            else
-                p.second->resetToDefaultValue (true);
-        }
-    }
 };
 
 //==============================================================================
@@ -1843,7 +1840,10 @@ private:
         }
 
         if (finishedTask && finishedTask->build)
+        {
+            finishedTask->build->applyParameterValues();
             owner.applyFinishedBuild (std::move (finishedTask->build->result));
+        }
     }
 
     void clearTaskList()
