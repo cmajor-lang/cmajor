@@ -156,7 +156,6 @@ R"(
         return undefined;
     }
 }
-
 )";
     static constexpr const char* cmajgenericpatchview_js =
         R"(//  //
@@ -2142,7 +2141,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection-base.js", std::string_view (cmajpatchconnectionbase_js, 5438) },
+        File { "cmaj-patch-connection-base.js", std::string_view (cmajpatchconnectionbase_js, 5437) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 25618) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2981) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6659) },
