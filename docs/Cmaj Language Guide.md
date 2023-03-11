@@ -227,8 +227,8 @@ let a1 = x[3];             // OK
 let a2 = x[-1];            // OK: this returns the last element of the array
 let a3 = x[10];            // Error: the compiler sees that this constant integer is out of bounds.
 
-wrap<8> wrappedInt = ...   // 'wrappedInt' is a normal integer so could have any value 
-int normalInt = ...        // 'normalInt' is a wrap<8> so has the range 0 to 7
+wrap<8> wrappedInt = ...   // 'wrappedInt' is a wrap<8> so has the range 0 to 7
+int normalInt = ...        // 'normalInt' is a normal integer so could have any value
 
 let a4 = x[wrappedInt];    // This produces efficient code because the compiler knows that the wrap<8>
                            // value can never exceed the bounds of an array with size 8.
