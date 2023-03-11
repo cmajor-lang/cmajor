@@ -366,7 +366,7 @@ private:
     }
 
     void sendPatchChange();
-    void applyFinishedBuild (std::shared_ptr<LoadedPatch>);
+    void applyFinishedBuild (Build&);
     void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
     void startCheckingForChanges();
     void handleFileChange (FileChangeType);
@@ -1840,10 +1840,7 @@ private:
         }
 
         if (finishedTask && finishedTask->build)
-        {
-            finishedTask->build->applyParameterValues();
-            owner.applyFinishedBuild (std::move (finishedTask->build->result));
-        }
+            owner.applyFinishedBuild (*(finishedTask->build));
     }
 
     void clearTaskList()
@@ -1884,7 +1881,7 @@ inline bool Patch::preload (const PatchManifest& m)
     {
         auto build = std::make_unique<Build> (*this, std::move (engine), params, currentPlaybackParams, cache);
         build->loadProgram ([] {});
-        applyFinishedBuild (std::move (build->result));
+        applyFinishedBuild (*build);
         return ! currentPatch->errors.hasErrors();
     }
 
@@ -1912,7 +1909,7 @@ inline bool Patch::loadPatch (const LoadParams& params)
     else
     {
         build->build ([] {});
-        applyFinishedBuild (std::move (build->result));
+        applyFinishedBuild (*build);
     }
 
     return true;
@@ -2408,16 +2405,17 @@ inline void Patch::sendPatchChange()
         handlePatchChange();
 }
 
-inline void Patch::applyFinishedBuild (std::shared_ptr<LoadedPatch> newPatch)
+inline void Patch::applyFinishedBuild (Build& build)
 {
-    CHOC_ASSERT (newPatch != nullptr);
+    CHOC_ASSERT (build.result != nullptr);
 
     if (stopPlayback)
         stopPlayback();
 
+    build.applyParameterValues();
     currentPatch.reset();
     sendPatchChange();
-    currentPatch = std::move (newPatch);
+    currentPatch = std::move (build.result);
 
     currentPatch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
     {
