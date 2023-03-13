@@ -1364,6 +1364,12 @@ struct Patch::LoadedPatch
             }
         }
     }
+
+    cmaj::AudioMIDIPerformer& getPerformer()
+    {
+        CMAJ_ASSERT (performer != nullptr);
+        return *performer;
+    }
 };
 
 //==============================================================================
@@ -1377,9 +1383,20 @@ struct Patch::Build
     Engine engine;
     LoadParams loadParams;
     PlaybackParams playbackParams;
-    std::unique_ptr<AudioMIDIPerformer::Builder> performerBuilder;
-    std::shared_ptr<LoadedPatch> result;
     cmaj::CacheDatabaseInterface::Ptr cache;
+    std::shared_ptr<LoadedPatch> result;
+
+    AudioMIDIPerformer::Builder& getPerformerBuilder()
+    {
+        CMAJ_ASSERT (performerBuilder != nullptr);
+        return *performerBuilder;
+    }
+
+    LoadedPatch& getResult()
+    {
+        CMAJ_ASSERT (result != nullptr);
+        return *result;
+    }
 
     bool loadProgram (const std::function<void()>& checkForStopSignal)
     {
@@ -1506,6 +1523,8 @@ struct Patch::Build
     }
 
 private:
+    std::unique_ptr<AudioMIDIPerformer::Builder> performerBuilder;
+
     bool resolvePatchExternals()
     {
         if (result->manifest.externals.isVoid())
@@ -1664,12 +1683,12 @@ private:
                         ++inputChanIndex;
                 }
 
-                performerBuilder->connectAudioInputTo (inChans, e, endpointChans,
-                                                       createDataListener (e.endpointID));
+                getPerformerBuilder().connectAudioInputTo (inChans, e, endpointChans,
+                                                           createDataListener (e.endpointID));
             }
             else if (e.isMIDI())
             {
-                performerBuilder->connectMIDIInputTo (e);
+                getPerformerBuilder().connectMIDIInputTo (e);
             }
         }
 
@@ -1709,12 +1728,12 @@ private:
                     }
                 }
 
-                performerBuilder->connectAudioOutputTo (e, endpointChans, outChans,
-                                                        createDataListener (e.endpointID));
+                getPerformerBuilder().connectAudioOutputTo (e, endpointChans, outChans,
+                                                           createDataListener (e.endpointID));
             }
             else if (e.isMIDI())
             {
-                performerBuilder->connectMIDIOutputTo (e);
+                getPerformerBuilder().connectMIDIOutputTo (e);
             }
         }
     }
@@ -1951,10 +1970,10 @@ inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, cons
     auto build = std::make_unique<Build> (*this, std::move (engine), params, currentPlaybackParams, cache);
     build->build ([] {}, true);
 
-    if (build->result->errors.hasErrors())
+    if (build->getResult().errors.hasErrors())
     {
         Engine::CodeGenOutput result;
-        result.messages = build->result->errors;
+        result.messages = build->getResult().errors;
         return result;
     }
 
@@ -2182,7 +2201,7 @@ inline void Patch::beginChunkedProcess()
 
 inline void Patch::processChunk (const choc::audio::AudioMIDIBlockDispatcher::Block& block, bool replaceOutput)
 {
-    currentPatch->performer->process (block, replaceOutput);
+    currentPatch->getPerformer().process (block, replaceOutput);
     clientEventQueue->postProcessChunk (block);
 
     if (! block.midiMessages.empty())
@@ -2723,10 +2742,10 @@ inline void PatchParameter::setValue (float newValue, bool forceSend, int32_t ex
         if (auto p = patch.lock())
         {
             if (isEvent)
-                p->performer->postEvent (endpointHandle, choc::value::createFloat32 (newValue));
+                p->getPerformer().postEvent (endpointHandle, choc::value::createFloat32 (newValue));
             else
-                p->performer->postValue (endpointHandle, choc::value::createFloat32 (newValue),
-                                         explicitRampFrames >= 0 ? (uint32_t) explicitRampFrames : rampFrames);
+                p->getPerformer().postValue (endpointHandle, choc::value::createFloat32 (newValue),
+                                             explicitRampFrames >= 0 ? (uint32_t) explicitRampFrames : rampFrames);
 
             if (valueChanged)
                 valueChanged (newValue);

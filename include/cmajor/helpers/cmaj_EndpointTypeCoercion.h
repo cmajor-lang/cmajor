@@ -54,7 +54,7 @@ struct EndpointTypeCoercionHelperList
 
     void initialiseDictionary (const Performer& performer)
     {
-        dictionary->owner = performer;
+        getDictionary().owner = performer;
     }
 
     void initialiseInputs (const Engine& engine, uint32_t maxFramesPerBlock, bool addAllMappings)
@@ -67,7 +67,7 @@ struct EndpointTypeCoercionHelperList
         {
             uint32_t maxNumArrayElements = input.isStream() ? std::max (2u, maxFramesPerBlock) : 0;
 
-            ensureScratchSize (inputs[index++].initialise (input, *dictionary, maxNumArrayElements));
+            ensureScratchSize (inputs[index++].initialise (input, getDictionary(), maxNumArrayElements));
 
             if (addAllMappings)
                 addMapping (input.endpointID.toString(),
@@ -84,7 +84,7 @@ struct EndpointTypeCoercionHelperList
         for (auto& output : outputDetails)
         {
             uint32_t maxNumArrayElements = output.isStream() ? std::max (2u, maxFramesPerBlock) : 0;
-            ensureScratchSize (outputs[index++].initialise (output, *dictionary, maxNumArrayElements));
+            ensureScratchSize (outputs[index++].initialise (output, getDictionary(), maxNumArrayElements));
 
             if (addAllMappings)
                 addMapping (output.endpointID.toString(),
@@ -521,6 +521,12 @@ private:
 
         Performer owner;
     };
+
+    Dictionary& getDictionary()
+    {
+        CMAJ_ASSERT (dictionary != nullptr);
+        return *dictionary;
+    }
 
     std::unique_ptr<Dictionary> dictionary;
 };
