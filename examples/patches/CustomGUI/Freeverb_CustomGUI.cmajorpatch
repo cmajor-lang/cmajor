@@ -8,12 +8,12 @@
     "manufacturer":     "Sound Stacks Ltd",
     "isInstrument":     false,
 
-    "source":           "Freeverb.cmajor",
+    "source":           "Freeverb_CustomGUI.cmajor",
 
     "view":             {
                             "src": "web_ui/index.js",
-                            "width": 800,
-                            "height": 700,
+                            "width": 500,
+                            "height": 250,
                             "resizable": false
                         }
 }

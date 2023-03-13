@@ -99,6 +99,10 @@ struct PatchManifest
     const View* findDefaultView() const;
     const View* findGenericView() const;
 
+    /// Returns a copy of the manifest object that has large items like
+    /// chunks of external data removed.
+    choc::value::Value getStrippedManifest() const;
+
 private:
     void addSource (const choc::value::ValueView&);
     void addView (const choc::value::ValueView&);
@@ -265,27 +269,32 @@ struct Patch
     // various events occur:
     std::function<void()> stopPlayback,
                           startPlayback,
-                          handlePatchChange;
+                          patchChanged;
 
-    /// The client can set this callback to be given patch status updates, such as
+    /// This struct is used by the statusChanged callback.
+    struct Status
+    {
+        std::string statusMessage;
+        cmaj::DiagnosticMessageList messageList;
+    };
+
+    /// A client can set this callback to be given patch status updates, such as
     /// build failures, etc.
-    std::function<void(const std::string&, bool)> setStatusMessage  = [] (const std::string&, bool) {};
+    std::function<void(const Status&)> statusChanged;
 
     /// This object can optionally be provided if you have a build cache that you'd like
     /// the engine to use when compiling code.
     cmaj::CacheDatabaseInterface::Ptr cache;
 
     // These dispatch various types of event to any active views that the patch has open.
-    void sendMessageToViews (const choc::value::ValueView&);
+    void sendMessageToViews (std::string_view type, const choc::value::ValueView&);
     void sendPatchStatusChangeToViews();
-    void sendSampleRateChangeToViews (double newRate);
     void sendParameterChangeToViews (const EndpointID&, float value);
     void sendRealtimeParameterChangeToViews (const std::string&, float value);
     void sendCurrentParameterValueToViews (const EndpointID&);
     void sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView&);
     void sendCPUInfoToViews (float level);
     void sendStoredStateValueToViews (const std::string& key);
-    void sendFullStoredStateToViews();
     void sendGeneratedCodeToViews (const std::string& type, const choc::value::ValueView& options);
 
     // These can be called by things like the GUI to control the patch
@@ -308,9 +317,6 @@ struct Patch
 
     /// Enables/disables monitoring of events going to an endpoint
     void setEndpointEventsNeeded (const EndpointID&, bool active);
-
-    /// Enables/disables MIDI monitoring for an endpoint.
-    void setEndpointMIDINeeded (const EndpointID&, bool active);
 
     struct CustomAudioSource
     {
@@ -370,6 +376,8 @@ private:
     void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
     void startCheckingForChanges();
     void handleFileChange (FileChangeType);
+    void setStatus (std::string);
+    void setErrorStatus (const std::string& error, const std::string& file, choc::text::LineAndColumn, bool unloadFirst);
 
     //==============================================================================
     std::unique_ptr<BuildThread> buildThread;
@@ -447,6 +455,7 @@ inline void PatchManifest::initialiseWithVirtualFile (std::string patchFileLocat
     CHOC_ASSERT (createFileReader && getFullPathForFile && getFileModificationTime && fileExists);
 
     manifestFile = std::move (patchFileLocation);
+    name = std::filesystem::path (manifestFile).filename();
     reload();
 }
 
@@ -613,6 +622,24 @@ inline const PatchManifest::View* PatchManifest::findGenericView() const
     return {};
 }
 
+inline choc::value::Value PatchManifest::getStrippedManifest() const
+{
+    if (! (manifest.isObject() && manifest.hasObjectMember ("externals")))
+        return manifest;
+
+    auto stripped = choc::value::createObject ({});
+
+    for (uint32_t i = 0; i < manifest.size(); ++i)
+    {
+        auto m = manifest.getObjectMemberAt (i);
+
+        if (std::string_view (m.name) != "externals")
+            stripped.addMember (m.name, m.value);
+    }
+
+    return stripped;
+}
+
 inline std::string PatchManifest::View::getSource() const  { return view["src"].toString(); }
 inline uint32_t PatchManifest::View::getWidth() const      { return view["width"].getWithDefault<uint32_t> (0); }
 inline uint32_t PatchManifest::View::getHeight() const     { return view["height"].getWithDefault<uint32_t> (0); }
@@ -763,37 +790,11 @@ private:
 };
 
 //==============================================================================
-struct MIDIMonitor
-{
-    MIDIMonitor (const EndpointDetails& endpoint)
-        : endpointID (endpoint.endpointID.toString())
-    {
-    }
-
-    template <typename ClientEventQueue>
-    void process (ClientEventQueue& queue, choc::span<choc::midi::ShortMessage> messages)
-    {
-        if (active)
-            for (auto m : messages)
-                queue.postMIDIEndpointEvent (endpointID, m);
-    }
-
-    template <typename ClientEventQueue>
-    void process (ClientEventQueue& queue, choc::midi::ShortMessage message)
-    {
-        if (active)
-            queue.postMIDIEndpointEvent (endpointID, message);
-    }
-
-    std::string endpointID;
-    std::atomic<bool> active { false };
-};
-
-//==============================================================================
 struct EventMonitor
 {
     EventMonitor (const EndpointDetails& endpoint)
-        : endpointID (endpoint.endpointID.toString())
+        : endpointID (endpoint.endpointID.toString()),
+          isMIDI (endpoint.isMIDI())
     {
     }
 
@@ -809,7 +810,20 @@ struct EventMonitor
         return false;
     }
 
+    template <typename ClientEventQueue>
+    bool process (ClientEventQueue& queue, const std::string& endpoint, choc::midi::ShortMessage message)
+    {
+        if (isMIDI && active && endpointID == endpoint)
+        {
+            queue.postEndpointMIDI (endpointID, message);
+            return true;
+        }
+
+        return false;
+    }
+
     std::string endpointID;
+    bool isMIDI;
     std::atomic<bool> active { false };
 };
 
@@ -879,7 +893,20 @@ private:
 //==============================================================================
 struct Patch::ClientEventQueue
 {
-    ClientEventQueue (Patch& p) : patch (p) {}
+    ClientEventQueue (Patch& p) : patch (p)
+    {
+        struct FakeSerialiser
+        {
+            FakeSerialiser (const choc::value::Type& t) { t.serialise (*this); }
+            size_t size = 0;
+            void write (const void*, size_t s) { size += s; }
+        };
+
+        auto midiMessage = cmaj::MIDIEvents::createMIDIMessageObject (choc::midi::ShortMessage (0x90, 0, 0));
+        serialisedMIDIMessage = midiMessage.serialise();
+        serialisedMIDIContent = serialisedMIDIMessage.data.data() + FakeSerialiser (midiMessage.getType()).size;
+    }
+
     ~ClientEventQueue() { stop(); }
 
     void stop()
@@ -984,44 +1011,14 @@ struct Patch::ClientEventQueue
 
         CMAJ_ASSERT (end > d);
 
-        patch.sendMessageToViews (choc::value::createObject ({},
-                                    "type", "endpoint_audio_min_max",
-                                    "endpoint", std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
-                                    "min", choc::value::createArrayView (mins.data(), static_cast<uint32_t> (mins.size())),
-                                    "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size()))));
+        patch.sendMessageToViews ("audio_data_" + std::string (d, static_cast<std::string_view::size_type> (end - d)),
+                                  choc::value::createObject ({},
+                                     "min", choc::value::createArrayView (mins.data(), static_cast<uint32_t> (mins.size())),
+                                     "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size()))));
     }
 
-    void postMIDIEndpointEvent (const std::string& endpointID, choc::midi::ShortMessage message)
+    void postEndpointEvent (const std::string& endpointID, const void* messageData, uint32_t messageSize)
     {
-        auto endpointChars = endpointID.data();
-        auto endpointLen = static_cast<uint32_t> (endpointID.length());
-
-        fifo.push (4 + endpointLen, [=] (void* dest)
-        {
-            auto d = static_cast<char*> (dest);
-            d[0] = static_cast<char> (EventType::midiEvent);
-            memcpy (d + 1, message.data, 3);
-            memcpy (d + 4, endpointChars, endpointLen);
-        });
-
-        triggerDispatchOnEndOfBlock = true;
-    }
-
-    void dispatchMIDIEndpointEvent (const char* d, uint32_t size)
-    {
-        CMAJ_ASSERT (size > 4);
-        patch.sendMessageToViews (choc::value::createObject ({},
-                                    "type", "endpoint_midi",
-                                    "endpoint", std::string_view (d + 4, size - 4),
-                                    "message", MIDIEvents::midiMessageToPackedInt (choc::midi::ShortMessage (d + 1, 3))));
-    }
-
-    void postEndpointEvent (const std::string& endpointID, const choc::value::ValueView& message)
-    {
-        auto serialisedMessage = message.serialise();
-        auto messageData = serialisedMessage.data.data();
-        auto messageSize = static_cast<uint32_t> (serialisedMessage.data.size());
-
         auto endpointChars = endpointID.data();
         auto endpointLen = static_cast<uint32_t> (endpointID.length());
 
@@ -1037,6 +1034,19 @@ struct Patch::ClientEventQueue
         triggerDispatchOnEndOfBlock = true;
     }
 
+    void postEndpointEvent (const std::string& endpointID, const choc::value::ValueView& message)
+    {
+        auto serialisedMessage = message.serialise();
+        postEndpointEvent (endpointID, serialisedMessage.data.data(), static_cast<uint32_t> (serialisedMessage.data.size()));
+    }
+
+    void postEndpointMIDI (const std::string& endpointID, choc::midi::ShortMessage message)
+    {
+        auto packedMIDI = cmaj::MIDIEvents::midiMessageToPackedInt (message);
+        memcpy (serialisedMIDIContent, std::addressof (packedMIDI), 4);
+        postEndpointEvent (endpointID, serialisedMIDIMessage.data.data(), static_cast<uint32_t> (serialisedMIDIMessage.data.size()));
+    }
+
     void dispatchEndpointEvent (const char* d, uint32_t size)
     {
         auto endpointLen = d[1] == 0 ? 256u : static_cast<uint32_t> (static_cast<uint8_t> (d[1]));
@@ -1044,10 +1054,8 @@ struct Patch::ClientEventQueue
         auto valueData = choc::value::InputData { reinterpret_cast<const uint8_t*> (d + 2 + endpointLen),
                                                   reinterpret_cast<const uint8_t*> (d + size) };
 
-        patch.sendMessageToViews (choc::value::createObject ({},
-                                    "type", "endpoint_event",
-                                    "endpoint", std::string_view (d + 2, endpointLen),
-                                    "value", choc::value::Value::deserialise (valueData)));
+        patch.sendMessageToViews ("event_" + std::string (d + 2, endpointLen),
+                                  choc::value::Value::deserialise (valueData));
     }
 
     void startOfProcessCallback()
@@ -1081,7 +1089,6 @@ struct Patch::ClientEventQueue
             switch (static_cast<EventType> (d[0]))
             {
                 case EventType::paramChange:            dispatchParameterChange (d, size); break;
-                case EventType::midiEvent:              dispatchMIDIEndpointEvent (d, size); break;
                 case EventType::audioLevels:            dispatchAudioMinMaxUpdate (d, d + size); break;
                 case EventType::endpointEvent:          dispatchEndpointEvent (d, size); break;
                 case EventType::cpuLevel:               dispatchCPULevel (d); break;
@@ -1093,7 +1100,6 @@ struct Patch::ClientEventQueue
     enum class EventType  : char
     {
         paramChange,
-        midiEvent,
         audioLevels,
         endpointEvent,
         cpuLevel
@@ -1103,6 +1109,8 @@ struct Patch::ClientEventQueue
     choc::fifo::VariableSizeFIFO fifo;
     choc::threading::TaskThread clientEventHandlerThread;
     choc::threading::ThreadSafeFunctor<std::function<void()>> dispatchClientEventsCallback;
+    choc::value::SerialisedData serialisedMIDIMessage;
+    void* serialisedMIDIContent = {};
     bool triggerDispatchOnEndOfBlock = false;
     uint32_t framesProcessedInBlock = 0;
 
@@ -1137,7 +1145,6 @@ struct Patch::LoadedPatch
 
     std::vector<std::unique_ptr<EventMonitor>> eventEndpointMonitors;
     std::vector<std::unique_ptr<AudioLevelMonitor>> audioEndpointMonitors;
-    std::vector<std::unique_ptr<MIDIMonitor>> midiEndpointMonitors;
 
     std::mutex processLock;
 
@@ -1225,10 +1232,13 @@ struct Patch::LoadedPatch
     //==============================================================================
     PatchParameter* findParameter (const EndpointID& endpointID)
     {
-        auto param = parameterIDMap.find (endpointID.toString());
+        if (endpointID)
+        {
+            auto param = parameterIDMap.find (endpointID.toString());
 
-        if (param != parameterIDMap.end())
-            return param->second.get();
+            if (param != parameterIDMap.end())
+                return param->second.get();
+        }
 
         return {};
     }
@@ -1255,20 +1265,6 @@ struct Patch::LoadedPatch
         for (auto& m : eventEndpointMonitors)
             if (m->process (queue, endpointID.toString(), value))
                 break;
-    }
-
-    void sendMIDIInputEvent (ClientEventQueue& queue, const std::string& endpointID, choc::midi::ShortMessage value)
-    {
-        auto message = MIDIEvents::createMIDIMessageObject (value);
-
-        for (auto& m : midiEndpointMonitors)
-        {
-            if (endpointID.empty() || endpointID == m->endpointID)
-            {
-                performer->postEvent (cmaj::EndpointID::create (m->endpointID), message);
-                m->process (queue, value);
-            }
-        }
     }
 
     void sendGestureStart (const EndpointID& endpointID)
@@ -1626,11 +1622,6 @@ private:
                 result->parameterList.push_back (patchParam);
                 result->parameterIDMap[e.endpointID.toString()] = std::move (patchParam);
             }
-            else if (e.isMIDI())
-            {
-                result->hasMIDIInputs = true;
-                result->midiEndpointMonitors.push_back (std::make_unique<MIDIMonitor> (e));
-            }
             else if (auto numAudioChans = e.getNumAudioChannels())
             {
                 result->numAudioInputChans += numAudioChans;
@@ -1919,7 +1910,8 @@ inline bool Patch::loadPatch (const LoadParams& params)
 
     CHOC_ASSERT (createEngine);
     auto build = std::make_unique<Build> (*this, createEngine(), params, currentPlaybackParams, cache);
-    setStatusMessage ("Loading: " + params.manifest.manifestFile, false);
+
+    setStatus ("Loading: " + params.manifest.manifestFile);
 
     if (buildThread != nullptr)
     {
@@ -1944,14 +1936,14 @@ inline bool Patch::loadPatchFromFile (const std::string& patchFile)
     }
     catch (const choc::json::ParseError& e)
     {
-        setStatusMessage (patchFile + ":" + e.lineAndColumn.toString() + ": error: " + std::string (e.what()), true);
+        setErrorStatus (e.what(), patchFile, e.lineAndColumn, true);
         lastLoadParams = params;
         startCheckingForChanges();
         return false;
     }
     catch (const std::runtime_error& e)
     {
-        setStatusMessage (patchFile + ": error: " + std::string (e.what()), true);
+        setErrorStatus (e.what(), patchFile, {}, true);
         lastLoadParams = params;
         startCheckingForChanges();
         return false;
@@ -1991,7 +1983,8 @@ inline void Patch::unload()
 
         currentPatch.reset();
         sendPatchChange();
-        setStatusMessage ({}, false);
+        setStatus ({});
+        customAudioInputSources.clear();
     }
 }
 
@@ -2002,6 +1995,31 @@ inline void Patch::startCheckingForChanges()
     if (scanFilesForChanges && lastLoadParams.manifest.needsToBuildSource)
         if (lastLoadParams.manifest.getFileModificationTime != nullptr)
             fileChangeChecker = std::make_unique<FileChangeChecker> (lastLoadParams.manifest, [this] (FileChangeType c) { handleFileChange (c); });
+}
+
+inline void Patch::setStatus (std::string message)
+{
+    if (statusChanged)
+        statusChanged ({ message, {} });
+}
+
+inline void Patch::setErrorStatus (const std::string& error, const std::string& file,
+                                   choc::text::LineAndColumn lineAndCol, bool unloadFirst)
+{
+    if (unloadFirst)
+        unload();
+
+    if (statusChanged)
+    {
+        cmaj::FullCodeLocation location;
+        location.filename = file;
+        location.lineAndColumn = lineAndCol;
+
+        Status s;
+        s.messageList.add (cmaj::DiagnosticMessage::createError (error, location));
+        s.statusMessage = s.messageList.toString();
+        statusChanged (s);
+    }
 }
 
 inline void Patch::handleFileChange (FileChangeType change)
@@ -2029,19 +2047,18 @@ inline void Patch::rebuild()
     catch (const choc::json::ParseError& e)
     {
         if (auto f = getManifestFile(); ! f.empty())
-            setStatusMessage (f + ":" + e.lineAndColumn.toString() + ": error: " + std::string (e.what()), true);
+            setErrorStatus (e.what(), f, e.lineAndColumn, true);
         else
-            setStatusMessage ("error: " + std::string (e.what()) + ":" + e.lineAndColumn.toString(), true);
+            setErrorStatus (e.what(), {}, e.lineAndColumn, true);
     }
     catch (const std::runtime_error& e)
     {
         if (auto f = getManifestFile(); ! f.empty())
-            setStatusMessage (f + ": error: " + std::string (e.what()), true);
+            setErrorStatus (e.what(), f, {}, true);
         else
-            setStatusMessage ("error: " + std::string (e.what()), true);
+            setErrorStatus (e.what(), {}, {}, true);
     }
 
-    unload();
     startCheckingForChanges();
 }
 
@@ -2167,8 +2184,10 @@ inline void Patch::addMIDIMessage (int frameIndex, const void* data, uint32_t le
         midiMessages.push_back (message);
         midiMessageTimes.push_back (frameIndex);
 
-        for (auto& m : currentPatch->midiEndpointMonitors)
-            m->process (*clientEventQueue, message);
+        if (! currentPatch->eventEndpointMonitors.empty())
+            for (auto& m : currentPatch->eventEndpointMonitors)
+                if (m->isMIDI)
+                    m->process (*clientEventQueue, m->endpointID, message);
     }
 }
 
@@ -2205,8 +2224,10 @@ inline void Patch::processChunk (const choc::audio::AudioMIDIBlockDispatcher::Bl
     clientEventQueue->postProcessChunk (block);
 
     if (! block.midiMessages.empty())
-        for (auto& m : currentPatch->midiEndpointMonitors)
-            m->process (*clientEventQueue, block.midiMessages);
+        for (auto& monitor : currentPatch->eventEndpointMonitors)
+            if (monitor->isMIDI)
+                for (auto& m : block.midiMessages)
+                    monitor->process (*clientEventQueue, monitor->endpointID, m);
 }
 
 inline void Patch::endChunkedProcess()
@@ -2239,8 +2260,11 @@ inline void Patch::sendPosition (int64_t currentFrame, double ppq, double ppqBar
         currentPatch->sendPosition (currentFrame, ppq, ppqBar);
 }
 
-inline void Patch::sendMessageToViews (const choc::value::ValueView& msg)
+inline void Patch::sendMessageToViews (std::string_view type, const choc::value::ValueView& message)
 {
+    auto msg = choc::value::createObject ({},
+                                          "type", type,
+                                          "message", message);
     for (auto pv : activeViews)
         pv->sendMessage (msg);
 }
@@ -2249,21 +2273,13 @@ inline void Patch::sendPatchStatusChangeToViews()
 {
     if (currentPatch)
     {
-        sendMessageToViews (choc::value::createObject ({},
-                                "type", "status",
+        sendMessageToViews ("status",
+                            choc::value::createObject ({},
                                 "error", currentPatch->errors.toString(),
                                 "manifest", currentPatch->manifest.manifest,
-                                "details", currentPatch->programDetails));
-
-        sendSampleRateChangeToViews (currentPatch->sampleRate);
+                                "details", currentPatch->programDetails,
+                                "sampleRate", currentPlaybackParams.sampleRate));
     }
-}
-
-inline void Patch::sendSampleRateChangeToViews (double newRate)
-{
-    sendMessageToViews (choc::value::createObject ({},
-                            "type", "sample_rate",
-                            "rate", newRate));
 }
 
 inline const std::unordered_map<std::string, std::string>& Patch::getStoredStateValues() const
@@ -2373,55 +2389,42 @@ inline void Patch::sendRealtimeParameterChangeToViews (const std::string& endpoi
 inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, float value)
 {
     if (endpointID)
-        sendMessageToViews (choc::value::createObject ({},
-                                "type", "param_value",
-                                "endpoint", endpointID.toString(),
+        sendMessageToViews ("param_value",
+                            choc::value::createObject ({},
+                                "endpointID", endpointID.toString(),
                                 "value", value));
 }
 
 inline void Patch::sendCPUInfoToViews (float level)
 {
-    sendMessageToViews (choc::value::createObject ({},
-                            "type", "cpu_info",
+    sendMessageToViews ("cpu_info",
+                        choc::value::createObject ({},
                             "level", level));
 }
 
 inline void Patch::sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView& value)
 {
     if (! (value.isVoid() || endpointID.empty()))
-        sendMessageToViews (choc::value::createObject ({},
-                                "type", "endpoint_event",
-                                "endpoint", endpointID,
-                                "value", value));
+        sendMessageToViews ("event_" + std::string (endpointID), value);
 }
 
 inline void Patch::sendStoredStateValueToViews (const std::string& key)
 {
     if (! key.empty())
         if (auto found = storedState.find (key); found != storedState.end())
-            sendMessageToViews (choc::value::createObject ({},
-                                    "type", "state_key_value",
+            sendMessageToViews ("state_key_value",
+                                choc::value::createObject ({},
                                     "key", key,
                                     "value", found->second));
-}
-
-inline void Patch::sendFullStoredStateToViews()
-{
-    sendMessageToViews (choc::value::createObject ({},
-                            "type", "full_state",
-                            "value", getFullStoredState()));
 }
 
 inline void Patch::sendPatchChange()
 {
     if (isLoaded())
-    {
         sendPatchStatusChangeToViews();
-        sendSampleRateChangeToViews (currentPlaybackParams.sampleRate);
-    }
 
-    if (handlePatchChange)
-        handlePatchChange();
+    if (patchChanged)
+        patchChanged();
 }
 
 inline void Patch::applyFinishedBuild (Build& build)
@@ -2456,10 +2459,18 @@ inline void Patch::applyFinishedBuild (Build& build)
             startPlayback();
     }
 
-    if (! currentPatch->errors.empty())
-        setStatusMessage (currentPatch->errors.toString(), currentPatch->errors.hasErrors());
-    else
-        setStatusMessage (getName().empty() ? std::string() : "Loaded: " + getName(), false);
+    if (statusChanged)
+    {
+        Status s;
+
+        if (currentPatch->errors.hasErrors())
+            s.statusMessage = currentPatch->errors.toString();
+        else
+            s.statusMessage = getName().empty() ? std::string() : "Loaded: " + getName();
+
+        s.messageList = currentPatch->errors;
+        statusChanged (s);
+    }
 
     startCheckingForChanges();
 }
@@ -2478,8 +2489,7 @@ inline void Patch::sendEventOrValueToPatch (const EndpointID& endpointID, const 
 
 inline void Patch::sendMIDIInputEvent (const EndpointID& endpointID, choc::midi::ShortMessage message)
 {
-    if (currentPatch != nullptr)
-        currentPatch->sendMIDIInputEvent (*clientEventQueue, endpointID.toString(), message);
+    sendEventOrValueToPatch (endpointID, cmaj::MIDIEvents::createMIDIMessageObject (message));
 }
 
 inline void Patch::sendGestureStart (const EndpointID& endpointID)
@@ -2504,14 +2514,6 @@ inline void Patch::setEndpointEventsNeeded (const EndpointID& endpointID, bool a
 {
     if (currentPatch != nullptr)
         for (auto& m : currentPatch->eventEndpointMonitors)
-            if (endpointID.toString() == m->endpointID)
-                m->active = active;
-}
-
-inline void Patch::setEndpointMIDINeeded (const EndpointID& endpointID, bool active)
-{
-    if (currentPatch != nullptr)
-        for (auto& m : currentPatch->midiEndpointMonitors)
             if (endpointID.toString() == m->endpointID)
                 m->active = active;
 }
@@ -2559,17 +2561,8 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
 
         if (type == "send_value")
         {
-            auto endpointID = cmaj::EndpointID::create (msg["id"].getString());
+            auto endpointID = cmaj::EndpointID::create (msg["id"].toString());
             sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
-            return true;
-        }
-
-        if (type == "send_midi_input")
-        {
-            if (auto value = msg["midiEvent"].getWithDefault<int32_t> (0))
-                sendMIDIInputEvent (cmaj::EndpointID::create (msg["id"].toString()),
-                                    MIDIEvents::packedMIDIDataToMessage (value));
-
             return true;
         }
 
@@ -2591,7 +2584,7 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
             return true;
         }
 
-        if (type == "req_endpoint")
+        if (type == "req_param_value")
         {
             sendCurrentParameterValueToViews (cmaj::EndpointID::create (msg["id"].getString()));
             return true;
@@ -2617,7 +2610,9 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
 
         if (type == "req_full_state")
         {
-            sendFullStoredStateToViews();
+            if (auto replyType = msg["replyType"].toString(); ! replyType.empty())
+                sendMessageToViews (replyType, getFullStoredState());
+
             return true;
         }
 
@@ -2643,13 +2638,6 @@ inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
         {
             setEndpointEventsNeeded (cmaj::EndpointID::create (msg["endpoint"].toString()),
                                      msg["active"].getWithDefault<bool> (false));
-            return true;
-        }
-
-        if (type == "set_endpoint_midi_monitoring")
-        {
-            setEndpointMIDINeeded (cmaj::EndpointID::create (msg["endpoint"].toString()),
-                                   msg["active"].getWithDefault<bool> (false));
             return true;
         }
 

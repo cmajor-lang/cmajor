@@ -60,10 +60,11 @@ public:
 
         if (dllLoadedSuccessfully)
         {
-            patch->stopPlayback      = [this] { suspendProcessing (true); };
-            patch->startPlayback     = [this] { suspendProcessing (false); };
-            patch->handlePatchChange = [this] { handlePatchChange(); };
-            patch->setStatusMessage  = [this] (const std::string& newMessage, bool isError) { setStatusMessage (newMessage, isError); };
+            patch->stopPlayback    = [this] { suspendProcessing (true); };
+            patch->startPlayback   = [this] { suspendProcessing (false); };
+            patch->patchChanged    = [this] { handlePatchChange(); };
+            patch->statusChanged   = [this] (const cmaj::Patch::Status& s) { setStatusMessage (s.statusMessage,
+                                                                                               s.messageList.hasErrors()); };
 
             patch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
             {
@@ -95,7 +96,7 @@ public:
         if (auto e = dynamic_cast<Editor*> (getActiveEditor()))
             e->removeEditor();
 
-        patch->handlePatchChange = [] {};
+        patch->patchChanged = [] {};
         patch->unload();
         patch.reset();
     }

@@ -29,8 +29,8 @@ namespace cmaj
 {
 
 //==============================================================================
-/// Used by venues to manage the task of coercing random JSON/ValueView objects into
-/// the correct data type to send to endpoints, without allocating.
+/// Used to help with the task of coercing random JSON/ValueView objects into
+/// the correct data-type to send to endpoints, without allocating.
 struct EndpointTypeCoercionHelperList
 {
     void clear()

@@ -29,7 +29,107 @@
 */
 
 'use strict';
-import_module ("cmaj_patch.js")
+
+//==============================================================================
+/// This class can be used to parse a patch manifest to get a list of its
+/// source files, and to resolve its externals.
+class PatchManifest
+{
+    constructor (file)
+    {
+        this.manifestFile = file;
+        this.manifest = JSON.parse (this.manifestFile.read());
+
+        if (! this.manifest?.CmajorVersion)
+            this.error = { severity: "error", fullDescription: "Not a valid manifest" };
+    }
+
+    createProgram()
+    {
+        const program = new Program();
+
+        for (const sourceFile of this.getSourceFiles())
+        {
+            const error = program.parse (sourceFile);
+
+            if (isError (error))
+            {
+                program.release();
+                return error;
+            }
+        }
+
+        return program;
+    }
+
+    getSourceFiles()
+    {
+        let list = [];
+
+        if (Array.isArray (this.manifest.source))
+        {
+            for (let i = 0; i < this.manifest.source.length; ++i)
+                list.push (this.manifestFile.getSibling (this.manifest.source[i]));
+        }
+        else
+        {
+            list.push (this.manifestFile.getSibling (this.manifest.source));
+        }
+
+        return list;
+    }
+
+    resolveExternals (engine)
+    {
+        const externalVars = engine.getExternalVariables();
+
+        if (externalVars)
+        {
+            const externalDefs = this.manifest.externals;
+
+            if (externalDefs)
+            {
+                for (const ev of externalVars)
+                {
+                    const def = externalDefs[ev.name];
+
+                    if (def)
+                        engine.setExternalVariable (ev.name, this.replaceStringsWithAudioData (def));
+                }
+            }
+        }
+    }
+
+    replaceStringsWithAudioData (o)
+    {
+        if (! o)
+            return o;
+
+        if (typeof o == "string")
+        {
+            const audioFile = this.manifestFile.getSibling (o);
+            const audioData = audioFile.readAudioData();
+
+            if (typeof audioData == "object" && ! isError (audioData))
+                return audioData;
+        }
+
+        if (Array.isArray (o))
+        {
+            for (let i = 0; i < o.size; ++i)
+                o[i] =  this.replaceStringsWithAudioData (o[i]);
+        }
+
+        if (typeof o == "object")
+        {
+            for (let i in o)
+                if (Object.prototype.hasOwnProperty.call (o, i))
+                    o[i] =  this.replaceStringsWithAudioData (o[i]);
+        }
+
+        return o;
+    }
+}
 
 //==============================================================================
 /*  This test attempts to compile and run a processor, checking its output.
@@ -611,22 +711,10 @@ function performanceTest (options)
 */
 function testPatch (file, expectedError)
 {
-    let testSection = getCurrentTestSection();
-    const patch = new Patch (new File (testSection.getAbsolutePath (file)));
-
-    let error;
-
-    if (isError (patch.error))
-    {
-        error = patch.error;
-    }
-    else
-    {
-        const session = patch.createSession();
-
-        if (isError (session))
-            error = session;
-    }
+    const testSection = getCurrentTestSection();
+    const patch = new Patch();
+    const absolutePath = testSection.getAbsolutePath (file);
+    const error = patch.loadFromFile (absolutePath);
 
     let newErrorLine = getErrorReportString (error);
 
@@ -643,6 +731,8 @@ function testPatch (file, expectedError)
     }
     else
     {
+        newErrorLine = newErrorLine.replace (absolutePath, file);
+
         if (expectedError == newErrorLine)
         {
             testSection.reportSuccess();
@@ -688,14 +778,13 @@ function runScript (options)
     if (options.maxDiffDb == null)
         options.maxDiffDb = -100;
 
-    let program = new Program();
-
-    var patch;
-    var parseTime;
+    let program;
+    let patch;
+    let parseTime;
 
     if (options.patch != null)
     {
-        patch = new Patch (new File (testSection.getAbsolutePath (options.patch)));
+        patch = new PatchManifest (new File (testSection.getAbsolutePath (options.patch)));
 
         if (isError (patch.error))
         {
@@ -704,9 +793,16 @@ function runScript (options)
         }
 
         program = patch.createProgram();
+
+        if (isError (program))
+        {
+            testSection.reportFail (program);
+            return;
+        }
     }
     else
     {
+        program = new Program();
         parseTime = program.parse (testSection.source + testSection.globalSource);
 
         if (isError (parseTime))
@@ -719,7 +815,7 @@ function runScript (options)
     let engine = createEngine (options);
     updateBuildSettings (engine, options.sampleRate, options.blockSize, false, options);
 
-    var loadTime = engine.load (program);
+    const loadTime = engine.load (program);
 
     if (isError (loadTime))
     {
@@ -761,7 +857,7 @@ function runScript (options)
     }
     else
     {
-        patch._resolveExternals (engine);
+        patch.resolveExternals (engine);
     }
 
     for (let i = 0; i < inputEndpoints.length; i++)
@@ -840,7 +936,7 @@ function runScript (options)
             outputEndpoints[i].events = [];
     }
 
-    var linkTime = engine.link (program);
+    const linkTime = engine.link (program);
 
     if (isError (linkTime))
     {

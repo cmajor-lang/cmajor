@@ -38,9 +38,9 @@ There are a few required properties that a patch must define:
 - `version` - a version number for your patch. This is just a string - there are no restrictions on its format.
 - `name` - a human-readable name for your patch
 
-Other optional (but recommended properties) include:
+Other optional properties include:
 
-- `description` - a complete description that a host can display to its users
+- `description` - a longer description that a host can display to its users
 - `manufacturer` - the name of you or your company
 - `category` - hosts will be give this string, but how they choose to interpret it will be host-dependent
 - `isInstrument` - if specified, this marks the patch as being an instrument rather an effect. Some hosts may treat a plugin differently depending on this flag.
@@ -65,6 +65,7 @@ One of the processors defined in your source files will be used as the patch's t
 ```cpp
 processor HelloWorld  [[ main ]]
 {
+    ...
 ```
 
 ## Patch Parameters
@@ -97,6 +98,10 @@ The following properties can be added to the endpoint annotation in order to giv
 - `init` - if specified, this value will be sent to the parameter when the patch is initialised
 - `step` - the intervals to which the parameter value must "snap" when being changed
 - `unit` - an optional string which the host will display as the units for this value. E.g. "%" or "dB"
+- `boolean` - if this flag is set, the paremeter may be displayed as a toggle switch
+- `hidden` - if this flag is set, the parameter won't be displayed on user interfaces
+- `automatable` - if this property is set to true or false, it will be passed to a host where possible, and if the host understands it, it may use it to decide whether to allow automation recording for this parameter
+- `rampFrames` - this property can be set to an integer to indicate how many frames it should take to ramp to a new value
 - `group` - an optional string to hint at a parent group to which this parameter belongs. Some hosts may use this to organise parameters into on-screen groups.
 - `text` - a formatting string which is used to print the value in a custom style.
     The string is preprocessed a bit like "printf", supporting the following format strings:
@@ -178,163 +183,180 @@ and
 
 ..but since there's nowhere to put the file's sample rate, that information will be discarded.
 
+------------------------------------------------------------------------------------------------------
+
 ## Patch GUIs
 
 ### Specifying a custom GUI for a patch
 
-To add a custom GUI to your patch, your `.cmajorpatch` file should include a `view` property, e.g.
+To add a custom GUI to your patch, your `.cmajorpatch` file must declare a `view` property, e.g.
 
 ```json
-  "view": {
-    "src":       "patch_gui/index.js",
-    "width":     800,
-    "height":    700,
-    "resizable": false
-  }
-```
-
-The `view` property should contain a `src` property providing a relative URL to a javascript module. This module should have a default export, which must be a function returning a DOM Element that can be used as the GUI element for the patch. The exported function will be passed a `PatchConnection` object which it can use for communication with the patch instance that it controls.
-
-### GUI Communication
-
-Patch GUIs communicate with the runtime by passing serialised message structures back and forth over a communication channel. The specific implementation details are encapsulated inside a `PatchConnection` object.
-
-The `PatchConnection` API has methods for sending data to, and requesting data from, the runtime, and allows for setting up functions which the runtime will invoke when various aspects of the patch change (i.e in response to previous actions from the GUI, from external changes in a DAW, or because of recompilation).
-
-Below is a brief overview of the available functionality:
-
-_(note: for all methods below, `endpointID` is the endpoint name, as specified in the cmajor source code, as a string)_
-
-#### GUI-to-Runtime
-
-##### Actions
-- `sendEventOrValue (endpointID, value, optionalNumFrames)`
-  - Notify the runtime that a given input endpoint (either an `event` or `value`) should change to the given value
-  - The value will typically be a primitive number, or boolean, but it can also be a javascript object
-    - e.g. to update an endpoint of type `std::timeline::Tempo`, send a value like `{ bpm: 120.0 }` and the runtime will take care of converting it to a `std::timeline::Tempo`
-  - In the case of a `value` endpoint, an optional frame count can be specified, which the runtime will use to smoothly interpolate between the current value and the target value
-  - If the runtime accepts the change, it will asynchronously notify the client by invoking the `onParameterEndpointChanged` callback
-  - Typically this will be invoked multiple times when changing a UI control like a slider, bookended by calls to the gesture actions described below
-- `sendParameterGestureStart (endpointID)`
-- `sendParameterGestureEnd (endpointID)`
-   - These are used by host applications when recording automation, indicating that the user is holding a given parameter. The gesture calls must always be matched (a `GestureEnd` action must eventually follow a `GestureStart` action).
-
-##### Requests
-- `requestStatusUpdate()`
-  - Request the current manifest and endpoint details
-  - The runtime will asynchronously call back to `onPatchStatusChanged`
-- `requestEndpointValue (endpointID)`
-  - Request the current value for a given input endpoint
-  - The runtime will asynchronously call back to `onParameterEndpointChanged`
-
-#### Runtime-to-GUI
-- `onPatchStatusChanged (errorMessage, patchManifest, inputsList, outputsList)`
-  - This will be called in response to a `requestStatusUpdate()` request, or following each recompile
-  - `errorMessage` will contain any output from an unsuccessful compile run, or otherwise be empty
-  - `patchManifest` is the same information specified in the `cmajorpatch` file
-  - `inputsList` and `outputsList` are arrays of javascript object representations of the `cmaj::EndpointDetails` structures described in the C++ API docs. See [`EndpointDetails::toJSON()`](https://github.com/SoundStacks/cmajor/blob/main/include/cmajor/API/cmaj_Endpoints.h#L322) for the specific implementation details
-- `onSampleRateChanged (newSampleRate)`
-  - This will be called following changes to the sample rate within the host, or following each recompile
-- `onParameterEndpointChanged (endpointID, newValue)`
-  - This will be called following a change to an input endpoint parameter (i.e. after processing a `sendEventOrValue` call, or from an external change via the host), or following a `requestEndpointValue` request
-- `onEndpointEvent (endpointID, newValue)`
-  - The value here can be a scalar value (a primitive number or boolean), an array, or a javascript object. If the endpoint type is an aggregate / `struct`, the runtime will convert it to a javascript object, i.e there will be a key for each field name in the struct
-
-#### Typical use cases
-
-- Dedicated UI for a single patch
-  - i.e has fixed custom UI controls laid out by hand, which represent specific endpoints
-  - Here, the UI code will end up with some hardcoded endpoint IDs, and is mostly concerned with initiating, and reacting to, changes of input endpoints, and additionally reacting to output events. Information from endpoint annotations may be used for various bits of UI logic, such as limiting the input range on the client side
-- Generic UI for use with multiple patches
-  - i.e something like the default patch player UI, where controls are programatically laid out using type and annotation information
-  - Here, much more is done in the `onPatchStatusChanged` callback, typically including tearing down the whole UI and starting again using the various bits of information about the patch (e.g. the title from the manifest, input endpoint annotations, etc) to decide what to render
-
-Regardless of the specific use case, the app will typically setup callbacks on the given `PatchConnection` instance early in its bootstrapping for manipulating UI state when aspects of the patch change, and then request the initial state from the runtime. i.e:
-
-```js
-export default async function createPatchView (connection)
 {
-    // This is the entry point for a patch GUI.
-    //
-    // A host (the command line patch player, or other environments) will call
-    // it to get a patch's view. Ultimately, a DOM element must be returned to
-    // the caller for it to append to its document. However, as the function is
-    // `async`, it is possible to perform various asyncronous tasks, such as
-    // fetching remote resources for use in the view, before doing so.
-    //
-    // When using libraries such as React, this is where the call to
-    // `ReactDOM.createRoot` would go, rendering into a container component
-    // before returning.
-    const container = document.createElement ("div");
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.helloworld",
+    "version":          "1.0",
+    "name":             "Hello World",
+    "source":           "HelloWorld.cmajor",
 
-    connection.onPatchStatusChanged = (errorMessage, patchManifest, inputList, outputList) =>
-    {
-        // following a status update, it is typical to request the value
-        // of all input parameters, and update the UI accordingly. e.g:
-        const inputParameters = inputList.filter (e => e.purpose === "parameter");
-        inputParameters.forEach (({ endpointID, annotation }) =>
-        {
-            // ...update any UI state dependent on annotation data etc
-
-            // further request current value
-            connection.requestEndpointValue (endpointID);
-        });
-    };
-
-    connection.onSampleRateChanged = (newSampleRate) =>
-    {
-        // ...update any UI state that needs the sample rate information
-    };
-
-    connection.onParameterEndpointChanged = (endpointID, newValue) =>
-    {
-        // ...update UI state for endpoint, typically some kind of knob, slider, etc
-    };
-
-    connection.onEndpointEvent = (endpointID, newValue) =>
-    {
-        // ...update UI state for endpoint, typically some kind of visualisation
-    };
-
-    // initial request for state
-    connection.requestStatusUpdate();
-
-    return container;
+    "view": {
+      "src":       "patch_gui/index.js",
+      "width":     800,
+      "height":    700,
+      "resizable": false
+    }
 }
 ```
 
-It is worth noting that the runtime should be considered the source of truth for patch state, as parameters can change from outside the GUI (i.e. via automation in a DAW). Therefore UI controls should only really update in reaction to patch connection callbacks.
+The `view` property should contain a `src` property providing a relative URL to a javascript module.
 
-_Note: The patch player and plugin provide access to the dev tools / inspector of the web view via the context menu presented when right-clicking on the window. This can be used for debugging, and inspecting the source of the default Patch player_
+We expect a patch to provide a [web component](https://developer.mozilla.org/en-US/docs/Web/Web_Components) for its GUI, as these are the basis of all modern browser DOMs, and can be easily embedded into a hosts's own user-interface.
 
-#### Known limitations
+To provide a web component, your javascript module's default export must be a function that returns a `HTMLElement` object. When the host wants to display your patch's GUI, it'll call this function and add the element that it returns to its own window.
 
-- The annotations are currently the raw annotations as written in the cmajor source file, and therefore do not contain the default properties picked by the C++ runtime
+The function you provide will be given a single argument when called. The argument provides a `PatchConnection` object that your view should use to communicate with the patch instance that it represents.
 
-## Playing a Patch
+For example:
 
-A patch is just a folder containing some files that describe its DSP and GUI. To run one, you need a host that can load it. Some of the ways you can load and run a patch include:
+```js
+class MyAmazingPatchView extends HTMLElement
+{
+    // ...etc..
+}
 
-### Using the command-line tool
-
-Run the `cmaj` console app, giving it the location of the patch file to play:
+export default function createPatchView (patchConnection)
+{
+    return new MyAmazingPatchView (patchConnection);
+}
 ```
-% cmaj play my_patches/MyGreatPatch.cmajorpatch
+
+### The `PatchConnection` object
+
+The `PatchConnection` object is provided by the host and your `HTMLElement` class uses it to control and communicate with the running patch.
+
+It provides a range of methods for controlling and querying the state of the patch:
+
+#### Status-handling methods
+
+- **`requestStatusUpdate()`**
+Calling this will trigger an asynchronous callback to any status listeners with the patch's current state.
+Use `addStatusListener()` to attach a listener to receive it.
+
+- **`addStatusListener (listener)`**
+Attaches a listener function that will be called whenever the patch's status changes.
+The function will be called with a parameter object containing many properties describing the status, including whether the patch is loaded, any errors, endpoint descriptions, its manifest, etc.
+
+- **`removeStatusListener (listener)`**
+Removes a listener that was previously added with `addStatusListener()`
+
+- **`resetToInitialState()`**
+Causes the patch to be reset to its "just loaded" state.
+
+#### Methods for sending data to input endpoints
+
+- **`sendEventOrValue (endpointID, value, rampFrames)`**
+Sends a value to one of the patch's input endpoints. This can be used to send a value to either an 'event' or 'value' type input endpoint.
+If the endpoint is a 'value' type, then the rampFrames parameter can optionally be used to specify the number of frames over which the current value should ramp to the new target one.
+The value parameter will be coerced to the type that is expected by the endpoint. So for examples, numbers will be converted to float or integer types, javascript objects and arrays will be converted into more complex types in as good a fashion is possible.
+
+- **`sendMIDIInputEvent (endpointID, shortMIDICode)`**
+Sends a short MIDI message value to a MIDI endpoint.
+The value must be a number encoded with `(byte0 << 16) | (byte1 << 8) | byte2`.
+
+- **`sendParameterGestureStart (endpointID)`**
+Tells the patch that a series of changes that constitute a gesture is about to take place for the given endpoint.
+Remember to call `sendParameterGestureEnd()` after they're done!
+
+- **`sendParameterGestureEnd (endpointID)`**
+Tells the patch that a gesture started by `sendParameterGestureStart()` has finished.
+
+#### Stored state control methods
+
+- **`requestStoredStateValue (key)`**
+Requests a callback to any stored-state value listeners with the current value of a given key-value pair.
+To attach a listener to receive these events, use `addStoredStateValueListener()`.
+
+- **`sendStoredStateValue (key, newValue)`**
+Modifies a key-value pair in the patch's stored state.
+
+- **`addStoredStateValueListener (listener)`**
+Attaches a listener function that will be called when any key-value pair in the stored state is changed.
+The listener function will receive a message parameter with properties `key` and `value`.
+
+- **`removeStoredStateValueListener (listener)`**
+Removes a listener that was previously added with `addStoredStateValueListener()`.
+
+- **`sendFullStoredState (fullState)`**
+Applies a complete stored state to the patch.
+To get the current complete state, use `requestFullStoredState()`.
+
+- **`requestFullStoredState (callback)`**
+Asynchronously requests the full stored state of the patch.
+The listener function that is supplied will be called asynchronously with the state as its argument.
+
+#### Listener methods
+
+- **`addEndpointEventListener (endpointID, listener)`**
+Attaches a listener function which will be called whenever an event passes through a specific endpoint.
+This can be used to monitor both input and output endpoints.
+The listener function will be called with an argument which is the value of the event.
+
+- **`removeEndpointEventListener (endpointID, listener)`**
+Removes a listener that was previously added with `addEndpointEventListener()`
+
+- **`requestParameterValue (endpointID)`**
+This will trigger an asynchronous callback to any parameter listeners that are
+attached, providing them with its up-to-date current value for the given endpoint.
+Use `addAllParameterListener()` to attach a listener to receive the result.
+
+- **`addParameterListener (endpointID, listener)`**
+Attaches a listener function which will be called whenever the value of a specific parameter changes.
+The listener function will be called with an argument which is the new value.
+
+- **`removeParameterListener (endpointID, listener)`**
+Removes a listener that was previously added with `addParameterListener()`
+
+- **`addAllParameterListener (listener)`**
+Attaches a listener function which will be called whenever the value of any parameter changes in the patch.
+The listener function will be called with an argument object with the fields `endpointID` and `value`.
+
+- **`removeAllParameterListener (listener)`**
+Removes a listener that was previously added with `addAllParameterListener()`
+
+#### Asset handling methods
+
+- **`getResourceAddress (path)`**
+This takes a relative path to an asset within the patch bundle, and converts it to a path relative to the root of the browser that is showing the view.
+You need you use this in your view code to translate your asset URLs to a form that can be safely used in your view's HTML DOM (e.g. in its CSS). This is needed because the host's HTTP server (which is delivering your view pages) may have a different '/' root than the root of your patch (e.g. if a single server is serving multiple patch GUIs).
+
+#### View-related methods
+
+Obviously a view won't need to call these, but this class is also used in other contexts, so these methods are what is initially used to instantiate a view.
+
+- **`getAvailableViewTypes()`**
+Returns a list of types of view that can be created for this patch
+
+- **`createView (preferredType)`**
+Creates and returns a `HTMLElement` view which can be shown to control this patch.
+If no arguments are supplied, this will return either a custom patch-specific view
+(if the manifest specifies one), or a generic view if not. The preferredType argument
+can be used to choose one of the types of view returned by `getAvailableViewTypes()`.
+
+### Built-in javascript utility classes
+
+The Cmajor runtime provides some built-in helper classes that your module can load and use with an `import` directive.
+
+To see the files that are available, have a look through the files in the `cmajor/javascript/cmaj_api` folder.
+
+To import one of these modules, use a path starting with `/cmaj_api/`, e.g.
+
+```js
+import { getCmajorVersion } from "/cmaj_api/cmaj-version.js"
+import * as midi from "/cmaj_api/cmaj-midi-helpers.js"
+
+console.log (`Cmajor version: ${getCmajorVersion()}`);
+console.log ("MIDI message: " + midi.getMIDIDescription (0x924030));
 ```
-This will launch it in a window, and use the default audio and MIDI i/o devices on your machine to play it. If you modify any of the patch's files while it's running, the app should detect this and recompile it for you.
-While this is an easy way to run a patch, it's very limited in terms of what you can do with its inputs and outputs.
-
-### Using the Cmajor loader plugin
-
-In your favourite DAW, just load the Cmajor plugin and point it at the patch that you want to run. This way, you can run a patch anywhere that you can run a standard VST or AU plugin, so you can set up the audio and MIDI input and output however you like. It will also recompile the patch if you change any code while it's running, so is handy for development.
-
-Something to watch out for when running the JIT plugin is that most DAWs don't expect VST/AU plugins to dynamically change their audio i/o or parameter lists while they're running, because this almost never happens in "normal" plugins. But while you're live-editing a Cmajor patch, the i/o and parameters may change whenever you change its endpoints, and this means that some DAWs may fail to respond correctly to these changes, or even crash.
-
-### Using the online playground
-
-(Coming soon!)
-
-When we finish building it (!), the cmajor.dev online playground will let you build and run a patch in your browser. This will be by far the simplest way to get things going without any setup required, but performance in a browser (using WASM) will always be slower than running the code natively on your machine.
 
 ### Building a native VST or AudioUnit from a patch
 

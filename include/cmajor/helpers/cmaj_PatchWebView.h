@@ -80,13 +80,12 @@ struct PatchWebView::Impl
 
     void sendMessage (const choc::value::ValueView& msg)
     {
-        webview.evaluateJavascript ("if (window.cmaj_handleMessageFromPatch) window.cmaj_handleMessageFromPatch ("
-                                    + choc::json::toString (msg, true) + ");");
+        webview.evaluateJavascript ("window.cmaj_deliverMessageFromServer?.(" + choc::json::toString (msg, true) + ");");
     }
 
     void createBindings()
     {
-        webview.bind ("cmaj_sendMessageToPatch", [this] (const choc::value::ValueView& args) -> choc::value::Value
+        webview.bind ("cmaj_sendMessageToServer", [this] (const choc::value::ValueView& args) -> choc::value::Value
         {
             try
             {
@@ -168,16 +167,17 @@ static constexpr auto cmajor_patch_gui_html = R"(
 
 <script type="module">
 
-import { PatchConnectionBase } from "/cmaj_api/cmaj-patch-connection-base.js"
+import { PatchConnection } from "/cmaj_api/cmaj-patch-connection.js"
+import { createPatchView } from "/cmaj_api/cmaj-patch-view.js"
 
 //==============================================================================
-class PatchConnection  extends PatchConnectionBase
+class EmbeddedPatchConnection  extends PatchConnection
 {
     constructor()
     {
         super();
         this.manifest = MANIFEST;
-        window.cmaj_handleMessageFromPatch = msg => this.deliverMessageToClient (msg);
+        window.cmaj_deliverMessageFromServer = msg => this.deliverMessageFromServer (msg);
     }
 
     getResourceAddress (path)
@@ -187,7 +187,7 @@ class PatchConnection  extends PatchConnectionBase
 
     sendMessageToServer (message)
     {
-        window.cmaj_sendMessageToPatch (message);
+        window.cmaj_sendMessageToServer (message);
     }
 }
 
@@ -204,8 +204,8 @@ async function createView()
     defaultViewWidth = view?.width || 600;
     defaultViewHeight = view?.height || 400;
 
-    const patchConnection = new PatchConnection();
-    currentView = await patchConnection.createView (view);
+    const patchConnection = new EmbeddedPatchConnection();
+    currentView = await createPatchView (patchConnection, view);
 
     if (currentView)
         inner.appendChild (currentView);

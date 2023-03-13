@@ -22,7 +22,7 @@
     a vector to support more channels (e.g. `float<2>` for a stereo filter).
 
     For efficiency reasons, modulated parameters are not applied every frame, and the
-    `parameterUpdateRate` can be used to tune the frequency of updates
+    `framesPerParameterUpdate` parameter can be used to tune the frequency of updates.
 
     Each filter type is provided as both a Processor, which can be included in graphs, and
     as an `Implementation` structure, suitable for being composed into a user processor.
@@ -40,7 +40,7 @@
 */
 namespace std::filters (using FrameType = float32,
                         using CoefficientType = float32,
-                        int parameterUpdateRate = 32)
+                        int framesPerParameterUpdate = 32)
 {
     // Default values if not specified
     let defaultFrequency = 1000.0f;
@@ -55,12 +55,13 @@ namespace std::filters (using FrameType = float32,
     ///
     /// Parameter changes are applied at a lower rate than processor.frequency to reduce
     /// computational cost, and the frames between updates can be altered using the
-    /// parameterUpdateRate, smaller being more frequent.
+    /// `framesPerParameterUpdate`, smaller numbers causing more frequent updates.
     ///
     namespace tpt
     {
         /// One pole filter implementation providing low and high pass options.
-        /// The frequency and mode can be modulated at the parameterUpdateRate
+        /// The frequency and mode can be updated at a frequency determined by
+        /// `framesPerParameterUpdate`.
         namespace onepole
         {
             namespace Mode
@@ -142,7 +143,7 @@ namespace std::filters (using FrameType = float32,
                             updateFilter = false;
                         }
 
-                        loop (parameterUpdateRate)
+                        loop (framesPerParameterUpdate)
                         {
                             out <- filter.process (in);
                             advance();
@@ -255,7 +256,7 @@ namespace std::filters (using FrameType = float32,
                             updateFilter = false;
                         }
 
-                        loop (parameterUpdateRate)
+                        loop (framesPerParameterUpdate)
                         {
                             out <- filter.process (in);
                             advance();
@@ -295,7 +296,7 @@ namespace std::filters (using FrameType = float32,
                             updateFilter = false;
                         }
 
-                        loop (parameterUpdateRate)
+                        loop (framesPerParameterUpdate)
                         {
                             let result = filter.processMultimode (in);
 
@@ -482,7 +483,7 @@ namespace std::filters (using FrameType = float32,
                         updateFilter = false;
                     }
 
-                    loop (parameterUpdateRate)
+                    loop (framesPerParameterUpdate)
                     {
                         out <- filter.process (in);
 
@@ -496,8 +497,9 @@ namespace std::filters (using FrameType = float32,
     //==============================================================================
     /// 4th Order two band crossover filter
     ///
-    /// This filter is implemented using the StateVariableFilter and outputs two streams which can be
-    /// summed to produce a flat response. The crossover frequency can be modulated
+    /// This filter is implemented using the StateVariableFilter and outputs two
+    /// streams which can be summed to produce a flat response. The crossover frequency
+    /// can be modulated.
     ///
     namespace crossover
     {
@@ -566,7 +568,7 @@ namespace std::filters (using FrameType = float32,
                         updateFilter = false;
                     }
 
-                    loop (parameterUpdateRate)
+                    loop (framesPerParameterUpdate)
                     {
                         let result = filter.process (in);
 
@@ -764,7 +766,7 @@ namespace std::filters (using FrameType = float32,
                         updateFilter = false;
                     }
 
-                    loop (parameterUpdateRate)
+                    loop (framesPerParameterUpdate)
                     {
                         out <- filter.process (in);
                         advance();

@@ -88,33 +88,6 @@ class Performer
 }
 
 //==============================================================================
-// A session can be used to load and play a performer. If you want to play a patch,
-// you probably don't want to bother with this class directly - instead use the
-// Patch and PatchRunner classes, which manage a session for you.
-class Session
-{
-    constructor()
-    release()
-
-    setEngine (engine)
-    load (program)
-    getExternalVariables()
-    setExternalVariable (name, value)
-    getOutputEndpoints()
-    getInputEndpoints()
-    getExternalOutputs()
-    getExternalInputs()
-    connect (s, si, d, di)
-    link()
-    start()
-    stop()
-    sendEvent (endpoint, value)
-    sendValue (endpoint, value, numFramesToReachValue)
-    openGUI (view)
-    closeGUI()
-}
-
-//==============================================================================
 // This helper class just provides access to the filesystem
 class File
 {
@@ -153,58 +126,4 @@ class File
 function setInterval (callback, milliseconds)
 function setTimeout (callback, milliseconds)
 function clearInterval (timerID)
-```
-
-----
-
-Some other optional helper classes are available by importing them.
-
-If you `import_module ("cmaj_patch.js")`, you'll get these classes:
-
-```javascript
-
-// This takes care of loading a patch, given a manifest file.
-// As well as parsing and loading, it can create a Session object to play
-// it back. If you're playing a patch, using a PatchRunner object is a good
-// idea to take care of its lifetime.
-class Patch
-{
-    constructor (file)
-    release()
-
-    log (message)
-
-    /// Gives the patch a function to be called when one of the source
-    /// files changes. You'd use this to do things like create a new session
-    /// when the code changes.
-    setFileChangeCallback (callbackFunction)
-
-    /// This will load and release a temporary session in order to just update the input and
-    /// output endpoint lists. This is useful for scanning a patch for its properties without
-    /// fully loading it.
-    ///
-    /// Any compile errors are returned, and can be checked for with isError()
-    scanForEndpoints()
-
-    /// Creates and returns a new Session object with this program loaded and its
-    /// endpoints connected in a sensible way.
-    /// Any compile errors are returned, and can be checked for with isError()
-    createSession (engineType)
-
-    // Parses the code and returns a Program object for it (or an error)
-    createProgram()
-
-    /// Returns an object with a property "messages" containing any errors, and
-    /// "output" which is an array of strings or objects containing the generated code
-    generateCode (buildSettings, targetType, generatorOptions)
-}
-
-/// This helper class opens a patch and runs a timer to monitor any changes to
-/// the source files, re-loading a new session if anything changes.
-class PatchRunner
-{
-    constructor (patch, shouldOpenGUI, serverAddress)
-    reload()
-}
-
 ```
