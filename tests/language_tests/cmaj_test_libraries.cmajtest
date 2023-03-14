@@ -409,3 +409,33 @@ graph Test [[ main ]]
         mixer2.out -> out2;
     }
 }
+
+## testFunction()
+
+bool testTriangle1()
+{
+    return helpers::near (std::oscillators::waveshape::triangle (0.0f),  -1.0f) &&
+           helpers::near (std::oscillators::waveshape::triangle (0.25f),  0.0f) &&
+           helpers::near (std::oscillators::waveshape::triangle (0.5f),   1.0f) &&
+           helpers::near (std::oscillators::waveshape::triangle (0.75f),  0.0f) &&
+           helpers::near (std::oscillators::waveshape::triangle (1.0f),  -1.0f);
+}
+
+bool testTriangle2()
+{
+    return  helpers::near (std::oscillators::waveshape::triangle (0.0f,  1), -1.0f) &&
+            helpers::near (std::oscillators::waveshape::triangle (0.25f, 1),  0.0f) &&
+            helpers::near (std::oscillators::waveshape::triangle (0.5f,  1),  1.0f) &&
+            helpers::near (std::oscillators::waveshape::triangle (0.75f, 1),  0.0f) &&
+            helpers::near (std::oscillators::waveshape::triangle (1.0f,  1), -1.0f);
+}
+
+bool testTriangle3()
+{
+    return  helpers::near (std::oscillators::waveshape::triangle (0.0f,  1, 0.5f), -0.5f) &&
+            helpers::near (std::oscillators::waveshape::triangle (0.25f, 1, 0.5f),  0.5f) &&
+            helpers::near (std::oscillators::waveshape::triangle (0.5f,  1, 0.5f), 1.5f) &&
+            helpers::near (std::oscillators::waveshape::triangle (0.75f, 1, 0.5f), 0.5f) &&
+            helpers::near (std::oscillators::waveshape::triangle (1.0f,  1, 0.5f), -0.5f);
+}
+

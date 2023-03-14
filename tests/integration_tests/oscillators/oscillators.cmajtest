@@ -1,0 +1,92 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:500, subDir:"oscillators" })
+
+graph test
+{
+    input event float frequencyIn;
+    output stream float phasorOut, blepTriangleOut, blepSquareOut, blepSawUpOut, blepSawDownOut, blepRandomOut;
+    output stream float<2> sineOut, blepSineOut;
+
+    node phasor         = std::oscillators::Phasor (float, 500);
+    node sine           = std::oscillators::Sine (float<2>, 500);
+    node blepSine       = std::oscillators::PolyblepOscillator (float<2>, std::oscillators::Shape::sine, 500);
+    node blepTriangle   = std::oscillators::PolyblepOscillator (float, std::oscillators::Shape::triangle, 500);
+    node blepSquare     = std::oscillators::PolyblepOscillator (float, std::oscillators::Shape::square, 500);
+    node blepSawUp      = std::oscillators::PolyblepOscillator (float, std::oscillators::Shape::sawtoothUp, 500);
+    node blepSawDown    = std::oscillators::PolyblepOscillator (float, std::oscillators::Shape::sawtoothDown, 500);
+    node blepRandom     = std::oscillators::PolyblepOscillator (float, std::oscillators::Shape::random, 500);
+
+    connection
+    {
+        frequencyIn -> phasor.frequencyIn,
+                       sine.frequencyIn,
+                       blepSine.frequencyIn,
+                       blepTriangle.frequencyIn,
+                       blepSquare.frequencyIn,
+                       blepSawUp.frequencyIn,
+                       blepSawDown.frequencyIn,
+                       blepRandom.frequencyIn;
+
+        phasor.out -> phasorOut;
+        sine.out -> sineOut;
+        blepSine.out -> blepSineOut;
+        blepTriangle.out -> blepTriangleOut;
+        blepSquare.out -> blepSquareOut;
+        blepSawUp.out -> blepSawUpOut;
+        blepSawDown.out -> blepSawDownOut;
+        blepRandom.out -> blepRandomOut;
+    }
+}
+
+
+## runScript ({ sampleRate:1000, blockSize:32, samplesToRender:500, subDir:"lfo" })
+
+graph test
+{
+    input event float rateHzIn, amplitudeIn, offsetIn;
+
+    output stream float out;
+
+    node lfo = std::oscillators::LFO (std::oscillators::Shape::sine, 20.0f);
+
+    connection
+    {
+        rateHzIn    -> lfo.rateHzIn;
+        amplitudeIn -> lfo.amplitudeIn;
+        offsetIn    -> lfo.offsetIn;
+
+        lfo.out     -> out;
+    }
+}
+
+
+## runScript ({ sampleRate:1000, blockSize:32, samplesToRender:1200, subDir:"lfo_shapes" })
+
+graph test
+{
+    input event float shapeIn, offsetIn, amplitudeIn;
+
+    output stream float out;
+
+    node lfo = std::oscillators::LFO (std::oscillators::Shape::sine, 20.0f);
+
+    connection
+    {
+        amplitudeIn -> lfo.amplitudeIn;
+        offsetIn    -> lfo.offsetIn;
+        shapeIn     -> lfo.shapeIn;
+
+        lfo.out     -> out;
+    }
+}
+
+

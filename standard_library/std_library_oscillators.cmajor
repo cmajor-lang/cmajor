@@ -55,13 +55,13 @@ namespace std::oscillators
 
         //==============================================================================
         /// Returns a bipolar triangle wave, where phase is in the range 0 to 1
-        SampleType triangle<T> (T phase)                                                { let s = SampleType (phase) * (4 * amplitude); return phase > T(0.5f) ? SampleType (1) - s : s - SampleType (1); }
+        SampleType triangle<T> (T phase)                                                { let s = SampleType (phase) * 4; return phase > T(0.5f) ? SampleType (3) - s : s - SampleType (1); }
 
         /// Returns a triangle wave with a given amplitude, where phase is in the range 0 to 1
-        SampleType triangle<T> (T phase, SampleType amplitude)                          { let s = SampleType (phase) * (4 * amplitude); return phase > T(0.5f) ? amplitude - s : s - amplitude; }
+        SampleType triangle<T> (T phase, SampleType amplitude)                          { let s = SampleType (phase) * (4 * amplitude); return phase > T(0.5f) ? (amplitude * 3) - s : s - amplitude; }
 
         /// Returns a triangle wave with a given amplitude and offset, where phase is in the range 0 to 1
-        SampleType triangle<T> (T phase, SampleType amplitude, SampleType offset)       { let s = SampleType (phase) * (4 * amplitude); return phase > T(0.5f) ? (offset + amplitude) - s : (offset - amplitude) + s; }
+        SampleType triangle<T> (T phase, SampleType amplitude, SampleType offset)       { let s = SampleType (phase) * (4 * amplitude); return phase > T(0.5f) ? (offset + amplitude * 3) - s : (offset - amplitude) + s; }
 
         //==============================================================================
         /// Returns a bipolar upwards sawtooth wave, where phase is in the range 0 to 1
@@ -318,7 +318,7 @@ namespace std::oscillators
         //==============================================================================
         Shape currentShape = initialShape;
 
-        std::levels::SmoothedValue currentAmplitude;
+        std::smoothing::SmoothedValue currentAmplitude;
         float32 currentOffset = initialOffset;
 
         bool isUsingTempo = false;
