@@ -58,7 +58,7 @@ And it'll show you the latest set of available arguments.
 To get started, you might want to try some of the example patches using `cmaj play`:
 
 ```shell
-$ cmaj play /path-to-your-repo/examples/HelloWorld/HelloWorld.cmajorpatch
+$ cmaj play /path-to-your-repo/examples/patches/HelloWorld/HelloWorld.cmajorpatch
 ```
 
 This will open a window to display any controls that the patch may provide, and you should hear a nice tune playing. If you've got a MIDI keyboard then it should be opened and sent to the running patch (if it needs MIDI input).
