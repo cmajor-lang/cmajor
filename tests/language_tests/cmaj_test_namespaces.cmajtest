@@ -68,3 +68,37 @@ namespace a
 {
     static_assert (1 == 2);
 }
+
+## testCompile()
+
+namespace t
+{
+    namespace delayLine (float maxDelayLength)
+    {
+        let bufferLength = int (ceil (maxDelayLength));
+
+        struct Implementation
+        {
+            float[bufferLength] buffer;
+            wrap<bufferLength> writeIndex;
+
+            float process(float in, float currentDelayLength)
+            {
+                return 0;
+            }
+        }
+    }
+}
+
+processor Processor [[ main ]]
+{
+    output stream float out;
+
+    t::delayLine (1000)::Implementation delayLine;
+
+    void main()
+    {
+        out <- delayLine.process(0, 0);
+        advance();
+    }
+}
