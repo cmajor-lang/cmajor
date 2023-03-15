@@ -2741,11 +2741,14 @@ inline void PatchParameter::setValue (float newValue, bool forceSend, int32_t ex
 
         if (auto p = patch.lock())
         {
-            if (isEvent)
-                p->getPerformer().postEvent (endpointHandle, choc::value::createFloat32 (newValue));
-            else
-                p->getPerformer().postValue (endpointHandle, choc::value::createFloat32 (newValue),
-                                             explicitRampFrames >= 0 ? (uint32_t) explicitRampFrames : rampFrames);
+            if (auto performer = p->performer.get())
+            {
+                if (isEvent)
+                    performer->postEvent (endpointHandle, choc::value::createFloat32 (newValue));
+                else
+                    performer->postValue (endpointHandle, choc::value::createFloat32 (newValue),
+                                          explicitRampFrames >= 0 ? (uint32_t) explicitRampFrames : rampFrames);
+            }
 
             if (valueChanged)
                 valueChanged (newValue);
