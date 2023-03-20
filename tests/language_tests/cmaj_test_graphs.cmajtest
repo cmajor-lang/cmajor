@@ -354,6 +354,35 @@ processor Source (int channels, int indexSending1)
     }
 }
 
+## expectError ('10:20: error: An array index must be an integer type')
+
+graph test [[main]]
+{
+    output event int out;
+
+    node source = Source (5, 3);
+
+    connection
+    {
+        source.out[3.2f] -> out;
+    }
+}
+
+processor Source (int channels, int indexSending1)
+{
+    output event int out[channels];
+
+    void main()
+    {
+        loop
+        {
+            for (wrap<channels> i)
+                out[i] <- i == indexSending1 ? 1 : -1;
+
+            advance();
+        }
+    }
+}
 
 ## testProcessor()
 
