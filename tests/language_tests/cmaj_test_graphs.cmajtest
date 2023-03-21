@@ -4874,3 +4874,31 @@ graph Test [[ main ]]
     connection
         g -> audioOut;
 }
+
+
+## testCompile()
+
+graph test [[ main ]]
+{
+    output stream float out;
+
+    node p = P;
+
+    connection
+        p.out -> out;
+}
+
+processor P
+{
+    input stream float in[10];
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in[0] * 2.0f;
+            advance();
+        }
+    }
+}
