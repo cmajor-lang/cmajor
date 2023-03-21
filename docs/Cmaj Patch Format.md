@@ -329,19 +329,6 @@ Removes a listener that was previously added with `addAllParameterListener()`
 This takes a relative path to an asset within the patch bundle, and converts it to a path relative to the root of the browser that is showing the view.
 You need you use this in your view code to translate your asset URLs to a form that can be safely used in your view's HTML DOM (e.g. in its CSS). This is needed because the host's HTTP server (which is delivering your view pages) may have a different '/' root than the root of your patch (e.g. if a single server is serving multiple patch GUIs).
 
-#### View-related methods
-
-Obviously a view won't need to call these, but this class is also used in other contexts, so these methods are what is initially used to instantiate a view.
-
-- **`getAvailableViewTypes()`**
-Returns a list of types of view that can be created for this patch
-
-- **`createView (preferredType)`**
-Creates and returns a `HTMLElement` view which can be shown to control this patch.
-If no arguments are supplied, this will return either a custom patch-specific view
-(if the manifest specifies one), or a generic view if not. The preferredType argument
-can be used to choose one of the types of view returned by `getAvailableViewTypes()`.
-
 ### Built-in javascript utility classes
 
 The Cmajor runtime provides some built-in helper classes that your module can load and use with an `import` directive.
