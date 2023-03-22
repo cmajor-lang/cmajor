@@ -455,7 +455,7 @@ inline void PatchManifest::initialiseWithVirtualFile (std::string patchFileLocat
     CHOC_ASSERT (createFileReader && getFullPathForFile && getFileModificationTime && fileExists);
 
     manifestFile = std::move (patchFileLocation);
-    name = std::filesystem::path (manifestFile).filename();
+    name = std::filesystem::path (manifestFile).filename().string();
     reload();
 }
 
