@@ -162,7 +162,7 @@ struct EndpointDetails
 
     //==============================================================================
     /// Creates a JSON reporesentation of the endpoint's properties
-    choc::value::Value toJSON() const;
+    choc::value::Value toJSON (bool includeSourceLocation) const;
 
     /// Creates an EndpointDetails object from a JSON representation that was
     /// creates with EndpointDetails::toJSON(). This may throw an exception if
@@ -179,7 +179,7 @@ struct EndpointDetailsList
     std::string getDescription() const;
 
     /// Serialises the list into a JSON object
-    choc::value::Value toJSON() const;
+    choc::value::Value toJSON (bool includeSourceLocations) const;
 
     /// Creates a list from some JSON that was created by the toJSON() method,
     /// returning an empty list if the JSON was invalid.
@@ -414,7 +414,7 @@ inline bool EndpointDetails::isTimelinePosition() const
             && type.getObjectMember (2).type.isFloat64();
 }
 
-inline choc::value::Value EndpointDetails::toJSON() const
+inline choc::value::Value EndpointDetails::toJSON (bool includeSourceLocation) const
 {
     auto o = choc::value::createObject ({},
                                         "endpointID",   endpointID.toString(),
@@ -444,7 +444,7 @@ inline choc::value::Value EndpointDetails::toJSON() const
     if (auto numAudioChans = getNumAudioChannels())
         o.addMember ("numAudioChannels", static_cast<int32_t> (numAudioChans));
 
-    if (! sourceFileLocation.empty())
+    if (includeSourceLocation && ! sourceFileLocation.empty())
         o.addMember ("source", sourceFileLocation);
 
     return o;
@@ -487,15 +487,15 @@ inline EndpointDetails EndpointDetails::fromJSON (const choc::value::ValueView& 
 //==============================================================================
 inline std::string EndpointDetailsList::getDescription() const
 {
-    return choc::json::toString (toJSON(), true);
+    return choc::json::toString (toJSON (true), true);
 }
 
-inline choc::value::Value EndpointDetailsList::toJSON() const
+inline choc::value::Value EndpointDetailsList::toJSON (bool includeSourceLocations) const
 {
     auto list = choc::value::createEmptyArray();
 
     for (auto& e : endpoints)
-        list.addArrayElement (e.toJSON());
+        list.addArrayElement (e.toJSON (includeSourceLocations));
 
     return list;
 }
