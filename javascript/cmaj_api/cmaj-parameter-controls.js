@@ -218,7 +218,7 @@ export class Knob  extends ParameterControlBase
     }
 
     valueChanged (newValue)       { this.#setRotation (this.toRotation (newValue), false); }
-    getDisplayValue (v)           { return `${v.toFixed (2)} ${this.endpointInfo.unit ?? ""}`; }
+    getDisplayValue (v)           { return `${v.toFixed (2)} ${this.endpointInfo.annotation?.unit ?? ""}`; }
 
     static getCSS()
     {

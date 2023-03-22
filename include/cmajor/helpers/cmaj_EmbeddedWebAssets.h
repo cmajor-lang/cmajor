@@ -429,7 +429,7 @@ R"(
     }
 
     valueChanged (newValue)       { this.#setRotation (this.toRotation (newValue), false); }
-    getDisplayValue (v)           { return `${v.toFixed (2)} ${this.endpointInfo.unit ?? ""}`; }
+    getDisplayValue (v)           { return `${v.toFixed (2)} ${this.endpointInfo.annotation?.unit ?? ""}`; }
 
     static getCSS()
     {
@@ -1826,7 +1826,7 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21977) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21989) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16329) },
