@@ -87,6 +87,7 @@ class GenericPatchView extends HTMLElement
 
             .main {
                 background: var(--background);
+                height: 100%;
             }
 
             .header {

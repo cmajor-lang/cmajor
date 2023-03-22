@@ -1619,6 +1619,7 @@ R"(
 
             .main {
                 background: var(--background);
+                height: 100%;
             }
 
             .header {
@@ -1835,7 +1836,7 @@ R"(
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16329) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4852) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4882) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6471) }
