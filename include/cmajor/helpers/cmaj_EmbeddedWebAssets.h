@@ -150,37 +150,28 @@ R"(
     /// The listener function will be called with an argument which is the value of the event.
     addEndpointEventListener (endpointID, listener)
     {
-        const type = "event_" + endpointID;
-
-        if (this.getNumListenersForType (type) == 0)
-            this.sendMessageToServer ({ type: "set_endpoint_event_monitoring",
-                                        endpoint: endpointID, active: true });
-
-        this.addEventListener (type, listener);
+        this.addEventListener ("event_" + endpointID, listener);
+        this.sendMessageToServer ({ type: "set_endpoint_event_monitoring", endpoint: endpointID, active: true });
     }
 
     /// Removes a listener that was previously added with addEndpointEventListener()
     removeEndpointEventListener (endpointID, listener)
     {
-        const type = "event_" + endpointID;
-        this.removeEventListener (type, listener);
-
-        if (this.getNumListenersForType (type) == 0)
-            this.sendMessageToServer ({ type: "set_endpoint_event_monitoring",
-                                        endpoint: endpointID, active: false });
+        this.removeEventListener ("event_" + endpointID, listener);
+        this.sendMessageToServer ({ type: "set_endpoint_event_monitoring", endpoint: endpointID, active: false });
     }
 
     /// This will trigger an asynchronous callback to any parameter listeners that are
     /// attached, providing them with its up-to-date current value for the given endpoint.
     /// Use addAllParameterListener() to attach a listener to receive the result.
-    requestParameterValue (endpointID)                  { this.sendMessageToServer ({ type: "req_param_value", id: endpointID }); })"
-R"(
+    requestParameterValue (endpointID)                  { this.sendMessageToServer ({ type: "req_param_value", id: endpointID }); }
 
     /// Attaches a listener function which will be called whenever the value of a specific parameter changes.
     /// The listener function will be called with an argument which is the new value.
     addParameterListener (endpointID, listener)         { this.addEventListener ("param_value_" + endpointID.toString(), listener); }
     /// Removes a listener that was previously added with addParameterListener()
-    removeParameterListener (endpointID, listener)      { this.removeEventListener ("param_value_" + endpointID.toString(), listener); }
+    removeParameterListener (endpointID, listener)      { this.removeEventListener ("param_value_" + endpointID.toString(), listener); })"
+R"(
 
     /// Attaches a listener function which will be called whenever the value of any parameter changes in the patch.
     /// The listener function will be called with an argument object with the fields 'endpointID' and 'value'.
@@ -194,12 +185,11 @@ R"(
     /// can be safely used in your view's HTML DOM (e.g. in its CSS). This is needed because the
     /// host's HTTP server (which is delivering your view pages) may have a different '/' root
     /// than the root of your patch (e.g. if a single server is serving multiple patch GUIs).
-    getResourceAddress (path)                         { return path; }
+    getResourceAddress (path)                           { return path; }
 
 
     //==============================================================================
-    // Private methods follow this point..)"
-R"(
+    // Private methods follow this point..
 
     /// For internal use - delivers an incoming message object from the underlying API.
     deliverMessageFromServer (msg)
@@ -1831,7 +1821,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9636) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21822) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },

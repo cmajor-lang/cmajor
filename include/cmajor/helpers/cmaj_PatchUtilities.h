@@ -315,9 +315,13 @@ struct Patch
     /// For other types of endpoint, granularity != 0 sends all events as objects
     void setEndpointAudioMinMaxNeeded (const EndpointID&, uint32_t granularity);
 
-    /// Enables/disables monitoring of events going to an endpoint
+    /// Enables/disables monitoring of events going to an endpoint. This moves a listener
+    /// count up/down, so each call that enables events must be matched by a call to
+    /// disable them.
     void setEndpointEventsNeeded (const EndpointID&, bool active);
 
+    /// This base class is used for defining audio sources which can be attached to
+    /// an audio input endpoint with `setCustomAudioSourceForInput()`
     struct CustomAudioSource
     {
         virtual ~CustomAudioSource() = default;
@@ -801,7 +805,7 @@ struct EventMonitor
     template <typename ClientEventQueue>
     bool process (ClientEventQueue& queue, const std::string& endpoint, const choc::value::ValueView& message)
     {
-        if (active && endpointID == endpoint)
+        if (activeListeners > 0 && endpointID == endpoint)
         {
             queue.postEndpointEvent (endpointID, message);
             return true;
@@ -813,7 +817,7 @@ struct EventMonitor
     template <typename ClientEventQueue>
     bool process (ClientEventQueue& queue, const std::string& endpoint, choc::midi::ShortMessage message)
     {
-        if (isMIDI && active && endpointID == endpoint)
+        if (isMIDI && activeListeners > 0 && endpointID == endpoint)
         {
             queue.postEndpointMIDI (endpointID, message);
             return true;
@@ -824,7 +828,7 @@ struct EventMonitor
 
     std::string endpointID;
     bool isMIDI;
-    std::atomic<bool> active { false };
+    std::atomic<int32_t> activeListeners { 0 };
 };
 
 //==============================================================================
@@ -2515,7 +2519,7 @@ inline void Patch::setEndpointEventsNeeded (const EndpointID& endpointID, bool a
     if (currentPatch != nullptr)
         for (auto& m : currentPatch->eventEndpointMonitors)
             if (endpointID.toString() == m->endpointID)
-                m->active = active;
+                m->activeListeners += (active ? 1 : -1);
 }
 
 inline void Patch::setEndpointAudioMinMaxNeeded (const EndpointID& endpointID, uint32_t granularity)

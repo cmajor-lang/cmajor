@@ -97,24 +97,15 @@ export class PatchConnection  extends EventListenerList
     /// The listener function will be called with an argument which is the value of the event.
     addEndpointEventListener (endpointID, listener)
     {
-        const type = "event_" + endpointID;
-
-        if (this.getNumListenersForType (type) == 0)
-            this.sendMessageToServer ({ type: "set_endpoint_event_monitoring",
-                                        endpoint: endpointID, active: true });
-
-        this.addEventListener (type, listener);
+        this.addEventListener ("event_" + endpointID, listener);
+        this.sendMessageToServer ({ type: "set_endpoint_event_monitoring", endpoint: endpointID, active: true });
     }
 
     /// Removes a listener that was previously added with addEndpointEventListener()
     removeEndpointEventListener (endpointID, listener)
     {
-        const type = "event_" + endpointID;
-        this.removeEventListener (type, listener);
-
-        if (this.getNumListenersForType (type) == 0)
-            this.sendMessageToServer ({ type: "set_endpoint_event_monitoring",
-                                        endpoint: endpointID, active: false });
+        this.removeEventListener ("event_" + endpointID, listener);
+        this.sendMessageToServer ({ type: "set_endpoint_event_monitoring", endpoint: endpointID, active: false });
     }
 
     /// This will trigger an asynchronous callback to any parameter listeners that are
@@ -140,7 +131,7 @@ export class PatchConnection  extends EventListenerList
     /// can be safely used in your view's HTML DOM (e.g. in its CSS). This is needed because the
     /// host's HTTP server (which is delivering your view pages) may have a different '/' root
     /// than the root of your patch (e.g. if a single server is serving multiple patch GUIs).
-    getResourceAddress (path)                         { return path; }
+    getResourceAddress (path)                           { return path; }
 
 
     //==============================================================================
