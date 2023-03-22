@@ -16,6 +16,9 @@ export class ParameterControlBase  extends HTMLElement
     constructor()
     {
         super();
+
+        // prevent any clicks from focusing on this element
+        this.onmousedown = e => e.stopPropagation();
     }
 
     /// This can be used to connect the parameter to a given connection and endpoint, or
@@ -191,6 +194,7 @@ export class Knob  extends ParameterControlBase
             this.beginGesture();
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
+            event.preventDefault();
         };
 
         this.addEventListener ("mousedown", onMouseDown);
@@ -229,8 +233,8 @@ export class Knob  extends ParameterControlBase
 
             position: relative;
             display: inline-block;
-            height: 80px;
-            width: 80px;
+            height: 5rem;
+            width: 5rem;
             margin: 0;
             padding: 0;
         }
@@ -238,7 +242,7 @@ export class Knob  extends ParameterControlBase
         .knob-path {
             fill: none;
             stroke-linecap: round;
-            stroke-width: 3;
+            stroke-width: 0.15rem;
         }
 
         .knob-track-background {
@@ -252,11 +256,11 @@ export class Knob  extends ParameterControlBase
         .knob-dial {
             position: absolute;
             text-align: center;
-            height: 50px;
-            width: 50px;
+            height: 3.3rem;
+            width: 3.3rem;
             top: 50%;
             left: 50%;
-            border: 2px solid var(--knob-dial-border-color);
+            border: 0.15rem solid var(--knob-dial-border-color);
             border-radius: 100%;
             box-sizing: border-box;
             transform: translate(-50%,-50%);
@@ -267,8 +271,8 @@ export class Knob  extends ParameterControlBase
             position: absolute;
             display: inline-block;
 
-            height: 14px;
-            width: 2px;
+            height: 1rem;
+            width: 0.15rem;
             background-color: var(--knob-dial-tick-color);
         }`;
     }
@@ -344,7 +348,7 @@ export class Switch  extends ParameterControlBase
             height: 1.25rem;
             width: 2.5rem;
             border-radius: 10rem;
-            box-shadow: 0 0 0 2px var(--switch-outline-color);
+            box-shadow: 0 0 0 0.15rem var(--switch-outline-color);
             transition: background-color 0.1s cubic-bezier(0.5, 0, 0.2, 1);
         }
 
@@ -483,7 +487,7 @@ export class Options  extends ParameterControlBase
             font-size: 0.8rem;
             width: 100%;
             color: var(--foreground);
-            border: 2px solid var(--foreground);
+            border: 0.15rem solid var(--foreground);
             border-radius: 0.6rem;
             margin: 0;
             padding: 0;
@@ -494,7 +498,7 @@ export class Options  extends ParameterControlBase
             appearance: none;
             -webkit-appearance: none;
             font-family: inherit;
-            font-size: var(--labelled-control-font-size);
+            font-size: 0.8rem;
 
             overflow: hidden;
             text-overflow: ellipsis;
@@ -581,11 +585,11 @@ export class LabelledControlHolder  extends ParameterControlBase
         return `
         .labelled-control {
             --labelled-control-font-color: var(--foreground);
-            --labelled-control-font-size: 12px;
+            --labelled-control-font-size: 0.8rem;
 
             position: relative;
             display: inline-block;
-            margin: 0 0.5rem 0.5rem;
+            margin: 0 0.4rem 0.4rem;
             vertical-align: top;
             text-align: left;
             padding: 0;
@@ -597,15 +601,15 @@ export class LabelledControlHolder  extends ParameterControlBase
             align-items: center;
             justify-content: center;
 
-            width: 80px;
-            height: 80px;
+            width: 5.5rem;
+            height: 5rem;
         }
 
         .labelled-control-label-container {
             position: relative;
             display: block;
-            max-width: 80px;
-            margin: -0.5rem auto 0.5rem;
+            max-width: 5.5rem;
+            margin: -0.4rem auto 0.4rem;
             text-align: center;
             font-size: var(--labelled-control-font-size);
             color: var(--labelled-control-font-color);

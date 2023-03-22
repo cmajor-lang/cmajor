@@ -31,9 +31,6 @@ class GenericPatchView extends HTMLElement
 
         this.titleElement      = this.shadowRoot.getElementById ("patch-title");
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
-
-        // prevent any clicks from focusing on this element
-        this.onmousedown = e => e.preventDefault();
     }
 
     connectedCallback()
@@ -75,11 +72,11 @@ class GenericPatchView extends HTMLElement
                 -moz-user-select: none;
                 -ms-user-select: none;
                 font-family: Avenir, 'Avenir Next LT Pro', Montserrat, Corbel, 'URW Gothic', source-sans-pro, sans-serif;
-                font-size: 14px;
+                font-size: 0.9rem;
             }
 
             :host {
-                --header-height: 40px;
+                --header-height: 2.5rem;
                 --foreground: #ffffff;
                 --background: #1a1a1a;
 
@@ -96,7 +93,7 @@ class GenericPatchView extends HTMLElement
             .header {
                 width: 100%;
                 height: var(--header-height);
-                border-bottom: 1px solid var(--foreground);
+                border-bottom: 0.1rem solid var(--foreground);
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
@@ -119,7 +116,6 @@ class GenericPatchView extends HTMLElement
                 mask-repeat: no-repeat;
                 -webkit-mask: url(cmaj_api/assets/sound-stacks-logo.svg);
                 -webkit-mask-repeat: no-repeat;
-                min-width: 100px;
             }
 
             .header-filler {

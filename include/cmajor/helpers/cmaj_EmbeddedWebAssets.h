@@ -223,6 +223,9 @@ export class ParameterControlBase  extends HTMLElement
     constructor()
     {
         super();
+
+        // prevent any clicks from focusing on this element
+        this.onmousedown = e => e.stopPropagation();
     }
 
     /// This can be used to connect the parameter to a given connection and endpoint, or
@@ -254,15 +257,15 @@ export class ParameterControlBase  extends HTMLElement
 
     setValue (value)     { this.patchConnection?.sendEventOrValue (this.endpointInfo.endpointID, value); }
     beginGesture()       { this.patchConnection?.sendParameterGestureStart (this.endpointInfo.endpointID); }
-    endGesture()         { this.patchConnection?.sendParameterGestureEnd (this.endpointInfo.endpointID); }
+    endGesture()         { this.patchConnection?.sendParameterGestureEnd (this.endpointInfo.endpointID); })"
+R"(
 
     setValueAsGesture (value)
     {
         this.beginGesture();
         this.setValue (value);
         this.endGesture();
-    })"
-R"(
+    }
 
     resetToDefault()
     {
@@ -317,13 +320,13 @@ export class Knob  extends ParameterControlBase
         const createSvgElement = tag => window.document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
         const svg = createSvgElement ("svg");
-        svg.setAttribute ("viewBox", "0 0 100 100");
+        svg.setAttribute ("viewBox", "0 0 100 100");)"
+R"(
 
         const trackBackground = createSvgElement ("path");
         trackBackground.setAttribute ("d", "M20,76 A 40 40 0 1 1 80 76");
         trackBackground.classList.add ("knob-path");
-        trackBackground.classList.add ("knob-track-background");)"
-R"(
+        trackBackground.classList.add ("knob-track-background");
 
         const maxKnobRotation = 132;
         const isBipolar = this.min + this.max === 0;
@@ -362,12 +365,12 @@ R"(
         this.toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);
 
         this.rotation = this.toRotation (this.defaultValue);
-        this.#setRotation (this.rotation, true);
+        this.#setRotation (this.rotation, true);)"
+R"(
 
         const onMouseMove = (event) =>
         {
-            event.preventDefault(); // avoid scrolling whilst dragging)"
-R"(
+            event.preventDefault(); // avoid scrolling whilst dragging
 
             const nextRotation = (rotation, delta) =>
             {
@@ -401,6 +404,7 @@ R"(
             this.beginGesture();
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
+            event.preventDefault();
         };
 
         this.addEventListener ("mousedown", onMouseDown);
@@ -440,8 +444,8 @@ R"(
 
             position: relative;
             display: inline-block;
-            height: 80px;
-            width: 80px;
+            height: 5rem;
+            width: 5rem;
             margin: 0;
             padding: 0;
         }
@@ -449,7 +453,7 @@ R"(
         .knob-path {
             fill: none;
             stroke-linecap: round;
-            stroke-width: 3;
+            stroke-width: 0.15rem;
         }
 
         .knob-track-background {
@@ -463,11 +467,11 @@ R"(
         .knob-dial {
             position: absolute;
             text-align: center;
-            height: 50px;
-            width: 50px;
+            height: 3.3rem;
+            width: 3.3rem;
             top: 50%;
             left: 50%;
-            border: 2px solid var(--knob-dial-border-color);
+            border: 0.15rem solid var(--knob-dial-border-color);
             border-radius: 100%;
             box-sizing: border-box;
             transform: translate(-50%,-50%);
@@ -476,15 +480,15 @@ R"(
 
         .knob-dial-tick {
             position: absolute;
-            display: inline-block;
+            display: inline-block;)"
+R"(
 
-            height: 14px;
-            width: 2px;
+            height: 1rem;
+            width: 0.15rem;
             background-color: var(--knob-dial-tick-color);
         }`;
     }
-})"
-R"(
+}
 
 //==============================================================================
 export class Switch  extends ParameterControlBase
@@ -538,7 +542,8 @@ export class Switch  extends ParameterControlBase
             --switch-outline-color: var(--foreground);
             --switch-thumb-color: var(--foreground);
             --switch-on-background-color: var(--background);
-            --switch-off-background-color: var(--background);
+            --switch-off-background-color: var(--background);)"
+R"(
 
             position: relative;
             display: flex;
@@ -548,8 +553,7 @@ export class Switch  extends ParameterControlBase
             width: 100%;
             margin: 0;
             padding: 0;
-        })"
-R"(
+        }
 
         .switch-outline {
             position: relative;
@@ -557,7 +561,7 @@ R"(
             height: 1.25rem;
             width: 2.5rem;
             border-radius: 10rem;
-            box-shadow: 0 0 0 2px var(--switch-outline-color);
+            box-shadow: 0 0 0 0.15rem var(--switch-outline-color);
             transition: background-color 0.1s cubic-bezier(0.5, 0, 0.2, 1);
         }
 
@@ -607,14 +611,14 @@ export class Options  extends ParameterControlBase
         super.setEndpoint (patchConnection, endpointInfo);
 
         const optionList = endpointInfo.annotation.text.split ("|");
-        let min = 0, step = 1;
+        let min = 0, step = 1;)"
+R"(
 
         if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
         {
             min = endpointInfo.annotation.min;
             step = (endpointInfo.annotation.max - endpointInfo.annotation.min) / (optionList.length - 1);
-        })"
-R"(
+        }
 
         this.innerHTML = "";
         this.options = optionList.map ((text, index) => ({ value: min + (step * index), text }));
@@ -671,14 +675,14 @@ R"(
                 if (value < target) low = mid + 1;
                 else if (value > target) high = mid - 1;
                 else return mid;
-            }
+            })"
+R"(
 
             return high;
         };
 
         return Math.max (0, binarySearch (this.options, v => v.value, value));
-    })"
-R"(
+    }
 
     valueChanged (newValue)
     {
@@ -698,7 +702,7 @@ R"(
             font-size: 0.8rem;
             width: 100%;
             color: var(--foreground);
-            border: 2px solid var(--foreground);
+            border: 0.15rem solid var(--foreground);
             border-radius: 0.6rem;
             margin: 0;
             padding: 0;
@@ -709,7 +713,7 @@ R"(
             appearance: none;
             -webkit-appearance: none;
             font-family: inherit;
-            font-size: var(--labelled-control-font-size);
+            font-size: 0.8rem;
 
             overflow: hidden;
             text-overflow: ellipsis;
@@ -798,11 +802,11 @@ R"(
         return `
         .labelled-control {
             --labelled-control-font-color: var(--foreground);
-            --labelled-control-font-size: 12px;
+            --labelled-control-font-size: 0.8rem;
 
             position: relative;
             display: inline-block;
-            margin: 0 0.5rem 0.5rem;
+            margin: 0 0.4rem 0.4rem;
             vertical-align: top;
             text-align: left;
             padding: 0;
@@ -814,15 +818,15 @@ R"(
             align-items: center;
             justify-content: center;
 
-            width: 80px;
-            height: 80px;
+            width: 5.5rem;
+            height: 5rem;
         }
 
         .labelled-control-label-container {
             position: relative;
             display: block;
-            max-width: 80px;
-            margin: -0.5rem auto 0.5rem;
+            max-width: 5.5rem;
+            margin: -0.4rem auto 0.4rem;
             text-align: center;
             font-size: var(--labelled-control-font-size);
             color: var(--labelled-control-font-color);
@@ -1552,9 +1556,6 @@ class GenericPatchView extends HTMLElement
 
         this.titleElement      = this.shadowRoot.getElementById ("patch-title");
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
-
-        // prevent any clicks from focusing on this element
-        this.onmousedown = e => e.preventDefault();
     }
 
     connectedCallback()
@@ -1571,14 +1572,14 @@ class GenericPatchView extends HTMLElement
     #createControlElements()
     {
         this.parametersElement.innerHTML = "";
-        this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";)"
-R"(
+        this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";
 
         for (const endpointInfo of this.status?.details?.inputs)
         {
             if (! endpointInfo.annotation?.hidden)
             {
-                const control = Controls.createLabelledControl (this.patchConnection, endpointInfo);
+                const control = Controls.createLabelledControl (this.patchConnection, endpointInfo);)"
+R"(
 
                 if (control)
                     this.parametersElement.appendChild (control);
@@ -1597,11 +1598,11 @@ R"(
                 -moz-user-select: none;
                 -ms-user-select: none;
                 font-family: Avenir, 'Avenir Next LT Pro', Montserrat, Corbel, 'URW Gothic', source-sans-pro, sans-serif;
-                font-size: 14px;
+                font-size: 0.9rem;
             }
 
             :host {
-                --header-height: 40px;
+                --header-height: 2.5rem;
                 --foreground: #ffffff;
                 --background: #1a1a1a;
 
@@ -1618,7 +1619,7 @@ R"(
             .header {
                 width: 100%;
                 height: var(--header-height);
-                border-bottom: 1px solid var(--foreground);
+                border-bottom: 0.1rem solid var(--foreground);
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
@@ -1631,8 +1632,7 @@ R"(
                 overflow: hidden;
                 cursor: default;
                 font-size: 140%;
-            })"
-R"(
+            }
 
             .logo {
                 flex: 1;
@@ -1642,12 +1642,12 @@ R"(
                 mask-repeat: no-repeat;
                 -webkit-mask: url(cmaj_api/assets/sound-stacks-logo.svg);
                 -webkit-mask-repeat: no-repeat;
-                min-width: 100px;
             }
 
             .header-filler {
                 flex: 1;
-            }
+            })"
+R"(
 
             #patch-parameters {
                 height: calc(100% - var(--header-height));
@@ -1825,11 +1825,11 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21822) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21977) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16329) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4995) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4855) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6471) }
