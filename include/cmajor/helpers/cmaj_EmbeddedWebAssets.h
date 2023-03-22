@@ -1642,6 +1642,7 @@ R"(
                 mask-repeat: no-repeat;
                 -webkit-mask: url(cmaj_api/assets/sound-stacks-logo.svg);
                 -webkit-mask-repeat: no-repeat;
+                min-width: 6.25rem;
             }
 
             .header-filler {
@@ -1829,7 +1830,7 @@ R"(
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16329) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4855) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4891) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6471) }

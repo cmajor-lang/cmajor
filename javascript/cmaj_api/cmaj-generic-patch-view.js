@@ -116,6 +116,7 @@ class GenericPatchView extends HTMLElement
                 mask-repeat: no-repeat;
                 -webkit-mask: url(cmaj_api/assets/sound-stacks-logo.svg);
                 -webkit-mask-repeat: no-repeat;
+                min-width: 6.25rem;
             }
 
             .header-filler {
