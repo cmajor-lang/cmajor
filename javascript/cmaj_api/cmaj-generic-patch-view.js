@@ -31,6 +31,9 @@ class GenericPatchView extends HTMLElement
 
         this.titleElement      = this.shadowRoot.getElementById ("patch-title");
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
+
+        // prevent any clicks from focusing on this element
+        this.onmousedown = e => e.preventDefault();
     }
 
     connectedCallback()

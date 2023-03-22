@@ -1552,6 +1552,9 @@ class GenericPatchView extends HTMLElement
 
         this.titleElement      = this.shadowRoot.getElementById ("patch-title");
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
+
+        // prevent any clicks from focusing on this element
+        this.onmousedown = e => e.preventDefault();
     }
 
     connectedCallback()
@@ -1568,14 +1571,14 @@ class GenericPatchView extends HTMLElement
     #createControlElements()
     {
         this.parametersElement.innerHTML = "";
-        this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";
+        this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";)"
+R"(
 
         for (const endpointInfo of this.status?.details?.inputs)
         {
             if (! endpointInfo.annotation?.hidden)
             {
-                const control = Controls.createLabelledControl (this.patchConnection, endpointInfo);)"
-R"(
+                const control = Controls.createLabelledControl (this.patchConnection, endpointInfo);
 
                 if (control)
                     this.parametersElement.appendChild (control);
@@ -1628,7 +1631,8 @@ R"(
                 overflow: hidden;
                 cursor: default;
                 font-size: 140%;
-            }
+            })"
+R"(
 
             .logo {
                 flex: 1;
@@ -1643,8 +1647,7 @@ R"(
 
             .header-filler {
                 flex: 1;
-            })"
-R"(
+            }
 
             #patch-parameters {
                 height: calc(100% - var(--header-height));
@@ -1826,7 +1829,7 @@ R"(
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16329) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4882) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4995) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6471) }
