@@ -105,7 +105,7 @@ struct PatchWebView::Impl
     PatchManifest::View view;
     MimeTypeMappingFn toMimeTypeCustomImpl;
 
-   #if defined (DEBUG) || defined (_DEBUG) || ! (defined (NDEBUG) || defined (_NDEBUG))
+   #if CMAJ_ENABLE_WEBVIEW_DEV_TOOLS
     static constexpr bool allowWebviewDevMode = true;
    #else
     static constexpr bool allowWebviewDevMode = false;

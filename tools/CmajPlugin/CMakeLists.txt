@@ -25,6 +25,7 @@ juce_generate_juce_header(CmajPlugin)
 add_compile_definitions (
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:CMAJ_ENABLE_ALLOCATION_CHECKER=1>
+    CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1
     JUCE_DISABLE_JUCE_VERSION_PRINTING=1
     JUCE_VST3_CAN_REPLACE_VST2=0
     JUCE_USE_CURL=0
