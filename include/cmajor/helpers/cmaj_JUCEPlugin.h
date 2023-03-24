@@ -921,22 +921,19 @@ private:
 
         static cmaj::PatchManifest::View derivePatchViewSize (const JUCEPluginBase& owner)
         {
-            cmaj::PatchManifest::View view;
+            auto view = cmaj::PatchManifest::View
+            {
+                choc::value::createObject ({},
+                                           "width", owner.lastEditorWidth,
+                                           "height", owner.lastEditorHeight)
+            };
 
             if (auto manifest = owner.patch->getManifest())
                 if (auto v = manifest->findDefaultView())
                     view = *v;
 
-            if (owner.lastEditorWidth > 0 && owner.lastEditorHeight > 0)
-            {
-                view.view.setMember ("width", owner.lastEditorWidth);
-                view.view.setMember ("height", owner.lastEditorHeight);
-            }
-            else
-            {
-                if (view.getWidth()  == 0)  view.view.setMember ("width", defaultWidth);
-                if (view.getHeight() == 0)  view.view.setMember ("height", defaultHeight);
-            }
+            if (view.getWidth()  == 0)  view.view.setMember ("width", defaultWidth);
+            if (view.getHeight() == 0)  view.view.setMember ("height", defaultHeight);
 
             return view;
         }
