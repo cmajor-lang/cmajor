@@ -1259,3 +1259,17 @@ bool resultIsBool()
     static_assert (v.isBool);
     return true;
 }
+
+
+## testFunction()
+
+bool test()
+{
+    let factor = 5.f;
+    return canMultiplyConstRefByVector (factor);
+}
+
+bool canMultiplyConstRefByVector (const float& a)
+{
+    return (a * float<1> (1.f)) == a;
+}
