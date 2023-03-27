@@ -256,8 +256,8 @@ export class Knob  extends ParameterControlBase
         .knob-dial {
             position: absolute;
             text-align: center;
-            height: 3.3rem;
-            width: 3.3rem;
+            height: 60%;
+            width: 60%;
             top: 50%;
             left: 50%;
             border: 0.15rem solid var(--knob-dial-border-color);
