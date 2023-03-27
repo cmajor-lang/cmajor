@@ -77,10 +77,9 @@ struct ExternalVariableList
         auto list = choc::value::createEmptyArray();
 
         for (auto& e : externals)
-            list.addArrayElement (choc::value::createObject ({},
-                                                             "name", e.name,
-                                                             "type", e.type.toValue(),
-                                                             "annotation", e.annotation));
+            list.addArrayElement (choc::json::create ("name", e.name,
+                                                      "type", e.type.toValue(),
+                                                      "annotation", e.annotation));
         return list;
     }
 };

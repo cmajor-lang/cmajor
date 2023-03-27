@@ -189,10 +189,9 @@ public:
     static std::string createPatchID (const PatchManifest& m)
     {
         return getIdentifierPrefix()
-                 + choc::json::toString (choc::value::createObject ({},
-                                                                    "ID", m.ID,
-                                                                    "name", m.name,
-                                                                    "location", m.manifestFile),
+                 + choc::json::toString (choc::json::create ("ID", m.ID,
+                                                             "name", m.name,
+                                                             "location", m.manifestFile),
                                          false);
     }
 
@@ -923,9 +922,8 @@ private:
         {
             auto view = cmaj::PatchManifest::View
             {
-                choc::value::createObject ({},
-                                           "width", owner.lastEditorWidth,
-                                           "height", owner.lastEditorHeight)
+                choc::json::create ("width", owner.lastEditorWidth,
+                                    "height", owner.lastEditorHeight)
             };
 
             if (auto manifest = owner.patch->getManifest())

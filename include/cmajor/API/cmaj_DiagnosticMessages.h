@@ -176,16 +176,15 @@ inline void DiagnosticMessage::print (std::ostream& out) const
 
 inline choc::value::Value DiagnosticMessage::toJSON() const
 {
-    return choc::value::createObject ({},
-                                      "severity",                 getSeverity(),
-                                      "message",                  description,
-                                      "fileName",                 location.filename,
-                                      "lineNumber",               static_cast<int32_t> (location.lineAndColumn.line),
-                                      "columnNumber",             static_cast<int32_t> (location.lineAndColumn.column),
-                                      "sourceLine",               location.sourceLine,
-                                      "annotatedLine",            getAnnotatedSourceLine(),
-                                      "fullDescription",          getFullDescription(),
-                                      "category",                 getCategory());
+    return choc::json::create ("severity",                 getSeverity(),
+                               "message",                  description,
+                               "fileName",                 location.filename,
+                               "lineNumber",               static_cast<int32_t> (location.lineAndColumn.line),
+                               "columnNumber",             static_cast<int32_t> (location.lineAndColumn.column),
+                               "sourceLine",               location.sourceLine,
+                               "annotatedLine",            getAnnotatedSourceLine(),
+                               "fullDescription",          getFullDescription(),
+                               "category",                 getCategory());
 }
 
 inline bool DiagnosticMessage::loadFromJSON (const choc::value::ValueView& v)

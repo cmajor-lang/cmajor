@@ -416,9 +416,8 @@ inline bool EndpointDetails::isTimelinePosition() const
 
 inline choc::value::Value EndpointDetails::toJSON (bool includeSourceLocation) const
 {
-    auto o = choc::value::createObject ({},
-                                        "endpointID",   endpointID.toString(),
-                                        "endpointType", getEndpointTypeName (endpointType));
+    auto o = choc::json::create ("endpointID",   endpointID.toString(),
+                                 "endpointType", getEndpointTypeName (endpointType));
 
 
     if (dataTypes.size() == 1)

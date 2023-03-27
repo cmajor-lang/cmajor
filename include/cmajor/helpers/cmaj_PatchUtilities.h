@@ -1021,7 +1021,7 @@ struct Patch::ClientEventQueue
         CMAJ_ASSERT (end > d);
 
         patch.sendMessageToViews ("audio_data_" + std::string (d, static_cast<std::string_view::size_type> (end - d)),
-                                  choc::value::createObject ({},
+                                  choc::json::create (
                                      "min", choc::value::createArrayView (mins.data(), static_cast<uint32_t> (mins.size())),
                                      "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size()))));
     }
@@ -2271,9 +2271,8 @@ inline void Patch::sendPosition (int64_t currentFrame, double ppq, double ppqBar
 
 inline void Patch::sendMessageToViews (std::string_view type, const choc::value::ValueView& message)
 {
-    auto msg = choc::value::createObject ({},
-                                          "type", type,
-                                          "message", message);
+    auto msg = choc::json::create ("type", type,
+                                   "message", message);
     for (auto pv : activeViews)
         pv->sendMessage (msg);
 }
@@ -2283,7 +2282,7 @@ inline void Patch::sendPatchStatusChangeToViews()
     if (currentPatch)
     {
         sendMessageToViews ("status",
-                            choc::value::createObject ({},
+                            choc::json::create (
                                 "error", currentPatch->errors.toString(),
                                 "manifest", currentPatch->manifest.manifest,
                                 "details", currentPatch->programDetails,
@@ -2328,14 +2327,12 @@ inline choc::value::Value Patch::getFullStoredState() const
     auto parameters = choc::value::createArray (static_cast<uint32_t> (paramsToSave.size()),
                                                 [&] (uint32_t i)
     {
-        return choc::value::createObject ({},
-                    "name", paramsToSave[i]->endpointID.toString(),
-                    "value", paramsToSave[i]->currentValue);
+        return choc::json::create ("name", paramsToSave[i]->endpointID.toString(),
+                                   "value", paramsToSave[i]->currentValue);
     });
 
-    return choc::value::createObject ({},
-              "parameters", parameters,
-              "values", values);
+    return choc::json::create ("parameters", parameters,
+                               "values", values);
 }
 
 inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
@@ -2399,16 +2396,14 @@ inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, flo
 {
     if (endpointID)
         sendMessageToViews ("param_value",
-                            choc::value::createObject ({},
-                                "endpointID", endpointID.toString(),
-                                "value", value));
+                            choc::json::create ("endpointID", endpointID.toString(),
+                                                "value", value));
 }
 
 inline void Patch::sendCPUInfoToViews (float level)
 {
     sendMessageToViews ("cpu_info",
-                        choc::value::createObject ({},
-                            "level", level));
+                        choc::json::create ("level", level));
 }
 
 inline void Patch::sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView& value)
@@ -2422,9 +2417,8 @@ inline void Patch::sendStoredStateValueToViews (const std::string& key)
     if (! key.empty())
         if (auto found = storedState.find (key); found != storedState.end())
             sendMessageToViews ("state_key_value",
-                                choc::value::createObject ({},
-                                    "key", key,
-                                    "value", found->second));
+                                choc::json::create ("key", key,
+                                                    "value", found->second));
 }
 
 inline void Patch::sendPatchChange()
