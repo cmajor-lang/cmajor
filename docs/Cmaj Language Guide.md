@@ -1333,7 +1333,7 @@ node
 }
 ```
 
-Each node declares an instance of a processor type - if you're fmailiar with object-oriented programming, think of processors as being like classes, and nodes as being instances of those classes.
+Each node declares an instance of a processor type - if you're familiar with object-oriented programming, think of processors as being like classes, and nodes as being instances of those classes.
 
 If you're only planning to use a single instance of a processor, then as a shortcut you can skip declaring a node, and just use the processor name in your connection list instead of the node name. This will implicitly create an unnamed instance node for that processor. If you need to refer to the processor more than once in your connection list, you'll need to declare a node for it and give it a name.
 
