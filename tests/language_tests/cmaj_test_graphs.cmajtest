@@ -4902,3 +4902,25 @@ processor P
         }
     }
 }
+
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    output stream float out;
+
+    node gains = Gain[4];
+
+    connection
+        0.1f -> gains[0].in;
+}
+
+graph Gain
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+        in -> out;
+}
