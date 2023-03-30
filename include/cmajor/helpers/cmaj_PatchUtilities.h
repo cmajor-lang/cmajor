@@ -69,7 +69,6 @@ struct PatchManifest
     choc::value::Value manifest;
     std::string manifestFile, ID, name, description, category, manufacturer, version;
     bool isInstrument = false;
-    uint32_t framesLatency = 0;
     std::vector<std::string> sourceFiles;
     choc::value::Value externals;
     bool needsToBuildSource = true;
@@ -200,7 +199,7 @@ struct Patch
     bool hasAudioInput() const;
     bool hasAudioOutput() const;
     bool wantsTimecodeEvents() const;
-    uint32_t getFramesLatency() const;
+    double getFramesLatency() const;
 
     choc::value::Value getProgramDetails() const;
     std::string getMainProcessorName() const;
@@ -520,7 +519,6 @@ inline bool PatchManifest::reload()
     manufacturer = {};
     version = {};
     isInstrument = false;
-    framesLatency = 0;
     sourceFiles.clear();
     externals = choc::value::Value();
     views.clear();
@@ -1147,7 +1145,7 @@ struct Patch::LoadedPatch
     uint32_t numAudioInputChans = 0;
     uint32_t numAudioOutputChans = 0;
     bool hasTimecodeInputs = false;
-    double sampleRate = 0, latencySamples = 0;
+    double sampleRate = 0, framesLatency = 0;
     cmaj::EndpointID timeSigEventID, tempoEventID, transportStateEventID, positionEventID;
     cmaj::EndpointDetailsList inputEndpoints, outputEndpoints;
     choc::value::Value programDetails;
@@ -1502,7 +1500,7 @@ struct Patch::Build
             result->performer = performerBuilder->createPerformer();
 
             if (result->performer->prepareToStart())
-                result->latencySamples = result->performer->performer.getLatency();
+                result->framesLatency = result->performer->performer.getLatency();
         }
         catch (const choc::json::ParseError& e)
         {
@@ -2141,7 +2139,7 @@ inline bool Patch::hasMIDIOutput() const                    { return isLoaded() 
 inline bool Patch::hasAudioInput() const                    { return isLoaded() && currentPatch->numAudioInputChans != 0; }
 inline bool Patch::hasAudioOutput() const                   { return isLoaded() && currentPatch->numAudioOutputChans != 0; }
 inline bool Patch::wantsTimecodeEvents() const              { return currentPatch->hasTimecodeInputs; }
-inline uint32_t Patch::getFramesLatency() const             { return isLoaded() ? currentPatch->manifest.framesLatency : 0; }
+inline double Patch::getFramesLatency() const               { return isLoaded() ? currentPatch->framesLatency : 0.0; }
 inline choc::value::Value Patch::getProgramDetails() const  { return isLoaded() ? currentPatch->programDetails : choc::value::Value(); }
 
 inline std::string Patch::getMainProcessorName() const
