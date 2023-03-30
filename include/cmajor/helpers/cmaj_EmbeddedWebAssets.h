@@ -467,8 +467,8 @@ R"(
         .knob-dial {
             position: absolute;
             text-align: center;
-            height: 3.3rem;
-            width: 3.3rem;
+            height: 60%;
+            width: 60%;
             top: 50%;
             left: 50%;
             border: 0.15rem solid var(--knob-dial-border-color);
@@ -1826,7 +1826,7 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21989) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21983) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16329) },
