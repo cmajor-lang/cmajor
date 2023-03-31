@@ -1313,29 +1313,43 @@ R"(
     // Audio input source handling:
 
     /// Sets a custom audio input source for a particular endpoint.
-    /// If shouldMute is true, it will be muted. If fileDataToPlay is a blob of data (e.g. a
-    /// data URL) that can be loaded as an audio file, then it will be sent across for the
-    /// server to play as a loop.
+    /// If shouldMute is true, it will be muted. If fileDataToPlay is an array buffer that
+    /// can be parsed as an audio file, then it will be sent across for the server to play
+    /// as a loop.
     /// When a source is changed, a callback is sent to any audio input mode listeners (see
     /// `addAudioInputModeListener()`)
     setAudioInputSource (endpointID, shouldMute, fileDataToPlay)
     {
+        const loopFile = "_audio_source_" + endpointID;
+
         if (fileDataToPlay)
+        {
+            this.registerFile (loopFile,
+            {
+               size: fileDataToPlay.byteLength,
+               read: (start, length) => { return new Blob ([fileDataToPlay.slice (start, start + length)]); }
+            });
+
             this.sendMessageToServer ({ type: "set_custom_audio_input",
                                         endpoint: endpointID,
-                                        file: fileDataToPlay });
+                                        file: loopFile });
+        }
         else
+        {
+            this.removeFile (loopFile);
+
             this.sendMessageToServer ({ type: "set_custom_audio_input",
                                         endpoint: endpointID,
                                         mute: !! shouldMute });
-    }
+        }
+    })"
+R"(
 
     /// Attaches a listener function to be told when the input source for a particular
     /// endpoint is changed by a call to `setAudioInputSource()`.
     addAudioInputModeListener (endpointID, listener)    { this.addEventListener    ("audio_input_mode_" + endpointID, listener); }
     /// Removes a listener previously added with `addAudioInputModeListener()`
-    removeAudioInputModeListener (endpointID, listener) { this.removeEventListener ("audio_input_mode_" + endpointID, listener); })"
-R"(
+    removeAudioInputModeListener (endpointID, listener) { this.removeEventListener ("audio_input_mode_" + endpointID, listener); }
 
     /// Asks the server to send an update with the latest status to any audio mode listeners that
     /// are attached to the given endpoint.
@@ -1357,14 +1371,14 @@ R"(
     /// changed. The listener function will be passed an argument object containing all the
     /// details about the device.
     /// Remove the listener when it's no longer needed with `removeAudioDevicePropertiesListener()`.
-    addAudioDevicePropertiesListener (listener)         { this.addEventListener    ("audio_device_properties", listener); }
+    addAudioDevicePropertiesListener (listener)         { this.addEventListener    ("audio_device_properties", listener); })"
+R"(
 
     /// Removes a listener that was added with `addAudioDevicePropertiesListener()`
     removeAudioDevicePropertiesListener (listener)      { this.removeEventListener ("audio_device_properties", listener); }
 
     /// Causes an asynchronous callback to any audio device listeners that are registered.
-    requestAudioDeviceProperties()                      { this.sendMessageToServer ({ type: "req_audio_device_props" }); })"
-R"(
+    requestAudioDeviceProperties()                      { this.sendMessageToServer ({ type: "req_audio_device_props" }); }
 
     //==============================================================================
     /// Asks the server to asynchronously generate some code from the currently loaded patch.
@@ -1385,7 +1399,8 @@ R"(
     }
 
     //==============================================================================
-    // File change monitoring:
+    // File change monitoring:)"
+R"(
 
     /// Attaches a listener to be told when a file change is detected in the currently-loaded
     /// patch. The function will be called with an object that gives rough details about the
@@ -1396,8 +1411,7 @@ R"(
     removeFileChangeListener (listener)                 { this.removeEventListener ("patch_source_changed", listener); }
 
     //==============================================================================
-    // CPU level monitoring methods:)"
-R"(
+    // CPU level monitoring methods:
 
     /// Attaches a listener function which will be sent messages containing CPU info.
     /// To remove the listener, call `removeCPUListener()`. To change the rate of these
@@ -1408,7 +1422,35 @@ R"(
     removeCPUListener (listener)                    { this.removeEventListener ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
     /// Changes the frequency at which CPU level update messages are sent to listeners.
-    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); }
+    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); })"
+R"(
+
+    //==============================================================================
+    /// Registers a virtual file with the server, under the given name.
+    /// The contentProvider object must have a property called `size` which is a
+    /// constant size in bytes for the file, and a method `read (offset, size)` which
+    /// returns an array (or UInt8Array) of bytes for the data in a given chunk of the file.
+    /// The server may repeatedly call this method at any time until `removeFile()` is
+    /// called to deregister the file.
+    registerFile (filename, contentProvider)
+    {
+        if (! this.files)
+            this.files = new Map();
+
+        this.files.set (filename, contentProvider);
+
+        this.sendMessageToServer ({ type: "register_file",
+                                    filename: filename,
+                                    size: contentProvider.size });
+    }
+
+    /// Removes a file that was previously registered with `registerFile()`.
+    removeFile (filename)
+    {
+        this.sendMessageToServer ({ type: "remove_file",
+                                    filename: filename });
+        this.files?.delete (filename);
+    }
 
     //==============================================================================
     /// Sends a ping message to the server.
@@ -1427,7 +1469,8 @@ R"(
     }
 
     //==============================================================================
-    // Private methods from this point...
+    // Private methods from this point...)"
+R"(
 
     // An implementation subclass must call this when the session first connects
     handleSessionConnection()
@@ -1443,8 +1486,7 @@ R"(
                 this.currentPatchLocation = undefined;
             }
         }
-    })"
-R"(
+    }
 
     // An implementation subclass must call this when a message arrives
     handleMessageFromServer (msg)
@@ -1464,6 +1506,10 @@ R"(
             case "session_status":
                 message.connected = true;
                 this.setNewStatus (message);
+                break;
+
+            case "req_file_read":
+                this.handleFileReadRequest (message);
                 break;
 
             case "ping":
@@ -1488,7 +1534,8 @@ R"(
         this.status = newStatus;
         this.dispatchEvent ("session_status", this.status);
         this.updateCPULevelUpdateRate();
-    }
+    })"
+R"(
 
     updateCPULevelUpdateRate()
     {
@@ -1497,9 +1544,38 @@ R"(
                                     framesPerCallback: rate });
     }
 
+    handleFileReadRequest (request)
+    {
+        const contentProvider = this.files?.get (request?.file);
+
+        if (contentProvider && request.offset !== null && request.size != 0)
+        {
+            const data = contentProvider.read (request.offset, request.size);
+            const reader = new FileReader();
+
+            reader.onloadend = (e) =>
+            {
+                const base64 = e.target?.result?.split?.(",", 2)[1];
+
+                if (base64)
+                    this.sendMessageToServer ({ type: "file_content",
+                                                file: request.file,
+                                                data: base64,
+                                                start: request.offset });
+            };
+
+            reader.readAsDataURL (data);
+        }
+    }
+
     createReplyID (stem)
     {
-        return "reply_" + stem + (Math.floor (Math.random() * 100000000)).toString();
+        return "reply_" + stem + this.createRandomID();
+    }
+
+    createRandomID()
+    {
+        return (Math.floor (Math.random() * 100000000)).toString();
     }
 }
 )";
@@ -1812,7 +1888,7 @@ R"(
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21622) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
-        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16318) },
+        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18834) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4997) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },

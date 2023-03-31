@@ -164,21 +164,35 @@ export class ServerSession   extends EventListenerList
     // Audio input source handling:
 
     /// Sets a custom audio input source for a particular endpoint.
-    /// If shouldMute is true, it will be muted. If fileDataToPlay is a blob of data (e.g. a
-    /// data URL) that can be loaded as an audio file, then it will be sent across for the
-    /// server to play as a loop.
+    /// If shouldMute is true, it will be muted. If fileDataToPlay is an array buffer that
+    /// can be parsed as an audio file, then it will be sent across for the server to play
+    /// as a loop.
     /// When a source is changed, a callback is sent to any audio input mode listeners (see
     /// `addAudioInputModeListener()`)
     setAudioInputSource (endpointID, shouldMute, fileDataToPlay)
     {
+        const loopFile = "_audio_source_" + endpointID;
+
         if (fileDataToPlay)
+        {
+            this.registerFile (loopFile,
+            {
+               size: fileDataToPlay.byteLength,
+               read: (start, length) => { return new Blob ([fileDataToPlay.slice (start, start + length)]); }
+            });
+
             this.sendMessageToServer ({ type: "set_custom_audio_input",
                                         endpoint: endpointID,
-                                        file: fileDataToPlay });
+                                        file: loopFile });
+        }
         else
+        {
+            this.removeFile (loopFile);
+
             this.sendMessageToServer ({ type: "set_custom_audio_input",
                                         endpoint: endpointID,
                                         mute: !! shouldMute });
+        }
     }
 
     /// Attaches a listener function to be told when the input source for a particular
@@ -259,6 +273,33 @@ export class ServerSession   extends EventListenerList
     setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); }
 
     //==============================================================================
+    /// Registers a virtual file with the server, under the given name.
+    /// The contentProvider object must have a property called `size` which is a
+    /// constant size in bytes for the file, and a method `read (offset, size)` which
+    /// returns an array (or UInt8Array) of bytes for the data in a given chunk of the file.
+    /// The server may repeatedly call this method at any time until `removeFile()` is
+    /// called to deregister the file.
+    registerFile (filename, contentProvider)
+    {
+        if (! this.files)
+            this.files = new Map();
+
+        this.files.set (filename, contentProvider);
+
+        this.sendMessageToServer ({ type: "register_file",
+                                    filename: filename,
+                                    size: contentProvider.size });
+    }
+
+    /// Removes a file that was previously registered with `registerFile()`.
+    removeFile (filename)
+    {
+        this.sendMessageToServer ({ type: "remove_file",
+                                    filename: filename });
+        this.files?.delete (filename);
+    }
+
+    //==============================================================================
     /// Sends a ping message to the server.
     /// You shouldn't need to call this - the ServerSession class takes care of sending
     /// a ping at regular intervals.
@@ -313,6 +354,10 @@ export class ServerSession   extends EventListenerList
                 this.setNewStatus (message);
                 break;
 
+            case "req_file_read":
+                this.handleFileReadRequest (message);
+                break;
+
             case "ping":
                 break;
 
@@ -344,8 +389,37 @@ export class ServerSession   extends EventListenerList
                                     framesPerCallback: rate });
     }
 
+    handleFileReadRequest (request)
+    {
+        const contentProvider = this.files?.get (request?.file);
+
+        if (contentProvider && request.offset !== null && request.size != 0)
+        {
+            const data = contentProvider.read (request.offset, request.size);
+            const reader = new FileReader();
+
+            reader.onloadend = (e) =>
+            {
+                const base64 = e.target?.result?.split?.(",", 2)[1];
+
+                if (base64)
+                    this.sendMessageToServer ({ type: "file_content",
+                                                file: request.file,
+                                                data: base64,
+                                                start: request.offset });
+            };
+
+            reader.readAsDataURL (data);
+        }
+    }
+
     createReplyID (stem)
     {
-        return "reply_" + stem + (Math.floor (Math.random() * 100000000)).toString();
+        return "reply_" + stem + this.createRandomID();
+    }
+
+    createRandomID()
+    {
+        return (Math.floor (Math.random() * 100000000)).toString();
     }
 }
