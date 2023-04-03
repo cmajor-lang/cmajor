@@ -232,24 +232,24 @@ export class ParameterControlBase  extends HTMLElement
     /// to disconnect it if called with undefined arguments
     setEndpoint (patchConnection, endpointInfo)
     {
-        this.#detachListener();
+        this.detachListener();
 
         this.patchConnection = patchConnection;
         this.endpointInfo = endpointInfo;
         this.defaultValue = endpointInfo.annotation?.init || endpointInfo.defaultValue || 0;
 
         if (this.isConnected)
-            this.#attachListener();
+            this.attachListener();
     }
 
     connectedCallback()
     {
-        this.#attachListener();
+        this.attachListener();
     }
 
     disconnectedCallback()
     {
-        this.#detachListener();
+        this.detachListener();
     }
 
     /// Implement this in a child class to be called when the value needs refreshing
@@ -275,7 +275,7 @@ R"(
 
     //==============================================================================
     // private methods..
-    #detachListener()
+    detachListener()
     {
         if (this.listener)
         {
@@ -284,11 +284,11 @@ R"(
         }
     }
 
-    #attachListener()
+    attachListener()
     {
         if (this.patchConnection && this.endpointInfo)
         {
-            this.#detachListener();
+            this.detachListener();
 
             this.listener = newValue => this.valueChanged (newValue);
             this.listener.endpointID = this.endpointInfo.endpointID;
@@ -365,7 +365,7 @@ R"(
         this.toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);
 
         this.rotation = this.toRotation (this.defaultValue);
-        this.#setRotation (this.rotation, true);)"
+        this.setRotation (this.rotation, true);)"
 R"(
 
         const onMouseMove = (event) =>
@@ -418,7 +418,7 @@ R"(
     })"
 R"(
 
-    #setRotation (degrees, force)
+    setRotation (degrees, force)
     {
         if (force || this.rotation !== degrees)
         {
@@ -428,7 +428,7 @@ R"(
         }
     }
 
-    valueChanged (newValue)       { this.#setRotation (this.toRotation (newValue), false); }
+    valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
     getDisplayValue (v)           { return `${v.toFixed (2)} ${this.endpointInfo.annotation?.unit ?? ""}`; }
 
     static getCSS()
@@ -632,7 +632,7 @@ R"(
             this.select.appendChild (optionElement);
         }
 
-        this.selectedIndex = this.#toIndex (this.defaultValue);
+        this.selectedIndex = this.toIndex (this.defaultValue);
 
         this.select.addEventListener ("change", (e) =>
         {
@@ -660,7 +660,7 @@ R"(
                 && endpointInfo.annotation?.text?.split?.("|").length > 1;
     }
 
-    #toIndex (value)
+    toIndex (value)
     {
         const binarySearch = (arr, toValue, target) =>
         {
@@ -686,12 +686,12 @@ R"(
 
     valueChanged (newValue)
     {
-        const index = this.#toIndex (newValue);
+        const index = this.toIndex (newValue);
         this.selectedIndex = index;
         this.select.selectedIndex = index;
     }
 
-    getDisplayValue (v)    { return this.options[this.#toIndex(v)].text; }
+    getDisplayValue (v)    { return this.options[this.toIndex(v)].text; }
 
     static getCSS()
     {
@@ -1244,7 +1244,7 @@ R"(
     /// each of the patches.
     requestAvailablePatchList (callbackFunction)
     {
-        const replyType = this.#createReplyID ("patchlist_");
+        const replyType = this.createReplyID ("patchlist_");
         this.addSingleUseListener (replyType, callbackFunction);
         this.sendMessageToServer ({ type: "req_patchlist",
                                     replyType: replyType });
@@ -1395,7 +1395,7 @@ R"(
     /// metadata about the generated data.
     requestGeneratedCode (codeType, extraOptions, callbackFunction)
     {
-        const replyType = this.#createReplyID ("codegen_");
+        const replyType = this.createReplyID ("codegen_");
         this.addSingleUseListener (replyType, callbackFunction);
         this.sendMessageToServer ({ type: "req_codegen",
                                     codeType: codeType,
@@ -1421,13 +1421,13 @@ R"(
     /// Attaches a listener function which will be sent messages containing CPU info.
     /// To remove the listener, call `removeCPUListener()`. To change the rate of these
     /// messages, use `setCPULevelUpdateRate()`.
-    addCPUListener (listener)                       { this.addEventListener    ("cpu_info", listener); this.#updateCPULevelUpdateRate(); }
+    addCPUListener (listener)                       { this.addEventListener    ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
     /// Removes a listener that was previously attached with `addCPUListener()`.
-    removeCPUListener (listener)                    { this.removeEventListener ("cpu_info", listener); this.#updateCPULevelUpdateRate(); }
+    removeCPUListener (listener)                    { this.removeEventListener ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
     /// Changes the frequency at which CPU level update messages are sent to listeners.
-    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.#updateCPULevelUpdateRate(); }
+    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); }
 
     //==============================================================================
     /// Sends a ping message to the server.
@@ -1438,7 +1438,7 @@ R"(
         this.sendMessageToServer ({ type: "ping" });
 
         if (Date.now() > this.lastServerMessageTime + 10000)
-            this.#setNewStatus ({
+            this.setNewStatus ({
                 connected: false,
                 loaded: false,
                 status: "Cannot connect to the Cmajor server"
@@ -1482,7 +1482,7 @@ R"(
 
             case "session_status":
                 message.connected = true;
-                this.#setNewStatus (message);
+                this.setNewStatus (message);
                 break;
 
             case "ping":
@@ -1502,21 +1502,21 @@ R"(
         }
     }
 
-    #setNewStatus (newStatus)
+    setNewStatus (newStatus)
     {
         this.status = newStatus;
         this.dispatchEvent ("session_status", this.status);
-        this.#updateCPULevelUpdateRate();
+        this.updateCPULevelUpdateRate();
     }
 
-    #updateCPULevelUpdateRate()
+    updateCPULevelUpdateRate()
     {
         const rate = this.getNumListenersForType ("cpu_info") > 0 ? (this.cpuFramesPerUpdate || 15000) : 0;
         this.sendMessageToServer ({ type: "set_cpu_info_rate",
                                     framesPerCallback: rate });
     }
 
-    #createReplyID (stem)
+    createReplyID (stem)
     {
         return "reply_" + stem + (Math.floor (Math.random() * 100000000)).toString();
     }
@@ -1548,11 +1548,11 @@ class GenericPatchView extends HTMLElement
         this.statusListener = status =>
         {
             this.status = status;
-            this.#createControlElements();
+            this.createControlElements();
         };
 
         this.attachShadow ({ mode: "open" });
-        this.shadowRoot.innerHTML = this.#getHTML();
+        this.shadowRoot.innerHTML = this.getHTML();
 
         this.titleElement      = this.shadowRoot.getElementById ("patch-title");
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
@@ -1569,17 +1569,19 @@ class GenericPatchView extends HTMLElement
         this.patchConnection.removeStatusListener (this.statusListener);
     }
 
-    #createControlElements()
+    //==============================================================================
+    // private methods..
+    createControlElements()
     {
         this.parametersElement.innerHTML = "";
-        this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";
+        this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";)"
+R"(
 
         for (const endpointInfo of this.status?.details?.inputs)
         {
             if (! endpointInfo.annotation?.hidden)
             {
-                const control = Controls.createLabelledControl (this.patchConnection, endpointInfo);)"
-R"(
+                const control = Controls.createLabelledControl (this.patchConnection, endpointInfo);
 
                 if (control)
                     this.parametersElement.appendChild (control);
@@ -1587,7 +1589,7 @@ R"(
         }
     }
 
-    #getHTML()
+    getHTML()
     {
         return `
             <style>
@@ -1632,7 +1634,8 @@ R"(
                 overflow: hidden;
                 cursor: default;
                 font-size: 140%;
-            }
+            })"
+R"(
 
             .logo {
                 flex: 1;
@@ -1647,8 +1650,7 @@ R"(
 
             .header-filler {
                 flex: 1;
-            })"
-R"(
+            }
 
             #patch-parameters {
                 height: calc(100% - var(--header-height));
@@ -1826,11 +1828,11 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21983) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21969) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
-        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16329) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4891) },
+        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16318) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4997) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6471) }

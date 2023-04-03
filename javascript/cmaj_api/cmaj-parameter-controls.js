@@ -25,24 +25,24 @@ export class ParameterControlBase  extends HTMLElement
     /// to disconnect it if called with undefined arguments
     setEndpoint (patchConnection, endpointInfo)
     {
-        this.#detachListener();
+        this.detachListener();
 
         this.patchConnection = patchConnection;
         this.endpointInfo = endpointInfo;
         this.defaultValue = endpointInfo.annotation?.init || endpointInfo.defaultValue || 0;
 
         if (this.isConnected)
-            this.#attachListener();
+            this.attachListener();
     }
 
     connectedCallback()
     {
-        this.#attachListener();
+        this.attachListener();
     }
 
     disconnectedCallback()
     {
-        this.#detachListener();
+        this.detachListener();
     }
 
     /// Implement this in a child class to be called when the value needs refreshing
@@ -67,7 +67,7 @@ export class ParameterControlBase  extends HTMLElement
 
     //==============================================================================
     // private methods..
-    #detachListener()
+    detachListener()
     {
         if (this.listener)
         {
@@ -76,11 +76,11 @@ export class ParameterControlBase  extends HTMLElement
         }
     }
 
-    #attachListener()
+    attachListener()
     {
         if (this.patchConnection && this.endpointInfo)
         {
-            this.#detachListener();
+            this.detachListener();
 
             this.listener = newValue => this.valueChanged (newValue);
             this.listener.endpointID = this.endpointInfo.endpointID;
@@ -156,7 +156,7 @@ export class Knob  extends ParameterControlBase
         this.toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);
 
         this.rotation = this.toRotation (this.defaultValue);
-        this.#setRotation (this.rotation, true);
+        this.setRotation (this.rotation, true);
 
         const onMouseMove = (event) =>
         {
@@ -207,7 +207,7 @@ export class Knob  extends ParameterControlBase
         return endpointInfo.purpose === "parameter";
     }
 
-    #setRotation (degrees, force)
+    setRotation (degrees, force)
     {
         if (force || this.rotation !== degrees)
         {
@@ -217,7 +217,7 @@ export class Knob  extends ParameterControlBase
         }
     }
 
-    valueChanged (newValue)       { this.#setRotation (this.toRotation (newValue), false); }
+    valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
     getDisplayValue (v)           { return `${v.toFixed (2)} ${this.endpointInfo.annotation?.unit ?? ""}`; }
 
     static getCSS()
@@ -418,7 +418,7 @@ export class Options  extends ParameterControlBase
             this.select.appendChild (optionElement);
         }
 
-        this.selectedIndex = this.#toIndex (this.defaultValue);
+        this.selectedIndex = this.toIndex (this.defaultValue);
 
         this.select.addEventListener ("change", (e) =>
         {
@@ -446,7 +446,7 @@ export class Options  extends ParameterControlBase
                 && endpointInfo.annotation?.text?.split?.("|").length > 1;
     }
 
-    #toIndex (value)
+    toIndex (value)
     {
         const binarySearch = (arr, toValue, target) =>
         {
@@ -471,12 +471,12 @@ export class Options  extends ParameterControlBase
 
     valueChanged (newValue)
     {
-        const index = this.#toIndex (newValue);
+        const index = this.toIndex (newValue);
         this.selectedIndex = index;
         this.select.selectedIndex = index;
     }
 
-    getDisplayValue (v)    { return this.options[this.#toIndex(v)].text; }
+    getDisplayValue (v)    { return this.options[this.toIndex(v)].text; }
 
     static getCSS()
     {

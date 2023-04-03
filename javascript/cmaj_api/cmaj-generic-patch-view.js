@@ -23,11 +23,11 @@ class GenericPatchView extends HTMLElement
         this.statusListener = status =>
         {
             this.status = status;
-            this.#createControlElements();
+            this.createControlElements();
         };
 
         this.attachShadow ({ mode: "open" });
-        this.shadowRoot.innerHTML = this.#getHTML();
+        this.shadowRoot.innerHTML = this.getHTML();
 
         this.titleElement      = this.shadowRoot.getElementById ("patch-title");
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
@@ -44,7 +44,9 @@ class GenericPatchView extends HTMLElement
         this.patchConnection.removeStatusListener (this.statusListener);
     }
 
-    #createControlElements()
+    //==============================================================================
+    // private methods..
+    createControlElements()
     {
         this.parametersElement.innerHTML = "";
         this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";
@@ -61,7 +63,7 @@ class GenericPatchView extends HTMLElement
         }
     }
 
-    #getHTML()
+    getHTML()
     {
         return `
             <style>

@@ -79,7 +79,7 @@ export class ServerSession   extends EventListenerList
     /// each of the patches.
     requestAvailablePatchList (callbackFunction)
     {
-        const replyType = this.#createReplyID ("patchlist_");
+        const replyType = this.createReplyID ("patchlist_");
         this.addSingleUseListener (replyType, callbackFunction);
         this.sendMessageToServer ({ type: "req_patchlist",
                                     replyType: replyType });
@@ -225,7 +225,7 @@ export class ServerSession   extends EventListenerList
     /// metadata about the generated data.
     requestGeneratedCode (codeType, extraOptions, callbackFunction)
     {
-        const replyType = this.#createReplyID ("codegen_");
+        const replyType = this.createReplyID ("codegen_");
         this.addSingleUseListener (replyType, callbackFunction);
         this.sendMessageToServer ({ type: "req_codegen",
                                     codeType: codeType,
@@ -250,13 +250,13 @@ export class ServerSession   extends EventListenerList
     /// Attaches a listener function which will be sent messages containing CPU info.
     /// To remove the listener, call `removeCPUListener()`. To change the rate of these
     /// messages, use `setCPULevelUpdateRate()`.
-    addCPUListener (listener)                       { this.addEventListener    ("cpu_info", listener); this.#updateCPULevelUpdateRate(); }
+    addCPUListener (listener)                       { this.addEventListener    ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
     /// Removes a listener that was previously attached with `addCPUListener()`.
-    removeCPUListener (listener)                    { this.removeEventListener ("cpu_info", listener); this.#updateCPULevelUpdateRate(); }
+    removeCPUListener (listener)                    { this.removeEventListener ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
     /// Changes the frequency at which CPU level update messages are sent to listeners.
-    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.#updateCPULevelUpdateRate(); }
+    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); }
 
     //==============================================================================
     /// Sends a ping message to the server.
@@ -267,7 +267,7 @@ export class ServerSession   extends EventListenerList
         this.sendMessageToServer ({ type: "ping" });
 
         if (Date.now() > this.lastServerMessageTime + 10000)
-            this.#setNewStatus ({
+            this.setNewStatus ({
                 connected: false,
                 loaded: false,
                 status: "Cannot connect to the Cmajor server"
@@ -310,7 +310,7 @@ export class ServerSession   extends EventListenerList
 
             case "session_status":
                 message.connected = true;
-                this.#setNewStatus (message);
+                this.setNewStatus (message);
                 break;
 
             case "ping":
@@ -330,21 +330,21 @@ export class ServerSession   extends EventListenerList
         }
     }
 
-    #setNewStatus (newStatus)
+    setNewStatus (newStatus)
     {
         this.status = newStatus;
         this.dispatchEvent ("session_status", this.status);
-        this.#updateCPULevelUpdateRate();
+        this.updateCPULevelUpdateRate();
     }
 
-    #updateCPULevelUpdateRate()
+    updateCPULevelUpdateRate()
     {
         const rate = this.getNumListenersForType ("cpu_info") > 0 ? (this.cpuFramesPerUpdate || 15000) : 0;
         this.sendMessageToServer ({ type: "set_cpu_info_rate",
                                     framesPerCallback: rate });
     }
 
-    #createReplyID (stem)
+    createReplyID (stem)
     {
         return "reply_" + stem + (Math.floor (Math.random() * 100000000)).toString();
     }
