@@ -713,6 +713,9 @@ function testPatch (file, expectedError)
 {
     const testSection = getCurrentTestSection();
     const patch = new Patch();
+
+    patch.setRateAndBlockSize (44100, 128);
+
     const absolutePath = testSection.getAbsolutePath (file);
     const error = patch.loadFromFile (absolutePath);
 
