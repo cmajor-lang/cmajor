@@ -368,12 +368,6 @@ private:
     std::vector<choc::midi::ShortMessage> midiMessages;
     std::vector<int> midiMessageTimes;
 
-    LoadedPatch& getLoadedPatch()
-    {
-        CHOC_ASSERT (currentPatch != nullptr);
-        return *currentPatch;
-    }
-
     void sendPatchChange();
     void applyFinishedBuild (Build&);
     void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
