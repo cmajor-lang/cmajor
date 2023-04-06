@@ -297,7 +297,7 @@ struct Patch
     void sendGeneratedCodeToViews (const std::string& type, const choc::value::ValueView& options);
 
     // These can be called by things like the GUI to control the patch
-    bool handleCientMessage (const choc::value::ValueView&);
+    bool handleClientMessage (const choc::value::ValueView&);
     void sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&, int32_t rampFrames = -1);
     void sendMIDIInputEvent (const EndpointID&, choc::midi::ShortMessage);
 
@@ -2551,7 +2551,7 @@ inline void Patch::setCPUInfoMonitorChunkSize (uint32_t framesPerCallback)
     clientEventQueue->cpu.framesPerCallback = framesPerCallback;
 }
 
-inline bool Patch::handleCientMessage (const choc::value::ValueView& msg)
+inline bool Patch::handleClientMessage (const choc::value::ValueView& msg)
 {
     if (! msg.isObject())
         return false;

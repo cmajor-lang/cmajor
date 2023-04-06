@@ -89,7 +89,7 @@ struct PatchWebView::Impl
             try
             {
                 if (args.isArray() && args.size() != 0)
-                    patch.handleCientMessage (args[0]);
+                    patch.handleClientMessage (args[0]);
             }
             catch (const std::exception& e)
             {
