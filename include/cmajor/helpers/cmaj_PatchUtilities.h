@@ -1247,6 +1247,9 @@ struct Patch::LoadedPatch
     void sendEventOrValueToPatch (ClientEventQueue& queue, const EndpointID& endpointID,
                                   const choc::value::ValueView& value, int32_t rampFrames = -1)
     {
+        if (performer == nullptr)
+            return;
+
         if (auto param = findParameter (endpointID))
         {
             float v = value.isString() ? param->getStringAsValue (value.getString())
@@ -1284,6 +1287,9 @@ struct Patch::LoadedPatch
 
     void resetToInitialState()
     {
+        if (performer == nullptr)
+            return;
+
         auto newPerformer = performer->engine.createPerformer();
         CMAJ_ASSERT (newPerformer);
 
