@@ -705,7 +705,7 @@ bool testClamp()
     b += 4;
     --c; --c; --c; --c;
     d -= 5;
-    return a == a.size && b == b.size && c == 0 && d == 0;
+    return a == (a.size - 1) && (b == b.size - 1) && c == 0 && d == 0;
 }
 
 bool simpleCast()
