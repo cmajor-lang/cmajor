@@ -796,10 +796,10 @@ In addition, `for` supports a syntax for visiting the values in a range type
 ```cpp
 
 for (wrap<5> i)
-    console <- i;               // prints 0, 1, 2, 3, 4, 5
+    console <- i;               // prints 0, 1, 2, 3, 4
 
 for (clamp<5> i = 2)            // you can set an initial value
-    console <- i;               // prints 2, 3, 4, 5
+    console <- i;               // prints 2, 3, 4
 ```
 
 ### `loop`
