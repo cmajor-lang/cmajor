@@ -785,3 +785,42 @@ graph Test [[ main ]]
     connection
         p.out -> out;
 }
+
+
+## testCompile()
+
+namespace A (float f)
+{
+    processor test
+    {
+        output stream float out;
+
+        void main()
+        {
+            out <- float (processor.frequency);
+            advance();
+        }
+    }
+}
+
+namespace B (float f)
+{
+    namespace a = A (f);
+}
+
+namespace C (float f)
+{
+    namespace b = B (f);
+}
+
+graph Test [[ main ]]
+{
+    output stream float out;
+
+    namespace c = C (processor.frequency);
+
+    node t = C (float (processor.frequency))::b::a::test;
+
+    connection
+        t.out -> out;
+}
