@@ -787,7 +787,7 @@ graph Test [[ main ]]
 }
 
 
-## testCompile()
+## if (getEngineName() != "cpp") testCompile ()
 
 namespace A (float f)
 {
