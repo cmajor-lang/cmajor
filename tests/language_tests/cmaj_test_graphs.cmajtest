@@ -3121,6 +3121,40 @@ processor LatencyCheck (int latency)
     void main() { out <- processor.latency == latency ? 1 : 0 <- -1; advance(); }
 }
 
+## testProcessor()
+
+graph G [[ main ]]
+{
+    output stream int out;
+    connection G2.latency -> Checker -> out;
+}
+
+graph G2
+{
+    input stream float in;
+    output stream float out;
+    output stream int latency;
+
+    connection in -> P.in;
+    connection P.out -> out;
+    connection processor.latency -> latency;
+}
+
+processor P
+{
+    input stream float in;
+    output stream float out;
+    processor.latency = 32;
+    void main() { loop advance(); }
+}
+
+processor Checker
+{
+    input stream int in;
+    output stream int out;
+    void main() { out <- in == 32 ? 1 : 0; advance(); out <- -1; advance(); }
+}
+
 ## expectError ("6:29: error: The processor.latency value must be declared as a constant integer or float")
 
 processor P
