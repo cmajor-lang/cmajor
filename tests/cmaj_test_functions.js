@@ -597,6 +597,7 @@ function testConsole (expectedConsoleMsg, options)
     }
 }
 
+
 //==============================================================================
 /*
     This test builds a processor and renders a given amount of data through it,
@@ -604,7 +605,9 @@ function testConsole (expectedConsoleMsg, options)
 
     e.g.
     ## performanceTest ({ sampleRate:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:100000 })
+    ## performanceTest ({ sampleRate:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:100000, patch: "testPatch.cmajorpatch" })
 */
+
 function performanceTest (options)
 {
     let testSection = getCurrentTestSection();
@@ -615,29 +618,19 @@ function performanceTest (options)
         return;
     }
 
-    let program = new Program();
-    let parseTime = program.parse (testSection.source + testSection.globalSource);
+    let timingInfo = {};
 
-    if (isError (parseTime))
+    let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
+
+    if (isError (engine))
     {
-        testSection.reportFail (parseTime);
+        testSection.reportFail (engine);
         return;
     }
-
-    let engine = createEngine (options);
-    updateBuildSettings (engine, options.sampleRate, options.maxBlockSize, true, options);
 
     if (engine.getBuildSettings().optimisationLevel == 0)
     {
         testSection.reportUnsupported ("Test disabled for --O0 as it will take too long");
-        return;
-    }
-
-    let loadTime = engine.load (program);
-
-    if (isError (loadTime))
-    {
-        testSection.reportFail (loadTime);
         return;
     }
 
@@ -651,23 +644,28 @@ function performanceTest (options)
     for (let i = 0; i < outputEndpoints.length; i++)
         outputEndpoints[i].handle = engine.getEndpointHandle (outputEndpoints[i].endpointID);
 
-    let linkTime = engine.link (program);
+    timingInfo.linkTime = engine.link ();
 
-    if (isError (linkTime))
+    if (isError (timingInfo.linkTime))
     {
-        if (linkTime.message == "Language feature not yet implemented: cpp performer on windows!")
-            testSection.reportUnsupported (linkTime);
+        if (timingInfo.linkTime.message == "Language feature not yet implemented: cpp performer on windows!")
+            testSection.reportUnsupported (timingInfo.linkTime);
         else
-            testSection.reportFail (linkTime);
+            testSection.reportFail (timingInfo.linkTime);
 
         return;
     }
 
-    let totalTime = parseTime + loadTime + linkTime;
+    let totalTime = timingInfo.loadTime  + timingInfo.linkTime;
 
-    testSection.logMessage ("Parse time: " + Math.round (parseTime * 1000) + " ms");
-    testSection.logMessage ("Load time : " + Math.round (loadTime * 1000) + " ms");
-    testSection.logMessage ("Link time : " + Math.round (linkTime * 1000) + " ms");
+    if (timingInfo.parseTime != undefined)
+    {
+        totalTime += timingInfo.parseTime;
+        testSection.logMessage ("Parse time: " + Math.round (timingInfo.parseTime * 1000) + " ms");
+    }
+
+    testSection.logMessage ("Load time : " + Math.round (timingInfo.loadTime * 1000) + " ms");
+    testSection.logMessage ("Link time : " + Math.round (timingInfo.linkTime * 1000) + " ms");
     testSection.logMessage ("Total     : " + Math.round (totalTime * 1000) + " ms");
 
     let performer = engine.createPerformer();
@@ -781,87 +779,18 @@ function runScript (options)
     if (options.maxDiffDb == null)
         options.maxDiffDb = -100;
 
-    let program;
-    let patch;
-    let parseTime;
+    let timingInfo = {};
 
-    if (options.patch != null)
+    let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
+
+    if (isError (engine))
     {
-        patch = new PatchManifest (new File (testSection.getAbsolutePath (options.patch)));
-
-        if (isError (patch.error))
-        {
-            testSection.reportFail (patch.error);
-            return;
-        }
-
-        program = patch.createProgram();
-
-        if (isError (program))
-        {
-            testSection.reportFail (program);
-            return;
-        }
-    }
-    else
-    {
-        program = new Program();
-        parseTime = program.parse (testSection.source + testSection.globalSource);
-
-        if (isError (parseTime))
-        {
-            testSection.reportFail (parseTime);
-            return;
-        }
-    }
-
-    let engine = createEngine (options);
-    updateBuildSettings (engine, options.sampleRate, options.blockSize, false, options);
-
-    const loadTime = engine.load (program);
-
-    if (isError (loadTime))
-    {
-        testSection.reportFail (loadTime);
+        testSection.reportFail (engine);
         return;
     }
 
     let inputEndpoints = engine.getInputEndpoints();
     let outputEndpoints = engine.getOutputEndpoints();
-
-    if (patch == null)
-    {
-        let externals = engine.getExternalVariables();
-
-        if (externals.length > 0)
-        {
-            let externalFilename = options.subDir + "/externals.json";
-            let externalData = testSection.readEventData (externalFilename);
-
-            if (isError (externalData))
-            {
-                testSection.reportFail ("Failed to read external data " + externalFilename);
-                return;
-            }
-
-            for (let i = 0; i < externals.length; i++)
-            {
-                let value = externalData[externals[i].name];
-
-                if (value == null)
-                {
-                    testSection.reportFail ("Failed to find external for " + externals[i].name);
-                    return;
-                }
-
-                engine.setExternalVariable (externals[i].name, value);
-            }
-        }
-    }
-    else
-    {
-        patch.resolveExternals (engine);
-    }
 
     for (let i = 0; i < inputEndpoints.length; i++)
     {
@@ -939,14 +868,14 @@ function runScript (options)
             outputEndpoints[i].events = [];
     }
 
-    const linkTime = engine.link (program);
+    timingInfo.linkTime = engine.link();
 
-    if (isError (linkTime))
+    if (isError (timingInfo.linkTime))
     {
-        if (linkTime.message == "Language feature not yet implemented: cpp performer on windows!")
-            testSection.reportUnsupported (linkTime);
+        if (timingInfo.linkTime.message == "Language feature not yet implemented: cpp performer on windows!")
+            testSection.reportUnsupported (timingInfo.linkTime);
         else
-            testSection.reportFail (linkTime);
+            testSection.reportFail (timingInfo.linkTime);
 
         return;
     }
@@ -1158,16 +1087,16 @@ function runScript (options)
 
     if (options.displayTimings)
     {
-        let totalTime = loadTime + linkTime;
+        let totalTime = timingInfo.loadTime  + timingInfo.linkTime;
 
-        if (parseTime != undefined)
+        if (timingInfo.parseTime != undefined)
         {
-            totalTime += parseTime;
-            testSection.logMessage ("Parse time: " + Math.round (parseTime * 1000) + " ms");
+            totalTime += timingInfo.parseTime;
+            testSection.logMessage ("Parse time: " + Math.round (timingInfo.parseTime * 1000) + " ms");
         }
 
-        testSection.logMessage ("Load time : " + Math.round (loadTime * 1000) + " ms");
-        testSection.logMessage ("Link time : " + Math.round (linkTime * 1000) + " ms");
+        testSection.logMessage ("Load time : " + Math.round (timingInfo.loadTime * 1000) + " ms");
+        testSection.logMessage ("Link time : " + Math.round (timingInfo.linkTime * 1000) + " ms");
         testSection.logMessage ("Total     : " + Math.round (totalTime * 1000) + " ms");
     }
 
@@ -1179,6 +1108,72 @@ function runScript (options)
 //
 // The remainder of this file just consists of helper functions used by the code above
 //
+
+function buildEngineWithLoadedProgram (testSection, options, timingInfo)
+{
+    let engine = createEngine (options);
+    updateBuildSettings (engine, options.sampleRate, options.blockSize, false, options);
+
+    let program;
+
+    if (options.patch != null)
+    {
+        let patch = new PatchManifest (new File (testSection.getAbsolutePath (options.patch)));
+
+        if (isError (patch.error))
+            return patch.error;
+
+        program = patch.createProgram();
+
+        if (isError (program))
+            return program;
+
+        timingInfo.loadTime = engine.load (program);
+
+        if (isError (timingInfo.loadTime))
+            return timingInfo.loadTime;
+
+        patch.resolveExternals (engine);
+    }
+    else
+    {
+        program = new Program();
+        let parseResult = program.parse (testSection.source + testSection.globalSource);
+
+        if (isError (parseResult))
+            return parseResult;
+
+        timingInfo.parseTime = parseResult;
+        timingInfo.loadTime = engine.load (program);
+
+        if (isError (timingInfo.loadTime))
+            return timingInfo.loadTime;
+
+        let externals = engine.getExternalVariables();
+
+        if (externals.length > 0)
+        {
+            let externalFilename = options.subDir + "/externals.json";
+            let externalData = testSection.readEventData (externalFilename);
+
+            if (isError (externalData))
+                return { severity: "error", message: "Failed to read external data " + externalFilename };
+
+            for (let i = 0; i < externals.length; i++)
+            {
+                let value = externalData[externals[i].name];
+
+                if (value == null)
+                    return { severity: "error", message: "Failed to find external for " + externals[i].name };
+
+                engine.setExternalVariable (externals[i].name, value);
+            }
+        }
+    }
+
+    return engine;
+}
+
 
 function createEngine (options)
 {
