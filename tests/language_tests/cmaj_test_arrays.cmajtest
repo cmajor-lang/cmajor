@@ -146,13 +146,13 @@ void f() { float[2] x; let y = x.at (2, 3); }
 
 void f() { float x; let y = x.at (1); }
 
-## expectError ("6:26: error: The 'at' method can only be applied to a vector or array")
+## expectError ("6:27: error: The 'at' method can only be applied to a vector or array")
 
 processor P
 {
     input stream int in;
     output stream int out;
-    void main() { out <- in.at(2); advance(); }
+    void main() { let v = in.at(2); advance(); }
 }
 
 ## expectError ("2:45: error: Expected a vector or array to the left of the bracket operator")
