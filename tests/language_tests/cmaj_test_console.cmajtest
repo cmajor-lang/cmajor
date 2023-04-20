@@ -229,3 +229,39 @@ processor Test
         advance();
     }
 }
+
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    output event test::A out;
+
+    node p = P;
+
+    connection p -> out;
+}
+
+processor P
+{
+    output event test::A out;
+
+    void main()
+    {
+        let a = test::create();
+        out <- a;
+        console <- a;
+
+        advance();
+    }
+}
+
+namespace test
+{
+    struct A {}
+
+    A create()
+    {
+        return A();
+    }
+}
