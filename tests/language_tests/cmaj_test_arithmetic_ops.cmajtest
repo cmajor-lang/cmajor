@@ -1273,3 +1273,50 @@ bool canMultiplyConstRefByVector (const float& a)
 {
     return (a * float<1> (1.f)) == a;
 }
+
+
+## testConsole ("2, 2, 2, 2, 2")
+
+processor ClampMaxValue [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        clamp<3> i;
+
+        i++;
+        i++;
+        i++;
+
+        console <- int (i) <- ", "
+                <- int (clamp<3> (2))
+                <- ", " <- int (clamp<3> (3))
+                <- ", " <- int (clamp<3> (4))
+                <- ", " <- int (clamp<3> (i + 3));
+
+        advance();
+    }
+}
+
+## testConsole ("0, 0, 0, 0, 0")
+
+processor ClampMinValue [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        clamp<3> i;
+
+        i--;
+
+        console <- int (i) <- ", "
+                <- int (clamp<3> (0))
+                <- ", " <- int (clamp<3> (-1))
+                <- ", " <- int (clamp<3> (-2))
+                <- ", " <- int (clamp<3> (i - 2));
+
+        advance();
+    }
+}
