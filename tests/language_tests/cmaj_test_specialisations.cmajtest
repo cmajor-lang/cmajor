@@ -824,3 +824,29 @@ graph Test [[ main ]]
     connection
         t.out -> out;
 }
+
+
+## expectError ("11:20: error: Cannot determine the type of the value to be written to this endpoint")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    external float64 one [[ default: 1.0 ]];
+
+    void main()
+    {
+        let a = test (one)::value();
+        console <- a;
+
+        advance();
+    }
+}
+
+namespace test (float64 externalValue)
+{
+    float64 value()
+    {
+        return externalValue;
+    }
+}
