@@ -2840,7 +2840,8 @@ inline std::string PatchParameter::getValueAsString (float value) const
     if (numStrings > 1)
     {
         auto value0to1 = (value - minValue) / (maxValue - minValue);
-        index = static_cast<int> (value0to1 * (numStrings - 1));
+        const auto stepCount = static_cast<float> (numStrings - 1);
+        index = static_cast<int> (std::min (stepCount, value0to1 * numStrings));
         index = std::max (0, std::min (numStrings - 1, index));
     }
 

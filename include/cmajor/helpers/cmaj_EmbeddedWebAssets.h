@@ -611,16 +611,20 @@ export class Options  extends ParameterControlBase
         super.setEndpoint (patchConnection, endpointInfo);
 
         const optionList = endpointInfo.annotation.text.split ("|");
-        let min = 0, step = 1;)"
+        const stepCount = optionList.length > 0 ? optionList.length - 1 : 1;
+        let min = 0, max = stepCount, step = 1;)"
 R"(
 
         if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
         {
             min = endpointInfo.annotation.min;
-            step = (endpointInfo.annotation.max - endpointInfo.annotation.min) / (optionList.length - 1);
+            max = endpointInfo.annotation.max;
+            step = (max - min) / stepCount;
         }
 
         this.innerHTML = "";
+        const normalise = value => (value - min) / (max - min);
+        this.toIndex = value => Math.min (stepCount, normalise (value) * optionList.length) | 0;
         this.options = optionList.map ((text, index) => ({ value: min + (step * index), text }));
 
         this.select = document.createElement ("select");
@@ -660,30 +664,6 @@ R"(
                 && endpointInfo.annotation?.text?.split?.("|").length > 1;
     }
 
-    toIndex (value)
-    {
-        const binarySearch = (arr, toValue, target) =>
-        {
-            let low = 0;
-            let high = arr.length - 1;
-
-            while (low <= high)
-            {
-                const mid = low + ((high - low) >> 1);
-                const value = toValue (arr[mid]);
-
-                if (value < target) low = mid + 1;
-                else if (value > target) high = mid - 1;
-                else return mid;
-            })"
-R"(
-
-            return high;
-        };
-
-        return Math.max (0, binarySearch (this.options, v => v.value, value));
-    }
-
     valueChanged (newValue)
     {
         const index = this.toIndex (newValue);
@@ -691,7 +671,8 @@ R"(
         this.select.selectedIndex = index;
     }
 
-    getDisplayValue (v)    { return this.options[this.toIndex(v)].text; }
+    getDisplayValue (v)    { return this.options[this.toIndex(v)].text; })"
+R"(
 
     static getCSS()
     {
@@ -733,8 +714,7 @@ R"(
         select option {
             background: var(--background);
             color: var(--foreground);
-        })"
-R"(
+        }
 
         .select-icon {
             position: absolute;
@@ -750,7 +730,8 @@ R"(
             -webkit-mask-repeat: no-repeat;
         }`;
     }
-}
+})"
+R"(
 
 //==============================================================================
 export class LabelledControlHolder  extends ParameterControlBase
@@ -779,8 +760,7 @@ export class LabelledControlHolder  extends ParameterControlBase
 
         const nameText = document.createElement ("div");
         nameText.classList.add ("labelled-control-name");
-        nameText.innerText = endpointInfo.annotation?.name || endpointInfo.name || endpointInfo.endpointID || "";)"
-R"(
+        nameText.innerText = endpointInfo.annotation?.name || endpointInfo.name || endpointInfo.endpointID || "";
 
         this.valueText = document.createElement ("div");
         this.valueText.classList.add ("labelled-control-value");
@@ -810,7 +790,8 @@ R"(
             vertical-align: top;
             text-align: left;
             padding: 0;
-        }
+        })"
+R"(
 
         .labelled-control-centered-control {
             position: relative;
@@ -846,8 +827,7 @@ R"(
             overflow: hidden;
             text-overflow: ellipsis;
             opacity: 0;
-        })"
-R"(
+        }
 
         .labelled-control:hover .labelled-control-name,
         .labelled-control:active .labelled-control-name {
@@ -879,7 +859,8 @@ export function createControl (patchConnection, endpointInfo)
         return new Knob (patchConnection, endpointInfo);
 
     return undefined;
-}
+})"
+R"(
 
 //==============================================================================
 export function createLabelledControl (patchConnection, endpointInfo)
@@ -1828,7 +1809,7 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21969) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21622) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 16318) },

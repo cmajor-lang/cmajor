@@ -398,15 +398,19 @@ export class Options  extends ParameterControlBase
         super.setEndpoint (patchConnection, endpointInfo);
 
         const optionList = endpointInfo.annotation.text.split ("|");
-        let min = 0, step = 1;
+        const stepCount = optionList.length > 0 ? optionList.length - 1 : 1;
+        let min = 0, max = stepCount, step = 1;
 
         if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
         {
             min = endpointInfo.annotation.min;
-            step = (endpointInfo.annotation.max - endpointInfo.annotation.min) / (optionList.length - 1);
+            max = endpointInfo.annotation.max;
+            step = (max - min) / stepCount;
         }
 
         this.innerHTML = "";
+        const normalise = value => (value - min) / (max - min);
+        this.toIndex = value => Math.min (stepCount, normalise (value) * optionList.length) | 0;
         this.options = optionList.map ((text, index) => ({ value: min + (step * index), text }));
 
         this.select = document.createElement ("select");
@@ -444,29 +448,6 @@ export class Options  extends ParameterControlBase
     {
         return endpointInfo.purpose === "parameter"
                 && endpointInfo.annotation?.text?.split?.("|").length > 1;
-    }
-
-    toIndex (value)
-    {
-        const binarySearch = (arr, toValue, target) =>
-        {
-            let low = 0;
-            let high = arr.length - 1;
-
-            while (low <= high)
-            {
-                const mid = low + ((high - low) >> 1);
-                const value = toValue (arr[mid]);
-
-                if (value < target) low = mid + 1;
-                else if (value > target) high = mid - 1;
-                else return mid;
-            }
-
-            return high;
-        };
-
-        return Math.max (0, binarySearch (this.options, v => v.value, value));
     }
 
     valueChanged (newValue)
