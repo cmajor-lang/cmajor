@@ -2693,7 +2693,7 @@ inline PatchParameter::PatchParameter (std::shared_ptr<Patch::LoadedPatch> p, co
 
         if (numStrings > 1)
         {
-            numSteps = (uint64_t) numStrings - 1u;
+            numSteps = static_cast<uint64_t> (numStrings);
 
             const auto hasUserDefinedRange = [](const auto& annotation)
             {
@@ -2703,7 +2703,7 @@ inline PatchParameter::PatchParameter (std::shared_ptr<Patch::LoadedPatch> p, co
             if (! hasUserDefinedRange (details.annotation))
             {
                 minValue = 0.0f;
-                maxValue = (float) numSteps;
+                maxValue = static_cast<float> (numStrings - 1u);
             }
         }
     }
