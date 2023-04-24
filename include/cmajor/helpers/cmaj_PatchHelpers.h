@@ -30,6 +30,8 @@
 #include "../API/cmaj_Endpoints.h"
 #include "../API/cmaj_ExternalVariables.h"
 
+#include <algorithm>
+
 namespace cmaj
 {
 
@@ -522,7 +524,7 @@ inline float PatchParameterProperties::snapAndConstrainValue (float newValue) co
     if (step > 0)
         newValue = std::round (newValue / step) * step;
 
-    return std::max (minValue, std::min (maxValue, newValue));
+    return std::clamp (newValue, minValue, maxValue);
 }
 
 inline std::string PatchParameterProperties::getValueAsString (float value) const
@@ -572,7 +574,7 @@ inline float PatchParameterProperties::getStringAsValue (std::string_view text) 
 inline float PatchParameterProperties::convertTo0to1 (float v) const
 {
     v = (v - minValue) / (maxValue - minValue);
-    return v < 0 ? 0 : (v > 1.0f ? 1.0f : v);
+    return std::clamp (v, 0.0f, 1.0f);
 }
 
 inline float PatchParameterProperties::convertFrom0to1 (float v) const
