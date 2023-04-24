@@ -731,7 +731,7 @@ private:
         juce::String getName (int maxLength) const override         { return patchParam == nullptr ? "unknown" : patchParam->properties.name.substr (0, (size_t) maxLength); }
         juce::String getLabel() const override                      { return patchParam == nullptr ? juce::String() : patchParam->properties.unit; }
         Category getCategory() const override                       { return Category::genericParameter; }
-        bool isDiscrete() const override                            { return patchParam != nullptr && patchParam->properties.step != 0; }
+        bool isDiscrete() const override                            { return patchParam != nullptr && patchParam->properties.numDiscreteOptions > 0; }
         bool isBoolean() const override                             { return patchParam != nullptr && patchParam->properties.boolean; }
         bool isAutomatable() const override                         { return patchParam == nullptr || patchParam->properties.automatable; }
         bool isMetaParameter() const override                       { return patchParam != nullptr && patchParam->properties.hidden; }

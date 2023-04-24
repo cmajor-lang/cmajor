@@ -127,6 +127,14 @@ struct PatchParameterProperties
     float convertFrom0to1 (float) const;
 
     static std::string parseFormatString (choc::text::UTF8Pointer, float value);
+
+private:
+    bool hasFormatString() const;
+    bool hasDiscreteTextOptions() const;
+    size_t toDiscreteOptionIndex (float newValue) const;
+    float toValueFromDiscreteOptionIndex (size_t) const;
+
+    uint64_t stepCount = 0;
 };
 
 
@@ -483,22 +491,13 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
     minValue = details.annotation["min"].getWithDefault<float> (0);
     maxValue = details.annotation["max"].getWithDefault<float> (1.0f);
     step     = details.annotation["step"].getWithDefault<float> (0);
-    numDiscreteOptions = 1000;
-
-    if (step > 0)
-        numDiscreteOptions = static_cast<uint64_t> ((maxValue - minValue) / step) + 1u;
-    else
-        step = (maxValue - minValue) / (float) numDiscreteOptions;
 
     if (auto text = details.annotation["text"].toString(); ! text.empty())
     {
         valueStrings = choc::text::splitString (choc::text::removeDoubleQuotes (std::string (text)), '|', false);
-        auto numStrings = valueStrings.size();
 
-        if (numStrings > 1)
+        if (hasDiscreteTextOptions())
         {
-            numDiscreteOptions = static_cast<uint64_t> (numStrings);
-
             const auto hasUserDefinedRange = [] (const auto& annotation)
             {
                 return annotation.hasObjectMember ("min") && annotation.hasObjectMember ("max");
@@ -507,7 +506,7 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
             if (! hasUserDefinedRange (details.annotation))
             {
                 minValue = 0.0f;
-                maxValue = static_cast<float> (numStrings - 1u);
+                maxValue = static_cast<float> (valueStrings.size() - 1u);
             }
         }
     }
@@ -517,10 +516,30 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
     boolean       = details.annotation["boolean"].getWithDefault<bool> (false);
     hidden        = details.annotation["hidden"].getWithDefault<bool> (false);
     rampFrames    = details.annotation["rampFrames"].getWithDefault<uint32_t> (0);
+
+    const auto calculateNumDiscreteOptions = [&details, this]() -> uint64_t
+    {
+        if (boolean)
+            return 2;
+
+        if (hasDiscreteTextOptions())
+            return valueStrings.size();
+
+        if (details.annotation["discrete"].getWithDefault<bool> (false))
+            if (step > 0)
+                return static_cast<uint64_t> ((maxValue - minValue) / step) + 1u;
+
+        return 0;
+    };
+    numDiscreteOptions = calculateNumDiscreteOptions();
+    stepCount = numDiscreteOptions > 0 ? numDiscreteOptions - 1 : 0;
 }
 
 inline float PatchParameterProperties::snapAndConstrainValue (float newValue) const
 {
+    if (numDiscreteOptions > 0)
+        return toValueFromDiscreteOptionIndex (toDiscreteOptionIndex (newValue));
+
     if (step > 0)
         newValue = std::round (newValue / step) * step;
 
@@ -529,38 +548,25 @@ inline float PatchParameterProperties::snapAndConstrainValue (float newValue) co
 
 inline std::string PatchParameterProperties::getValueAsString (float value) const
 {
-    if (valueStrings.empty())
-        return choc::text::floatToString (value);
+    value = snapAndConstrainValue (value);
 
-    auto numStrings = static_cast<int> (valueStrings.size());
-    int index = 0;
+    if (hasFormatString())
+        return parseFormatString (choc::text::UTF8Pointer (valueStrings.front().c_str()), value);
 
-    if (numStrings > 1)
-    {
-        auto value0to1 = (value - minValue) / (maxValue - minValue);
-        const auto stepCount = static_cast<float> (numStrings - 1);
-        index = static_cast<int> (std::min (stepCount, value0to1 * static_cast<float> (numStrings)));
-        index = std::max (0, std::min (numStrings - 1, index));
-    }
+    if (hasDiscreteTextOptions())
+        return valueStrings[toDiscreteOptionIndex (value)];
 
-    return parseFormatString (choc::text::UTF8Pointer (valueStrings[static_cast<size_t> (index)].c_str()), value);
+    return choc::text::floatToString (value);
 }
 
 inline float PatchParameterProperties::getStringAsValue (std::string_view text) const
 {
     auto target = std::string (choc::text::trim (text));
 
-    if (auto numStrings = valueStrings.size())
-    {
-        for (size_t i = 0; i < numStrings; ++i)
-        {
+    if (hasDiscreteTextOptions())
+        for (size_t i = 0; i < static_cast<size_t> (numDiscreteOptions); ++i)
             if (choc::text::toLowerCase (choc::text::trim (valueStrings[i])) == choc::text::toLowerCase (target))
-            {
-                auto index0to1 = static_cast<double> (i) / static_cast<double> (numStrings - 1);
-                return static_cast<float> (minValue + index0to1 * (maxValue - minValue));
-            }
-        }
-    }
+                return toValueFromDiscreteOptionIndex (i);
 
     try
     {
@@ -656,6 +662,27 @@ inline std::string PatchParameterProperties::parseFormatString (choc::text::UTF8
     }
 
     return result;
+}
+
+inline bool PatchParameterProperties::hasFormatString() const
+{
+    return valueStrings.size() == 1;
+}
+
+inline bool PatchParameterProperties::hasDiscreteTextOptions() const
+{
+    return valueStrings.size() > 1;
+}
+
+inline size_t PatchParameterProperties::toDiscreteOptionIndex (float value) const
+{
+    return std::min (static_cast<size_t> (convertTo0to1 (value) * numDiscreteOptions), static_cast<size_t> (stepCount));
+}
+
+inline float PatchParameterProperties::toValueFromDiscreteOptionIndex (size_t i) const
+{
+    auto index0to1 = static_cast<double> (i) / static_cast<double> (stepCount);
+    return convertFrom0to1 (static_cast<float> (index0to1));
 }
 
 } // namespace cmaj

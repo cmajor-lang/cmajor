@@ -429,7 +429,7 @@ R"(
     }
 
     valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
-    getDisplayValue (v)           { return `${v.toFixed (2)} ${this.endpointInfo.annotation?.unit ?? ""}`; }
+    getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); }
 
     static getCSS()
     {
@@ -597,6 +597,11 @@ R"(
     }
 }
 
+function toFloatDisplayValueWithUnit (v, endpointInfo)
+{
+    return `${v.toFixed (2)} ${endpointInfo.annotation?.unit ?? ""}`;
+}
+
 //==============================================================================
 export class Options  extends ParameterControlBase
 {
@@ -608,26 +613,62 @@ export class Options  extends ParameterControlBase
 
     setEndpoint (patchConnection, endpointInfo)
     {
-        super.setEndpoint (patchConnection, endpointInfo);
-
-        const optionList = endpointInfo.annotation.text.split ("|");
-        const stepCount = optionList.length > 0 ? optionList.length - 1 : 1;
-        let min = 0, max = stepCount, step = 1;)"
+        super.setEndpoint (patchConnection, endpointInfo);)"
 R"(
 
-        if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
+        const toValue = (min, step, index) => min + (step * index);
+        const toStepCount = count => count > 0 ? count - 1 : 1;
+
+        const { min, max, options } = (() =>
         {
-            min = endpointInfo.annotation.min;
-            max = endpointInfo.annotation.max;
-            step = (max - min) / stepCount;
-        }
+            if (hasTextOptions (endpointInfo))
+            {
+                const optionList = endpointInfo.annotation.text.split ("|");
+                const stepCount = toStepCount (optionList.length);
+                let min = 0, max = stepCount, step = 1;
+
+                if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
+                {
+                    min = endpointInfo.annotation.min;
+                    max = endpointInfo.annotation.max;
+                    step = (max - min) / stepCount;
+                }
+
+                const options = optionList.map ((text, index) => ({ value: toValue (min, step, index), text }));
+
+                return { min, max, options };
+            }
+
+            if (isExplicitlyDiscrete (endpointInfo))
+            {
+                const step = endpointInfo.annotation.step;
+
+                const min = endpointInfo.annotation?.min || 0;
+                const max = endpointInfo.annotation?.max || 1;
+
+                const numDiscreteOptions = (((max - min) / step) | 0) + 1;
+
+                const options = new Array (numDiscreteOptions);
+                for (let i = 0; i < numDiscreteOptions; ++i)
+                {
+                    const value = toValue (min, step, i);
+                    options[i] = { value, text: toFloatDisplayValueWithUnit (value, endpointInfo) };
+                }
+
+                return { min, max, options };
+            }
+        })();
+
+        this.options = options;
+
+        const stepCount = toStepCount (this.options.length);
+        const normalise = value => (value - min) / (max - min);
+        this.toIndex = value => Math.min (stepCount, normalise (value) * this.options.length) | 0;
 
         this.innerHTML = "";
-        const normalise = value => (value - min) / (max - min);
-        this.toIndex = value => Math.min (stepCount, normalise (value) * optionList.length) | 0;
-        this.options = optionList.map ((text, index) => ({ value: min + (step * index), text }));
 
-        this.select = document.createElement ("select");
+        this.select = document.createElement ("select");)"
+R"(
 
         for (const option of this.options)
         {
@@ -661,7 +702,7 @@ R"(
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter"
-                && endpointInfo.annotation?.text?.split?.("|").length > 1;
+                && (hasTextOptions (endpointInfo) || isExplicitlyDiscrete (endpointInfo));
     }
 
     valueChanged (newValue)
@@ -671,8 +712,7 @@ R"(
         this.select.selectedIndex = index;
     }
 
-    getDisplayValue (v)    { return this.options[this.toIndex(v)].text; })"
-R"(
+    getDisplayValue (v)    { return this.options[this.toIndex(v)].text; }
 
     static getCSS()
     {
@@ -699,7 +739,8 @@ R"(
             overflow: hidden;
             text-overflow: ellipsis;
 
-            padding: 0 1.5rem 0 0.6rem;
+            padding: 0 1.5rem 0 0.6rem;)"
+R"(
 
             outline: none;
             color: var(--foreground);
@@ -730,8 +771,17 @@ R"(
             -webkit-mask-repeat: no-repeat;
         }`;
     }
-})"
-R"(
+}
+
+function hasTextOptions (endpointInfo)
+{
+    return endpointInfo.annotation?.text?.split?.("|").length > 1
+}
+
+function isExplicitlyDiscrete (endpointInfo)
+{
+    return endpointInfo.annotation?.discrete && endpointInfo.annotation?.step > 0;
+}
 
 //==============================================================================
 export class LabelledControlHolder  extends ParameterControlBase
@@ -748,7 +798,8 @@ export class LabelledControlHolder  extends ParameterControlBase
         super.setEndpoint (patchConnection, endpointInfo);
 
         this.innerHTML = "";
-        this.className = "labelled-control";
+        this.className = "labelled-control";)"
+R"(
 
         const centeredControl = document.createElement ("div");
         centeredControl.className = "labelled-control-centered-control";
@@ -790,8 +841,7 @@ export class LabelledControlHolder  extends ParameterControlBase
             vertical-align: top;
             text-align: left;
             padding: 0;
-        })"
-R"(
+        }
 
         .labelled-control-centered-control {
             position: relative;
@@ -812,7 +862,8 @@ R"(
             font-size: var(--labelled-control-font-size);
             color: var(--labelled-control-font-color);
             cursor: default;
-        }
+        })"
+R"(
 
         .labelled-control-name {
             overflow: hidden;
@@ -859,8 +910,7 @@ export function createControl (patchConnection, endpointInfo)
         return new Knob (patchConnection, endpointInfo);
 
     return undefined;
-})"
-R"(
+}
 
 //==============================================================================
 export function createLabelledControl (patchConnection, endpointInfo)
@@ -1885,7 +1935,7 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 21622) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 23202) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18834) },

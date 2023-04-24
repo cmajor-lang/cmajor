@@ -111,7 +111,8 @@ The following properties can be added to the endpoint annotation in order to giv
     - `%0[digits]f` prints the parameter value with exactly the specified number of decimal places
     - `%+d` or `%+f` prints the number with a `+` or `-` sign before it
 
-    The `text` property can also contain a list of names separated by the pipe `|` character. In this mode, the names will be used as labels for the parameter values, and the host may choose to display them to the user in a drop-down menu or other list selector. For example `text: "low|med|high"` will map the strings "low", "med" and high to the value range 0, 1, 2. If a `max` range is specified then the values will be spread across the range, e.g. `max: 9` would map "low" to 0 -> 3, "med" to 3 -> 6, and "high" to 6 -> 9. If no `step` is provided, it will automatically be set based on the number of items.
+    The `text` property can also contain a list of names separated by the pipe `|` character. In this mode, the names will be used as labels for the parameter values, and the host may choose to display them to the user in a drop-down menu or other list selector. For example `text: "low|med|high"` will map the strings "low", "med" and high to the value range 0, 1, 2. If a `min` and `max` range is specified then the values will be spread across the range, e.g. `min: 0, max: 9` would map "low" to 0 -> 3, "med" to 3 -> 6, and "high" to 6 -> 9. The `step` property is ignored and values are snapped automatically based on the number of items.
+- `discrete` - if this flag is set, in addition to the `step` property, the parameter will behave similarly to the `text` property above, e.g. a discrete list of options
 
 ## External variable data
 

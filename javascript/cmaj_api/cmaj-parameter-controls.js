@@ -218,7 +218,7 @@ export class Knob  extends ParameterControlBase
     }
 
     valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
-    getDisplayValue (v)           { return `${v.toFixed (2)} ${this.endpointInfo.annotation?.unit ?? ""}`; }
+    getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); }
 
     static getCSS()
     {
@@ -384,6 +384,11 @@ export class Switch  extends ParameterControlBase
     }
 }
 
+function toFloatDisplayValueWithUnit (v, endpointInfo)
+{
+    return `${v.toFixed (2)} ${endpointInfo.annotation?.unit ?? ""}`;
+}
+
 //==============================================================================
 export class Options  extends ParameterControlBase
 {
@@ -397,21 +402,56 @@ export class Options  extends ParameterControlBase
     {
         super.setEndpoint (patchConnection, endpointInfo);
 
-        const optionList = endpointInfo.annotation.text.split ("|");
-        const stepCount = optionList.length > 0 ? optionList.length - 1 : 1;
-        let min = 0, max = stepCount, step = 1;
+        const toValue = (min, step, index) => min + (step * index);
+        const toStepCount = count => count > 0 ? count - 1 : 1;
 
-        if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
+        const { min, max, options } = (() =>
         {
-            min = endpointInfo.annotation.min;
-            max = endpointInfo.annotation.max;
-            step = (max - min) / stepCount;
-        }
+            if (hasTextOptions (endpointInfo))
+            {
+                const optionList = endpointInfo.annotation.text.split ("|");
+                const stepCount = toStepCount (optionList.length);
+                let min = 0, max = stepCount, step = 1;
+
+                if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
+                {
+                    min = endpointInfo.annotation.min;
+                    max = endpointInfo.annotation.max;
+                    step = (max - min) / stepCount;
+                }
+
+                const options = optionList.map ((text, index) => ({ value: toValue (min, step, index), text }));
+
+                return { min, max, options };
+            }
+
+            if (isExplicitlyDiscrete (endpointInfo))
+            {
+                const step = endpointInfo.annotation.step;
+
+                const min = endpointInfo.annotation?.min || 0;
+                const max = endpointInfo.annotation?.max || 1;
+
+                const numDiscreteOptions = (((max - min) / step) | 0) + 1;
+
+                const options = new Array (numDiscreteOptions);
+                for (let i = 0; i < numDiscreteOptions; ++i)
+                {
+                    const value = toValue (min, step, i);
+                    options[i] = { value, text: toFloatDisplayValueWithUnit (value, endpointInfo) };
+                }
+
+                return { min, max, options };
+            }
+        })();
+
+        this.options = options;
+
+        const stepCount = toStepCount (this.options.length);
+        const normalise = value => (value - min) / (max - min);
+        this.toIndex = value => Math.min (stepCount, normalise (value) * this.options.length) | 0;
 
         this.innerHTML = "";
-        const normalise = value => (value - min) / (max - min);
-        this.toIndex = value => Math.min (stepCount, normalise (value) * optionList.length) | 0;
-        this.options = optionList.map ((text, index) => ({ value: min + (step * index), text }));
 
         this.select = document.createElement ("select");
 
@@ -447,7 +487,7 @@ export class Options  extends ParameterControlBase
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter"
-                && endpointInfo.annotation?.text?.split?.("|").length > 1;
+                && (hasTextOptions (endpointInfo) || isExplicitlyDiscrete (endpointInfo));
     }
 
     valueChanged (newValue)
@@ -515,6 +555,16 @@ export class Options  extends ParameterControlBase
             -webkit-mask-repeat: no-repeat;
         }`;
     }
+}
+
+function hasTextOptions (endpointInfo)
+{
+    return endpointInfo.annotation?.text?.split?.("|").length > 1
+}
+
+function isExplicitlyDiscrete (endpointInfo)
+{
+    return endpointInfo.annotation?.discrete && endpointInfo.annotation?.step > 0;
 }
 
 //==============================================================================
