@@ -1923,14 +1923,12 @@ inline bool Patch::loadPatch (const LoadParams& params)
     if (buildThread != nullptr)
     {
         buildThread->startBuild (std::move (build));
-    }
-    else
-    {
-        build->build ([] {});
-        applyFinishedBuild (*build);
+        return true;
     }
 
-    return true;
+    build->build ([] {});
+    applyFinishedBuild (*build);
+    return isPlayable();
 }
 
 inline bool Patch::loadPatchFromFile (const std::string& patchFile)
