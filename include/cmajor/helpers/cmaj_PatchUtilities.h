@@ -102,6 +102,9 @@ struct PatchManifest
     /// chunks of external data removed.
     choc::value::Value getStrippedManifest() const;
 
+    /// Sets up the lambdas needed to read from a given file
+    void createFileReaderFunctions (const std::filesystem::path&);
+
 private:
     void addSource (const choc::value::ValueView&);
     void addView (const choc::value::ValueView&);
@@ -134,6 +137,9 @@ struct Patch
 
     /// Tries to load a patch from a file path
     bool loadPatchFromFile (const std::string& patchFilePath);
+
+    /// Tries to load a patch from a manifest
+    bool loadPatchFromManifest (PatchManifest&&);
 
     /// Triggers a rebuild of the current patch, which may be needed if the code
     /// or playback parameters change.
@@ -461,42 +467,52 @@ inline void PatchManifest::initialiseWithVirtualFile (std::string patchFileLocat
     reload();
 }
 
-inline void PatchManifest::initialiseWithFile (std::filesystem::path file)
+inline void PatchManifest::createFileReaderFunctions (const std::filesystem::path& file)
 {
+    manifestFile = file.filename().string();
+    name = file.filename().string();
+
     auto folder = file.parent_path();
 
-    const auto getFileAsPath = [folder] (const std::string& f) -> std::filesystem::path
+    const auto getFullPath = [folder] (const std::string& f) -> std::filesystem::path
     {
         return folder / std::filesystem::path (f).relative_path();
     };
 
-    initialiseWithVirtualFile (file.filename().string(),
-        [getFileAsPath] (const std::string& f) -> std::shared_ptr<std::istream>
+    createFileReader = [getFullPath] (const std::string& f) -> std::shared_ptr<std::istream>
+    {
+        try
         {
-            try
-            {
-                return std::make_shared<std::ifstream> (getFileAsPath (f), std::ios::binary | std::ios::in);
-            }
-            catch (...) {}
+            return std::make_shared<std::ifstream> (getFullPath (f), std::ios::binary | std::ios::in);
+        }
+        catch (...) {}
 
-            return {};
-        },
-        [getFileAsPath] (const std::string& f) -> std::string
-        {
-            return getFileAsPath (f).string();
-        },
-        [getFileAsPath] (const std::string& f) -> std::filesystem::file_time_type
-        {
-            try
-            {
-                return last_write_time (getFileAsPath (f));
-            }
-            catch (...) {}
+        return {};
+    };
 
-            return {};
-        },
-        [getFileAsPath] (const std::string& f) { return exists (getFileAsPath (f)); }
-    );
+    getFullPathForFile = [getFullPath] (const std::string& f) -> std::string
+    {
+        return getFullPath (f).string();
+    };
+
+    getFileModificationTime = [getFullPath] (const std::string& f) -> std::filesystem::file_time_type
+    {
+        try
+        {
+            return last_write_time (getFullPath (f));
+        }
+        catch (...) {}
+
+        return {};
+    };
+
+    fileExists = [getFullPath] (const std::string& f) { return exists (getFullPath (f)); };
+}
+
+inline void PatchManifest::initialiseWithFile (std::filesystem::path file)
+{
+    createFileReaderFunctions (std::move (file));
+    reload();
 }
 
 inline bool PatchManifest::reload()
@@ -1931,30 +1947,38 @@ inline bool Patch::loadPatch (const LoadParams& params)
     return isPlayable();
 }
 
-inline bool Patch::loadPatchFromFile (const std::string& patchFile)
+inline bool Patch::loadPatchFromManifest (PatchManifest&& m)
 {
     LoadParams params;
 
     try
     {
-        params.manifest.initialiseWithFile (patchFile);
+        params.manifest = std::move (m);
+        params.manifest.reload();
     }
     catch (const choc::json::ParseError& e)
     {
-        setErrorStatus (e.what(), patchFile, e.lineAndColumn, true);
+        setErrorStatus (e.what(), params.manifest.manifestFile, e.lineAndColumn, true);
         lastLoadParams = params;
         startCheckingForChanges();
         return false;
     }
     catch (const std::runtime_error& e)
     {
-        setErrorStatus (e.what(), patchFile, {}, true);
+        setErrorStatus (e.what(), params.manifest.manifestFile, {}, true);
         lastLoadParams = params;
         startCheckingForChanges();
         return false;
     }
 
     return loadPatch (params);
+}
+
+inline bool Patch::loadPatchFromFile (const std::string& patchFile)
+{
+    PatchManifest manifest;
+    manifest.createFileReaderFunctions (patchFile);
+    return loadPatchFromManifest (std::move (manifest));
 }
 
 inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, const std::string& target, const std::string& options)
@@ -2626,10 +2650,9 @@ inline bool Patch::handleClientMessage (const choc::value::ValueView& msg)
         if (type == "load_patch")
         {
             if (auto file = msg["file"].toString(); ! file.empty())
-                loadPatchFromFile (file);
-            else
-                unload();
+                return loadPatchFromFile (file);
 
+            unload();
             return true;
         }
 
