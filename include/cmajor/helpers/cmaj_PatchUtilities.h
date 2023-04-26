@@ -1149,6 +1149,8 @@ struct Patch::LoadedPatch
     std::vector<PatchParameterPtr> parameterList;
     std::unordered_map<std::string, PatchParameterPtr> parameterIDMap;
     std::function<void(const EndpointID&, float newValue)> handleParameterChange;
+
+    choc::threading::TaskThread outputEventThread;
     choc::threading::ThreadSafeFunctor<HandleOutputEventFn> handleOutputEvent;
 
     bool hasMIDIInputs = false, hasMIDIOutputs = false;
@@ -1384,6 +1386,30 @@ struct Patch::LoadedPatch
         }
     }
 
+    void startOutputEventThread()
+    {
+        outputEventThread.start (0, [this] { sendOutputEventMessages(); });
+    }
+
+    void outputEventsReady()
+    {
+        outputEventThread.trigger();
+    }
+
+    void sendOutputEventMessages()
+    {
+        performer->handlePendingOutputEvents ([this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& value)
+        {
+            choc::messageloop::postMessage ([handler = handleOutputEvent,
+                                             frame,
+                                             endpointID = std::string (endpointID),
+                                             value = addTypeToValueAsProperty (value)]
+                                            {
+                                                handler (frame, endpointID, value);
+                                            });
+        });
+    }
+
     cmaj::AudioMIDIPerformer& getPerformer()
     {
         CMAJ_ASSERT (performer != nullptr);
@@ -1502,16 +1528,8 @@ struct Patch::Build
 
             result->sampleRate = playbackParams.sampleRate;
 
-            performerBuilder->setEventOutputHandler ([p = result.get()] (uint64_t frame, std::string_view endpointID,
-                                                                         const choc::value::ValueView& value)
-            {
-                choc::messageloop::postMessage ([handler = p->handleOutputEvent,
-                                                frame, endpointID = std::string (endpointID),
-                                                value = addTypeToValueAsProperty (value)]
-                                                {
-                                                    handler (frame, endpointID, value);
-                                                });
-            });
+            if (performerBuilder->setEventOutputHandler ([p = result.get()] { p->outputEventsReady(); }))
+                result->startOutputEventThread();
 
             result->performer = performerBuilder->createPerformer();
 

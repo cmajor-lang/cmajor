@@ -30,7 +30,6 @@
 #include "../../choc/audio/choc_SampleBuffers.h"
 #include "../../choc/audio/choc_MIDI.h"
 #include "../../choc/audio/choc_AudioMIDIBlockDispatcher.h"
-#include "../../choc/threading/choc_TaskThread.h"
 
 #include "cmaj_EndpointTypeCoercion.h"
 
@@ -56,6 +55,9 @@ struct AudioMIDIPerformer
         virtual void process (const choc::buffer::InterleavedView<double>&) = 0;
     };
 
+    using OutputEventsReadyFn = std::function<void()>;
+    using OutputEventHandlerFn = std::function<void(uint64_t frame, std::string_view endpointID, const choc::value::ValueView&)>;
+
     //==============================================================================
     // To create an AudioMIDIPerformer, create a Builder object, set up its connections,
     // and then call Builder::createPerformer() to get the performer object.
@@ -76,11 +78,10 @@ struct AudioMIDIPerformer
         bool connectMIDIInputTo (const cmaj::EndpointDetails&);
         bool connectMIDIOutputTo (const cmaj::EndpointDetails&);
 
-        using OutputEventCallback = std::function<void (uint64_t frame,
-                                                        std::string_view endpointID,
-                                                        const choc::value::ValueView&)>;
-
-        bool setEventOutputHandler (OutputEventCallback);
+        /// Sets a callback function which will be called (on the realtime audio thread)
+        /// whenever some new output events have been queued. The function should trigger
+        /// a call to handlePendingOutputEvents() either synchronously or asynchronously.
+        bool setEventOutputHandler (OutputEventsReadyFn);
 
         /// Note that after creating the performer, this builder object can no longer
         /// be used - to create more performers, use new instances of the Builder
@@ -120,6 +121,10 @@ struct AudioMIDIPerformer
     /// Call this after processing ends, to clean up and release resources
     void playbackStopped();
 
+    /// Synchronously calls the given function with any pending output events.
+    /// It's safe to call this from any thread.
+    void handlePendingOutputEvents (OutputEventHandlerFn&&);
+
     cmaj::Engine engine;
     cmaj::Performer performer;
 
@@ -134,7 +139,7 @@ private:
     std::vector<std::pair<cmaj::EndpointHandle, std::string>> eventOutputHandles;
     std::unordered_map<std::string, EndpointHandle> inputEndpointHandles;
     choc::fifo::VariableSizeFIFO eventQueue, valueQueue, outputEventQueue;
-    Builder::OutputEventCallback outputEventCallback;
+    OutputEventsReadyFn outputEventsReadyHandler;
     std::vector<std::pair<choc::midi::ShortMessage, uint32_t>> midiOutputMessages;
     choc::buffer::InterleavingScratchBuffer<float> audioInputScratchBuffer;
     std::vector<uint8_t> audioOutputScratchSpace;
@@ -149,12 +154,9 @@ private:
 
     void allocateScratch();
     void dispatchMIDIOutputEvents (const choc::audio::AudioMIDIBlockDispatcher::Block&);
-    void dispatchOutgoingEventQueue();
     void moveOutputEventsToQueue();
-    bool moveOutputEventToQueue (EndpointHandle, uint32_t typeIndex, uint32_t frameOffset, const void*, uint32_t valueDataSize);
-
-    choc::threading::TaskThread outputEventDispatcher;
 };
+
 
 
 //==============================================================================
@@ -502,21 +504,20 @@ inline bool AudioMIDIPerformer::Builder::connectMIDIOutputTo (const cmaj::Endpoi
     return false;
 }
 
-inline bool AudioMIDIPerformer::Builder::setEventOutputHandler (OutputEventCallback callback)
+inline bool AudioMIDIPerformer::Builder::setEventOutputHandler (OutputEventsReadyFn h)
 {
     CMAJ_ASSERT (result->eventOutputHandles.empty()); // can only add a handler once!
-    result->outputEventCallback = std::move (callback);
+    result->outputEventsReadyHandler = std::move (h);
+
+    if (result->outputEventsReadyHandler == nullptr)
+        return false;
 
     for (const auto& endpointDetails : result->engine.getOutputEndpoints())
         if (endpointDetails.isEvent())
             if (auto endpointHandle = result->engine.getEndpointHandle (endpointDetails.endpointID))
                 result->eventOutputHandles.emplace_back (endpointHandle, endpointDetails.endpointID.toString());
 
-    if (! result->outputEventCallback || result->eventOutputHandles.empty())
-        return false;
-
-    result->outputEventDispatcher.start (0, [amp = result.get()] { amp->dispatchOutgoingEventQueue(); });
-    return true;
+    return ! result->eventOutputHandles.empty();
 }
 
 inline std::unique_ptr<AudioMIDIPerformer> AudioMIDIPerformer::Builder::createPerformer()
@@ -524,8 +525,6 @@ inline std::unique_ptr<AudioMIDIPerformer> AudioMIDIPerformer::Builder::createPe
     createOutputChannelClearAction();
     return std::move (result);
 }
-
-
 
 //==============================================================================
 inline AudioMIDIPerformer::AudioMIDIPerformer (cmaj::Engine e, uint32_t eventFIFOSize)
@@ -781,10 +780,8 @@ inline void AudioMIDIPerformer::dispatchMIDIOutputEvents (const choc::audio::Aud
     midiOutputMessages.clear();
 }
 
-inline void AudioMIDIPerformer::dispatchOutgoingEventQueue()
+inline void AudioMIDIPerformer::handlePendingOutputEvents (OutputEventHandlerFn&& handler)
 {
-    CMAJ_ASSERT (outputEventCallback != nullptr);
-
     outputEventQueue.popAllAvailable ([&] (const void* data, uint32_t size)
     {
         CMAJ_ASSERT (size > 12);
@@ -796,55 +793,50 @@ inline void AudioMIDIPerformer::dispatchOutgoingEventQueue()
         d += sizeof (typeIndex);
         auto frame = choc::memory::readNativeEndian<uint64_t> (d);
         d += sizeof (frame);
-
-        const auto endpointID = [&]() -> std::string
-        {
-            for (const auto& [eventOutputHandle, outputID] : eventOutputHandles)
-                if (eventOutputHandle == handle)
-                    return outputID;
-
-            return {};
-        }();
-
         auto end = static_cast<const uint8_t*> (data) + size;
         auto& value = endpointTypeCoercionHelpers.getViewForOutputData (handle, typeIndex, { d, end });
-        outputEventCallback (frame, endpointID, value);
+
+        for (const auto& [eventOutputHandle, endpointID] : eventOutputHandles)
+            if (eventOutputHandle == handle)
+                return handler (frame, endpointID, value);
     });
 }
 
 inline void AudioMIDIPerformer::moveOutputEventsToQueue()
 {
-    for (const auto& handle : eventOutputHandles)
+    if (outputEventsReadyHandler)
     {
-        performer.iterateOutputEvents (handle.first,
-                                        [this] (EndpointHandle h, uint32_t dataTypeIndex,
-                                                uint32_t frameOffset, const void* data, uint32_t size) -> bool
+        bool anyEvents = false;
+
+        for (const auto& handle : eventOutputHandles)
         {
-            return moveOutputEventToQueue (h, dataTypeIndex, frameOffset, data, size);
-        });
+            performer.iterateOutputEvents (handle.first,
+                                           [this, &anyEvents] (EndpointHandle h, uint32_t dataTypeIndex, uint32_t frameOffset,
+                                                               const void* valueData, uint32_t valueDataSize) -> bool
+            {
+                auto frame = numFramesProcessed + frameOffset;
+                auto totalSize = static_cast<uint32_t> (sizeof (h) + sizeof (dataTypeIndex) + sizeof (frame) + valueDataSize);
+
+                bool ok = outputEventQueue.push (totalSize, [=] (void* dest)
+                {
+                    auto d = static_cast<uint8_t*> (dest);
+                    choc::memory::writeNativeEndian (d, h);
+                    d += sizeof (h);
+                    choc::memory::writeNativeEndian (d, dataTypeIndex);
+                    d += sizeof (dataTypeIndex);
+                    choc::memory::writeNativeEndian (d, frame);
+                    d += sizeof (frame);
+                    std::memcpy (d, valueData, valueDataSize);
+                });
+
+                anyEvents = true;
+                return ok;
+            });
+        }
+
+        if (anyEvents)
+            outputEventsReadyHandler();
     }
-}
-
-inline bool AudioMIDIPerformer::moveOutputEventToQueue (EndpointHandle handle, uint32_t typeIndex,
-                                                        uint32_t frameOffset, const void* valueData, uint32_t valueDataSize)
-{
-    auto frame = numFramesProcessed + frameOffset;
-    auto totalSize = static_cast<uint32_t> (sizeof (handle) + sizeof (typeIndex) + sizeof (frame) + valueDataSize);
-
-    bool ok = outputEventQueue.push (totalSize, [=] (void* dest)
-    {
-        auto d = static_cast<uint8_t*> (dest);
-        choc::memory::writeNativeEndian (d, handle);
-        d += sizeof (handle);
-        choc::memory::writeNativeEndian (d, typeIndex);
-        d += sizeof (typeIndex);
-        choc::memory::writeNativeEndian (d, frame);
-        d += sizeof (frame);
-        std::memcpy (d, valueData, valueDataSize);
-    });
-
-    outputEventDispatcher.trigger();
-    return ok;
 }
 
 } // namespace cmaj
