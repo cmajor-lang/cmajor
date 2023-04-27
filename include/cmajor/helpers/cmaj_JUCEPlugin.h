@@ -148,7 +148,7 @@ public:
     int getNumPrograms() override                               { return 1; }
     int getCurrentProgram() override                            { return 0; }
     void setCurrentProgram (int) override                       {}
-    const juce::String getProgramName (int) override            { return {}; }
+    const juce::String getProgramName (int) override            { return "None"; }
     void changeProgramName (int, const juce::String&) override  {}
 
     //==============================================================================
