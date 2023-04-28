@@ -285,6 +285,8 @@ private:
     struct Build;
     struct BuildThread;
     struct FileChangeChecker;
+    struct AudioLevelMonitor;
+    struct EventMonitor;
     friend struct PatchView;
     friend struct PatchParameter;
 
@@ -446,111 +448,6 @@ private:
     SourceFilesWithTimes manifestFiles, cmajorFiles, assetFiles;
     choc::threading::ThreadSafeFunctor<std::function<void(FileChangeType)>> callback;
     choc::threading::TaskThread fileChangeCheckThread;
-};
-
-//==============================================================================
-struct AudioLevelMonitor
-{
-    AudioLevelMonitor (const EndpointDetails& endpoint)
-        : endpointID (endpoint.endpointID.toString())
-    {
-        auto numChannels = endpoint.getNumAudioChannels();
-        CMAJ_ASSERT (numChannels > 0);
-
-        levels.resize ({ numChannels, 2 });
-    }
-
-    template <typename ClientEventQueue, typename SampleType>
-    void process (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
-    {
-        if (auto framesPerChunk = granularity.load())
-        {
-            if (framesPerChunk == 1)
-            {
-                // TODO: handle full data stream
-
-            }
-            else
-            {
-                // handle min/max chunks
-                auto numFrames = data.getNumFrames();
-                auto numChannels = data.getNumChannels();
-
-                for (uint32_t i = 0; i < numFrames; ++i)
-                {
-                    for (uint32_t chan = 0; chan < numChannels; ++chan)
-                    {
-                        auto level = static_cast<float> (data.getSample (chan, i));
-                        auto minMax = levels.getIterator (chan);
-
-                        if (frameCount == 0)
-                        {
-                            *minMax = level;
-                            ++minMax;
-                            *minMax = level;
-                        }
-                        else
-                        {
-                            *minMax = std::min (level, *minMax);
-                            ++minMax;
-                            *minMax = std::max (level, *minMax);
-                        }
-                    }
-
-                    if (++frameCount == framesPerChunk)
-                    {
-                        frameCount = 0;
-                        queue.postAudioMinMaxUpdate (endpointID, levels);
-                    }
-                }
-            }
-        }
-    }
-
-    std::atomic<uint32_t> granularity { 0 };
-    std::string endpointID;
-
-private:
-    choc::buffer::ChannelArrayBuffer<float> levels;
-    uint32_t frameCount = 0;
-};
-
-//==============================================================================
-struct EventMonitor
-{
-    EventMonitor (const EndpointDetails& endpoint)
-        : endpointID (endpoint.endpointID.toString()),
-          isMIDI (endpoint.isMIDI())
-    {
-    }
-
-    template <typename ClientEventQueue>
-    bool process (ClientEventQueue& queue, const std::string& endpoint, const choc::value::ValueView& message)
-    {
-        if (activeListeners > 0 && endpointID == endpoint)
-        {
-            queue.postEndpointEvent (endpointID, message);
-            return true;
-        }
-
-        return false;
-    }
-
-    template <typename ClientEventQueue>
-    bool process (ClientEventQueue& queue, const std::string& endpoint, choc::midi::ShortMessage message)
-    {
-        if (isMIDI && activeListeners > 0 && endpointID == endpoint)
-        {
-            queue.postEndpointMIDI (endpointID, message);
-            return true;
-        }
-
-        return false;
-    }
-
-    std::string endpointID;
-    bool isMIDI;
-    std::atomic<int32_t> activeListeners { 0 };
 };
 
 //==============================================================================
@@ -843,6 +740,108 @@ struct Patch::ClientEventQueue
     CPUMonitor cpu;
 };
 
+//==============================================================================
+struct Patch::AudioLevelMonitor
+{
+    AudioLevelMonitor (const EndpointDetails& endpoint)
+        : endpointID (endpoint.endpointID.toString())
+    {
+        auto numChannels = endpoint.getNumAudioChannels();
+        CMAJ_ASSERT (numChannels > 0);
+
+        levels.resize ({ numChannels, 2 });
+    }
+
+    template <typename SampleType>
+    void process (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
+    {
+        if (auto framesPerChunk = granularity.load())
+        {
+            if (framesPerChunk == 1)
+            {
+                // TODO: handle full data stream
+
+            }
+            else
+            {
+                // handle min/max chunks
+                auto numFrames = data.getNumFrames();
+                auto numChannels = data.getNumChannels();
+
+                for (uint32_t i = 0; i < numFrames; ++i)
+                {
+                    for (uint32_t chan = 0; chan < numChannels; ++chan)
+                    {
+                        auto level = static_cast<float> (data.getSample (chan, i));
+                        auto minMax = levels.getIterator (chan);
+
+                        if (frameCount == 0)
+                        {
+                            *minMax = level;
+                            ++minMax;
+                            *minMax = level;
+                        }
+                        else
+                        {
+                            *minMax = std::min (level, *minMax);
+                            ++minMax;
+                            *minMax = std::max (level, *minMax);
+                        }
+                    }
+
+                    if (++frameCount == framesPerChunk)
+                    {
+                        frameCount = 0;
+                        queue.postAudioMinMaxUpdate (endpointID, levels);
+                    }
+                }
+            }
+        }
+    }
+
+    std::atomic<uint32_t> granularity { 0 };
+    std::string endpointID;
+
+private:
+    choc::buffer::ChannelArrayBuffer<float> levels;
+    uint32_t frameCount = 0;
+};
+
+//==============================================================================
+struct Patch::EventMonitor
+{
+    EventMonitor (const EndpointDetails& endpoint)
+        : endpointID (endpoint.endpointID.toString()),
+          isMIDI (endpoint.isMIDI())
+    {
+    }
+
+    bool process (ClientEventQueue& queue, const std::string& endpoint, const choc::value::ValueView& message)
+    {
+        if (activeListeners > 0 && endpointID == endpoint)
+        {
+            queue.postEndpointEvent (endpointID, message);
+            return true;
+        }
+
+        return false;
+    }
+
+    bool process (ClientEventQueue& queue, const std::string& endpoint, choc::midi::ShortMessage message)
+    {
+        if (isMIDI && activeListeners > 0 && endpointID == endpoint)
+        {
+            queue.postEndpointMIDI (endpointID, message);
+            return true;
+        }
+
+        return false;
+    }
+
+    std::string endpointID;
+    bool isMIDI;
+    std::atomic<int32_t> activeListeners { 0 };
+};
 
 //==============================================================================
 struct Patch::PatchRenderer
@@ -1066,68 +1065,17 @@ struct Patch::Build
         return renderer->errors;
     }
 
-    bool loadProgram (const std::function<void()>& checkForStopSignal)
+    void build (bool resolveExternals, bool link,
+                const std::function<void()>& checkForStopSignal)
     {
         try
         {
-            renderer = std::make_shared<PatchRenderer>();
-            renderer->manifest = std::move (loadParams.manifest);
+            if (! loadProgram (checkForStopSignal))
+                return;
 
-            cmaj::Program program;
+            if (! resolveExternals)
+                return;
 
-            if (renderer->manifest.needsToBuildSource)
-            {
-                for (auto& file : renderer->manifest.sourceFiles)
-                {
-                    checkForStopSignal();
-
-                    auto content = renderer->manifest.readFileContent (file);
-
-                    if (content.empty()
-                         && renderer->manifest.getFileModificationTime (file) == std::filesystem::file_time_type())
-                    {
-                        renderer->errors.add (cmaj::DiagnosticMessage::createError ("Could not open source file: " + file, {}));
-                        return false;
-                    }
-
-                    if (! program.parse (renderer->errors, renderer->manifest.getFullPathForFile (file), std::move (content)))
-                        return false;
-                }
-            }
-
-            engine.setBuildSettings (engine.getBuildSettings()
-                                       .setFrequency (playbackParams.sampleRate)
-                                       .setMaxBlockSize (playbackParams.blockSize));
-
-            checkForStopSignal();
-
-            if (engine.load (renderer->errors, program))
-            {
-                renderer->programDetails = engine.getProgramDetails();
-                renderer->inputEndpoints = engine.getInputEndpoints();
-                renderer->outputEndpoints = engine.getOutputEndpoints();
-                return true;
-            }
-        }
-        catch (const choc::json::ParseError& e)
-        {
-            renderer->errors.add (cmaj::DiagnosticMessage::createError (std::string (e.what()) + ":" + e.lineAndColumn.toString(), {}));
-        }
-        catch (const std::runtime_error& e)
-        {
-            renderer->errors.add (cmaj::DiagnosticMessage::createError (e.what(), {}));
-        }
-
-        return false;
-    }
-
-    void build (const std::function<void()>& checkForStopSignal, bool stopBeforeLink = false)
-    {
-        if (! loadProgram (checkForStopSignal))
-            return;
-
-        try
-        {
             checkForStopSignal();
 
             if (! resolvePatchExternals())
@@ -1143,7 +1091,7 @@ struct Patch::Build
             connectPerformerEndpoints();
             checkForStopSignal();
 
-            if (stopBeforeLink)
+            if (! link)
                 return;
 
             if (! engine.link (renderer->errors, cache.get()))
@@ -1155,9 +1103,14 @@ struct Patch::Build
                 renderer->startOutputEventThread();
 
             renderer->performer = performerBuilder->createPerformer();
+            CMAJ_ASSERT (renderer->performer);
 
             if (renderer->performer->prepareToStart())
+            {
                 renderer->framesLatency = renderer->performer->performer.getLatency();
+
+                applyParameterValues();
+            }
         }
         catch (const choc::json::ParseError& e)
         {
@@ -1167,6 +1120,59 @@ struct Patch::Build
         {
             renderer->errors.add (cmaj::DiagnosticMessage::createError (e.what(), {}));
         }
+    }
+
+private:
+    std::unique_ptr<AudioMIDIPerformer::Builder> performerBuilder;
+
+    AudioMIDIPerformer::Builder& getPerformerBuilder()
+    {
+        CMAJ_ASSERT (performerBuilder != nullptr);
+        return *performerBuilder;
+    }
+
+    bool loadProgram (const std::function<void()>& checkForStopSignal)
+    {
+        renderer = std::make_shared<PatchRenderer>();
+        renderer->manifest = std::move (loadParams.manifest);
+
+        cmaj::Program program;
+
+        if (renderer->manifest.needsToBuildSource)
+        {
+            for (auto& file : renderer->manifest.sourceFiles)
+            {
+                checkForStopSignal();
+
+                auto content = renderer->manifest.readFileContent (file);
+
+                if (content.empty()
+                        && renderer->manifest.getFileModificationTime (file) == std::filesystem::file_time_type())
+                {
+                    renderer->errors.add (cmaj::DiagnosticMessage::createError ("Could not open source file: " + file, {}));
+                    return false;
+                }
+
+                if (! program.parse (renderer->errors, renderer->manifest.getFullPathForFile (file), std::move (content)))
+                    return false;
+            }
+        }
+
+        engine.setBuildSettings (engine.getBuildSettings()
+                                    .setFrequency (playbackParams.sampleRate)
+                                    .setMaxBlockSize (playbackParams.blockSize));
+
+        checkForStopSignal();
+
+        if (engine.load (renderer->errors, program))
+        {
+            renderer->programDetails = engine.getProgramDetails();
+            renderer->inputEndpoints = engine.getInputEndpoints();
+            renderer->outputEndpoints = engine.getOutputEndpoints();
+            return true;
+        }
+
+        return false;
     }
 
     void applyParameterValues()
@@ -1180,15 +1186,6 @@ struct Patch::Build
             else
                 p.second->resetToDefaultValue (true);
         }
-    }
-
-private:
-    std::unique_ptr<AudioMIDIPerformer::Builder> performerBuilder;
-
-    AudioMIDIPerformer::Builder& getPerformerBuilder()
-    {
-        CMAJ_ASSERT (performerBuilder != nullptr);
-        return *performerBuilder;
     }
 
     bool resolvePatchExternals()
@@ -1215,17 +1212,6 @@ private:
     //==============================================================================
     void scanEndpointList()
     {
-        renderer->hasMIDIInputs = false;
-        renderer->hasMIDIOutputs = false;
-        renderer->numAudioInputChans = 0;
-        renderer->numAudioOutputChans = 0;
-        renderer->hasTimecodeInputs = false;
-
-        renderer->timeSigEventID = {};
-        renderer->tempoEventID = {};
-        renderer->transportStateEventID = {};
-        renderer->positionEventID = {};
-
         for (auto& e : renderer->inputEndpoints)
         {
             if (e.isParameter())
@@ -1332,7 +1318,7 @@ private:
                 }
 
                 getPerformerBuilder().connectAudioOutputTo (e, endpointChans, outChans,
-                                                           createDataListener (e.endpointID));
+                                                            createDataListener (e.endpointID));
             }
             else if (e.isMIDI())
             {
@@ -1412,7 +1398,7 @@ private:
 
             try
             {
-                build->build ([this]
+                build->build (true, true, [this]
                 {
                     if (cancelled)
                         throw Interrupted();
@@ -1502,7 +1488,7 @@ inline bool Patch::preload (const PatchManifest& m)
     if (auto engine = createEngine())
     {
         auto build = std::make_unique<Build> (*this, std::move (engine), params, currentPlaybackParams, cache);
-        build->loadProgram ([] {});
+        build->build (false, false, [] {});
         applyFinishedBuild (*build);
         return ! renderer->errors.hasErrors();
     }
@@ -1531,7 +1517,7 @@ inline bool Patch::loadPatch (const LoadParams& params)
         return true;
     }
 
-    build->build ([] {});
+    build->build (true, true, [] {});
     applyFinishedBuild (*build);
     return isPlayable();
 }
@@ -1578,7 +1564,7 @@ inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, cons
     CHOC_ASSERT (engine);
 
     auto build = std::make_unique<Build> (*this, std::move (engine), params, currentPlaybackParams, cache);
-    build->build ([] {}, true);
+    build->build (true, false, [] {});
 
     if (build->getMessageList().hasErrors())
     {
@@ -2045,7 +2031,6 @@ inline void Patch::applyFinishedBuild (Build& build)
     if (stopPlayback)
         stopPlayback();
 
-    build.applyParameterValues();
     renderer.reset();
     sendPatchChange();
     renderer = std::move (build.renderer);
