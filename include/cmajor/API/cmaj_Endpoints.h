@@ -208,6 +208,27 @@ bool doesObjectHaveTypeAsProperty (const choc::value::ValueView&);
 /// Applies a special "_type" property from an ojbect to its own type
 choc::value::Value convertTypePropertyToObjectType (const choc::value::ValueView&);
 
+//==============================================================================
+/// This helper class implements the logic for interpreting an EndpointDetails
+/// object as a set of more parameter-focued values.
+struct PatchParameterProperties
+{
+    PatchParameterProperties (const EndpointDetails&);
+
+    float minValue = 0, maxValue = 0, step = 0, defaultValue = 0;
+    std::string name, unit, group;
+    std::vector<std::string> valueStrings;
+    bool isEvent = false, boolean = false, automatable = false, hidden = false;
+    uint64_t numSteps = 0;
+    uint32_t rampFrames = 0;
+
+    float snapAndConstrainValue (float newValue) const;
+    float getStringAsValue (std::string_view text) const;
+    std::string getValueAsString (float value) const;
+
+    static std::string parseFormatString (choc::text::UTF8Pointer, float value);
+};
+
 
 
 //==============================================================================
@@ -558,6 +579,181 @@ inline std::string convertConsoleMessageToString (const choc::value::ValueView& 
     if (v.isBool())     return (v.get<bool>() ? "true" : "false");
 
     return choc::json::toString (v);
+}
+
+//==============================================================================
+inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails& details)
+{
+    isEvent = details.isEvent();
+
+    name     = details.annotation["name"].getWithDefault<std::string> (details.endpointID.toString());
+    unit     = details.annotation["unit"].toString();
+    group    = details.annotation["group"].toString();
+    minValue = details.annotation["min"].getWithDefault<float> (0);
+    maxValue = details.annotation["max"].getWithDefault<float> (1.0f);
+    step     = details.annotation["step"].getWithDefault<float> (0);
+    numSteps = 1000;
+
+    if (step > 0)
+        numSteps = static_cast<uint64_t> ((maxValue - minValue) / step) + 1u;
+    else
+        step = (maxValue - minValue) / (float) numSteps;
+
+    if (auto text = details.annotation["text"].toString(); ! text.empty())
+    {
+        valueStrings = choc::text::splitString (choc::text::removeDoubleQuotes (std::string (text)), '|', false);
+        auto numStrings = valueStrings.size();
+
+        if (numStrings > 1)
+        {
+            numSteps = static_cast<uint64_t> (numStrings);
+
+            const auto hasUserDefinedRange = [] (const auto& annotation)
+            {
+                return annotation.hasObjectMember ("min") && annotation.hasObjectMember ("max");
+            };
+
+            if (! hasUserDefinedRange (details.annotation))
+            {
+                minValue = 0.0f;
+                maxValue = static_cast<float> (numStrings - 1u);
+            }
+        }
+    }
+
+    defaultValue  = details.annotation["init"].getWithDefault<float> (minValue);
+    automatable   = details.annotation["automatable"].getWithDefault<bool> (true);
+    boolean       = details.annotation["boolean"].getWithDefault<bool> (false);
+    hidden        = details.annotation["hidden"].getWithDefault<bool> (false);
+    rampFrames    = details.annotation["rampFrames"].getWithDefault<uint32_t> (0);
+}
+
+inline float PatchParameterProperties::snapAndConstrainValue (float newValue) const
+{
+    if (step > 0)
+        newValue = std::round (newValue / step) * step;
+
+    return std::max (minValue, std::min (maxValue, newValue));
+}
+
+inline std::string PatchParameterProperties::getValueAsString (float value) const
+{
+    if (valueStrings.empty())
+        return choc::text::floatToString (value);
+
+    auto numStrings = static_cast<int> (valueStrings.size());
+    int index = 0;
+
+    if (numStrings > 1)
+    {
+        auto value0to1 = (value - minValue) / (maxValue - minValue);
+        const auto stepCount = static_cast<float> (numStrings - 1);
+        index = static_cast<int> (std::min (stepCount, value0to1 * numStrings));
+        index = std::max (0, std::min (numStrings - 1, index));
+    }
+
+    return parseFormatString (choc::text::UTF8Pointer (valueStrings[static_cast<size_t> (index)].c_str()), value);
+}
+
+inline float PatchParameterProperties::getStringAsValue (std::string_view text) const
+{
+    auto target = std::string (choc::text::trim (text));
+
+    if (auto numStrings = valueStrings.size())
+    {
+        for (size_t i = 0; i < numStrings; ++i)
+        {
+            if (choc::text::toLowerCase (choc::text::trim (valueStrings[i])) == choc::text::toLowerCase (target))
+            {
+                auto index0to1 = static_cast<double> (i) / static_cast<double> (numStrings - 1);
+                return static_cast<float> (minValue + index0to1 * (maxValue - minValue));
+            }
+        }
+    }
+
+    try
+    {
+        return static_cast<float> (std::stod (target));
+    }
+    catch (...) {}
+
+    return 0;
+}
+
+inline std::string PatchParameterProperties::parseFormatString (choc::text::UTF8Pointer text, float value)
+{
+    std::string result;
+
+    for (;;)
+    {
+        auto c = text.popFirstChar();
+
+        if (c == 0)
+            return result;
+
+        if (c == '%')
+        {
+            auto t = text;
+            char sign = 0;
+
+            if (value < 0)
+                sign = '-';
+
+            if (*t == '+')
+            {
+                ++t;
+
+                if (value >= 0)
+                    sign = '+';
+            }
+
+            value = std::abs (value);
+
+            uint32_t numDigits = 0;
+            bool isPadded = (*t == '0');
+
+            for (;;)
+            {
+                auto digit = static_cast<uint32_t> (*t) - (uint32_t) '0';
+
+                if (digit > 9)
+                    break;
+
+                numDigits = 10 * numDigits + digit;
+                ++t;
+            }
+
+            bool isInt   = (*t == 'd');
+            bool isFloat = (*t == 'f');
+
+            if (isInt || isFloat)
+            {
+                if (sign != 0)
+                    result += sign;
+
+                if (isInt)
+                {
+                    auto n = std::to_string (static_cast<int64_t> (value + 0.5f));
+
+                    if (isPadded && n.length() < numDigits)
+                        result += std::string (numDigits - n.length(), '0');
+
+                    result += n;
+                }
+                else
+                {
+                    result += choc::text::floatToString (value, numDigits != 0 ? (int) numDigits : -1, numDigits == 0);
+                }
+
+                text = ++t;
+                continue;
+            }
+        }
+
+        choc::text::appendUTF8 (result, c);
+    }
+
+    return result;
 }
 
 } // namespace cmaj
