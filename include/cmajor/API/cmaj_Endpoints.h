@@ -652,7 +652,7 @@ inline std::string PatchParameterProperties::getValueAsString (float value) cons
     {
         auto value0to1 = (value - minValue) / (maxValue - minValue);
         const auto stepCount = static_cast<float> (numStrings - 1);
-        index = static_cast<int> (std::min (stepCount, value0to1 * numStrings));
+        index = static_cast<int> (std::min (stepCount, value0to1 * static_cast<float> (numStrings)));
         index = std::max (0, std::min (numStrings - 1, index));
     }
 
