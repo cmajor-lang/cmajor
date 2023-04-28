@@ -21,16 +21,12 @@
 
 #pragma once
 
-#include "../../choc/text/choc_Files.h"
-#include "../../choc/audio/choc_AudioFileFormat_WAV.h"
-#include "../../choc/audio/choc_AudioFileFormat_Ogg.h"
-#include "../../choc/audio/choc_AudioFileFormat_FLAC.h"
-#include "../../choc/audio/choc_AudioFileFormat_MP3.h"
+#include "cmaj_PatchHelpers.h"
+#include "cmaj_AudioMIDIPerformer.h"
+
 #include "../../choc/gui/choc_MessageLoop.h"
 #include "../../choc/threading/choc_TaskThread.h"
 #include "../../choc/threading/choc_ThreadSafeFunctor.h"
-
-#include "cmaj_AudioMIDIPerformer.h"
 
 #include <mutex>
 #include <unordered_map>
@@ -42,73 +38,6 @@ namespace cmaj
 struct PatchView;
 struct PatchParameter;
 using PatchParameterPtr = std::shared_ptr<PatchParameter>;
-
-static constexpr int32_t currentPatchCompatibilityVersion = 1;
-
-//==============================================================================
-/// Parses and represents a .cmajorpatch file
-struct PatchManifest
-{
-    /// Initialises this manifest object by reading a given patch from the
-    /// filesystem.
-    /// This will throw an exception if there are errors parsing the file.
-    void initialiseWithFile (std::filesystem::path manifestFile);
-
-    /// Initialises this manifest object by reading a given patch using a set
-    /// of custom file-reading functors.
-    /// This will throw an exception if there are errors parsing the file.
-    void initialiseWithVirtualFile (std::string patchFileLocation,
-                                    std::function<std::shared_ptr<std::istream>(const std::string&)> createFileReader,
-                                    std::function<std::string(const std::string&)> getFullPathForFile,
-                                    std::function<std::filesystem::file_time_type(const std::string&)> getFileModificationTime,
-                                    std::function<bool(const std::string&)> fileExists);
-
-    /// Refreshes the content by re-reading from the original source
-    bool reload();
-
-    choc::value::Value manifest;
-    std::string manifestFile, ID, name, description, category, manufacturer, version;
-    bool isInstrument = false;
-    std::vector<std::string> sourceFiles;
-    choc::value::Value externals;
-    bool needsToBuildSource = true;
-
-    // These functors are used for all file access, as the patch may be loaded from
-    // all sorts of virtual filesystems
-    std::function<std::shared_ptr<std::istream>(const std::string&)> createFileReader;
-    std::function<std::string(const std::string&)> getFullPathForFile;
-    std::function<std::filesystem::file_time_type(const std::string&)> getFileModificationTime;
-    std::function<bool(const std::string&)> fileExists;
-    std::string readFileContent (const std::string& name) const;
-
-    /// Represents one of the GUI views in the patch
-    struct View
-    {
-        /// A (possibly relative) URL for the view content
-        std::string getSource() const;
-        uint32_t getWidth() const;
-        uint32_t getHeight() const;
-        bool isResizable() const;
-
-        choc::value::Value view = choc::value::createObject ({});
-    };
-
-    std::vector<View> views;
-
-    const View* findDefaultView() const;
-    const View* findGenericView() const;
-
-    /// Returns a copy of the manifest object that has large items like
-    /// chunks of external data removed.
-    choc::value::Value getStrippedManifest() const;
-
-    /// Sets up the lambdas needed to read from a given file
-    void createFileReaderFunctions (const std::filesystem::path&);
-
-private:
-    void addSource (const choc::value::ValueView&);
-    void addView (const choc::value::ValueView&);
-};
 
 //==============================================================================
 /// Acts as a high-level representation of a patch.
@@ -431,6 +360,7 @@ struct PatchView
 };
 
 
+
 //==============================================================================
 //        _        _           _  _
 //     __| |  ___ | |_   __ _ (_)| | ___
@@ -442,219 +372,6 @@ struct PatchView
 //
 //==============================================================================
 
-inline void PatchManifest::initialiseWithVirtualFile (std::string patchFileLocation,
-                                                      std::function<std::shared_ptr<std::istream>(const std::string&)> createFileReaderFn,
-                                                      std::function<std::string(const std::string&)> getFullPathForFileFn,
-                                                      std::function<std::filesystem::file_time_type(const std::string&)> getFileModificationTimeFn,
-                                                      std::function<bool(const std::string&)> fileExistsFn)
-{
-    createFileReader = std::move (createFileReaderFn);
-    getFullPathForFile = std::move (getFullPathForFileFn);
-    getFileModificationTime = std::move (getFileModificationTimeFn);
-    fileExists = std::move (fileExistsFn);
-    CHOC_ASSERT (createFileReader && getFullPathForFile && getFileModificationTime && fileExists);
-
-    manifestFile = std::move (patchFileLocation);
-    name = std::filesystem::path (manifestFile).filename().string();
-    reload();
-}
-
-inline void PatchManifest::createFileReaderFunctions (const std::filesystem::path& file)
-{
-    manifestFile = file.filename().string();
-    name = file.filename().string();
-
-    auto folder = file.parent_path();
-
-    const auto getFullPath = [folder] (const std::string& f) -> std::filesystem::path
-    {
-        return folder / std::filesystem::path (f).relative_path();
-    };
-
-    createFileReader = [getFullPath] (const std::string& f) -> std::shared_ptr<std::istream>
-    {
-        try
-        {
-            return std::make_shared<std::ifstream> (getFullPath (f), std::ios::binary | std::ios::in);
-        }
-        catch (...) {}
-
-        return {};
-    };
-
-    getFullPathForFile = [getFullPath] (const std::string& f) -> std::string
-    {
-        return getFullPath (f).string();
-    };
-
-    getFileModificationTime = [getFullPath] (const std::string& f) -> std::filesystem::file_time_type
-    {
-        try
-        {
-            return last_write_time (getFullPath (f));
-        }
-        catch (...) {}
-
-        return {};
-    };
-
-    fileExists = [getFullPath] (const std::string& f) { return exists (getFullPath (f)); };
-}
-
-inline void PatchManifest::initialiseWithFile (std::filesystem::path file)
-{
-    createFileReaderFunctions (std::move (file));
-    reload();
-}
-
-inline bool PatchManifest::reload()
-{
-    if (createFileReader == nullptr || manifestFile.empty())
-        return false;
-
-    manifest = choc::json::parse (readFileContent (manifestFile));
-
-    ID = {};
-    name = {};
-    description = {};
-    category = {};
-    manufacturer = {};
-    version = {};
-    isInstrument = false;
-    sourceFiles.clear();
-    externals = choc::value::Value();
-    views.clear();
-
-    if (manifest.isObject())
-    {
-        if (! manifest.hasObjectMember ("CmajorVersion"))
-            throw std::runtime_error ("The manifest must contain a property \"CmajorVersion\"");
-
-        if (auto cmajVersion = manifest["CmajorVersion"].getWithDefault<int64_t> (0);
-            cmajVersion < 1 || cmajVersion > currentPatchCompatibilityVersion)
-            throw std::runtime_error ("Incompatible value for CmajorVersion");
-
-        ID             = manifest["ID"].toString();
-        name           = manifest["name"].toString();
-        description    = manifest["description"].toString();
-        category       = manifest["category"].toString();
-        manufacturer   = manifest["manufacturer"].toString();
-        version        = manifest["version"].toString();
-        isInstrument   = manifest["isInstrument"].getWithDefault<bool> (false);
-        externals      = manifest["externals"];
-
-        if (ID.length() < 4)
-            throw std::runtime_error ("The manifest must contain a valid and globally unique \"ID\" property");
-
-        if (name.length() > 128 || name.empty())
-            throw std::runtime_error ("The manifest must contain a valid \"name\" property");
-
-        if (version.length() > 24 || version.empty())
-            throw std::runtime_error ("The manifest must contain a valid \"version\" property");
-
-        addSource (manifest["source"]);
-        addView (manifest["view"]);
-
-        return true;
-    }
-
-    throw std::runtime_error ("The patch file did not contain a valid JSON object");
-}
-
-inline std::string PatchManifest::readFileContent (const std::string& file) const
-{
-    if (auto stream = createFileReader (file))
-    {
-        try
-        {
-            stream->seekg (0, std::ios_base::end);
-            auto fileSize = stream->tellg();
-
-            if (fileSize > 0)
-            {
-                std::string result;
-                result.resize (static_cast<std::string::size_type> (fileSize));
-                stream->seekg (0);
-
-                if (stream->read (reinterpret_cast<std::ifstream::char_type*> (result.data()), static_cast<std::streamsize> (fileSize)))
-                    return result;
-            }
-        }
-        catch (...) {}
-    }
-
-    return {};
-}
-
-inline void PatchManifest::addSource (const choc::value::ValueView& source)
-{
-    if (source.isString())
-    {
-        sourceFiles.push_back (source.get<std::string>());
-    }
-    else if (source.isArray())
-    {
-        for (auto f : source)
-            addSource (f);
-    }
-}
-
-inline void PatchManifest::addView (const choc::value::ValueView& view)
-{
-    if (view.isArray())
-    {
-        for (auto e : view)
-            if (e.isObject())
-                addView (e);
-    }
-    else if (view.isObject())
-    {
-        views.push_back (View { choc::value::Value (view) });
-    }
-}
-
-inline const PatchManifest::View* PatchManifest::findDefaultView() const
-{
-    for (auto& view : views)
-        if (view.getSource().empty() || fileExists (view.getSource()))
-            return std::addressof (view);
-
-    return {};
-}
-
-inline const PatchManifest::View* PatchManifest::findGenericView() const
-{
-    for (auto& view : views)
-        if (view.getSource().empty())
-            return std::addressof (view);
-
-    return {};
-}
-
-inline choc::value::Value PatchManifest::getStrippedManifest() const
-{
-    if (! (manifest.isObject() && manifest.hasObjectMember ("externals")))
-        return manifest;
-
-    auto stripped = choc::value::createObject ({});
-
-    for (uint32_t i = 0; i < manifest.size(); ++i)
-    {
-        auto m = manifest.getObjectMemberAt (i);
-
-        if (std::string_view (m.name) != "externals")
-            stripped.addMember (m.name, m.value);
-    }
-
-    return stripped;
-}
-
-inline std::string PatchManifest::View::getSource() const  { return view["src"].toString(); }
-inline uint32_t PatchManifest::View::getWidth() const      { return view["width"].getWithDefault<uint32_t> (0); }
-inline uint32_t PatchManifest::View::getHeight() const     { return view["height"].getWithDefault<uint32_t> (0); }
-inline bool PatchManifest::View::isResizable() const       { return view["resizable"].getWithDefault<bool> (true); }
-
-//==============================================================================
 struct Patch::FileChangeChecker
 {
     FileChangeChecker (const PatchManifest& m, std::function<void(FileChangeType)>&& onChange)
@@ -1203,44 +920,27 @@ struct Patch::PatchRenderer
     }
 
     //==============================================================================
+    TimelineEventGenerator timelineEvents;
+
     void sendTimeSig (int numerator, int denominator)
     {
-        timeSigEvent.setMember ("numerator", numerator);
-        timeSigEvent.setMember ("denominator", denominator);
-        performer->postEvent (timeSigEventID, timeSigEvent);
+        performer->postEvent (timeSigEventID, timelineEvents.getTimeSigEvent (numerator, denominator));
     }
 
     void sendBPM (float bpm)
     {
-        tempoEvent.setMember ("bpm", bpm);
-        performer->postEvent (tempoEventID, tempoEvent);
+        performer->postEvent (tempoEventID, timelineEvents.getBPMEvent (bpm));
     }
 
     void sendTransportState (bool isRecording, bool isPlaying)
     {
-        transportState.setMember ("state", isRecording ? 2 : isPlaying ? 1 : 0);
-        performer->postEvent (transportStateEventID, transportState);
+        performer->postEvent (transportStateEventID, timelineEvents.getTransportStateEvent (isRecording, isPlaying));
     }
 
     void sendPosition (int64_t currentFrame, double ppq, double ppqBar)
     {
-        positionEvent.setMember ("currentFrame", currentFrame);
-        positionEvent.setMember ("currentQuarterNote", ppq);
-        positionEvent.setMember ("lastBarStartQuarterNote", ppqBar);
-        performer->postEvent (positionEventID, positionEvent);
+        performer->postEvent (positionEventID, timelineEvents.getPositionEvent (currentFrame, ppq, ppqBar));
     }
-
-    choc::value::Value timeSigEvent     { choc::value::createObject ("TimeSignature",
-                                                                     "numerator", 0,
-                                                                     "denominator", 0) };
-    choc::value::Value tempoEvent       { choc::value::createObject ("Tempo",
-                                                                     "bpm", 0.0f) };
-    choc::value::Value transportState   { choc::value::createObject ("TransportState",
-                                                                     "state", 0) };
-    choc::value::Value positionEvent    { choc::value::createObject ("Position",
-                                                                     "currentFrame", (int64_t) 0,
-                                                                     "currentQuarterNote", 0.0,
-                                                                     "lastBarStartQuarterNote", 0.0) };
 
     //==============================================================================
     PatchParameter* findParameter (const EndpointID& endpointID)
@@ -1315,61 +1015,6 @@ struct Patch::PatchRenderer
     }
 
     //==============================================================================
-    void process (const choc::buffer::ChannelArrayView<float> inputView,
-                  const choc::buffer::ChannelArrayView<float> outputView,
-                  const choc::midi::ShortMessage* midiInMessages,
-                  const int* midiInMessageTimes,
-                  uint32_t totalNumMIDIMessages,
-                  const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn& sendMidiOut)
-    {
-        if (totalNumMIDIMessages == 0)
-        {
-            performer->process (choc::audio::AudioMIDIBlockDispatcher::Block
-            {
-                inputView, outputView, {}, sendMidiOut
-            }, true);
-        }
-        else
-        {
-            auto remainingChunk = outputView.getFrameRange();
-            uint32_t midiStartIndex = 0;
-
-            while (remainingChunk.start < remainingChunk.end)
-            {
-                auto chunkToDo = remainingChunk;
-                auto endOfMIDI = midiStartIndex;
-
-                while (endOfMIDI < totalNumMIDIMessages)
-                {
-                    auto eventTime = midiInMessageTimes[endOfMIDI];
-
-                    if (eventTime > (int) chunkToDo.start)
-                    {
-                        chunkToDo.end = static_cast<choc::buffer::FrameCount> (eventTime);
-                        break;
-                    }
-
-                    ++endOfMIDI;
-                }
-
-                performer->process (choc::audio::AudioMIDIBlockDispatcher::Block
-                {
-                    inputView.getFrameRange (chunkToDo),
-                    outputView.getFrameRange (chunkToDo),
-                    choc::span<const choc::midi::ShortMessage> (midiInMessages + midiStartIndex,
-                                                                midiInMessages + endOfMIDI),
-                    [&] (uint32_t frame, choc::midi::ShortMessage m)
-                    {
-                        sendMidiOut (chunkToDo.start + frame, m);
-                    }
-                }, true);
-
-                remainingChunk.start = chunkToDo.end;
-                midiStartIndex = endOfMIDI;
-            }
-        }
-    }
-
     void startOutputEventThread()
     {
         outputEventThread.start (0, [this] { sendOutputEventMessages(); });
@@ -1560,69 +1205,11 @@ private:
         {
             auto value = renderer->manifest.externals[ev.name];
 
-            if (! engine.setExternalVariable (ev.name.c_str(), replaceStringsWithAudioData (value, ev.annotation)))
+            if (! engine.setExternalVariable (ev.name.c_str(), replaceFilenameStringsWithAudioData (renderer->manifest, value, ev.annotation)))
                 return false;
         }
 
         return true;
-    }
-
-    choc::value::Value replaceStringsWithAudioData (const choc::value::ValueView& v,
-                                                    const choc::value::ValueView& annotation)
-    {
-        if (v.isVoid())
-            return {};
-
-        if (v.isString())
-        {
-            try
-            {
-                auto s = v.get<std::string>();
-
-                if (auto reader = renderer->manifest.createFileReader (s))
-                {
-                    choc::value::Value audioFileContent;
-
-                    choc::audio::AudioFileFormatList formats;
-                    formats.addFormat<choc::audio::OggAudioFileFormat<false>>();
-                    formats.addFormat<choc::audio::MP3AudioFileFormat>();
-                    formats.addFormat<choc::audio::FLACAudioFileFormat<false>>();
-                    formats.addFormat<choc::audio::WAVAudioFileFormat<true>>();
-
-                    auto error = cmaj::readAudioFileAsValue (audioFileContent, formats, reader, annotation);
-
-                    if (error.empty())
-                        return audioFileContent;
-                }
-            }
-            catch (...)
-            {}
-        }
-
-        if (v.isArray())
-        {
-            auto copy = choc::value::createEmptyArray();
-
-            for (auto element : v)
-                copy.addArrayElement (replaceStringsWithAudioData (element, annotation));
-
-            return copy;
-        }
-
-        if (v.isObject())
-        {
-            auto copy = choc::value::createObject ({});
-
-            for (uint32_t i = 0; i < v.size(); ++i)
-            {
-                auto m = v.getObjectMemberAt (i);
-                copy.setMember (m.name, replaceStringsWithAudioData (m.value, annotation));
-            }
-
-            return copy;
-        }
-
-        return choc::value::Value (v);
     }
 
     //==============================================================================
@@ -2226,11 +1813,10 @@ inline void Patch::process (float* const* audioChannels, uint32_t numFrames,
                             const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn& handleMIDIOut)
 {
     beginChunkedProcess();
-
-    renderer->process (choc::buffer::createChannelArrayView (audioChannels, currentPlaybackParams.numInputChannels, numFrames),
-                       choc::buffer::createChannelArrayView (audioChannels, currentPlaybackParams.numOutputChannels, numFrames),
-                       midiMessages.data(), midiMessageTimes.data(), static_cast<uint32_t> (midiMessages.size()), handleMIDIOut);
-
+    renderer->performer->processWithTimeStampedMIDI (choc::buffer::createChannelArrayView (audioChannels, currentPlaybackParams.numInputChannels, numFrames),
+                                                     choc::buffer::createChannelArrayView (audioChannels, currentPlaybackParams.numOutputChannels, numFrames),
+                                                     midiMessages.data(), midiMessageTimes.data(), static_cast<uint32_t> (midiMessages.size()),
+                                                     handleMIDIOut, true);
     midiMessages.clear();
     midiMessageTimes.clear();
     endChunkedProcess();

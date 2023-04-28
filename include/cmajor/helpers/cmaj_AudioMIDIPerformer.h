@@ -118,6 +118,16 @@ struct AudioMIDIPerformer
     /// aren't in use. If false, it will add the output to whatever is already in the buffer.
     bool process (const choc::audio::AudioMIDIBlockDispatcher::Block&, bool replaceOutput);
 
+    /// This version of process will automatically chop up a set of MIDI events with frame
+    /// times into sub-blocks, and process each chunk separately
+    bool processWithTimeStampedMIDI (const choc::buffer::ChannelArrayView<const float> audioInput,
+                                     const choc::buffer::ChannelArrayView<float> audioOutput,
+                                     const choc::midi::ShortMessage* midiInMessages,
+                                     const int* midiInMessageTimes,
+                                     uint32_t totalNumMIDIMessages,
+                                     const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn& sendMidiOut,
+                                     bool replaceOutput);
+
     /// Call this after processing ends, to clean up and release resources
     void playbackStopped();
 
@@ -743,6 +753,57 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
     catch (...)
     {
         std::cerr << "Unknown exception thrown in audio process callback" << std::endl;
+    }
+
+    return false;
+}
+
+inline bool AudioMIDIPerformer::processWithTimeStampedMIDI (const choc::buffer::ChannelArrayView<const float> audioInput,
+                                                            const choc::buffer::ChannelArrayView<float> audioOutput,
+                                                            const choc::midi::ShortMessage* midiInMessages,
+                                                            const int* midiInMessageTimes,
+                                                            uint32_t totalNumMIDIMessages,
+                                                            const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn& sendMidiOut,
+                                                            bool replaceOutput)
+{
+    if (totalNumMIDIMessages == 0)
+        return process (choc::audio::AudioMIDIBlockDispatcher::Block { audioInput, audioOutput, {}, sendMidiOut }, replaceOutput);
+
+    auto remainingChunk = audioOutput.getFrameRange();
+    uint32_t midiStartIndex = 0;
+
+    while (remainingChunk.start < remainingChunk.end)
+    {
+        auto chunkToDo = remainingChunk;
+        auto endOfMIDI = midiStartIndex;
+
+        while (endOfMIDI < totalNumMIDIMessages)
+        {
+            auto eventTime = midiInMessageTimes[endOfMIDI];
+
+            if (eventTime > (int) chunkToDo.start)
+            {
+                chunkToDo.end = static_cast<choc::buffer::FrameCount> (eventTime);
+                break;
+            }
+
+            ++endOfMIDI;
+        }
+
+        if (! process (choc::audio::AudioMIDIBlockDispatcher::Block {
+                           audioInput.getFrameRange (chunkToDo),
+                           audioOutput.getFrameRange (chunkToDo),
+                           choc::span<const choc::midi::ShortMessage> (midiInMessages + midiStartIndex,
+                                                                       midiInMessages + endOfMIDI),
+                           [&] (uint32_t frame, choc::midi::ShortMessage m)
+                           {
+                               sendMidiOut (chunkToDo.start + frame, m);
+                           }
+                       }, replaceOutput))
+            return false;
+
+        remainingChunk.start = chunkToDo.end;
+        midiStartIndex = endOfMIDI;
     }
 
     return false;
