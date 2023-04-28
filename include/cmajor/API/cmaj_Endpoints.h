@@ -223,8 +223,12 @@ struct PatchParameterProperties
     uint32_t rampFrames = 0;
 
     float snapAndConstrainValue (float newValue) const;
+
     float getStringAsValue (std::string_view text) const;
     std::string getValueAsString (float value) const;
+
+    float convertTo0to1 (float) const;
+    float convertFrom0to1 (float) const;
 
     static std::string parseFormatString (choc::text::UTF8Pointer, float value);
 };
@@ -678,6 +682,17 @@ inline float PatchParameterProperties::getStringAsValue (std::string_view text) 
     catch (...) {}
 
     return 0;
+}
+
+inline float PatchParameterProperties::convertTo0to1 (float v) const
+{
+    v = (v - minValue) / (maxValue - minValue);
+    return v < 0 ? 0 : (v > 1.0f ? 1.0f : v);
+}
+
+inline float PatchParameterProperties::convertFrom0to1 (float v) const
+{
+    return minValue + (maxValue - minValue) * v;
 }
 
 inline std::string PatchParameterProperties::parseFormatString (choc::text::UTF8Pointer text, float value)

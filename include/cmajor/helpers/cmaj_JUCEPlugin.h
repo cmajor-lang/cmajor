@@ -703,7 +703,7 @@ private:
 
             patchParam->valueChanged = [this] (float v)
             {
-                sendValueChangedMessageToListeners (convertTo0to1 (v));
+                sendValueChangedMessageToListeners (patchParam->properties.convertTo0to1 (v));
             };
 
             patchParam->gestureStart = [this] { beginChangeGesture(); };
@@ -728,61 +728,51 @@ private:
         }
 
         juce::String getParameterID() const override                { return paramID; }
-        juce::String getName (int maxLength) const override         { return patchParam == nullptr ? "unknown" : patchParam->name.substr (0, (size_t) maxLength); }
-        juce::String getLabel() const override                      { return patchParam == nullptr ? juce::String() : patchParam->unit; }
+        juce::String getName (int maxLength) const override         { return patchParam == nullptr ? "unknown" : patchParam->properties.name.substr (0, (size_t) maxLength); }
+        juce::String getLabel() const override                      { return patchParam == nullptr ? juce::String() : patchParam->properties.unit; }
         Category getCategory() const override                       { return Category::genericParameter; }
-        bool isDiscrete() const override                            { return patchParam != nullptr && patchParam->step != 0; }
-        bool isBoolean() const override                             { return patchParam != nullptr && patchParam->boolean; }
-        bool isAutomatable() const override                         { return patchParam == nullptr || patchParam->automatable; }
-        bool isMetaParameter() const override                       { return patchParam != nullptr && patchParam->hidden; }
+        bool isDiscrete() const override                            { return patchParam != nullptr && patchParam->properties.step != 0; }
+        bool isBoolean() const override                             { return patchParam != nullptr && patchParam->properties.boolean; }
+        bool isAutomatable() const override                         { return patchParam == nullptr || patchParam->properties.automatable; }
+        bool isMetaParameter() const override                       { return patchParam != nullptr && patchParam->properties.hidden; }
 
         juce::StringArray getAllValueStrings() const override
         {
             juce::StringArray result;
 
             if (patchParam != nullptr)
-                for (auto& s : patchParam->valueStrings)
+                for (auto& s : patchParam->properties.valueStrings)
                     result.add (s);
 
             return result;
         }
 
-        float getDefaultValue() const override       { return patchParam != nullptr ? convertTo0to1 (patchParam->defaultValue) : 0.0f; }
-        float getValue() const override              { return patchParam != nullptr ? convertTo0to1 (patchParam->currentValue) : 0.0f; }
-        void setValue (float newValue) override      { if (patchParam != nullptr) patchParam->setValue (convertFrom0to1 (newValue), false); }
+        float getDefaultValue() const override       { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->properties.defaultValue) : 0.0f; }
+        float getValue() const override              { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->currentValue) : 0.0f; }
+        void setValue (float newValue) override      { if (patchParam != nullptr) patchParam->setValue (patchParam->properties.convertFrom0to1 (newValue), false); }
 
         juce::String getText (float v, int length) const override
         {
             if (patchParam == nullptr)
                 return "0";
 
-            juce::String result = patchParam->getValueAsString (convertFrom0to1 (v));
+            juce::String result = patchParam->properties.getValueAsString (patchParam->properties.convertFrom0to1 (v));
             return length > 0 ? result.substring (0, length) : result;
         }
 
         float getValueForText (const juce::String& text) const override
         {
-            return patchParam != nullptr ? convertTo0to1 (patchParam->getStringAsValue (text.toStdString()))
+            return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->properties.getStringAsValue (text.toStdString()))
                                          : 0.0f;
         }
 
         int getNumSteps() const override
         {
             if (patchParam != nullptr)
-                if (auto steps = patchParam->numSteps)
+                if (auto steps = patchParam->properties.numSteps)
                     return static_cast<int> (steps);
 
             return AudioProcessor::getDefaultNumParameterSteps();
-        }
-
-        float convertTo0to1 (float v) const
-        {
-            return juce::jlimit (0.0f, 1.0f, (v - patchParam->minValue) / (patchParam->maxValue - patchParam->minValue));
-        }
-
-        float convertFrom0to1 (float v) const
-        {
-            return patchParam->minValue + (patchParam->maxValue - patchParam->minValue) * v;
         }
 
         PatchParameterPtr patchParam;
@@ -803,8 +793,8 @@ private:
                     auto newParam = std::make_unique<Parameter> (param->endpointID.toString());
                     auto rawParam = newParam.get();
 
-                    if (! param->group.empty())
-                        getOrCreateGroup (tree, {}, param->group).addChild (std::move (newParam));
+                    if (! param->properties.group.empty())
+                        getOrCreateGroup (tree, {}, param->properties.group).addChild (std::move (newParam));
                     else
                         tree.addChild (std::move (newParam));
 
