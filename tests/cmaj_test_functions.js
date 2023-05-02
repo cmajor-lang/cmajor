@@ -461,6 +461,7 @@ function testCompile (testLink, options)
     let testSection = getCurrentTestSection();
     let timingInfo = {};
     let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
+    let error;
 
     if (isError (engine))
     {
@@ -477,12 +478,15 @@ function testCompile (testLink, options)
     for (let i = 0; i < outputs.length; ++i)
         engine.getEndpointHandle (outputs[i].endpointID);
 
-    let error = engine.link();
-
-    if (isError (error))
+    if (testLink)
     {
-        testSection.reportFail (error);
-        return;
+        error = engine.link();
+
+        if (isError (error))
+        {
+            testSection.reportFail (error);
+            return;
+        }
     }
 
     engine.unload();
@@ -494,12 +498,15 @@ function testCompile (testLink, options)
         return;
     }
 
-    error = engine.link();
-
-    if (isError (error))
+    if (testLink)
     {
-        testSection.reportFail (error);
-        return;
+        error = engine.link();
+
+        if (isError (error))
+        {
+            testSection.reportFail (error);
+            return;
+        }
     }
 
     testSection.reportSuccess();
