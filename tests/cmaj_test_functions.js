@@ -459,47 +459,50 @@ function testCompile (testLink, options)
         testLink = true;
 
     let testSection = getCurrentTestSection();
-    let sourceToCompile = testSection.source + testSection.globalSource;
-    let program = new Program();
-    let error = program.parse (sourceToCompile);
+    let timingInfo = {};
+    let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
 
-    if (! isError (error))
+    if (isError (engine))
     {
-        let engine = createEngine (options);
-        updateBuildSettings (engine, 44100, 1024, true, options);
-        error = engine.load (program);
-
-        if (! isError (error))
-        {
-            let inputs = engine.getInputEndpoints();
-            let outputs = engine.getOutputEndpoints();
-
-            for (let i = 0; i < inputs.length; i++)
-                engine.getEndpointHandle (inputs[i].endpointID);
-
-            for (let i = 0; i < outputs.length; ++i)
-                engine.getEndpointHandle (outputs[i].endpointID);
-        }
-
-        if (testLink && ! isError (error))
-            error = engine.link();
-
-        if (! isError (error))
-        {
-            // now we'll load and link all over again as a test of using
-            // the same program object more than once.
-            engine.unload();
-            error = engine.load (program);
-
-            if (testLink && ! isError (error))
-                error = engine.link();
-        }
+        testSection.reportFail (engine);
+        return;
     }
 
-    if (! isError (error))
-        testSection.reportSuccess();
-    else
+    let inputs = engine.getInputEndpoints();
+    let outputs = engine.getOutputEndpoints();
+
+    for (let i = 0; i < inputs.length; i++)
+        engine.getEndpointHandle (inputs[i].endpointID);
+
+    for (let i = 0; i < outputs.length; ++i)
+        engine.getEndpointHandle (outputs[i].endpointID);
+
+    let error = engine.link();
+
+    if (isError (error))
+    {
         testSection.reportFail (error);
+        return;
+    }
+
+    engine.unload();
+    error = buildEngineWithLoadedProgram (testSection, options, timingInfo, engine);
+
+    if (isError (error))
+    {
+        testSection.reportFail (error);
+        return;
+    }
+
+    error = engine.link();
+
+    if (isError (error))
+    {
+        testSection.reportFail (error);
+        return;
+    }
+
+    testSection.reportSuccess();
 }
 
 //==============================================================================
@@ -619,7 +622,6 @@ function performanceTest (options)
     }
 
     let timingInfo = {};
-
     let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
 
     if (isError (engine))
@@ -1109,9 +1111,14 @@ function runScript (options)
 // The remainder of this file just consists of helper functions used by the code above
 //
 
-function buildEngineWithLoadedProgram (testSection, options, timingInfo)
+function buildEngineWithLoadedProgram (testSection, options, timingInfo, engine)
 {
-    let engine = createEngine (options);
+    if (options == undefined)
+        options = {};
+
+    if (engine == undefined)
+        engine = createEngine (options);
+
     updateBuildSettings (engine, options.frequency, options.blockSize, false, options);
 
     let program;
@@ -1157,7 +1164,7 @@ function buildEngineWithLoadedProgram (testSection, options, timingInfo)
             let externalData = testSection.readEventData (externalFilename);
 
             if (isError (externalData))
-                return { severity: "error", message: "Failed to read external data " + externalFilename };
+                return engine;
 
             for (let i = 0; i < externals.length; i++)
             {
