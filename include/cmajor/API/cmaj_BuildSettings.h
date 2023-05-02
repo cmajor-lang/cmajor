@@ -32,6 +32,7 @@ struct BuildSettings
 {
     BuildSettings() = default;
 
+    double       getMaxFrequency() const                   { return getWithRangeCheck (maxFrequencyMember, 1.0, 1000000.0, defaultMaxFrequency); }
     double       getFrequency() const                      { return getWithRangeCheck (frequencyMember, 1.0, 1000000.0, 0.0); }
     uint32_t     getMaxBlockSize() const                   { return getWithRangeCheck (maxBlockSizeMember, 1u, 8192u, defaultMaxBlockSize); }
     uint64_t     getMaxStateSize() const                   { return getWithRangeCheck (maxStateSizeMember, static_cast<uint64_t> (8192), static_cast<uint64_t> (1024 * 1024 * 1024 + 1), defaultMaxStateSize); }
@@ -44,6 +45,7 @@ struct BuildSettings
     bool         isDebugFlagSet() const                    { return getWithDefault (debugMember, false); }
     bool         shouldUseFastMaths() const                { return getOptimisationLevel() >= 4; }
 
+    BuildSettings& setMaxFrequency (double f)              { setProperty (maxFrequencyMember, f); return *this; }
     BuildSettings& setFrequency (double f)                 { setProperty (frequencyMember, f); return *this; }
     BuildSettings& setMaxBlockSize (uint32_t size)         { setProperty (maxBlockSizeMember, static_cast<int32_t> (size)); return *this; }
     BuildSettings& setMaxStateSize (uint64_t size)         { setProperty (maxStateSizeMember, static_cast<int32_t> (size)); return *this; }
@@ -102,6 +104,7 @@ struct BuildSettings
         }
     }
 
+    static constexpr double   defaultMaxFrequency    = 192000.0;
     static constexpr uint64_t defaultMaxStateSize    = 20 * 1024 * 1024;
     static constexpr uint64_t defaultMaxStackSize    = 5 * 1024 * 1024;
     static constexpr uint32_t defaultEventBufferSize = 32;
@@ -110,6 +113,7 @@ struct BuildSettings
 private:
     choc::value::Value settings;
 
+    static constexpr auto maxFrequencyMember       = "maxFrequency";
     static constexpr auto frequencyMember          = "frequency";
     static constexpr auto maxBlockSizeMember       = "maxBlockSize";
     static constexpr auto maxStateSizeMember       = "maxStateSize";

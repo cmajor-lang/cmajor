@@ -604,8 +604,8 @@ function testConsole (expectedConsoleMsg, options)
     measuring and reporting its performance.
 
     e.g.
-    ## performanceTest ({ sampleRate:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:100000 })
-    ## performanceTest ({ sampleRate:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:100000, patch: "testPatch.cmajorpatch" })
+    ## performanceTest ({ frequency:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:100000 })
+    ## performanceTest ({ frequency:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:100000, patch: "testPatch.cmajorpatch" })
 */
 
 function performanceTest (options)
@@ -688,7 +688,7 @@ function performanceTest (options)
 
         let runtime = performer.calculateRenderPerformance (blockSize, options.samplesToRender);
         let framesPerSec = options.samplesToRender / runtime;
-        let utilisation = 100.0 * options.sampleRate / framesPerSec;
+        let utilisation = 100.0 * options.frequency / framesPerSec;
 
         testSection.logMessage ("Block size " + blockSize + ", runtime " + runtime + ", frames/sec = "
                                  + framesPerSec.toFixed(0) + " utilisation = " + utilisation.toFixed (2));
@@ -861,7 +861,7 @@ function runScript (options)
         outputEndpoints[i].handle = engine.getEndpointHandle (outputEndpoints[i].endpointID);
 
         if (outputEndpoints[i].endpointType == "stream")
-            outputEndpoints[i].frames = { "sampleRate": options.sampleRate, "frameCount": 0, "data": []};
+            outputEndpoints[i].frames = { "sampleRate": options.frequency, "frameCount": 0, "data": []};
         else if (outputEndpoints[i].endpointType == "value")
             outputEndpoints[i].values = [];
         else if (outputEndpoints[i].endpointType == "event")
@@ -1112,7 +1112,7 @@ function runScript (options)
 function buildEngineWithLoadedProgram (testSection, options, timingInfo)
 {
     let engine = createEngine (options);
-    updateBuildSettings (engine, options.sampleRate, options.blockSize, false, options);
+    updateBuildSettings (engine, options.frequency, options.blockSize, false, options);
 
     let program;
 
@@ -1191,13 +1191,14 @@ function updateBuildSettings (engine, defaultFrequency, defaultBlockSize, ignore
 {
     let buildSettings = engine.getBuildSettings();
 
-    buildSettings.frequency = defaultFrequency;
-    buildSettings.maxBlockSize = defaultBlockSize;
+    buildSettings.frequency      = defaultFrequency;
+    buildSettings.maxBlockSize   = defaultBlockSize;
     buildSettings.ignoreWarnings = ignoreWarnings;
 
     if (options)
     {
-        if (options.sampleRate !== undefined)         buildSettings.sampleRate = options.sampleRate;
+        if (options.maxFrequency !== undefined)       buildSettings.maxFrequency = options.maxFrequency;
+        if (options.frequency !== undefined)          buildSettings.frequency = options.frequency;
         if (options.blockSize !== undefined)          buildSettings.blockSize = options.blockSize;
         if (options.eventBufferSize !== undefined)    buildSettings.eventBufferSize = options.eventBufferSize;
         if (options.maxStateSize !== undefined)       buildSettings.maxStateSize = options.maxStateSize;

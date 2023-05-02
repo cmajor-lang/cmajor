@@ -8,7 +8,7 @@
 //                                           ,88
 //                                        888P"
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"stream" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"stream" })
 
 processor Source
 {
@@ -56,7 +56,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"stream" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"stream" })
 
 processor Source
 {
@@ -103,7 +103,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"stream" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"stream" })
 
 processor Source
 {
@@ -130,7 +130,7 @@ graph test [[ main ]]
 }
 
 
-## runScript ({ sampleRate:44100, blockSize:1, samplesToRender:20, subDir:"value" })
+## runScript ({ frequency:44100, blockSize:1, samplesToRender:20, subDir:"value" })
 
 processor Source
 {
@@ -189,7 +189,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:1, samplesToRender:20, subDir:"value" })
+## runScript ({ frequency:44100, blockSize:1, samplesToRender:20, subDir:"value" })
 
 processor Source
 {
@@ -226,7 +226,7 @@ graph test [[ main ]]
 }
 
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"event" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"event" })
 
 processor EventDelay (using EventType, int delayLength, int bufferSize)
 {
@@ -302,7 +302,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"event" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"event" })
 
 processor Source
 {
@@ -329,7 +329,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"multipleEventTypes" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"multipleEventTypes" })
 
 processor EventDelay (using EventType, int delayLength, int bufferSize)
 {
@@ -409,7 +409,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"multipleEventTypes" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"multipleEventTypes" })
 
 processor Source
 {
@@ -438,7 +438,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"multipleEventTypes" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"multipleEventTypes" })
 
 processor Source
 {
@@ -536,7 +536,7 @@ processor EventDelay (int delayLength, int bufferSize)
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"eventThrough" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"eventThrough" })
 
 processor EventHandler
 {
@@ -563,7 +563,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"eventThrough" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"eventThrough" })
 
 processor EventHandler
 {
@@ -590,7 +590,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"feedback" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"feedback" })
 
 processor StreamFeedback [[ main ]]
 {
@@ -614,7 +614,7 @@ processor StreamFeedback [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:100, subDir:"feedback" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:100, subDir:"feedback" })
 
 graph StreamFeedback [[ main ]]
 {
@@ -645,7 +645,7 @@ processor FixedGain
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:1, samplesToRender:100, subDir:"valueFeedback" })
+## runScript ({ frequency:44100, blockSize:1, samplesToRender:100, subDir:"valueFeedback" })
 
 processor ValueFeedback [[ main ]]
 {
@@ -668,7 +668,7 @@ processor ValueFeedback [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:1, samplesToRender:100, subDir:"valueFeedback" })
+## runScript ({ frequency:44100, blockSize:1, samplesToRender:100, subDir:"valueFeedback" })
 
 graph ValueFeeback [[ main ]]
 {

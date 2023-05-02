@@ -8,7 +8,7 @@
 //                                           ,88
 //                                        888P"
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"onepole" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"onepole" })
 
 graph test
 {
@@ -30,7 +30,7 @@ graph test
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"svf" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"svf" })
 
 graph test
 {
@@ -54,7 +54,7 @@ graph test
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"multimode" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"multimode" })
 
 graph test
 {
@@ -77,7 +77,7 @@ graph test
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"multimode" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"multimode" })
 
 graph test
 {
@@ -98,7 +98,7 @@ graph test
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"dc" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"dc" })
 
 processor offset
 {
@@ -129,7 +129,7 @@ graph test [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"butterworth" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"butterworth" })
 
 processor WideNoise (int channels)
 {
@@ -178,7 +178,7 @@ graph filters [[ main ]]
 
 
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"crossover" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"crossover" })
 
 graph filters [[ main ]]
 {
@@ -195,7 +195,7 @@ graph filters [[ main ]]
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"simper" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"simper" })
 
 graph filters [[ main ]]
 {
@@ -257,7 +257,7 @@ processor WideNoise (using FrameType, int channels)
     }
 }
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"composed" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"composed" })
 
 graph filter [[ main ]]
 {
@@ -274,7 +274,7 @@ graph filter [[ main ]]
 }
 
 
-## runScript ({ sampleRate:44100, blockSize:32, samplesToRender:1000, subDir:"composed" })
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"composed" })
 
 processor filter [[ main ]]
 {

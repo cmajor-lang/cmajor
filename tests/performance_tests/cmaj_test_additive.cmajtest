@@ -8,7 +8,7 @@
 //                                           ,88
 //                                        888P"
 
-## performanceTest ({ sampleRate:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:16384 })
+## performanceTest ({ frequency:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:16384 })
 
 graph AdditiveSynth  [[ main ]]
 {
