@@ -115,7 +115,7 @@ struct PatchParameterProperties
     std::string name, unit, group;
     std::vector<std::string> valueStrings;
     bool isEvent = false, boolean = false, automatable = false, hidden = false;
-    uint64_t numSteps = 0;
+    uint64_t numDiscreteOptions = 0;
     uint32_t rampFrames = 0;
 
     float snapAndConstrainValue (float newValue) const;
@@ -483,12 +483,12 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
     minValue = details.annotation["min"].getWithDefault<float> (0);
     maxValue = details.annotation["max"].getWithDefault<float> (1.0f);
     step     = details.annotation["step"].getWithDefault<float> (0);
-    numSteps = 1000;
+    numDiscreteOptions = 1000;
 
     if (step > 0)
-        numSteps = static_cast<uint64_t> ((maxValue - minValue) / step) + 1u;
+        numDiscreteOptions = static_cast<uint64_t> ((maxValue - minValue) / step) + 1u;
     else
-        step = (maxValue - minValue) / (float) numSteps;
+        step = (maxValue - minValue) / (float) numDiscreteOptions;
 
     if (auto text = details.annotation["text"].toString(); ! text.empty())
     {
@@ -497,7 +497,7 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
 
         if (numStrings > 1)
         {
-            numSteps = static_cast<uint64_t> (numStrings);
+            numDiscreteOptions = static_cast<uint64_t> (numStrings);
 
             const auto hasUserDefinedRange = [] (const auto& annotation)
             {

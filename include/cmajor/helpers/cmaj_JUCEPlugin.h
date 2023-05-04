@@ -769,7 +769,7 @@ private:
         int getNumSteps() const override
         {
             if (patchParam != nullptr)
-                if (auto steps = patchParam->properties.numSteps)
+                if (auto steps = patchParam->properties.numDiscreteOptions)
                     return static_cast<int> (steps);
 
             return AudioProcessor::getDefaultNumParameterSteps();
