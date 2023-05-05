@@ -347,12 +347,12 @@ inline Engine::CodeGenOutput Engine::generateCode (const std::string& targetType
 {
     struct Callback
     {
-        static void handleResult (void* context, const char* code, const char* mainClassName, const char* messages)
+        static void handleResult (void* context, const char* code, size_t codeSize, const char* mainClassName, const char* messages)
         {
             auto& o = *static_cast<CodeGenOutput*> (context);
 
-            if (code != nullptr)
-                o.generatedCode = code;
+            if (codeSize > 0)
+                o.generatedCode = std::string (code, codeSize);
 
             if (messages != nullptr)
                 o.messages = cmaj::DiagnosticMessageList::fromJSONString (messages);

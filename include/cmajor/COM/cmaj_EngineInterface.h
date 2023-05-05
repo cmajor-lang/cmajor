@@ -117,6 +117,7 @@ struct EngineInterface   : public choc::com::Object
     //==============================================================================
     using HandleCodeGenOutput = void(*)(void* context,
                                         const char* generatedCode,
+                                        size_t generatedCodeSize,
                                         const char* mainClassName,
                                         const char* messageListJSON);
 
