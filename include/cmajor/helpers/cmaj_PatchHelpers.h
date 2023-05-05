@@ -519,7 +519,7 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
 
     const auto calculateNumDiscreteOptions = [&details, this]() -> uint64_t
     {
-        if (boolean)
+        if (this->boolean)
             return 2;
 
         if (hasDiscreteTextOptions())
