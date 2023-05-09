@@ -59,14 +59,17 @@ struct Performer
     void setBlockSize (uint32_t numFramesForNextBlock);
 
     /// Provides a block of frames to an input stream endpoint.
-    /// Before a call to advance(), this function has to be called for each stream input, to provide
-    /// it with a chunk of data to use in advance(). The number of frames provided is expected to be
-    /// the same as the size set by the last call to setBlockSize().
+    /// This function must only be called on the rendering thread, as part of the preparations for
+    /// a call to advance().
+    /// You should call this function for each input stream endpoint, to provide the chunk of data that
+    /// it will use in the next advance() call. The number of frames provided must be the same as the
+    /// size set by the last call to setBlockSize().
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// It should only be called once before each advance() call.
     void setInputFrames (EndpointHandle, const void* frameData, uint32_t numFrames);
 
     /// Provides a block of frames to an input stream endpoint.
+    /// This is a helper function for calling the other setInputFrames() method with an audio buffer.
     /// NB: to avoid overhead in the realtime audio thread, this doesn't perform any kind of
     /// sanity-checking to make sure that the format of data provided matches the endpoint,
     /// so it's up to the caller to make sure you get it right!
@@ -74,9 +77,11 @@ struct Performer
     void setInputFrames (EndpointHandle, const choc::buffer::InterleavedView<SampleType>&);
 
     /// Sets the current value for a latching input value endpoint.
-    /// Before calling advance(), this can optionally be called for a value input to change its value.
+    /// This function must only be called on the rendering thread, as part of the preparations for
+    /// a call to advance().
+    /// For an input value endpoint, if you call this function before advance(), it changes the value of
+    /// that endpoint (and it'll keep that value until you change it again).
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
-    /// It should only be called once for each stream within the same advance call.
     /// The value provided can either be:
     ///   - A choc::value::ValueView (with a type that exactly matches the endpoint type)
     ///   - A raw void* that points to data chunk in a choc::value::ValueView format
@@ -87,9 +92,11 @@ struct Performer
     void setInputValue (EndpointHandle, const ValueType& newValue, uint32_t numFramesToReachValue);
 
     /// Adds an event to the queue for an input event endpoint.
-    /// Before calling advance(), this can be called (multiple times if needed) to queue-up a sequence of
-    /// events which will all be invoked (in the order they were added) on the first frame of the block
-    /// when advance() is called.
+    /// This function must only be called on the rendering thread, as part of the preparations for
+    /// a call to advance().
+    /// It can be called multiple times if needed to dispatch a sequence of event handler callbacks.
+    /// Depending on the back-end implementation, these may either be invoked synchronously during this
+    /// call, or they may be queued and invoked at the start of the next advance() call.
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// If the endpoint is an event that supports multiple types, the typeIndex selects the one to use
     /// (just set it to 0 for endpoints with only one type).
@@ -103,6 +110,7 @@ struct Performer
     void addInputEvent (EndpointHandle, uint32_t typeIndex, const ValueType& eventValue);
 
     /// Copies-out the frame data from an output stream endpoint.
+    /// This function must only be called on the rendering thread, after a call to advance().
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// After calling advance(), this can be called to retrieve the frame data for the given endpoint.
     /// The pointer provided will have a chunk of choc::value::ValueView data written to it, whose type
@@ -110,6 +118,7 @@ struct Performer
     void copyOutputFrames (EndpointHandle, void* dest, uint32_t numFramesToCopy) const;
 
     /// Copies the last block of samples from a stream endpoint to a sample buffer.
+    /// This is a helper function to make it easier to invoke copyOutputFrames() with an audio buffer.
     /// NB: to avoid overhead in the realtime audio thread, this doesn't perform any kind of
     /// sanity-checking to make sure that you're asking for the correct format of data,
     /// so it's up to the caller to make sure you get it right!
@@ -117,6 +126,7 @@ struct Performer
     void copyOutputFrames (EndpointHandle, const choc::buffer::InterleavedView<SampleType>& destBuffer) const;
 
     /// Copies the last block of samples from a stream endpoint to a sample buffer.
+    /// This is a helper function to make it easier to invoke copyOutputFrames() with an audio buffer.
     /// NB: to avoid overhead in the realtime audio thread, this doesn't perform any kind of
     /// sanity-checking to make sure that you're asking for the correct format of data,
     /// so it's up to the caller to make sure you get it right!
@@ -124,6 +134,7 @@ struct Performer
     void copyOutputFrames (EndpointHandle, choc::buffer::InterleavedBuffer<SampleType>& destBuffer) const;
 
     /// Copies-out the data for the current value of an output value endpoint.
+    /// This function must only be called on the rendering thread, after a call to advance().
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// After calling advance(), this can be called to retrieve the value data for the given endpoint.
     /// The pointer provided will have a chunk of choc::value::ValueView data written to it, whose type
@@ -132,6 +143,7 @@ struct Performer
     void copyOutputValue (EndpointHandle, void* dest) const;
 
     /// Iterates the events that were pushed into an output event stream during the last advance() call.
+    /// This function must only be called on the rendering thread, after a call to advance().
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// After calling advance(), this can be called to fetch events that were sent to the given endpoint.
     ///
