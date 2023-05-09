@@ -3,10 +3,15 @@
     "ID":               "dev.cmajor.examples.TimelineTester",
     "version":          "0.1",
     "name":             "TimelineTester",
-    "description":      "A patch that catches incoming timeline events and outputs them for logging",
+    "description":      "A patch that catches incoming timeline events and displays them on its UI",
     "category":         "effect",
     "manufacturer":     "Sound Stacks Ltd",
     "isInstrument":     false,
 
-    "source":           [ "TimelineTester.cmajor" ]
+    "source":           [ "TimelineTester.cmajor" ],
+
+    "view":             { "src": "Timeline_UI.js",
+                          "width": 500,
+                          "height": 250,
+                          "resizable": true }
 }

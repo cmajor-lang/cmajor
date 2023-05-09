@@ -155,11 +155,11 @@ private:
     choc::value::Value tempoEvent       { choc::value::createObject ("Tempo",
                                                                      "bpm", 0.0f) };
     choc::value::Value transportState   { choc::value::createObject ("TransportState",
-                                                                     "state", 0) };
+                                                                     "flags", 0) };
     choc::value::Value positionEvent    { choc::value::createObject ("Position",
-                                                                     "currentFrame", (int64_t) 0,
-                                                                     "currentQuarterNote", 0.0,
-                                                                     "lastBarStartQuarterNote", 0.0) };
+                                                                     "frameIndex", (int64_t) 0,
+                                                                     "quarterNote", 0.0,
+                                                                     "barStartQuarterNote", 0.0) };
 };
 
 //==============================================================================
@@ -407,15 +407,15 @@ inline choc::value::Value& TimelineEventGenerator::getBPMEvent (float bpm)
 
 inline choc::value::Value& TimelineEventGenerator::getTransportStateEvent (bool isRecording, bool isPlaying)
 {
-    transportState.setMember ("state", isRecording ? 2 : isPlaying ? 1 : 0);
+    transportState.setMember ("flags", isRecording ? 2 : isPlaying ? 1 : 0);
     return transportState;
 }
 
 inline choc::value::Value& TimelineEventGenerator::getPositionEvent (int64_t currentFrame, double ppq, double ppqBar)
 {
-    positionEvent.setMember ("currentFrame", currentFrame);
-    positionEvent.setMember ("currentQuarterNote", ppq);
-    positionEvent.setMember ("lastBarStartQuarterNote", ppqBar);
+    positionEvent.setMember ("frameIndex", currentFrame);
+    positionEvent.setMember ("quarterNote", ppq);
+    positionEvent.setMember ("barStartQuarterNote", ppqBar);
     return positionEvent;
 }
 

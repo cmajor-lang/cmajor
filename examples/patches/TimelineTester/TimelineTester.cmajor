@@ -26,33 +26,29 @@ processor TimelineTester
 
     output
     {
-        event int numeratorOut, denominatorOut;
-        event float tempoOut;
-        event int stateOut;
-        event int64 currentFrameOut;
-        event float64 currentQuarterNoteOut, lastBarStartQuarterNoteOut;
+        event std::timeline::TimeSignature     timeSigOut;
+        event std::timeline::Tempo             tempoOut;
+        event std::timeline::TransportState    transportStateOut;
+        event std::timeline::Position          positionOut;
     }
 
     event timeSigIn (std::timeline::TimeSignature t)
     {
-        numeratorOut <- t.numerator;
-        denominatorOut <- t.denominator;
+        timeSigOut <- t;
     }
 
     event tempoIn (std::timeline::Tempo t)
     {
-        tempoOut <- t.bpm;
+        tempoOut <- t;
     }
 
     event transportStateIn (std::timeline::TransportState t)
     {
-        stateOut <- t.flags;
+        transportStateOut <- t;
     }
 
     event positionIn (std::timeline::Position p)
     {
-        currentFrameOut <- p.frameIndex;
-        currentQuarterNoteOut <- p.quarterNote;
-        lastBarStartQuarterNoteOut <- p.barStartQuarterNote;
+        positionOut <- p;
     }
 }
