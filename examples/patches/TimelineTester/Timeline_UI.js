@@ -72,7 +72,7 @@ class TimelineView extends HTMLElement
     }
 }
 
-window.customElements.define ("demo-patch-view", TimelineView);
+window.customElements.define ("timeline-patch-view", TimelineView);
 
 export default function createPatchView (patchConnection)
 {

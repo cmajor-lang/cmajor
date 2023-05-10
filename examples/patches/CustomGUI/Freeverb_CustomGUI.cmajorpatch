@@ -11,7 +11,7 @@
     "source":           "Freeverb_CustomGUI.cmajor",
 
     "view":             {
-                            "src": "web_ui/index.js",
+                            "src": "demo_ui/index.js",
                             "width": 500,
                             "height": 250,
                             "resizable": false
