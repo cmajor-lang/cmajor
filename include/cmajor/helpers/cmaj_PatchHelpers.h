@@ -411,11 +411,11 @@ inline choc::value::Value& TimelineEventGenerator::getTransportStateEvent (bool 
     return transportState;
 }
 
-inline choc::value::Value& TimelineEventGenerator::getPositionEvent (int64_t currentFrame, double ppq, double ppqBar)
+inline choc::value::Value& TimelineEventGenerator::getPositionEvent (int64_t currentFrame, double quarterNote, double barStartQuarterNote)
 {
     positionEvent.setMember ("frameIndex", currentFrame);
-    positionEvent.setMember ("quarterNote", ppq);
-    positionEvent.setMember ("barStartQuarterNote", ppqBar);
+    positionEvent.setMember ("quarterNote", quarterNote);
+    positionEvent.setMember ("barStartQuarterNote", barStartQuarterNote);
     return positionEvent;
 }
 

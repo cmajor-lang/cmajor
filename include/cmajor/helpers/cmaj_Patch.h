@@ -936,9 +936,9 @@ struct Patch::PatchRenderer
         performer->postEvent (transportStateEventID, timelineEvents.getTransportStateEvent (isRecording, isPlaying));
     }
 
-    void sendPosition (int64_t currentFrame, double ppq, double ppqBar)
+    void sendPosition (int64_t currentFrame, double quarterNote, double barStartQuarterNote)
     {
-        performer->postEvent (positionEventID, timelineEvents.getPositionEvent (currentFrame, ppq, ppqBar));
+        performer->postEvent (positionEventID, timelineEvents.getPositionEvent (currentFrame, quarterNote, barStartQuarterNote));
     }
 
     //==============================================================================

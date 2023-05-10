@@ -7,36 +7,52 @@ class TimelineView extends HTMLElement
         super();
         this.patchConnection = patchConnection;
         this.innerHTML = this.getHTML();
-    }
 
-    connectedCallback()
-    {
+        this.framePos = "?";
+        this.transport = "?";
+        this.timeSig = "?";
+        this.tempo = "?";
+        this.quarterNote = "?";
+        this.barQuarterNote = "?";
+
         this.patchConnection.addEndpointEventListener ("timeSigOut", value =>
         {
-            this.querySelector ("#timesig").innerText = "Time-signature:   " + value.numerator + "/" + value.denominator;
+            this.timeSig = value.numerator + "/" + value.denominator;
+            this.refreshDisplay();
         });
 
         this.patchConnection.addEndpointEventListener ("positionOut", value =>
         {
-            this.querySelector ("#frames").innerText  = "Frame position:   " + value.frameIndex;
-            this.querySelector ("#ppq").innerText     = "PPQ position:     " + value.quarterNote;
-            this.querySelector ("#bar-ppq").innerText = "Bar start PPQ:    " + value.barStartQuarterNote;
+            this.framePos = value.frameIndex;
+            this.quarterNote = value.quarterNote;
+            this.barQuarterNote = value.barStartQuarterNote;
+            this.refreshDisplay();
         });
 
         this.patchConnection.addEndpointEventListener ("transportStateOut", value =>
         {
-            let state = "Stopped";
-
-            if (value.flags == 1) state = "Playing";
-            if (value.flags >= 2) state = "Recording";
-
-            this.querySelector ("#transport").innerText = "Transport:        " + state;
+            this.transport = "Stopped";
+            if (value.flags == 1) this.transport = "Playing";
+            if (value.flags >= 2) this.transport = "Recording";
+            this.refreshDisplay();
         });
 
         this.patchConnection.addEndpointEventListener ("tempoOut", value =>
         {
-            this.querySelector ("#tempo").innerText     = "Tempo:            " + value.bpm + " bpm";
+            this.tempo = value.bpm;
+            this.refreshDisplay();
         });
+    }
+
+    refreshDisplay()
+    {
+        this.querySelector ("#status").innerText = `
+Transport state:         ${this.transport}
+Tempo:                   ${this.tempo} bpm
+Time-signature:          ${this.timeSig}
+Frame count:             ${this.framePos}
+Quarter-note position:   ${this.quarterNote}
+Bar start quarter-note:  ${this.barQuarterNote}`;
     }
 
     getHTML()
@@ -48,26 +64,20 @@ class TimelineView extends HTMLElement
                 display: block;
                 width: 100%;
                 height: 100%;
-                padding: 10px;
+                padding: 1em;
                 overflow: auto;
                 color: #eee;
             }
 
             .main pre {
-                font-size: 1.3em;
-                font-family: monospace;
-                margin-bottom: 0.3em;
+                font-size: 1.4em;
+                font-family: Monaco, Consolas, monospace;
             }
 
         </style>
 
         <div class="main">
-          <pre id="transport"></pre>
-          <pre id="tempo"></pre>
-          <pre id="timesig"></pre>
-          <pre id="frames"></pre>
-          <pre id="ppq"></pre>
-          <pre id="bar-ppq"></pre>
+          <pre id="status"></pre>
         </div>`;
     }
 }
