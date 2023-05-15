@@ -1338,6 +1338,10 @@ bool testFloatBitCastFolded7() { return reinterpretIntToFloat (reinterpretFloatT
 
 void f() { let x = reinterpretIntToFloat (false); }
 
+## expectError ("2:69: error: No suitable override found for function call: reinterpretFloatToInt(float32<3>)")
+
+void f (float<3> a) { let y = reinterpretFloatToInt (a[0]); let x = reinterpretFloatToInt (a); }
+
 ## expectError ("3:9: error: An enum declaration must contain at least one item")
 
 enum X { a, b, c }

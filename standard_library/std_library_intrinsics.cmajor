@@ -114,9 +114,26 @@ namespace intrinsics
 
     //==============================================================================
     /// Checks whether the supplied argument is a floating point INF.
-    bool isinf<FloatType> (FloatType value)         { static_assert (value.isPrimitive && value.primitiveType.isFloat, "isinf() requires a floating point argument"); return (); }
+    bool isinf<FloatType> (FloatType value)
+    {
+        static_assert (value.isPrimitive && value.primitiveType.isFloat, "isinf() requires a floating point argument");
+
+        if const (value.isFloat64)
+            return (reinterpretFloatToInt (value) & 0x7fffffffffffffff_i64) == 0x7ff0000000000000_i64;
+        else if const (value.isFloat32)
+            return (reinterpretFloatToInt (value) & 0x7fffffff) == 0x7f800000;
+    }
+
     /// Checks whether the supplied argument is a floating point NaN.
-    bool isnan<FloatType> (FloatType value)         { static_assert (value.isPrimitive && value.primitiveType.isFloat, "isnan() requires a floating point argument"); return (); }
+    bool isnan<FloatType> (FloatType value)
+    {
+        static_assert (value.isPrimitive && value.primitiveType.isFloat, "isnan() requires a floating point argument");
+
+        if const (value.isFloat64)
+            return (reinterpretFloatToInt (value) & 0x7fffffffffffffff_i64) > 0x7ff0000000000000_i64;
+        else if const (value.isFloat32)
+            return (reinterpretFloatToInt (value) & 0x7fffffff) > 0x7f800000;
+    }
 
     /// Reinterprets the raw bits of a 32-bit float as an integer.
     int32 reinterpretFloatToInt (float32 value)              { return (); }
