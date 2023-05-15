@@ -173,7 +173,7 @@ struct Patch
     /// Can be called before process() to update the BPM
     void sendBPM (float bpm);
     /// Can be called before process() to update the transport status
-    void sendTransportState (bool isRecording, bool isPlaying);
+    void sendTransportState (bool isRecording, bool isPlaying, bool isLooping);
     /// Can be called before process() to update the playhead time
     void sendPosition (int64_t currentFrame, double ppq, double ppqBar);
 
@@ -931,9 +931,9 @@ struct Patch::PatchRenderer
         performer->postEvent (tempoEventID, timelineEvents.getBPMEvent (bpm));
     }
 
-    void sendTransportState (bool isRecording, bool isPlaying)
+    void sendTransportState (bool isRecording, bool isPlaying, bool isLooping)
     {
-        performer->postEvent (transportStateEventID, timelineEvents.getTransportStateEvent (isRecording, isPlaying));
+        performer->postEvent (transportStateEventID, timelineEvents.getTransportStateEvent (isRecording, isPlaying, isLooping));
     }
 
     void sendPosition (int64_t currentFrame, double quarterNote, double barStartQuarterNote)
@@ -1851,10 +1851,10 @@ inline void Patch::sendBPM (float bpm)
         renderer->sendBPM (bpm);
 }
 
-inline void Patch::sendTransportState (bool isRecording, bool isPlaying)
+inline void Patch::sendTransportState (bool isRecording, bool isPlaying, bool isLooping)
 {
     if (renderer->transportStateEventID)
-        renderer->sendTransportState (isRecording, isPlaying);
+        renderer->sendTransportState (isRecording, isPlaying, isLooping);
 }
 
 inline void Patch::sendPosition (int64_t currentFrame, double ppq, double ppqBar)

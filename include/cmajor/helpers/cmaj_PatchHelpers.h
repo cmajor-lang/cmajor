@@ -145,7 +145,7 @@ struct TimelineEventGenerator
 {
     choc::value::Value& getTimeSigEvent (int numerator, int denominator);
     choc::value::Value& getBPMEvent (float bpm);
-    choc::value::Value& getTransportStateEvent (bool isRecording, bool isPlaying);
+    choc::value::Value& getTransportStateEvent (bool isRecording, bool isPlaying, bool isLooping);
     choc::value::Value& getPositionEvent (int64_t currentFrame, double ppq, double ppqBar);
 
 private:
@@ -405,9 +405,9 @@ inline choc::value::Value& TimelineEventGenerator::getBPMEvent (float bpm)
     return tempoEvent;
 }
 
-inline choc::value::Value& TimelineEventGenerator::getTransportStateEvent (bool isRecording, bool isPlaying)
+inline choc::value::Value& TimelineEventGenerator::getTransportStateEvent (bool isRecording, bool isPlaying, bool isLooping)
 {
-    transportState.setMember ("flags", isRecording ? 2 : isPlaying ? 1 : 0);
+    transportState.setMember ("flags", (isPlaying ? 1 : 0) | (isRecording ? 2 : 0) | (isLooping ? 4 : 0));
     return transportState;
 }
 

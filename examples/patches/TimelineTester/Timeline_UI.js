@@ -31,9 +31,14 @@ class TimelineView extends HTMLElement
 
         this.patchConnection.addEndpointEventListener ("transportStateOut", value =>
         {
-            this.transport = "Stopped";
-            if (value.flags == 1) this.transport = "Playing";
-            if (value.flags >= 2) this.transport = "Recording";
+            if (value.flags & 2)
+                this.transport = "Recording";
+            else if (value.flags & 1)
+                this.transport = "Playing";
+            else
+                this.transport = "Stopped";
+
+            this.transport += "   Looping: " + ((value.flags & 4) ? "on" : "off");
             this.refreshDisplay();
         });
 

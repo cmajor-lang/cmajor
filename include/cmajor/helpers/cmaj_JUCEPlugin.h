@@ -661,7 +661,9 @@ private:
                 if (auto bpm = pos->getBpm())
                     patch->sendBPM (static_cast<float> (*bpm));
 
-                patch->sendTransportState (pos->getIsRecording(), pos->getIsPlaying());
+                patch->sendTransportState (pos->getIsRecording(),
+                                           pos->getIsPlaying(),
+                                           pos->getIsLooping());
 
                 if (auto timeSamps = pos->getTimeInSamples())
                 {
