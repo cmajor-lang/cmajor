@@ -118,6 +118,16 @@ namespace intrinsics
     /// Checks whether the supplied argument is a floating point NaN.
     bool isnan<FloatType> (FloatType value)         { static_assert (value.isPrimitive && value.primitiveType.isFloat, "isnan() requires a floating point argument"); return (); }
 
+    /// Reinterprets the raw bits of a 32-bit float as an integer.
+    int32 reinterpretFloatToInt (float32 value)              { return (); }
+    /// Reinterprets the raw bits of a 64-bit float as an integer.
+    int64 reinterpretFloatToInt (float64 value)              { return (); }
+
+    /// Reinterprets the bits of a 32-bit integer as a float32.
+    float32 reinterpretIntToFloat (int32 value)             { return (); }
+    /// Reinterprets the bits of a 64-bit integer as a float64.
+    float64 reinterpretIntToFloat (int64 value)             { return (); }
+
     //==============================================================================
     /// Calculates the sum of the elements in a vector or array.
     ArrayType.elementType sum<ArrayType> (ArrayType array)

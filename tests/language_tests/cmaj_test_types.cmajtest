@@ -1311,6 +1311,33 @@ bool test5() { return isComplex (N1::n::x.elementType) && N3::n::x.elementType.i
 bool testTernaryType<T, X> (T t, X x) { return isBool (T.isInt ? X : 3); }
 bool test4() { return ! testTernaryType (1, 2) && testTernaryType (2.0, 2); }
 
+## testFunction()
+
+int32 ftoi (float32 f)  { return reinterpretFloatToInt (f); }
+int64 ftoi (float64 f)  { return reinterpretFloatToInt (f); }
+float32 itof (int32 i)  { return reinterpretIntToFloat (i); }
+float64 itof (int64 i)  { return reinterpretIntToFloat (i); }
+
+bool testFloatBitCastNoFolding1() { return ftoi (0.0f) == 0; }
+bool testFloatBitCastNoFolding2() { return ftoi (0.0) == 0; }
+bool testFloatBitCastNoFolding3() { return ftoi (-2.0f) == int32 (0xc0000000i64); }
+bool testFloatBitCastNoFolding4() { return ftoi (3.141592653589793f) == 0x40490fdb; }
+bool testFloatBitCastNoFolding5() { return ftoi (3.141592653589793) == 0x400921fb54442d18i64; }
+bool testFloatBitCastNoFolding6() { return itof (ftoi (-2.0f)) == -2.0f; }
+bool testFloatBitCastNoFolding7() { return itof (ftoi (-2.0)) == -2.0; }
+
+bool testFloatBitCastFolded1() { return reinterpretFloatToInt (0.0f) == 0; }
+bool testFloatBitCastFolded2() { return reinterpretFloatToInt (0.0) == 0; }
+bool testFloatBitCastFolded3() { return reinterpretFloatToInt (-2.0f) == int32 (0xc0000000i64); }
+bool testFloatBitCastFolded4() { return reinterpretFloatToInt (3.141592653589793f) == 0x40490fdb; }
+bool testFloatBitCastFolded5() { return reinterpretFloatToInt (3.141592653589793) == 0x400921fb54442d18i64; }
+bool testFloatBitCastFolded6() { return reinterpretIntToFloat (reinterpretFloatToInt (-2.0f)) == -2.0f; }
+bool testFloatBitCastFolded7() { return reinterpretIntToFloat (reinterpretFloatToInt (-2.0)) == -2.0; }
+
+## expectError ("2:20: error: No suitable override found for function call: reinterpretIntToFloat(bool)")
+
+void f() { let x = reinterpretIntToFloat (false); }
+
 ## expectError ("3:9: error: An enum declaration must contain at least one item")
 
 enum X { a, b, c }
