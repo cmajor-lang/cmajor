@@ -1997,6 +1997,28 @@ bool test()
     return true;
 }
 
+## expectError ("6:23: error: Cannot convert from 'bool<3>' to 'bool'")
+
+bool test()
+{
+    int<3> j;
+
+    for (int i = 0; i < j; i++)
+    {
+    }
+
+    return true;
+}
+
+## expectError ("4:21: error: Cannot convert from 'int32' to 'bool'")
+
+bool test()
+{
+    for (int i = 0; 1; i++) {}
+
+    return true;
+}
+
 ## expectError ("8:5: error: Can't find a function 't' with 2 argument(s)")
 
 void t (float f)
