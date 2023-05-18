@@ -399,6 +399,24 @@ void f() { std; }
 
 void f() { int<4> i = 1; i[1]; }
 
+## expectError ("12:13: error: This constant expression will have no effect")
+
+processor test
+{
+    input stream float<2> in;
+    output stream int out;
+
+    void main ()
+    {
+        loop
+        {
+            float<2> val;
+            val[0:in.size];
+            advance();
+        }
+    }
+}
+
 ## expectError ("2:26: error: Found float32 literal when expecting \";\"")
 
 void f() { var x = (int) 2.0f; }
@@ -1040,6 +1058,20 @@ void f() { static_assert (1 + 1 == 2, "nope1"); static_assert (1 + 1 == 3, "nope
 ## expectError ("2:27: error: Cannot find symbol 'nope'")
 
 void f() { static_assert (nope, "nope"); }
+
+## expectError ("9:15: error: Cannot find symbol 'a'")
+
+processor test
+{
+    output stream int out;
+
+    void main ()
+    {
+        float<2> val;
+        val[0:a.size];
+        advance();
+    }
+}
 
 ## if (getEngineName() != "cpp") expectError ("8:9: error: nope")
 
