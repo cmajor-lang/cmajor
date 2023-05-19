@@ -2323,3 +2323,30 @@ graph test
 
     connection in -> x;
 }
+
+
+## expectError ("7:9: error: Expected a processor name or endpoint")
+
+graph Test
+{
+    output stream float out;
+
+    connection
+        input;
+}
+
+## expectError ("8:14: error: Expected a variable declaration")
+
+processor Test
+{
+    output stream float out;
+
+    void main()
+    {
+        for (float;;)
+        {
+        }
+
+        advance();
+    }
+}
