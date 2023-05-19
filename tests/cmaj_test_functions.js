@@ -387,10 +387,10 @@ function testFunction (options)
     }
 
     let engine = createEngine (options);
-    updateBuildSettings (engine, 44100, 1, ! options.failOnWarnings, options);
+    updateBuildSettings (engine, 44100, 1, ! options?.failOnWarnings, options);
     error = engine.load (program);
 
-    if (isError (error) || (options.failOnWarnings && isErrorOrWarning (error)))
+    if (isError (error) || (options?.failOnWarnings && isErrorOrWarning (error)))
     {
         testSection.reportFail (error);
         return;
@@ -401,7 +401,7 @@ function testFunction (options)
 
     error = engine.link();
 
-    if (isError (error) || (options.failOnWarnings && isErrorOrWarning (error)))
+    if (isError (error) || (options?.failOnWarnings && isErrorOrWarning (error)))
     {
         testSection.reportFail (error);
         return;
