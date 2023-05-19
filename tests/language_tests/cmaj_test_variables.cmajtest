@@ -138,6 +138,15 @@ void shadow()
 
 void shadow (bool a)    { let a = false; }
 
+## testFunction ({ failOnWarnings: true })
+
+bool testShadowingBug()
+{
+    for (int i = 0; i < 10; ++i) { float xx = 1.0f; ++xx; }
+    for (int i = 0; i < 10; ++i) { float xx = 1.0f; ++xx; }
+    return true;
+}
+
 ## expectError ("3:34: error: Wrong number of values to create a type 'const int32[3]'")
 
 namespace N { const int[3] v1 = (1, 2, 3); }
