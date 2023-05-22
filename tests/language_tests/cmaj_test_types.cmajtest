@@ -1294,7 +1294,7 @@ bool testTernaryType<T, X> (T t, X x)
     using T3 = (T.isInt ? int : int64);
     T3 yy = 134;
 
-    (T.isInt ? int : int64) x = 123;
+    (T.isInt ? int : int64) v = 123;
     return isBool (T.isInt ? X : bool);
 }
 

@@ -117,13 +117,13 @@ void f() { float = 1; }
 
 void f() { int a, b; b = a = 1; }
 
-## expectError ("6:9: warning: 'a' shadows another declaration with the same name")
+## expectError ("6:11: warning: 'a' shadows another declaration with the same name")
 
 void shadow()
 {
     { int a = 1; }
     let a = 2;
-    int a;
+    { int a; }
 }
 
 ## expectError ("5:18: warning: 'a' shadows another declaration with the same name")
@@ -134,9 +134,17 @@ void shadow()
     { let b = 2, a = 2; }
 }
 
-## expectError ("2:31: warning: 'a' shadows another declaration with the same name")
+## expectError ("2:31: error: The name 'a' is already in use")
 
 void shadow (bool a)    { let a = false; }
+
+## expectError ("5:9: error: The name 'b' is already in use")
+
+void shadow (bool a)
+{
+    let b = false;
+    var b = true;
+}
 
 ## testFunction ({ failOnWarnings: true })
 

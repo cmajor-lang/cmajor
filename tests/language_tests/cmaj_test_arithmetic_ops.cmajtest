@@ -902,7 +902,7 @@ bool testWrapCasts()
 {
     const int x = 2;
     wrap<3> i = 2;
-    wrap<3> i = wrap<3> (x);
+    wrap<3> i2 = wrap<3> (x);
     wrap<3> j = x;
     return j == x;
 }
