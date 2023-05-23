@@ -4958,3 +4958,43 @@ graph Gain
     connection
         in -> out;
 }
+
+
+## testCompile()
+
+graph Test  [[ main ]]
+{
+    output stream float out;
+
+    connection
+        X.out -> out;
+}
+
+graph X
+{
+    input stream float in;
+    output stream float out;
+
+    node
+    {
+        a = T[4];
+        b = T;
+    }
+
+    connection
+    {
+        b.out -> a[0].in;
+        a.out -> out;
+    }
+}
+
+processor T
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        advance();
+    }
+}

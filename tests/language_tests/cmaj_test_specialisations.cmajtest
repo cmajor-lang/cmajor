@@ -95,7 +95,7 @@ processor P (int x)
     void main() { advance(); }
 }
 
-## expectError ("8:11: error: The processor 'P' cannot be used without providing arguments for its parameters")
+## expectError ("5:16: error: The processor 'P' cannot be used without providing arguments for its parameters")
 
 graph G
 {
