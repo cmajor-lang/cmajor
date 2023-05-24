@@ -1,0 +1,1926 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+// This file contains non-public implementation helper functions used by some of
+// the standard library
+
+/// @internal
+/// (Internal helper functions: not for public use)
+namespace std::intrinsics::internal
+{
+
+T vec_min<T>   (T v1, T v2)  { return select (v1 < v2, v1, v2); }
+T vec_max<T>   (T v1, T v2)  { return select (v1 > v2, v1, v2); }
+
+T vec_abs<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = abs   (n[i]);  return r; }
+T vec_sqrt<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = sqrt  (n[i]);  return r; }
+T vec_exp<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = exp   (n[i]);  return r; }
+T vec_log<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = log   (n[i]);  return r; }
+T vec_log10<T> (T n)  { T r;  for (wrap<T.size> i) r[i] = log10 (n[i]);  return r; }
+T vec_sin<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = sin   (n[i]);  return r; }
+T vec_cos<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = cos   (n[i]);  return r; }
+T vec_tan<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = tan   (n[i]);  return r; }
+T vec_atan<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = atan  (n[i]);  return r; }
+
+T vec_pow<T>   (T v1, T v2)  { T r; for (wrap<T.size> i) r[i] = pow (v1[i], v2[i]); return r; }
+
+//==============================================================================
+T atan_pos<T> (T n)
+{
+    return n > 1.0f ? (T(pi / 2) - atan_0to1 (1 / n)) : atan_0to1 (n);
+}
+
+T atan_0to1<T> (T n)
+{
+    let sqrt3 = T(sqrt(3.0));
+
+    if (n < T(2 - sqrt3))
+        return atan_approx (n);
+
+    let x = (sqrt3 * n - 1) / (sqrt3 + n);
+
+    return x < 0 ? T(pi / 6) - atan_approx (-x)
+                 : T(pi / 6) + atan_approx (x);
+}
+
+T atan_approx<T> (T n)
+{
+    let n2 = n * n;
+    let n3 = n2 * n;
+    return n - (n3 * T(1 / 3.0)) + (n3 * n2 * T(1 / 5.0));
+}
+
+T atan2_vec<T> (T y, T x)
+{
+    T r;
+
+    for (wrap<T.size> i)
+        r[i] = atan2_scalar (y[i], x[i]);
+
+    return r;
+}
+
+T atan2_scalar<T> (T y, T x)
+{
+    if (x != 0)
+    {
+        let yoverx = atan (y / x);
+
+        return x > 0 ? yoverx : (y >= 0 ? yoverx + T(pi)
+                                        : yoverx - T(pi));
+    }
+
+    if (y > 0) return T(pi /  2);
+    if (y < 0) return T(pi / -2);
+
+    return ();
+}
+
+
+//==============================================================================
+// This namespace contains fallback implementations for various math & trig functions
+// which are best implemented by CPU intrinsics, but are needed here for targets
+// where those are unavailable.
+//
+// A lot of the algorithms in here are derived from various original open-source
+// projects such as freeBSD, but the code has passed through several generations of
+// hackery and rewriting to reach this point, and we're not quite sure of the exact
+// provenance of it all...
+//
+namespace math_implementations
+{
+
+//==============================================================================
+float32 sin (float32 x)
+{
+    const float64 s1pio2 = 1 * 0.5 * pi,
+                  s2pio2 = 2 * 0.5 * pi,
+                  s3pio2 = 3 * 0.5 * pi,
+                  s4pio2 = 4 * 0.5 * pi;
+
+    var ix = reinterpretFloatToInt (x);
+    let original = ix;
+    ix &= 0x7fffffff;
+
+    if (ix <= 0x3f490fda)
+        return ix < 0x39800000 ? x : helpers::sindf (x);
+
+    if (ix <= 0x407b53d1)
+    {
+        if (ix <= 0x4016cbe3)
+            return (original >> 31) != 0 ? -helpers::cosdf (x + s1pio2)
+                                         :  helpers::cosdf (x - s1pio2);
+
+        return helpers::sindf ((original >> 31) != 0 ? -(x + s2pio2)
+                                                     : -(x - s2pio2));
+    }
+
+    if (ix <= 0x40e231d5)
+    {
+        if (ix <= 0x40afeddf)
+            return (original >> 31) != 0 ?  helpers::cosdf (x + s3pio2)
+                                         : -helpers::cosdf (x - s3pio2);
+
+        return helpers::sindf ((original >> 31) != 0 ? x + s4pio2
+                                                     : x - s4pio2);
+    }
+
+    if (ix >= 0x7f800000)
+        return x - x;
+
+    let result = helpers::remainderPiOver2f (x);
+
+    if (result.n == 0) return helpers::sindf (result.y);
+    if (result.n == 1) return helpers::cosdf (result.y);
+    if (result.n == 2) return helpers::sindf (-result.y);
+    return -helpers::cosdf (result.y);
+}
+
+//==============================================================================
+float64 sin (float64 x)
+{
+    let ix = helpers::getHighWord (x) & 0x7fffffff;
+
+    if (ix <= 0x3fe921fb)
+    {
+        if (ix < 0x3e500000)
+            return x;
+
+        return helpers::sin (x, 0.0, 0);
+    }
+
+    if (ix >= 0x7ff00000)
+        return x - x;
+
+    let result = helpers::remainderPiOver2 (x);
+
+    if ((result.n & 3) == 0) return  helpers::sin (result.y0, result.y1, 1);
+    if ((result.n & 3) == 1) return  helpers::cos (result.y0, result.y1);
+    if ((result.n & 3) == 2) return -helpers::sin (result.y0, result.y1, 1);
+    return -helpers::cos (result.y0, result.y1);
+}
+
+//==============================================================================
+float32 cos (float32 x)
+{
+    const float64 c1pio2 = 1 * 0.5 * pi,
+                  c2pio2 = 2 * 0.5 * pi,
+                  c3pio2 = 3 * 0.5 * pi,
+                  c4pio2 = 4 * 0.5 * pi;
+
+    var ix = reinterpretFloatToInt (x);
+    let original = ix;
+    ix &= 0x7fffffff;
+
+    if (ix <= 0x3f490fda)
+        return ix < 0x39800000 ? 1.0f : helpers::cosdf (x);
+
+    if (ix <= 0x407b53d1)
+    {
+        if (ix > 0x4016cbe3)
+            return -helpers::cosdf ((original >> 31) != 0 ? x + c2pio2 : x - c2pio2);
+
+        return (original >> 31) != 0 ? helpers::sindf (x + c1pio2)
+                                     : helpers::sindf (c1pio2 - x);
+    }
+
+    if (ix <= 0x40e231d5)
+    {
+        if (ix > 0x40afeddf)
+            return helpers::cosdf ((original >> 31) != 0 ? x + c4pio2 : x - c4pio2);
+
+        return (original >> 31) != 0 ? helpers::sindf (-x - c3pio2)
+                                     : helpers::sindf (x - c3pio2);
+    }
+
+    if (ix >= 0x7f800000)
+        return x - x;
+
+    let result = helpers::remainderPiOver2f (x);
+
+    if (result.n == 0) return  helpers::cosdf (result.y);
+    if (result.n == 1) return  helpers::sindf (-result.y);
+    if (result.n == 2) return -helpers::cosdf (result.y);
+    return helpers::sindf (result.y);
+}
+
+//==============================================================================
+float64 cos (float64 x)
+{
+    let ix = helpers::getHighWord (x) & 0x7fffffff;
+
+    if (ix <= 0x3fe921fb)
+    {
+        if (ix < 0x3e46a09e)
+            return 1.0;
+
+        return helpers::cos (x, 0);
+    }
+
+    if (ix >= 0x7ff00000)
+        return x - x;
+
+    let result = helpers::remainderPiOver2 (x);
+
+    if ((result.n & 3) == 0) return  helpers::cos (result.y0, result.y1);
+    if ((result.n & 3) == 1) return -helpers::sin (result.y0, result.y1, 1);
+    if ((result.n & 3) == 2) return -helpers::cos (result.y0, result.y1);
+    return helpers::sin (result.y0, result.y1, 1);
+}
+
+//==============================================================================
+float32 tan (float32 x)
+{
+    const float64 t1pio2 = 1 * 0.5 * pi,
+                  t2pio2 = 2 * 0.5 * pi,
+                  t3pio2 = 3 * 0.5 * pi,
+                  t4pio2 = 4 * 0.5 * pi;
+
+    var ix = reinterpretFloatToInt (x);
+    let original = ix;
+    ix &= 0x7fffffff;
+
+    if (ix <= 0x3f490fda)
+        return ix < 0x39800000 ? x : helpers::tandf (x, 0);
+
+    if (ix <= 0x407b53d1)
+        return ix <= 0x4016cbe3 ? helpers::tandf ((original >> 31) != 0 ? x + t1pio2 : x - t1pio2, 1)
+                                : helpers::tandf ((original >> 31) != 0 ? x + t2pio2 : x - t2pio2, 0);
+
+    if (ix <= 0x40e231d5)
+        return ix <= 0x40afeddf ? helpers::tandf ((original >> 31) != 0 ? x + t3pio2 : x - t3pio2, 1)
+                                : helpers::tandf ((original >> 31) != 0 ? x + t4pio2 : x - t4pio2, 0);
+
+    if (ix >= 0x7f800000)
+        return x - x;
+
+    let result = helpers::remainderPiOver2f (x);
+    return helpers::tandf (result.y, result.n & 1);
+}
+
+//==============================================================================
+float64 tan (float64 x)
+{
+    let ix = helpers::getHighWord (x) & 0x7fffffff;
+
+    if (ix <= 0x3fe921fb)
+    {
+        if (ix < 0x3e400000)
+            return x;
+
+        return helpers::tan (x, 0.0, 0);
+    }
+
+    if (ix >= 0x7ff00000)
+        return x - x;
+
+    let result = helpers::remainderPiOver2 (x);
+    return helpers::tan (result.y0, result.y1, result.n & 1);
+}
+
+//==============================================================================
+float32 fmod (float32 x, float32 y)
+{
+    var uxi = reinterpretFloatToInt (x);
+    var uyi = reinterpretFloatToInt (y);
+
+    int32 ex = (uxi >>> 23) & 0xff;
+    int32 ey = (uyi >>> 23) & 0xff;
+    int32 sx = uxi & int32 (0x80000000_i64);
+
+    if (uyi << 1 == 0 || isnan (y) || ex == 0xff)
+        return (x * y) / (x * y);
+
+    if ((uxi & 0x7fffffff) <= (uyi & 0x7fffffff))
+    {
+        if (uxi << 1 == uyi << 1)
+            return 0 * x;
+
+        return x;
+    }
+
+    if (ex == 0)
+    {
+        for (int32 i = uxi << 9; i >> 31 == 0; i <<= 1)
+            --ex;
+
+        uxi <<= -ex + 1;
+    }
+    else
+    {
+        uxi &= 0x7fffff;
+        uxi |= 0x800000;
+    }
+
+    if (ey == 0)
+    {
+        for (int32 i = uyi << 9; i >> 31 == 0; i <<= 1)
+            --ey;
+
+        uyi <<= -ey + 1;
+    }
+    else
+    {
+        uyi &= 0x7fffff;
+        uyi |= 0x800000;
+    }
+
+    for (; ex > ey; --ex)
+    {
+        int32 i = uxi - uyi;
+
+        if (i >> 31 == 0)
+        {
+            if (i == 0)
+                return 0 * x;
+
+            uxi = i;
+        }
+
+        uxi <<= 1;
+    }
+
+    int32 i = uxi - uyi;
+
+    if (i >> 31 == 0)
+    {
+        if (i == 0)
+            return 0 * x;
+
+        uxi = i;
+    }
+
+    for (; (uxi >> 23) == 0; uxi <<= 1)
+        --ex;
+
+    if (ex > 0)
+    {
+        uxi -= 1 << 23;
+        uxi |= ex << 23;
+    }
+    else
+    {
+        uxi >>= -ex + 1;
+    }
+
+    return reinterpretIntToFloat (int32 (uxi) | sx);
+}
+
+//==============================================================================
+float64 fmod (float64 x, float64 y)
+{
+    var uxi = reinterpretFloatToInt (x);
+    var uyi = reinterpretFloatToInt (y);
+
+    var ex = int32 ((uxi >> 52) & 0x7ff);
+    var ey = int32 ((uyi >> 52) & 0x7ff);
+    int64 sx = uxi & int64 (0x8000000000000000_i64);
+
+    if ((uyi << 1) == 0 || isnan (y) || ex == 0x7ff)
+        return (x * y) / (x * y);
+
+    if ((uxi & 0x7fffffffffffffff_i64) <= (uyi & 0x7fffffffffffffff_i64))
+    {
+        if (uxi << 1 == uyi << 1)
+            return 0 * x;
+
+        return x;
+    }
+
+    if (ex == 0)
+    {
+        for (var i = (uxi << 12); (i >> 63) == 0; i <<= 1)
+            --ex;
+
+        uxi <<= -ex + 1;
+    }
+    else
+    {
+        uxi &= 0x000fffffffffffff_i64;
+        uxi |= 0x0010000000000000_i64;
+    }
+
+    if (ey == 0)
+    {
+        for (var i = (uyi << 12); (i >> 63) == 0; i <<= 1)
+            --ey;
+
+        uyi <<= -ey + 1;
+    }
+    else
+    {
+        uyi &= 0x000fffffffffffff_i64;
+        uyi |= 0x0010000000000000_i64;
+    }
+
+    for (; ex > ey; --ex)
+    {
+        var i = uxi - uyi;
+
+        if (i >> 63 == 0)
+        {
+            if (i == 0)
+                return 0 * x;
+
+            uxi = i;
+        }
+
+        uxi <<= 1;
+    }
+
+    var i = uxi - uyi;
+
+    if (i >> 63 == 0)
+    {
+        if (i == 0)
+            return 0 * x;
+
+        uxi = i;
+    }
+
+    for (; uxi >> 52 == 0; uxi <<= 1)
+        --ex;
+
+    if (ex > 0)
+    {
+        uxi -= 1_i64 << 52;
+        uxi |= int64 (ex) << 52;
+    }
+    else
+    {
+        uxi >>= -ex + 1;
+    }
+
+    return reinterpretIntToFloat (int64 (uxi) | sx);
+}
+
+//==============================================================================
+float32 log (float32 x)
+{
+    const float32 ln2_hi = 6.9313812256e-01f,
+                  ln2_lo = 9.0580006145e-06f,
+                  Lg1 = 0.6666666269302368,
+                  Lg2 = 0.40000972151756289,
+                  Lg3 = 0.2849878668785095,
+                  Lg4 = 0.24279078841209413;
+
+    var ix = reinterpretFloatToInt (x);
+    int k = 0;
+
+    if (ix < 0x00800000)
+    {
+        if ((ix << 1) == 0)   return -1 / (x * x);
+        if ((ix >> 31) != 0)  return nan;
+
+        k -= 25;
+        x *= 33554432.0f;
+        ix = reinterpretFloatToInt (x);
+    }
+    else if (ix >= 0x7f800000)
+        return x;
+    else if (ix == 0x3f800000)
+        return 0;
+
+    ix += 0x3f800000 - 0x3f3504f3;
+    k += int32 (ix >> 23) - 0x7f;
+    x = reinterpretIntToFloat ((ix & 0x007fffff) + 0x3f3504f3);
+
+    float32 f = x - 1.0f;
+    float32 s = f / (2.0f + f);
+    float32 z = s * s;
+    float32 w = z * z;
+    float32 t1 = w * (Lg2 + w * Lg4);
+    float32 t2 = z * (Lg1 + w * Lg3);
+    float32 R = t2 + t1;
+    float32 hfsq = 0.5f * f * f;
+    let dk = float32 (k);
+    return s * (hfsq + R) + dk * ln2_lo - hfsq + f + dk * ln2_hi;
+}
+
+//==============================================================================
+float64 log (float64 x)
+{
+    const float64 ln2_hi = 6.93147180369123816490e-01,
+                  ln2_lo = 1.90821492927058770002e-10,
+                  Lg1 = 6.666666666666735130e-01,
+                  Lg2 = 3.999999999940941908e-01,
+                  Lg3 = 2.857142874366239149e-01,
+                  Lg4 = 2.222219843214978396e-01,
+                  Lg5 = 1.818357216161805012e-01,
+                  Lg6 = 1.531383769920937332e-01,
+                  Lg7 = 1.479819860511658591e-01;
+
+    var intX = reinterpretFloatToInt (x);
+    var hx = int32 (intX >> 32);
+    int k = 0;
+
+    if (hx < 0x00100000)
+    {
+        if ((intX << 1) == 0) return -1 / (x * x);
+        if ((hx >> 31) != 0)  return nan;
+
+        k -= 54;
+        x *= 18014398509481985.0;
+        intX = reinterpretFloatToInt (x);
+        hx = int32 (intX >> 32);
+    }
+    else if (hx >= 0x7ff00000)
+        return x;
+    else if (hx == 0x3ff00000 && (intX << 32) == 0)
+        return 0;
+
+    hx += 0x3ff00000 - 0x3fe6a09e;
+    k += int32 (hx >> 20) - 0x3ff;
+    hx = (hx & 0x000fffff) + 0x3fe6a09e;
+
+    x = reinterpretIntToFloat ((int64 (hx) << 32) | (intX & 0xffffffff_i64));
+
+    float64 f = x - 1.0;
+    float64 hfsq = 0.5 * f * f;
+    float64 s = f / (2.0 + f);
+    float64 z = s * s;
+    float64 w = z * z;
+    float64 t1 = w * (Lg2 + w * (Lg4 + w * Lg6));
+    float64 t2 = z * (Lg1 + w * (Lg3 + w * (Lg5 + w * Lg7)));
+    float64 R = t2 + t1;
+    float64 dk = k;
+    return s * (hfsq + R) + dk * ln2_lo - hfsq + f + dk * ln2_hi;
+}
+
+//==============================================================================
+float32 log10 (float32 x)
+{
+    const float32 ivln10hi = 4.3432617188e-01f,
+                  ivln10lo = -3.1689971365e-05f,
+                  log10_2hi = 3.0102920532e-01f,
+                  log10_2lo = 7.9034151668e-07f,
+                  Lg1 = 0.6666666269302368,
+                  Lg2 = 0.40000972151756289,
+                  Lg3 = 0.2849878668785095,
+                  Lg4 = 0.24279078841209413;
+
+    var ix = reinterpretFloatToInt (x);
+    int32 k = 0;
+
+    if (ix < 0x00800000)
+    {
+        if ((ix << 1) == 0)   return -1 / (x * x);
+        if ((ix >> 31) != 0)  return nan;
+
+        k -= 25;
+        x *= 33554432.0f;
+        ix = reinterpretFloatToInt (x);
+    }
+    else if (ix >= 0x7f800000)
+        return x;
+    else if (ix == 0x3f800000)
+        return 0;
+
+    ix += 0x3f800000 - 0x3f3504f3;
+    k += int32 (ix >> 23) - 0x7f;
+    ix = (ix & 0x007fffff) + 0x3f3504f3;
+    x = reinterpretIntToFloat (ix);
+    float32 f = x - 1.0f;
+    float32 s = f / (2.0f + f);
+    float32 z = s * s;
+    float32 w = z * z;
+    float32 t1 = w * (Lg2 + w * Lg4);
+    float32 t2 = z * (Lg1 + w * Lg3);
+    float32 R = t2 + t1;
+    float32 hfsq = 0.5f * f * f;
+    float32 hi = reinterpretIntToFloat (reinterpretFloatToInt (f - hfsq) & int32 (0xfffff000_i64));
+    float32 lo = f - hi - hfsq + s * (hfsq + R);
+    let dk = float32 (k);
+    return dk * log10_2lo + (lo + hi) * ivln10lo + lo * ivln10hi + hi * ivln10hi + dk * log10_2hi;
+}
+
+//==============================================================================
+float64 log10 (float64 x)
+{
+    const float64 ivln10hi = 4.34294481878168880939e-01,
+                  ivln10lo = 2.50829467116452752298e-11,
+                  log10_2hi = 3.01029995663611771306e-01,
+                  log10_2lo = 3.69423907715893078616e-13,
+                  Lg1 = 6.666666666666735130e-01,
+                  Lg2 = 3.999999999940941908e-01,
+                  Lg3 = 2.857142874366239149e-01,
+                  Lg4 = 2.222219843214978396e-01,
+                  Lg5 = 1.818357216161805012e-01,
+                  Lg6 = 1.531383769920937332e-01,
+                  Lg7 = 1.479819860511658591e-01;
+
+    var ix = reinterpretFloatToInt (x);
+    var hx = int32 (ix >> 32);
+    int k = 0;
+
+    if (hx < 0x00100000)
+    {
+        if ((ix << 1) == 0)   return -1 / (x * x);
+        if ((hx >> 31) != 0)  return nan;
+
+        k -= 54;
+        x *= 18014398509481985.0;
+        ix = reinterpretFloatToInt (x);
+        hx = int32 (ix >> 32);
+    }
+    else if (hx >= 0x7ff00000)
+        return x;
+    else if (hx == 0x3ff00000 && (ix << 32) == 0)
+        return 0;
+
+    hx += 0x3ff00000 - 0x3fe6a09e;
+    k += int32 (hx >> 20) - 0x3ff;
+    hx = (hx & 0x000fffff) + 0x3fe6a09e;
+    x = reinterpretIntToFloat (int64 (hx) << 32 | (ix & 0xffffffff_i64));
+
+    float64 f = x - 1.0;
+    float64 hfsq = 0.5 * f * f;
+    float64 s = f / (2.0 + f);
+    float64 z = s * s;
+    float64 w = z * z;
+    float64 t1 = w * (Lg2 + w * (Lg4 + w * Lg6));
+    float64 t2 = z * (Lg1 + w * (Lg3 + w * (Lg5 + w * Lg7)));
+    float64 R = t2 + t1;
+    float64 hi = reinterpretIntToFloat (reinterpretFloatToInt (f - hfsq) & int64 (0xffffffff00000000));
+    float64 lo = f - hi - hfsq + s * (hfsq + R);
+    float64 val_hi = hi * ivln10hi;
+    float64 dk = k;
+    float64 y = dk * log10_2hi;
+    float64 val_lo = dk * log10_2lo + (lo + hi) * ivln10lo + lo * ivln10hi;
+    w = y + val_hi;
+    val_lo += (y - w) + val_hi;
+    val_hi = w;
+
+    return val_lo + val_hi;
+}
+
+//==============================================================================
+float32 exp (float32 x)
+{
+    const float32 ln2hi = 6.9314575195e-1f,
+                  ln2lo = 1.4286067653e-6f,
+                  invln2 = 1.4426950216e+0f,
+                  P1 = 1.6666625440e-1f,
+                  P2 = -2.7667332906e-3f;
+
+    var hx = reinterpretFloatToInt (x);
+    bool negative = (hx >>> 31) != 0;
+    hx &= 0x7fffffff;
+
+    if (hx >= 0x42aeac50)
+    {
+        if (hx > 0x7f800000)
+            return x;
+
+        if (hx >= 0x42b17218 && ! negative)
+        {
+            x *= 1.7014118e38f;
+            return x;
+        }
+
+        if (negative && hx >= 0x42cff1b5)
+            return 0;
+    }
+
+    float32 hi, lo;
+    int32 k;
+
+    if (hx > 0x3eb17218)
+    {
+        if (hx > 0x3f851592)
+            k = int32 (invln2 * x + (negative ? -0.5 : 0.5));
+        else
+            k = negative ? -1 : 1;
+
+        hi = x - k * ln2hi;
+        lo = k * ln2lo;
+        x = hi - lo;
+    }
+    else if (hx > 0x39000000)
+    {
+        k = 0;
+        hi = x;
+        lo = 0;
+    }
+    else
+    {
+        return 1 + x;
+    }
+
+    float32 xx = x * x;
+    float32 c = x - xx * (P1 + xx * P2);
+    float32 y = 1 + (x * c / (2 - c) - lo + hi);
+
+    return k == 0 ? y : helpers::scalbnf (y, k);
+}
+
+//==============================================================================
+float64 exp (float64 x)
+{
+    const float64 ln2hi = 6.93147180369123816490e-01,
+                  ln2lo = 1.90821492927058770002e-10,
+                  invln2 = 1.44269504088896338700e+00,
+                  P1 = 1.66666666666666019037e-01,
+                  P2 = -2.77777777770155933842e-03,
+                  P3 = 6.61375632143793436117e-05,
+                  P4 = -1.65339022054652515390e-06,
+                  P5 = 4.13813679705723846039e-08;
+
+    var hx = helpers::getHighWord (x);
+    bool negative = (hx >>> 31) != 0;
+    hx &= 0x7fffffff;
+
+    if (hx >= 0x4086232b)
+    {
+        if (isnan (x)) return x;
+        if (x > 709.782712893383973096) return x * 8.98846567431158e307;
+        if (x < -745.13321910194110842) return 0;
+    }
+
+    float64 hi, lo;
+    int32 k;
+
+    if (hx > 0x3fd62e42)
+    {
+        if (hx >= 0x3ff0a2b2)
+            k = int32 (invln2 * x + (negative ? -0.5 : 0.5));
+        else
+            k = negative ? -1 : 1;
+
+        hi = x - k * ln2hi;
+        lo = k * ln2lo;
+        x = hi - lo;
+    }
+    else if (hx > 0x3e300000)
+    {
+        k = 0;
+        hi = x;
+        lo = 0;
+    }
+    else
+    {
+        return 1 + x;
+    }
+
+    float64 xx = x * x;
+    float64 c = x - xx * (P1 + xx * (P2 + xx * (P3 + xx * (P4 + xx * P5))));
+    float64 y = 1 + (x * c / (2 - c) - lo + hi);
+
+    return k == 0 ? y : helpers::scalbn (y, k);
+}
+
+//==============================================================================
+float32 pow (float32 x, float32 y)
+{
+    const float32 two24    = 16777216.0,
+                  huge     = 1.0e30f,
+                  tiny     = 1.0e-30f,
+                  L1       = 6.0000002384e-01f,
+                  L2       = 4.2857143283e-01f,
+                  L3       = 3.3333334327e-01f,
+                  L4       = 2.7272811532e-01f,
+                  L5       = 2.3066075146e-01f,
+                  L6       = 2.0697501302e-01f,
+                  P1       = 1.6666667163e-01f,
+                  P2       = -2.7777778450e-03f,
+                  P3       = 6.6137559770e-05f,
+                  P4       = -1.6533901999e-06f,
+                  P5       = 4.1381369442e-08f,
+                  lg2      = 6.9314718246e-01f,
+                  lg2_h    = 6.93145752e-01f,
+                  lg2_l    = 1.42860654e-06f,
+                  ovt      = 4.2995665694e-08f,
+                  cp       = 9.6179670095e-01f,
+                  cp_h     = 9.6191406250e-01f,
+                  cp_l     = -1.1736857402e-04f,
+                  ivln2    = 1.4426950216e+00f,
+                  ivln2_h  = 1.4426879883e+00f,
+                  ivln2_l  = 7.0526075433e-06f;
+
+    let hx = reinterpretFloatToInt (x);
+    let hy = reinterpretFloatToInt (y);
+    int32 ix = hx & 0x7fffffff;
+    int32 iy = hy & 0x7fffffff;
+
+    if (iy == 0 || hx == 0x3f800000)            return 1.0f;
+    if (ix > 0x7f800000 || iy > 0x7f800000)     return x + y;
+
+    int32 yisint = 0;
+
+    if (hx < 0)
+    {
+        if (iy >= 0x4b800000)
+            yisint = 2;
+        else if (iy >= 0x3f800000)
+        {
+            int32 k = (iy >> 23) - 0x7f;
+            int32 j = iy >> (23 - k);
+
+            if ((j << (23 - k)) == iy)
+                yisint = 2 - (j & 1);
+        }
+    }
+
+    if (iy == 0x7f800000)
+    {
+        if (ix == 0x3f800000) return 1.0f;
+        if (ix > 0x3f800000)  return hy >= 0 ? y : 0.0f;
+        return hy >= 0 ? 0.0f : -y;
+    }
+
+    if (iy == 0x3f800000)            return hy >= 0 ? x : 1.0f / x;
+    if (hy == 0x40000000)            return x * x;
+    if (hy == 0x3f000000 && hx >= 0) return sqrt (x);
+
+    float32 ax = abs (x);
+
+    if (ix == 0x7f800000 || ix == 0 || ix == 0x3f800000)
+    {
+        float32 z = ax;
+
+        if (hy < 0)
+            z = 1.0f / z;
+
+        if (hx < 0)
+        {
+            if (((ix - 0x3f800000) | yisint) == 0)
+                z = (z - z) / (z - z);
+            else if (yisint == 1)
+                z = -z;
+        }
+
+        return z;
+    }
+
+    float32 sn = 1.0f;
+
+    if (hx < 0)
+    {
+        if (yisint == 0)
+            return (x - x) / (x - x);
+
+        if (yisint == 1)
+            sn = -1.0f;
+    }
+
+    float32 t1, t2;
+
+    if (iy > 0x4d000000)
+    {
+        if (ix < 0x3f7ffff8)
+            return hy < 0 ? sn * huge * huge : sn * tiny * tiny;
+        if (ix > 0x3f800007)
+            return hy > 0 ? sn * huge * huge : sn * tiny * tiny;
+
+        float32 t = ax - 1;
+        float32 w = (t * t) * (0.5f - t * (0.333333333333f - t * 0.25f));
+        float32 u = ivln2_h * t;
+        float32 v = t * ivln2_l - w * ivln2;
+        t1 = u + v;
+        int32 is = reinterpretFloatToInt (t1);
+        t1 = reinterpretIntToFloat (is & int32 (0xfffff000_i64));
+        t2 = v - (t1 - u);
+    }
+    else
+    {
+        int32 n = 0;
+
+        if (ix < 0x00800000)
+        {
+            ax *= two24;
+            n -= 24;
+            ix = reinterpretFloatToInt (ax);
+        }
+
+        n += ((ix) >> 23) - 0x7f;
+        int32 j = ix & 0x007fffff;
+        ix = j | 0x3f800000;
+        int32 k;
+
+        if (j <= 0x1cc471)
+            k = 0;
+        else if (j < 0x5db3d7)
+            k = 1;
+        else
+        {
+            k = 0;
+            n += 1;
+            ix -= 0x00800000;
+        }
+
+        ax = reinterpretIntToFloat (ix);
+
+        float32 bpk = k == 0 ? 1.0f : 1.5f;
+        float32 u = ax - bpk;
+        float32 v = 1.0f / (ax + bpk);
+        float32 s = u * v;
+        float32 s_h = s;
+        int32 is = reinterpretFloatToInt (s_h);
+        s_h = reinterpretIntToFloat (is & int32 (0xfffff000_i64));
+        is = ((ix >> 1) & int32 (0xfffff000_i64)) | 0x20000000;
+        float32 t_h = reinterpretIntToFloat (is + 0x00400000 + (k << 21));
+        float32 t_l = ax - (t_h - bpk);
+        float32 s_l = v * ((u - s_h * t_h) - s_h * t_l);
+        float32 s2 = s * s;
+        float32 r = s2 * s2 * (L1 + s2 * (L2 + s2 * (L3 + s2 * (L4 + s2 * (L5 + s2 * L6)))));
+        r += s_l * (s_h + s);
+        s2 = s_h * s_h;
+        t_h = 3.0f + s2 + r;
+        is = reinterpretFloatToInt (t_h);
+        t_h = reinterpretIntToFloat (is & int32 (0xfffff000_i64));
+        t_l = r - ((t_h - 3.0f) - s2);
+        u = s_h * t_h;
+        v = s_l * t_h + t_l * s;
+        float32 p_h = u + v;
+        is = reinterpretFloatToInt (p_h);
+        p_h = reinterpretIntToFloat (is & int32 (0xfffff000_i64));
+        float32 p_l = v - (p_h - u);
+        float32 z_h = cp_h * p_h;
+
+        const float32[] dp_h = (0.0, 5.84960938e-01f);
+        const float32[] dp_l = (0.0, 1.56322085e-06f);
+
+        let z_l = cp_l * p_h + p_l * cp + dp_l[k];
+        let t = float32 (n);
+        t1 = (((z_h + z_l) + dp_h[k]) + t);
+        is = reinterpretFloatToInt (t1);
+        t1 = reinterpretIntToFloat (is & int32 (0xfffff000_i64));
+        t2 = z_l - (((t1 - t) - dp_h[k]) - z_h);
+    }
+
+    int32 is = reinterpretFloatToInt (y);
+    float32 y1 = reinterpretIntToFloat (is & int32 (0xfffff000_i64));
+    float32 p_l = (y - y1) * t1 + y * t2;
+    float32 p_h = y1 * t1;
+    float32 z = p_l + p_h;
+    int32 j = reinterpretFloatToInt (z);
+
+    if (j > 0x43000000)
+        return sn * huge * huge;
+
+    if (j == 0x43000000)
+    {
+        if (p_l + ovt > z - p_h)
+            return sn * huge * huge;
+    }
+    else if ((j & 0x7fffffff) > 0x43160000)
+    {
+        return sn * tiny * tiny;
+    }
+    else if (j == int32 (0xc3160000_i64))
+    {
+        if (p_l <= z - p_h)
+            return sn * tiny * tiny;
+    }
+
+    int32 i = j & 0x7fffffff;
+    int32 k = (i >> 23) - 0x7f;
+    int32 n = 0;
+
+    if (i > 0x3f000000)
+    {
+        n = j + (0x00800000 >> (k + 1));
+        k = ((n & 0x7fffffff) >> 23) - 0x7f;
+        float32 t = reinterpretIntToFloat (n & ~(0x007fffff >> k));
+        n = ((n & 0x007fffff) | 0x00800000) >> (23 - k);
+
+        if (j < 0)
+            n = -n;
+
+        p_h -= t;
+    }
+
+    float32 t = p_l + p_h;
+    is = reinterpretFloatToInt (t);
+    t = reinterpretIntToFloat (is & int32 (0xffff8000_i64));
+    float32 u = t * lg2_h;
+    float32 v = (p_l - (t - p_h)) * lg2 + t * lg2_l;
+    z = u + v;
+    float32 w = v - (z - u);
+    t = z * z;
+    t1 = z - t * (P1 + t * (P2 + t * (P3 + t * (P4 + t * P5))));
+    float32 r = (z * t1) / (t1 - 2.0f) - (w + z * w);
+    z = 1.0f - (r - z);
+    j = reinterpretFloatToInt (z);
+    j += n << 23;
+
+    if ((j >> 23) <= 0)
+        z = helpers::scalbnf (z, n);
+    else
+        z = reinterpretIntToFloat (j);
+
+    return sn * z;
+}
+
+//==============================================================================
+float64 pow (float64 x, float64 y)
+{
+    const float64 two53 = 9007199254740992.0,
+                  huge = 1.0e300,
+                  tiny = 1.0e-300,
+                  L1 = 5.99999999999994648725e-01,
+                  L2 = 4.28571428578550184252e-01,
+                  L3 = 3.33333329818377432918e-01,
+                  L4 = 2.72728123808534006489e-01,
+                  L5 = 2.30660745775561754067e-01,
+                  L6 = 2.06975017800338417784e-01,
+                  P1 = 1.66666666666666019037e-01,
+                  P2 = -2.77777777770155933842e-03,
+                  P3 = 6.61375632143793436117e-05,
+                  P4 = -1.65339022054652515390e-06,
+                  P5 = 4.13813679705723846039e-08,
+                  lg2 = 6.93147180559945286227e-01,
+                  lg2_h = 6.93147182464599609375e-01,
+                  lg2_l = -1.90465429995776804525e-09,
+                  ovt = 8.0085662595372944372e-017,
+                  cp = 9.61796693925975554329e-01,
+                  cp_h = 9.61796700954437255859e-01,
+                  cp_l = -7.02846165095275826516e-09,
+                  ivln2 = 1.44269504088896338700e+00,
+                  ivln2_h = 1.44269502162933349609e+00,
+                  ivln2_l = 1.92596299112661746887e-08;
+
+    let ix64 = reinterpretFloatToInt (x);
+    let hx = int32 (ix64 >> 32);
+    let lx = int32 (ix64);
+
+    let iy64 = reinterpretFloatToInt (y);
+    let hy = int32 (iy64 >> 32);
+    let ly = int32 (iy64);
+
+    var ix = hx & 0x7fffffff;
+    let iy = hy & 0x7fffffff;
+
+    if ((iy | ly) == 0)
+        return 1.0;
+
+    if (hx == 0x3ff00000 && lx == 0)
+        return 1.0;
+
+    if (ix > 0x7ff00000 || (ix == 0x7ff00000 && lx != 0) || iy > 0x7ff00000 || (iy == 0x7ff00000 && ly != 0))
+        return x + y;
+
+    float64 t1, t2;
+    int32 yisint = 0;
+
+    if (hx < 0)
+    {
+        if (iy >= 0x43400000)
+        {
+            yisint = 2;
+        }
+        else if (iy >= 0x3ff00000)
+        {
+            int32 k = (iy >> 20) - 0x3ff;
+
+            if (k > 20)
+            {
+                int32 j = int32 (ly >>> (52 - k));
+                if ((j << (52 - k)) == ly)
+                    yisint = 2 - (j & 1);
+            }
+            else if (ly == 0)
+            {
+                int32 j = iy >> (20 - k);
+                if ((j << (20 - k)) == iy)
+                    yisint = 2 - (j & 1);
+            }
+        }
+    }
+
+    if (ly == 0)
+    {
+        if (iy == 0x7ff00000)
+        {
+            if (((ix - 0x3ff00000) | lx) == 0)
+                return 1.0;
+
+            if (ix >= 0x3ff00000)
+                return hy >= 0 ? y : 0.0;
+
+            return hy >= 0 ? 0.0 : -y;
+        }
+
+        if (iy == 0x3ff00000)
+        {
+            if (hy >= 0)
+                return x;
+
+            y = 1 / x;
+            return y;
+        }
+
+        if (hy == 0x40000000)
+            return x * x;
+
+        if (hy == 0x3fe00000 && hx >= 0)
+            return sqrt (x);
+    }
+
+    var ax = abs (x);
+
+    if (lx == 0)
+    {
+        if (ix == 0x7ff00000 || ix == 0 || ix == 0x3ff00000)
+        {
+            var z = ax;
+
+            if (hy < 0)
+                z = 1.0 / z;
+
+            if (hx < 0)
+            {
+                if (((ix - 0x3ff00000) | yisint) == 0)
+                    z = (z - z) / (z - z);
+                else if (yisint == 1)
+                    z = -z;
+            }
+
+            return z;
+        }
+    }
+
+    float64 s = 1.0;
+
+    if (hx < 0)
+    {
+        if (yisint == 0)
+            return (x - x) / (x - x);
+
+        if (yisint == 1)
+            s = -1.0;
+    }
+
+    if (iy > 0x41e00000)
+    {
+        if (iy > 0x43f00000)
+        {
+            if (ix <= 0x3fefffff)  return hy < 0 ? huge * huge : tiny * tiny;
+            if (ix >= 0x3ff00000)  return hy > 0 ? huge * huge : tiny * tiny;
+        }
+
+        if (ix < 0x3fefffff)  return hy < 0 ? s * huge * huge : s * tiny * tiny;
+        if (ix > 0x3ff00000)  return hy > 0 ? s * huge * huge : s * tiny * tiny;
+
+        let t = ax - 1.0;
+        let w = (t * t) * (0.5 - t * (0.3333333333333333333333 - t * 0.25));
+        let u = ivln2_h * t;
+        let v = t * ivln2_l - w * ivln2;
+        t1 = helpers::clearLowWord (u + v);
+        t2 = v - (t1 - u);
+    }
+    else
+    {
+        int32 n = 0;
+
+        if (ix < 0x00100000)
+        {
+            ax *= two53;
+            n -= 53;
+            ix = helpers::getHighWord (ax);
+        }
+
+        n += (ix >> 20) - 0x3ff;
+        const int32 j = ix & 0x000fffff;
+
+        ix = j | 0x3ff00000;
+        int32 k;
+
+        if (j <= 0x3988e)
+            k = 0;
+        else if (j < 0xbb67a)
+            k = 1;
+        else
+        {
+            k = 0;
+            n += 1;
+            ix -= 0x00100000;
+        }
+
+        ax = helpers::withHighWord (ax, ix);
+
+        float64 bpk = k == 0 ? 1.0 : 1.5;
+        let u = ax - bpk;
+        let v = 1.0 / (ax + bpk);
+        float64 ss = u * v;
+        float64 s_h = helpers::clearLowWord (ss);
+        float64 t_h = 0.0;
+        t_h = helpers::withHighWord (t_h, ((ix >> 1) | 0x20000000) + 0x00080000 + (k << 18));
+        float64 t_l = ax - (t_h - bpk);
+        float64 s_l = v * ((u - s_h * t_h) - s_h * t_l);
+        float64 s2 = ss * ss;
+        float64 r = s2 * s2 * (L1 + s2 * (L2 + s2 * (L3 + s2 * (L4 + s2 * (L5 + s2 * L6)))));
+        r += s_l * (s_h + ss);
+        s2 = s_h * s_h;
+        t_h = helpers::clearLowWord (3.0 + s2 + r);
+        t_l = r - ((t_h - 3.0) - s2);
+        let u = s_h * t_h;
+        let v = s_l * t_h + t_l * ss;
+        let p_h = helpers::clearLowWord (u + v);
+        let p_l = v - (p_h - u);
+        let z_h = cp_h * p_h;
+
+        const float64[] dp_h = (0.0, 5.84962487220764160156e-01);
+        const float64[] dp_l = (0.0, 1.35003920212974897128e-08);
+
+        let z_l = cp_l * p_h + p_l * cp + dp_l[k];
+        let t = float64 (n);
+        t1 = helpers::clearLowWord (((z_h + z_l) + dp_h[k]) + t);
+        t2 = z_l - (((t1 - t) - dp_h[k]) - z_h);
+    }
+
+    let y1 = helpers::clearLowWord (y);
+    let p_l = (y - y1) * t1 + y * t2;
+    var p_h = y1 * t1;
+    var z = p_l + p_h;
+
+    let iz64 = reinterpretFloatToInt (z);
+    int32 j = int32 (iz64 >> 32);
+    int32 i = int32 (iz64);
+
+    if (j >= 0x40900000)
+    {
+        if (((j - 0x40900000) | i) != 0)  return s * huge * huge;
+        if (p_l + ovt > z - p_h)          return s * huge * huge;
+    }
+    else if ((j & 0x7fffffff) >= 0x4090cc00)
+    {
+        if (((j - int32 (0xc090cc00_i64)) | i) != 0)  return s * tiny * tiny;
+        if (p_l <= z - p_h)                           return s * tiny * tiny;
+    }
+
+    i = j & 0x7fffffff;
+    int32 k = (i >> 20) - 0x3ff;
+    int32 n = 0;
+
+    if (i > 0x3fe00000)
+    {
+        n = j + (0x00100000 >> (k + 1));
+        k = ((n & 0x7fffffff) >> 20) - 0x3ff;
+        let t = helpers::withHighWord (0.0, n & ~(0x000fffff >> k));
+        n = ((n & 0x000fffff) | 0x00100000) >> (20 - k);
+        if (j < 0)
+            n = -n;
+        p_h -= t;
+    }
+
+    var t = helpers::clearLowWord (p_l + p_h);
+    let u = t * lg2_h;
+    let v = (p_l - (t - p_h)) * lg2 + t * lg2_l;
+    z = u + v;
+    let w = v - (z - u);
+    t = z * z;
+    t1 = z - t * (P1 + t * (P2 + t * (P3 + t * (P4 + t * P5))));
+    float64 r = (z * t1) / (t1 - 2.0) - (w + z * w);
+    z = 1.0 - (r - z);
+    j = helpers::getHighWord (z);
+    j += n << 20;
+
+    if ((j >> 20) <= 0)
+        z = helpers::scalbn (z, n);
+    else
+        z = helpers::withHighWord (z, j);
+
+    return s * z;
+}
+
+//==============================================================================
+/// helpers for the math functions above
+namespace helpers
+{
+    float64 withHighWord (float64 d, int32 hi)
+    {
+        return reinterpretIntToFloat ((reinterpretFloatToInt (d) & 0xffffffff_i64) | (int64(hi) << 32));
+    }
+
+    int32 getHighWord (float64 d)
+    {
+        return int32 (reinterpretFloatToInt (d) >> 32);
+    }
+
+    float64 clearLowWord (float64 d)
+    {
+        return reinterpretIntToFloat (reinterpretFloatToInt (d) & int64 (0xffffffff00000000_i64));
+    }
+
+    float64 scalbn (float64 y, int32 n)
+    {
+        if (n > 1023)
+        {
+            y *= 8.98846567431158e307;
+            n -= 1023;
+
+            if (n > 1023)
+            {
+                y *= 8.98846567431158e307;
+                n -= 1023;
+
+                if (n > 1023)
+                    n = 1023;
+            }
+        }
+        else if (n < -1022)
+        {
+            y *= 2.2250738585072014e-308 * 9007199254740992.0;
+            n += 1022 - 53;
+
+            if (n < -1022)
+            {
+                y *= 2.2250738585072014e-308 * 9007199254740992.0;
+                n += 1022 - 53;
+
+                if (n < -1022)
+                    n = -1022;
+            }
+        }
+
+        return y * reinterpretIntToFloat (int64 (0x3ff + n) << 52);
+    }
+
+    float32 scalbnf (float32 y, int32 n)
+    {
+        if (n > 127)
+        {
+            y *= 1.7014118e38f;
+            n -= 127;
+
+            if (n > 127)
+            {
+                y *= 1.7014118e38f;
+                n -= 127;
+
+                if (n > 127)
+                    n = 127;
+            }
+        }
+        else if (n < -126)
+        {
+            y *= 1.1754944e-38f * 16777216.0f;
+            n += 126 - 24;
+
+            if (n < -126)
+            {
+                y *= 1.1754944e-38f * 16777216.0f;
+                n += 126 - 24;
+
+                if (n < -126)
+                    n = -126;
+            }
+        }
+
+        return y * reinterpretIntToFloat (int32 (0x7f + n) << 23);
+    }
+
+    float32 sindf (float64 x)
+    {
+        const float64 S1 = -0.16666666641626524,
+                      S2 = 0.008333329385889464,
+                      S3 = -0.00019839334836096632,
+                      S4 = 0.000002718311493989822;
+
+        let z = x * x;
+        let w = z * z;
+        let r = S3 + z * S4;
+        let s = z * x;
+        return float32 ((x + s * (S1 + z * S2)) + s * w * r);
+    }
+
+    float32 cosdf (float64 x)
+    {
+        const float64 C0 = -0.499999997251031,
+                      C1 = 0.04166662332373906,
+                      C2 = -0.001388676377460993,
+                      C3 = 0.00002439044879627741;
+        let z = x * x;
+        let w = z * z;
+        let r = C2 + z * C3;
+        return float32 (((1.0 + z * C0) + w * C1) + (w * z) * r);
+    }
+
+    struct RemainderPiOver2Result
+    {
+        int32 n;
+        float64 y0, y1;
+    }
+
+    RemainderPiOver2Result remainderPiOver2Large (const float64[3] x, int32 e0, int32 nx, int32 prec)
+    {
+        const int32[] ipio2 = (0xa2f983, 0x6e4e44, 0x1529fc, 0x2757d1, 0xf534dd, 0xc0db62, 0x95993c, 0x439041, 0xfe5163, 0xabdebb, 0xc561b7,
+                               0x246e3a, 0x424dd2, 0xe00649, 0x2eea09, 0xd1921c, 0xfe1deb, 0x1cb129, 0xa73ee8, 0x8235f5, 0x2ebb44, 0x84e99c,
+                               0x7026b4, 0x5f7e41, 0x3991d6, 0x398353, 0x39f49c, 0x845f8b, 0xbdf928, 0x3b1ff8, 0x97ffde, 0x05980f, 0xef2f11,
+                               0x8b5a0a, 0x6d1f6d, 0x367ecf, 0x27cb09, 0xb74f46, 0x3f669e, 0x5fea2d, 0x7527ba, 0xc7ebe5, 0xf17b3d, 0x0739f7,
+                               0x8a5292, 0xea6bfb, 0x5fb11f, 0x8d5d08, 0x560330, 0x46fc7b, 0x6babf0, 0xcfbc20, 0x9af436, 0x1da9e3, 0x91615e,
+                               0xe61b08, 0x659985, 0x5f14a0, 0x68408d, 0xffd880, 0x4d7327, 0x310606, 0x1556ca, 0x73a8c9, 0x60e27b, 0xc08c6b);
+
+        const float64[] PIo2 = (1.57079625129699707031e+00, 7.54978941586159635335e-08, 5.39030252995776476554e-15, 3.28200341580791294123e-22,
+                                1.27065575308067607349e-29, 1.22933308981111328932e-36, 2.73370053816464559624e-44, 2.16741683877804819444e-51);
+
+        float64[16] f, fq, q;
+        let jk = 3 + prec;
+        let jx = nx - 1;
+        let jv = max (0, (e0 - 3) / 24);
+
+        int32 q0 = e0 - 24 * (jv + 1);
+
+        {
+            var j = jv - jx;
+            let m = jx + jk;
+
+            for (int32 i = 0; i <= m; ++i)
+            {
+                f.at(i) = j < 0 ? 0.0 : float64 (ipio2[j]);
+                ++j;
+            }
+        }
+
+        for (int32 i = 0; i <= jk; ++i)
+        {
+            float64 fw = 0;
+
+            for (int32 j = 0; j < nx; ++j)
+                fw += x.at(j) * f.at(jx + i - j);
+
+            q.at(i) = fw;
+        }
+
+        int32 n, ih, jz = jk;
+        float64 z = 0;
+        int32[16] iq;
+
+        for (;;)
+        {
+            z = q.at(jz);
+
+            {
+                float64 fw = 0;
+                int32 i = 0;
+
+                for (int32 j = jz; j > 0; --j)
+                {
+                    fw = float64 (int32 (5.960464477539063e-8 * z));
+                    iq.at(i) = int32 (z - 16777216.0 * fw);
+                    ++i;
+                    z = q.at(j - 1) + fw;
+                }
+            }
+
+            z = scalbn (z, q0);
+            z -= 8.0 * floor (z * 0.125);
+            n = int32 (z);
+            z -= float64 (n);
+            ih = 0;
+
+            if (q0 > 0)
+            {
+                var iqjz = iq.at(jz - 1);
+                int32 i = iqjz >> (24 - q0);
+                n += i;
+                iqjz -= i << (24 - q0);
+                iq.at(jz - 1) = iqjz;
+                ih = iqjz >> (23 - q0);
+            }
+            else if (q0 == 0)
+                ih = iq.at(jz - 1) >> 23;
+            else if (z >= 0.5)
+                ih = 2;
+
+            if (ih > 0)
+            {
+                n += 1;
+                bool carry;
+
+                for (int32 i = 0; i < jz; ++i)
+                {
+                    int32 j = iq.at(i);
+
+                    if (! carry)
+                    {
+                        if (j != 0)
+                        {
+                            carry = true;
+                            iq.at(i) = 0x1000000 - j;
+                        }
+                    }
+                    else
+                    {
+                        iq.at(i) = 0xffffff - j;
+                    }
+                }
+
+                if (q0 > 0)
+                {
+                    if (q0 == 1)
+                        iq.at(jz - 1) &= 0x7fffff;
+                    else if (q0 == 2)
+                        iq.at(jz - 1) &= 0x3fffff;
+                }
+
+                if (ih == 2)
+                {
+                    z = 1.0 - z;
+
+                    if (carry)
+                        z -= scalbn (1.0, q0);
+                }
+            }
+
+            if (z == 0.0)
+            {
+                int32 j = 0;
+
+                for (int32 i = jz - 1; i >= jk; --i)
+                    j |= iq.at(i);
+
+                if (j == 0)
+                {
+                    int32 k = 1;
+                    while (iq.at(jk - k) == 0)
+                        ++k;
+
+                    for (int32 i = jz + 1; i <= jz + k; ++i)
+                    {
+                        f.at(jx + i) = float64 (ipio2[jv + i]);
+                        float64 fw = 0;
+
+                        for (int32 m = 0; m < nx; ++m)
+                            fw += x.at(m) * f.at(jx + i - m);
+
+                        q.at(i) = fw;
+                    }
+                    jz += k;
+                    continue;
+                }
+            }
+
+            break;
+        }
+
+        if (z == 0.0)
+        {
+            --jz;
+            q0 -= 24;
+
+            while (iq.at(jz) == 0)
+            {
+                --jz;
+                q0 -= 24;
+            }
+        }
+        else
+        {
+            z = scalbn (z, -q0);
+
+            if (z >= 16777216.0)
+            {
+                let fw = float64 (int32 (5.960464477539063e-8 * z));
+                iq.at(jz) = int32 (z - 16777216.0 * fw);
+                ++jz;
+                q0 += 24;
+                iq.at(jz) = int32 (fw);
+            }
+            else
+            {
+                iq.at(jz) = int32 (z);
+            }
+        }
+
+        var fw = scalbn (1.0, q0);
+
+        for (int32 i = jz; i >= 0; --i)
+        {
+            q.at(i) = fw * float64 (iq.at(i));
+            fw *= 5.960464477539063e-8;
+        }
+
+        for (int32 i = jz; i >= 0; --i)
+        {
+            fw = 0.0;
+
+            for (int32 k = 0; k <= jk && k <= jz - i; ++k)
+                fw += PIo2[k] * q.at(i + k);
+
+            fq.at(jz - i) = fw;
+        }
+
+        fw = 0.0;
+
+        for (int32 i = jz; i >= 0; --i)
+            fw += fq.at(i);
+
+        float64 y0 = ih == 0 ? fw : -fw;
+
+        if (prec == 0)
+            return (n & 7, y0, 0);
+
+        fw = fq[0] - fw;
+
+        for (int32 i = 1; i <= jz; ++i)
+            fw += fq.at(i);
+
+        return (n & 7, y0, ih == 0 ? fw : -fw);
+    }
+
+    struct RemainderPiOver2fResult
+    {
+        int n;
+        float64 y;
+    }
+
+    RemainderPiOver2fResult remainderPiOver2f (float32 x)
+    {
+        const float64 toint = 1.5 / 2.2204460492503131e-016,
+                      invpio2 = 6.36619772367581382433e-01,
+                      pio2_1 = 1.57079631090164184570e+00,
+                      pio2_1t = 1.58932547735281966916e-08;
+
+        let intX = reinterpretFloatToInt (x);
+        int32 ix = intX & 0x7fffffff;
+
+        if (ix < 0x4dc90fdb)
+        {
+            let fn = float64 (x * invpio2 + toint - toint);
+            return (int32 (fn) & 3, x - fn * pio2_1 - fn * pio2_1t);
+        }
+
+        if (ix >= 0x7f800000)
+            return (0, x - x);
+
+        int32 e0 = (ix >> 23) - (0x7f + 23);
+        float64[3] tx;
+        tx[0] = reinterpretIntToFloat (ix - int32 (e0 << 23));
+        let result = remainderPiOver2Large (tx, e0, 1, 0);
+
+        if ((intX >> 31) != 0)
+            return (-result.n & 3, -result.y0);
+
+        return (result.n & 3, result.y0);
+    }
+
+    RemainderPiOver2Result remainderPiOver2Medium (float64 x, int32 ix)
+    {
+        const float64 toint    = 1.5 / 2.2204460492503131e-016,
+                      invpio2  = 6.36619772367581382433e-01,
+                      pio2_1   = 1.57079632673412561417e+00,
+                      pio2_1t  = 6.07710050650619224932e-11,
+                      pio2_2   = 6.07710050630396597660e-11,
+                      pio2_2t  = 2.02226624879595063154e-21,
+                      pio2_3   = 2.02226624871116645580e-21,
+                      pio2_3t  = 8.47842766036889956997e-32;
+
+        float64 fn = x * invpio2 + toint - toint;
+        let n = int32 (fn);
+        float64 r = x - fn * pio2_1;
+        float64 w = fn * pio2_1t;
+        float64 y0 = r - w;
+
+        int32 ey = int32 ((reinterpretFloatToInt (y0) >> 52) & 0x7ff);
+        int32 ex = ix >>> 20;
+
+        if (ex - ey > 16)
+        {
+            var t = r;
+            w = fn * pio2_2;
+            r = t - w;
+            w = fn * pio2_2t - ((t - r) - w);
+            y0 = r - w;
+            ey = int32 ((reinterpretFloatToInt (y0) >> 52) & 0x7ff);
+
+            if (ex - ey > 49)
+            {
+                t = r;
+                w = fn * pio2_3;
+                r = t - w;
+                w = fn * pio2_3t - ((t - r) - w);
+                y0 = r - w;
+            }
+        }
+
+        return (n, y0, (r - y0) - w);
+    }
+
+    RemainderPiOver2Result remainderPiOver2 (float64 x)
+    {
+        const float64 pio2_1 = 1.57079632673412561417e+00,
+                      pio2_1t = 6.07710050650619224932e-11;
+
+        let intX = reinterpretFloatToInt (x);
+        const bool negative = (intX >> 63) != 0;
+        int32 ix = int32 ((intX >> 32) & 0x7fffffff);
+        float64 z = 0;
+
+        if (ix <= 0x400f6a7a)
+        {
+            if ((ix & 0xfffff) == 0x921fb)
+                return remainderPiOver2Medium (x, ix);
+
+            if (ix <= 0x4002d97c)
+            {
+                if (! negative)
+                {
+                    z = x - pio2_1;
+                    float64 y0 = z - pio2_1t;
+                    return (1, y0, (z - y0) - pio2_1t);
+                }
+
+                z = x + pio2_1;
+                float64 y0 = z + pio2_1t;
+                return (-1, y0, (z - y0) + pio2_1t);
+            }
+            else
+            {
+                if (! negative)
+                {
+                    z = x - 2 * pio2_1;
+                    float64 y0 = z - 2 * pio2_1t;
+                    return (2, y0, (z - y0) - 2 * pio2_1t);
+                }
+
+                z = x + 2 * pio2_1;
+                float64 y0 = z + 2 * pio2_1t;
+                return (-2, y0, (z - y0) + 2 * pio2_1t);
+            }
+        }
+
+        if (ix <= 0x401c463b)
+        {
+            if (ix <= 0x4015fdbc)
+            {
+                if (ix == 0x4012d97c)
+                    return remainderPiOver2Medium (x, ix);
+
+                if (! negative)
+                {
+                    z = x - 3 * pio2_1;
+                    float64 y0 = z - 3 * pio2_1t;
+                    return (3, y0, (z - y0) - 3 * pio2_1t);
+                }
+
+                z = x + 3 * pio2_1;
+                float64 y0 = z + 3 * pio2_1t;
+                return (-3, y0, (z - y0) + 3 * pio2_1t);
+            }
+
+            if (ix == 0x401921fb)
+                return remainderPiOver2Medium (x, ix);
+
+            if (! negative)
+            {
+                z = x - 4 * pio2_1;
+                float64 y0 = z - 4 * pio2_1t;
+                return (4, y0, (z - y0) - 4 * pio2_1t);
+            }
+
+            z = x + 4 * pio2_1;
+            float64 y0 = z + 4 * pio2_1t;
+            return (-4, y0, (z - y0) + 4 * pio2_1t);
+        }
+
+        if (ix < 0x413921fb)   return remainderPiOver2Medium (x, ix);
+        if (ix >= 0x7ff00000)  return (0, x - x, x - x);
+
+        z = reinterpretIntToFloat ((intX & 0x000fffffffffffff_i64) | 0x4160000000000000_i64);
+
+        let tx0 = float64 (int32 (z));
+        z = (z - tx0) * 16777216.0;
+        let tx1 = float64 (int32 (z));
+        z = (z - tx1) * 16777216.0;
+        let tx2 = z;
+
+        let num = tx2 != 0 ? 3 : (tx1 != 0 ? 2 : (tx0 != 0 ? 1 : 0));
+
+        let result = remainderPiOver2Large (float64[3](tx0, tx1, tx2),
+                                            (ix >>> 20) - (0x3ff + 23), num, 1);
+
+        if (negative)
+            return (-result.n, -result.y0, -result.y1);
+
+        return (result.n, result.y0, result.y1);
+    }
+
+    float32 tandf (float64 x, int odd)
+    {
+        const float64 t0 = 0.3333313950307914,
+                      t1 = 0.13339200271297675,
+                      t2 = 0.05338123784456704,
+                      t3 = 0.024528318116654729,
+                      t4 = 0.002974357433599673,
+                      t5 = 0.009465647849436732;
+
+        float64 z = x * x;
+        float64 r = t4 + z * t5;
+        float64 t = t2 + z * t3;
+        float64 w = z * z;
+        float64 s = z * x;
+        float64 u = t0 + z * t1;
+        r = (x + s * u) + (s * w) * (t + w * r);
+        return float32 (odd != 0 ? -1.0 / r : r);
+    }
+
+    float64 cos (float64 x, float64 y)
+    {
+        const float64 c1 = 4.16666666666666019037e-02,
+                      c2 = -1.38888888888741095749e-03,
+                      c3 = 2.48015872894767294178e-05,
+                      c4 = -2.75573143513906633035e-07,
+                      c5 = 2.08757232129817482790e-09,
+                      c6 = -1.13596475577881948265e-11;
+
+        float64 z = x * x;
+        float64 zz = z * z;
+        float64 r = z * (c1 + z * (c2 + z * c3)) + zz * zz * (c4 + z * (c5 + z * c6));
+        float64 hz = 0.5 * z;
+        float64 w = 1.0 - hz;
+        return w + (((1.0 - w) - hz) + (z * r - x * y));
+    }
+
+    float64 sin (float64 x, float64 y, int iy)
+    {
+        const float64 s1 = -1.66666666666666324348e-01,
+                      s2 = 8.33333333332248946124e-03,
+                      s3 = -1.98412698298579493134e-04,
+                      s4 = 2.75573137070700676789e-06,
+                      s5 = -2.50507602534068634195e-08,
+                      s6 = 1.58969099521155010221e-10;
+
+        float64 z = x * x;
+        float64 w = z * z;
+        float64 r = s2 + z * (s3 + z * s4) + z * w * (s5 + z * s6);
+        float64 v = z * x;
+
+        return iy == 0 ? x + v * (s1 + z * r)
+                    : x - ((z * (0.5 * y - v * r) - y) - v * s1);
+    }
+
+    float64 tan (float64 x, float64 y, int32 odd)
+    {
+        const float64 t0  = 3.33333333333334091986e-01,
+                      t1  = 1.33333333333201242699e-01,
+                      t2  = 5.39682539762260521377e-02,
+                      t3  = 2.18694882948595424599e-02,
+                      t4  = 8.86323982359930005737e-03,
+                      t5  = 3.59207910759131235356e-03,
+                      t6  = 1.45620945432529025516e-03,
+                      t7  = 5.88041240820264096874e-04,
+                      t8  = 2.46463134818469906812e-04,
+                      t9  = 7.81794442939557092300e-05,
+                      t10 = 7.14072491382608190305e-05,
+                      t11 = -1.85586374855275456654e-05,
+                      t12 = 2.59073051863633712884e-05,
+                      pio4 = 7.85398163397448278999e-01,
+                      pio4lo = 3.06161699786838301793e-17;
+
+        let hx = getHighWord (x);
+        bool big = (hx & 0x7fffffff) >= 0x3fe59428;
+        bool negative = false;
+
+        if (big)
+        {
+            negative = (hx >> 31) != 0;
+
+            if (negative)
+            {
+                x = -x;
+                y = -y;
+            }
+
+            x = (pio4 - x) + (pio4lo - y);
+            y = 0.0;
+        }
+
+        float64 z = x * x;
+        float64 w = z * z;
+        float64 r = t1 + w * (t3 + w * (t5 + w * (t7 + w * (t9 + w * t11))));
+        float64 v = z * (t2 + w * (t4 + w * (t6 + w * (t8 + w * (t10 + w * t12)))));
+        float64 s = z * x;
+        r = y + z * (s * (r + v) + y) + s * t0;
+        w = x + r;
+
+        if (big)
+        {
+            s = 1 - 2 * odd;
+            v = s - 2.0 * (x + (r - w * w / (w + s)));
+            return negative ? -v : v;
+        }
+
+        if (odd == 0)
+            return w;
+
+        float64 w0 = w;
+        w0 = clearLowWord (w0);
+        v = r - (w0 - x);
+        float64 a = -1.0 / w;
+        float64 a0 = clearLowWord (a);
+        return a0 + a * (1.0 + a0 * w0 + a0 * v);
+    }
+
+} // namespace helpers
+} // namespace math_implementations
+
+} // namespace std::intrinsics::internal

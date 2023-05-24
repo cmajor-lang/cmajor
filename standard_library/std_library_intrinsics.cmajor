@@ -136,9 +136,9 @@ namespace intrinsics
     }
 
     /// Reinterprets the raw bits of a 32-bit float as an integer.
-    int32 reinterpretFloatToInt (float32 value)              { return (); }
+    int32 reinterpretFloatToInt (float32 value)             { return (); }
     /// Reinterprets the raw bits of a 64-bit float as an integer.
-    int64 reinterpretFloatToInt (float64 value)              { return (); }
+    int64 reinterpretFloatToInt (float64 value)             { return (); }
 
     /// Reinterprets the bits of a 32-bit integer as a float32.
     float32 reinterpretIntToFloat (int32 value)             { return (); }
@@ -363,78 +363,6 @@ namespace intrinsics
 
     /// Arc tangent of y/x.
     T atan2<T> (T y, T x)  { static_assert ((y.isPrimitive || y.isVector) && y.primitiveType.isFloat, "atan2() requires a floating point argument"); if const (T.isVector) return internal::atan2_vec (y, x); else return internal::atan2_scalar (y, x); }
-
-    //==============================================================================
-    /// @internal
-    /// (Internal helper functions: not for public use)
-    namespace internal
-    {
-        T atan_pos<T> (T n)
-        {
-            return n > 1.0f ? (T(pi / 2) - atan_0to1 (1 / n)) : atan_0to1 (n);
-        }
-
-        T atan_0to1<T> (T n)
-        {
-            let sqrt3 = T(sqrt(3.0));
-
-            if (n < T(2 - sqrt3))
-                return atan_approx (n);
-
-            let x = (sqrt3 * n - 1) / (sqrt3 + n);
-
-            return x < 0 ? T(pi / 6) - atan_approx (-x)
-                         : T(pi / 6) + atan_approx (x);
-        }
-
-        T atan_approx<T> (T n)
-        {
-            let n2 = n * n;
-            let n3 = n2 * n;
-            return n - (n3 * T(1 / 3.0)) + (n3 * n2 * T(1 / 5.0));
-        }
-
-        T atan2_vec<T> (T y, T x)
-        {
-            T r;
-
-            for (wrap<T.size> i)
-                r[i] = atan2_scalar (y[i], x[i]);
-
-            return r;
-        }
-
-        T atan2_scalar<T> (T y, T x)
-        {
-            if (x != 0)
-            {
-                let yoverx = atan (y / x);
-
-                return x > 0 ? yoverx : (y >= 0 ? yoverx + T(pi)
-                                                : yoverx - T(pi));
-            }
-
-            if (y > 0) return T(pi /  2);
-            if (y < 0) return T(pi / -2);
-
-            return ();
-        }
-
-        T vec_min<T>   (T v1, T v2)  { return select (v1 < v2, v1, v2); }
-        T vec_max<T>   (T v1, T v2)  { return select (v1 > v2, v1, v2); }
-
-        T vec_abs<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = abs   (n[i]);  return r; }
-        T vec_sqrt<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = sqrt  (n[i]);  return r; }
-        T vec_exp<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = exp   (n[i]);  return r; }
-        T vec_log<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = log   (n[i]);  return r; }
-        T vec_log10<T> (T n)  { T r;  for (wrap<T.size> i) r[i] = log10 (n[i]);  return r; }
-        T vec_sin<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = sin   (n[i]);  return r; }
-        T vec_cos<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = cos   (n[i]);  return r; }
-        T vec_tan<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = tan   (n[i]);  return r; }
-        T vec_atan<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = atan  (n[i]);  return r; }
-
-        T vec_pow<T>   (T v1, T v2)  { T r;  for (wrap<T.size> i) r[i] = pow   (v1[i], v2[i]);  return r; }
-    }
 
 } // namespace intrinsics
 } // namespace std
