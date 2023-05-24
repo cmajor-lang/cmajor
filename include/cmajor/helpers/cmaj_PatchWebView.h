@@ -109,7 +109,7 @@ struct PatchWebView::Impl
     static constexpr bool allowWebviewDevMode = false;
    #endif
 
-    choc::ui::WebView webview { { allowWebviewDevMode, [this] (const auto& path) { return onRequest (path); } } };
+    choc::ui::WebView webview { { allowWebviewDevMode, true, [this] (const auto& path) { return onRequest (path); } } };
 
     using ResourcePath = choc::ui::WebView::Options::Path;
     using OptionalResource = std::optional<choc::ui::WebView::Options::Resource>;
