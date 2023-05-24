@@ -942,3 +942,52 @@ processor test
         advance();
     }
 }
+
+
+## testFunction()
+
+bool test()
+{
+    float<8> v = (1, 2, 3, 4, 5, 6, 7, 8);
+
+    blankRange (v);
+
+    return allTrue (v == float<8> (1, 2, 3, 0, 0, 0, 0, 8));
+}
+
+void blankRange (float<8>& frame)
+{
+    blankSome (frame[3:7]);
+}
+
+void blankSome (float<4>& frame)
+{
+    frame = 0;
+}
+
+## testFunction()
+
+bool test()
+{
+    float[8] v = (1, 2, 3, 4, 5, 6, 7, 8);
+    float[8] e = (1, 2, 3, 0, 0, 0, 0, 8);
+
+    blankRange (v);
+
+    bool matching = true;
+
+    for (wrap<8> i)
+        matching &&= (v[i] == e[i]);
+
+    return matching;
+}
+
+void blankRange (float[8]& frame)
+{
+    blankSome (frame[3:7]);
+}
+
+void blankSome (float[4]& frame)
+{
+    frame = 0;
+}
