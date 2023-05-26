@@ -306,7 +306,7 @@ inline EndpointPurpose EndpointDetails::getSuggestedPurpose() const
 
 inline bool EndpointDetails::isConsole() const
 {
-    return ! isInput && endpointID.toString() == "console";
+    return ! isInput && endpointID.toString() == getConsoleEndpointID();
 }
 
 inline bool EndpointDetails::isMIDI() const
