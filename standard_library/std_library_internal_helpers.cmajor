@@ -8,6 +8,8 @@
 //                                           ,88
 //                                        888P"
 
+/// std.intrinsics
+
 // This file contains non-public implementation helper functions used by some of
 // the standard library
 
