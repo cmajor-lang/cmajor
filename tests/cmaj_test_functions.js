@@ -904,6 +904,7 @@ function runScript (options)
     let framesRendered = 0;
 
     let eventsToApply = [];
+    let valuesToApply = [];
 
     for (let i = 0; i < inputEndpoints.length; i++)
     {
@@ -915,7 +916,9 @@ function runScript (options)
                 eventsToApply.push ({ handle: input.handle,
                                       event: input.annotation.init });
             else
-                performer.setInputValue (input.endpointID, input.annotation.init, 0);
+                valuesToApply.push ({ handle: input.handle,
+                                      value: input.annotation.init,
+                                      frameCount: 0});
         }
     }
 
@@ -951,9 +954,9 @@ function runScript (options)
 
                 while (inputEndpoints[i].nextValue < arrayLength && inputEndpoints[i].values[inputEndpoints[i].nextValue].frameOffset == framesRendered)
                 {
-                    performer.setInputValue (inputEndpoints[i].handle,
-                                             inputEndpoints[i].values[inputEndpoints[i].nextValue].value,
-                                             inputEndpoints[i].values[inputEndpoints[i].nextValue].framesToReachValue);
+                    valuesToApply.push ({ handle: inputEndpoints[i].handle,
+                                          value: inputEndpoints[i].values[inputEndpoints[i].nextValue].value,
+                                          frameCount: inputEndpoints[i].values[inputEndpoints[i].nextValue].framesToReachValue});
 
                     inputEndpoints[i].nextValue++;
                 }
@@ -973,7 +976,11 @@ function runScript (options)
         for (let i = 0; i < eventsToApply.length; i++)
             performer.addInputEvent (eventsToApply[i].handle, eventsToApply[i].event);
 
+        for (let i = 0; i < valuesToApply.length; i++)
+            performer.setInputValue (valuesToApply[i].handle, valuesToApply[i].value, valuesToApply[i].frameCount);
+
         eventsToApply = [];
+        valuesToApply = [];
 
         for (let i = 0; i < inputEndpoints.length; i++)
         {
@@ -1120,6 +1127,7 @@ function runScript (options)
 
     testSection.reportSuccess();
 }
+
 
 //==============================================================================
 //==============================================================================
