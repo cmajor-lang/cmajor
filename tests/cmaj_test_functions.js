@@ -463,7 +463,7 @@ function testCompile (testLink, options)
     let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
     let error;
 
-    if (isError (engine))
+    if (isErrorOrWarning (engine))
     {
         testSection.reportFail (engine);
         return;
@@ -850,10 +850,19 @@ function runScript (options)
 
             if (isError (inputData))
             {
-                if (options.skipMissing == null)
+                if (inputEndpoints[i].purpose == "midi in")
                 {
-                    testSection.reportFail ("Failed to read input event data " + expectedStreamFilename);
-                    return;
+                    expectedStreamFilename = options.subDir + "/" + inputEndpoints[i].endpointID + ".mid";
+                    inputData = testSection.readMidiData (expectedStreamFilename);
+                }
+
+                if (isError (inputData))
+                {
+                    if (options.skipMissing == null)
+                    {
+                        testSection.reportFail ("Failed to read input event data " + expectedStreamFilename);
+                        return;
+                    }
                 }
             }
 
