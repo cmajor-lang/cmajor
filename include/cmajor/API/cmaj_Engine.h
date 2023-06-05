@@ -138,6 +138,10 @@ struct Engine
     /// Returns true if a program has been successfully linked and can be run.
     bool isLinked() const;
 
+    /// Returns a string with any relevant logging output produced during the last
+    /// load/link calls.
+    std::string getLastBuildLog() const;
+
     //==============================================================================
     /// Holds the results created by the generateCode() method.
     struct CodeGenOutput
@@ -342,6 +346,15 @@ inline Performer Engine::createPerformer()
 
 inline bool Engine::isLoaded() const    { return engine != nullptr && engine->isLoaded(); }
 inline bool Engine::isLinked() const    { return engine != nullptr && engine->isLinked(); }
+
+inline std::string Engine::getLastBuildLog() const
+{
+    if (engine != nullptr)
+        if (auto result = choc::com::StringPtr (engine->getLastBuildLog()))
+            return result;
+
+    return {};
+}
 
 inline Engine::CodeGenOutput Engine::generateCode (const std::string& targetType, const std::string& options) const
 {

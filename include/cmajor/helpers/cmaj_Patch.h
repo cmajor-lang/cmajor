@@ -83,6 +83,9 @@ struct Patch
     /// Checks whether a patch is currently loaded and ready to play.
     bool isPlayable() const;
 
+    /// Returns the log from the last build that was performed, if there was one.
+    std::string getLastBuildLog() const;
+
     /// When the patch is loaded and playing, this resets it to the
     /// state is has when initially loaded.
     void resetToInitialState();
@@ -853,6 +856,7 @@ struct Patch::PatchRenderer
 
     PatchManifest manifest;
     choc::value::Value programDetails;
+    std::string lastBuildLog;
     cmaj::DiagnosticMessageList errors;
     std::unique_ptr<cmaj::AudioMIDIPerformer> performer;
     double sampleRate = 0, framesLatency = 0;
@@ -1098,6 +1102,7 @@ struct Patch::Build
                 return;
 
             renderer->sampleRate = playbackParams.sampleRate;
+            renderer->lastBuildLog = engine.getLastBuildLog();
 
             if (performerBuilder->setEventOutputHandler ([p = renderer.get()] { p->outputEventsReady(); }))
                 renderer->startOutputEventThread();
@@ -1590,6 +1595,11 @@ inline void Patch::unload()
         setStatus ({});
         customAudioInputSources.clear();
     }
+}
+
+inline std::string Patch::getLastBuildLog() const
+{
+    return renderer != nullptr ? renderer->lastBuildLog : std::string();
 }
 
 inline void Patch::startCheckingForChanges()

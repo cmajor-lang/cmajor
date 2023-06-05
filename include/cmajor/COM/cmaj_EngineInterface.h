@@ -107,6 +107,10 @@ struct EngineInterface   : public choc::com::Object
     /// created, this will just return nullptr.
     [[nodiscard]] virtual PerformerInterface* createPerformer() = 0;
 
+    /// Returns a string with any relevant logging output produced during the last
+    /// load/link calls.
+    [[nodiscard]] virtual choc::com::String* getLastBuildLog() = 0;
+
     //==============================================================================
     /// Returns true if a program has been successfully loaded, but not yet linked.
     virtual bool isLoaded() = 0;
