@@ -234,7 +234,7 @@ let a4 = x[wrappedInt];    // This produces efficient code because the compiler 
                            // value can never exceed the bounds of an array with size 8.
 let a5 = x[normalInt];     // This compiles, but will emit a performance warning because the compiler
                            // needs to insert a wrap operation to make sure the integer index is in-range.
-let a6 = x.at(normalInt);  // Using .at() instead of [] tells the copmiler not to emit a performance warning
+let a6 = x.at(normalInt);  // Using .at() instead of [] tells the compiler not to emit a performance warning
 let a7 = x[wrap<8> (normalInt)];  // Casting the integer to a wrap<8> also removes the performance warning
 ```
 
