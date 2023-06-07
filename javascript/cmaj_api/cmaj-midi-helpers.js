@@ -68,7 +68,7 @@ export function isSongPositionPointer (message)             { return getByte0 (m
 export function getSongPositionPointerValue (message)       { return get14BitValue (message); }
 
 export function getChromaticScaleIndex (note)               { return (note % 12) & 0xf; }
-export function getOctaveNumber (note, octaveForMiddleC)    { return (Math.floor (note / 12) + ((octaveForMiddleC ? octaveForMiddleC : 3) - 5)) & 0xff; }
+export function getOctaveNumber (note, octaveForMiddleC)    { return ((Math.floor (note / 12) + (octaveForMiddleC ? octaveForMiddleC : 3)) & 0xff) - 5; }
 export function getNoteName (note)                          { const names = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "G#", "A", "Bb", "B"]; return names[getChromaticScaleIndex (note)]; }
 export function getNoteNameWithSharps (note)                { const names = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "G#", "A", "Bb", "B"]; return names[getChromaticScaleIndex (note)]; }
 export function getNoteNameWithFlats (note)                 { const names = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]; return names[getChromaticScaleIndex (note)]; }
