@@ -52,8 +52,8 @@ namespace std::timeline
         /// bit 2 = looping
         int32 flags;
 
-        bool isStopped() const            { return (this.flags & 3) == 0; }
-        bool isPlaying() const            { return (this.flags & 3) != 0; }
+        bool isStopped() const            { return (this.flags & 1) == 0; }
+        bool isPlaying() const            { return (this.flags & 1) != 0; }
         bool isRecording() const          { return (this.flags & 2) != 0; }
         bool isLooping() const            { return (this.flags & 4) != 0; }
     }
