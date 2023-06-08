@@ -62,7 +62,7 @@ public:
         {
             patch->stopPlayback    = [this] { suspendProcessing (true); };
             patch->startPlayback   = [this] { suspendProcessing (false); };
-            patch->patchChanged    = [this] { handlePatchChange(); };
+            patch->patchChanged    = [this] { juce::MessageManager::callAsync ([this] { handlePatchChange(); }); };
             patch->statusChanged   = [this] (const auto& s) { setStatusMessage (s.statusMessage, s.messageList.hasErrors()); };
 
             patch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
@@ -995,6 +995,8 @@ private:
         //==============================================================================
        #if JUCE_MAC
         using NativeUIBase = juce::NSViewComponent;
+       #elif JUCE_IOS
+        using NativeUIBase = juce::UIViewComponent;
        #elif JUCE_WINDOWS
         using NativeUIBase = juce::HWNDComponent;
        #else
@@ -1011,7 +1013,7 @@ private:
             {
                 setSize ((int) patchView->width, (int) patchView->height);
 
-               #if JUCE_MAC
+               #if JUCE_MAC || JUCE_IOS
                 setView (patchView->getWebView().getViewHandle());
                #elif JUCE_WINDOWS
                 setHWND (patchView->getWebView().getViewHandle());
@@ -1020,7 +1022,7 @@ private:
 
             ~PatchGUIHolder()
             {
-               #if JUCE_MAC
+               #if JUCE_MAC || JUCE_IOS
                 setView ({});
                #elif JUCE_WINDOWS
                 setHWND ({});
@@ -1407,7 +1409,7 @@ public:
        #if JUCE_WINDOWS
         path.add (juce::File::getSpecialLocation (juce::File::globalApplicationsDirectory)
                     .getChildFile ("Common Files\\Cmajor"));
-       #elif JUCE_MAC
+       #elif JUCE_MAC || JUCE_IOS
         path.add (juce::File ("/Library/Audio/Plug-Ins/Cmajor"));
         path.add (juce::File ("~/Library/Audio/Plug-Ins/Cmajor"));
        #endif
