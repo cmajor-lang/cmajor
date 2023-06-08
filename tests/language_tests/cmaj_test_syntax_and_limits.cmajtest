@@ -1354,7 +1354,7 @@ processor P
     void init() {}
 }
 
-## expectError ("6:23: error: Streams are not available during init()")
+## expectError ("6:23: error: Endpoints cannot be read or written during init()")
 
 processor P
 {
@@ -1363,7 +1363,7 @@ processor P
     void init() { out <- 123; }
 }
 
-## expectError ("7:27: error: Streams are not available during init()")
+## expectError ("7:27: error: Endpoints cannot be read or written during init()")
 
 processor P
 {
@@ -1371,6 +1371,46 @@ processor P
     input stream int in;
     void main() { advance(); }
     void init() { let a = in; }
+}
+
+## expectError ("7:23: error: Endpoints cannot be read or written during init()")
+
+processor P
+{
+    output event int out;
+    input stream int in;
+    void main() { advance(); }
+    void init() { out <- 123; }
+}
+
+## expectError ("7:23: error: Endpoints cannot be read or written during init()")
+
+processor P
+{
+    output value int out;
+    input stream int in;
+    void main() { advance(); }
+    void init() { out <- 123; }
+}
+
+## expectError ("7:27: error: Endpoints cannot be read or written during init()")
+
+processor P
+{
+    output value int out;
+    input stream int in;
+    void main() { advance(); }
+    void init() { let x = in; }
+}
+
+## expectError ("7:27: error: Endpoints cannot be read or written during init()")
+
+processor P
+{
+    output value int out;
+    input value int in;
+    void main() { advance(); }
+    void init() { let x = in; }
 }
 
 ## expectError ("6:10: error: The init() function must not have any parameters")
