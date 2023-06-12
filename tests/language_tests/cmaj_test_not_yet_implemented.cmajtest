@@ -202,3 +202,11 @@ namespace a
 {
     import something;
 }
+
+## expectError ("4:5: error: Language feature not yet implemented: switch statements!")
+
+void foo()
+{
+    switch (1)
+    {}
+}
