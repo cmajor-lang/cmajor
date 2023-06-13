@@ -405,18 +405,62 @@ R"(
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
             event.preventDefault();
+        };)"
+R"(
+
+        const onTouchStart = (event) =>
+        {
+            this.previousClientY = event.changedTouches[0].clientY;
+            this.accumlatedRotation = this.rotation;
+            this.touchIdentifier = event.changedTouches[0].identifier;
+            this.beginGesture();
+            window.addEventListener ("touchmove", onTouchMove);
+            window.addEventListener ("touchend", onTouchEnd);
+            event.preventDefault();
+        };
+
+        const onTouchMove = (event) =>
+        {
+            for (const touch of event.changedTouches)
+            {
+                if (touch.identifier == this.touchIdentifier)
+                {
+                    const nextRotation = (rotation, delta) =>
+                    {
+                        const clamp = (v, min, max) => Math.min (Math.max (v, min), max);
+                        return clamp (rotation - delta, -maxKnobRotation, maxKnobRotation);
+                    };
+
+                    const movementY = touch.clientY - this.previousClientY;
+                    this.previousClientY = touch.clientY;
+
+                    const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
+                    this.accumlatedRotation = nextRotation (this.accumlatedRotation, movementY * speedMultiplier);
+                    this.setValue (toValue (this.accumlatedRotation));
+                }
+            }
+        };
+
+        const onTouchEnd = (event) =>
+        {
+            this.previousClientY = undefined;
+            this.accumlatedRotation = undefined;
+            window.removeEventListener ("touchmove", onTouchMove);
+            window.removeEventListener ("touchend", onTouchEnd);
+            this.endGesture();
         };
 
         this.addEventListener ("mousedown", onMouseDown);
         this.addEventListener ("mouseup", onMouseUp);
         this.addEventListener ("dblclick", () => this.resetToDefault());
-    }
+        this.addEventListener ('touchstart', onTouchStart);
+    })"
+R"(
 
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter";
-    })"
-R"(
+    }
 
     setRotation (degrees, force)
     {
@@ -1935,7 +1979,7 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 23202) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 24954) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18834) },

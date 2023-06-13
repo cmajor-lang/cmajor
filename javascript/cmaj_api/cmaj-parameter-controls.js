@@ -197,9 +197,52 @@ export class Knob  extends ParameterControlBase
             event.preventDefault();
         };
 
+        const onTouchStart = (event) =>
+        {
+            this.previousClientY = event.changedTouches[0].clientY;
+            this.accumlatedRotation = this.rotation;
+            this.touchIdentifier = event.changedTouches[0].identifier;
+            this.beginGesture();
+            window.addEventListener ("touchmove", onTouchMove);
+            window.addEventListener ("touchend", onTouchEnd);
+            event.preventDefault();
+        };
+
+        const onTouchMove = (event) =>
+        {
+            for (const touch of event.changedTouches)
+            {
+                if (touch.identifier == this.touchIdentifier)
+                {
+                    const nextRotation = (rotation, delta) =>
+                    {
+                        const clamp = (v, min, max) => Math.min (Math.max (v, min), max);
+                        return clamp (rotation - delta, -maxKnobRotation, maxKnobRotation);
+                    };
+
+                    const movementY = touch.clientY - this.previousClientY;
+                    this.previousClientY = touch.clientY;
+
+                    const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
+                    this.accumlatedRotation = nextRotation (this.accumlatedRotation, movementY * speedMultiplier);
+                    this.setValue (toValue (this.accumlatedRotation));
+                }
+            }
+        };
+
+        const onTouchEnd = (event) =>
+        {
+            this.previousClientY = undefined;
+            this.accumlatedRotation = undefined;
+            window.removeEventListener ("touchmove", onTouchMove);
+            window.removeEventListener ("touchend", onTouchEnd);
+            this.endGesture();
+        };
+
         this.addEventListener ("mousedown", onMouseDown);
         this.addEventListener ("mouseup", onMouseUp);
         this.addEventListener ("dblclick", () => this.resetToDefault());
+        this.addEventListener ('touchstart', onTouchStart);
     }
 
     static canBeUsedFor (endpointInfo)
