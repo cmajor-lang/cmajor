@@ -272,6 +272,14 @@ export class ServerSession   extends EventListenerList
     /// Changes the frequency at which CPU level update messages are sent to listeners.
     setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); }
 
+    /// Attaches a listener to be told when a file change is detected in the currently-loaded
+    /// patch. The function will be called with an object that gives rough details about the
+    /// type of change, i.e. whether it's a manifest or asset file, or a cmajor file, but it
+    /// won't provide any information about exactly which files are involved.
+    addInfiniteLoopListener (listener)              { this.addEventListener    ("infinite_loop_detected", listener); }
+    /// Removes a listener that was previously added with `addFileChangeListener()`.
+    removeInfiniteLoopListener (listener)           { this.removeEventListener ("infinite_loop_detected", listener); }
+
     //==============================================================================
     /// Registers a virtual file with the server, under the given name.
     /// The contentProvider object must have a property called `size` which is a
@@ -346,6 +354,7 @@ export class ServerSession   extends EventListenerList
             case "cpu_info":
             case "audio_device_properties":
             case "patch_source_changed":
+            case "infinite_loop_detected":
                 this.dispatchEvent (type, message);
                 break;
 

@@ -1519,6 +1519,14 @@ R"(
     setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); })"
 R"(
 
+    /// Attaches a listener to be told when a file change is detected in the currently-loaded
+    /// patch. The function will be called with an object that gives rough details about the
+    /// type of change, i.e. whether it's a manifest or asset file, or a cmajor file, but it
+    /// won't provide any information about exactly which files are involved.
+    addInfiniteLoopListener (listener)              { this.addEventListener    ("infinite_loop_detected", listener); }
+    /// Removes a listener that was previously added with `addFileChangeListener()`.
+    removeInfiniteLoopListener (listener)           { this.removeEventListener ("infinite_loop_detected", listener); }
+
     //==============================================================================
     /// Registers a virtual file with the server, under the given name.
     /// The contentProvider object must have a property called `size` which is a
@@ -1544,7 +1552,8 @@ R"(
         this.sendMessageToServer ({ type: "remove_file",
                                     filename: filename });
         this.files?.delete (filename);
-    }
+    })"
+R"(
 
     //==============================================================================
     /// Sends a ping message to the server.
@@ -1563,8 +1572,7 @@ R"(
     }
 
     //==============================================================================
-    // Private methods from this point...)"
-R"(
+    // Private methods from this point...
 
     // An implementation subclass must call this when the session first connects
     handleSessionConnection()
@@ -1594,6 +1602,7 @@ R"(
             case "cpu_info":
             case "audio_device_properties":
             case "patch_source_changed":
+            case "infinite_loop_detected":
                 this.dispatchEvent (type, message);
                 break;
 
@@ -1607,7 +1616,8 @@ R"(
                 break;
 
             case "ping":
-                break;
+                break;)"
+R"(
 
             default:
                 if (type.startsWith ("audio_input_mode_") || type.startsWith ("reply_"))
@@ -1628,8 +1638,7 @@ R"(
         this.status = newStatus;
         this.dispatchEvent ("session_status", this.status);
         this.updateCPULevelUpdateRate();
-    })"
-R"(
+    }
 
     updateCPULevelUpdateRate()
     {
@@ -1982,7 +1991,7 @@ R"(
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 24954) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
-        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18834) },
+        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 19559) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4997) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },

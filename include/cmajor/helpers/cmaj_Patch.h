@@ -1064,13 +1064,16 @@ struct Patch::PatchRenderer
 
     void startInfiniteLoopCheck (std::function<void()> handleInfiniteLoopFn)
     {
-        infiniteLoopCheckTimer = choc::messageloop::Timer (300, [this, handleInfiniteLoopFn]
+        if (performer != nullptr)
         {
-            if (performer->isStuckInInfiniteLoop (1000))
-                handleInfiniteLoopFn();
+            infiniteLoopCheckTimer = choc::messageloop::Timer (300, [this, handleInfiniteLoopFn]
+            {
+                if (performer->isStuckInInfiniteLoop (1000))
+                    handleInfiniteLoopFn();
 
-            return true;
-        });
+                return true;
+            });
+        }
     }
 };
 
