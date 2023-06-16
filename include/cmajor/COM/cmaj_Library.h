@@ -37,6 +37,14 @@
  #define CMAJOR_DLL 1
 #endif
 
+#ifdef __clang__
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wnon-virtual-dtor" // COM objects can't have a virtual destructor
+#elif __GNUC__
+ #pragma GCC diagnostic push
+ #pragma GCC diagnostic ignored "-Wnon-virtual-dtor" // COM objects can't have a virtual destructor
+#endif
+
 namespace cmaj
 {
 
@@ -82,7 +90,7 @@ struct Library
     /// (Used internally)
     struct EntryPoints
     {
-        virtual ~EntryPoints() = default;
+        // NB: no virtual destructor because this object is passed over a DLL boundary
         virtual const char* getVersion() = 0;
         virtual cmaj::ProgramInterface* createProgram() = 0;
         virtual const char* getEngineTypes() = 0;
@@ -227,5 +235,10 @@ constexpr const char* Library::getDLLName()
    #endif
 }
 
-
 } // namespace cmaj
+
+#ifdef __clang__
+ #pragma clang diagnostic pop
+#elif __GNUC__
+ #pragma GCC diagnostic pop
+#endif
