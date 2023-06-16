@@ -23,6 +23,14 @@
 
 #include "../../choc/containers/choc_COM.h"
 
+#ifdef __clang__
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wnon-virtual-dtor" // COM objects can't have a virtual destructor
+#elif __GNUC__
+ #pragma GCC diagnostic push
+ #pragma GCC diagnostic ignored "-Wnon-virtual-dtor" // COM objects can't have a virtual destructor
+#endif
+
 namespace cmaj
 {
 
@@ -65,3 +73,9 @@ struct ProgramInterface  : public choc::com::Object
 using ProgramPtr = choc::com::Ptr<ProgramInterface>;
 
 } // namespace cmaj
+
+#ifdef __clang__
+ #pragma clang diagnostic pop
+#elif __GNUC__
+ #pragma GCC diagnostic pop
+#endif

@@ -82,6 +82,7 @@ struct Library
     /// (Used internally)
     struct EntryPoints
     {
+        virtual ~EntryPoints() = default;
         virtual const char* getVersion() = 0;
         virtual cmaj::ProgramInterface* createProgram() = 0;
         virtual const char* getEngineTypes() = 0;
