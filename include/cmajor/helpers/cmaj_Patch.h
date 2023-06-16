@@ -31,6 +31,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
+#include <chrono>
 
 namespace cmaj
 {
@@ -281,6 +282,16 @@ struct Patch
     };
 
     std::function<void(FileChangeType)> patchFilesChanged;
+
+    /// A caller can supply a callback here to be told when an overrun or underrun
+    /// in the FIFOs used to communicate with the process
+    std::function<void()> handleXrun;
+
+    /// A caller can supply a function here to be told when an infinite loop
+    /// is detected in the running patch code. Set this before loading a patch,
+    /// because if no callback is supplied, no checking will be done.
+    std::function<void()> handleInfiniteLoop;
+
 
 private:
     //==============================================================================
@@ -851,6 +862,7 @@ struct Patch::PatchRenderer
 {
     ~PatchRenderer()
     {
+        infiniteLoopCheckTimer.clear();
         handleOutputEvent.reset();
     }
 
@@ -878,6 +890,8 @@ struct Patch::PatchRenderer
 
     std::vector<std::unique_ptr<EventMonitor>> eventEndpointMonitors;
     std::vector<std::unique_ptr<AudioLevelMonitor>> audioEndpointMonitors;
+
+    choc::messageloop::Timer infiniteLoopCheckTimer;
 
     std::mutex processLock;
 
@@ -1046,6 +1060,17 @@ struct Patch::PatchRenderer
     {
         CMAJ_ASSERT (performer != nullptr);
         return *performer;
+    }
+
+    void startInfiniteLoopCheck (std::function<void()> handleInfiniteLoopFn)
+    {
+        infiniteLoopCheckTimer = choc::messageloop::Timer (300, [this, handleInfiniteLoopFn]
+        {
+            if (performer->isStuckInInfiniteLoop (1000))
+                handleInfiniteLoopFn();
+
+            return true;
+        });
     }
 };
 
@@ -2079,6 +2104,9 @@ inline void Patch::applyFinishedBuild (Build& build)
     }
 
     startCheckingForChanges();
+
+    if (handleInfiniteLoop)
+        renderer->startInfiniteLoopCheck (handleInfiniteLoop);
 }
 
 inline void Patch::sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)

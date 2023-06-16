@@ -135,6 +135,11 @@ struct AudioMIDIPerformer
     /// It's safe to call this from any thread.
     void handlePendingOutputEvents (OutputEventHandlerFn&&);
 
+    /// Detects infinite loops inside the current process callback by checking whether the process
+    /// thread has been inside the same callback for more than the given amount of time. For this to
+    /// work, it needs to be called regularly (at least a few times per second) by another thread.
+    bool isStuckInInfiniteLoop (uint32_t thresholdMilliseconds = 500);
+
     cmaj::Engine engine;
     cmaj::Performer performer;
 
@@ -157,6 +162,11 @@ private:
     uint64_t numFramesProcessed = 0;
     static constexpr uint32_t maxFramesPerBlock = 512;
     uint32_t currentMaxBlockSize = 0;
+
+    using Clock = std::chrono::high_resolution_clock;
+    std::atomic<uint32_t> processCallCount { 0 };
+    uint32_t lastCheckedProcessCallCount = 0;
+    Clock::time_point lastCheckedProcessCallTime = {};
 
     //==============================================================================
     // To create an AudioMIDIPerformer, use a Builder object
@@ -685,14 +695,14 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
             return true;
         }
 
+        ++processCallCount;
         performer.setBlockSize (numFrames);
 
         for (auto& f : preRenderFunctions)
             f (block);
 
-        eventQueue.popAllAvailable ([&] (const void* data, uint32_t size)
+        eventQueue.popAllAvailable ([&] (const void* data, [[maybe_unused]] uint32_t size)
         {
-            (void) size;
             CMAJ_ASSERT (size > 4);
             auto d = static_cast<const char*> (data);
             auto handle = choc::memory::readNativeEndian<cmaj::EndpointHandle> (d);
@@ -703,9 +713,8 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
             performer.addInputEvent (handle, typeIndex, d);
         });
 
-        valueQueue.popAllAvailable ([&] (const void* data, uint32_t size)
+        valueQueue.popAllAvailable ([&] (const void* data, [[maybe_unused]] uint32_t size)
         {
-            (void) size;
             CMAJ_ASSERT (size > 4);
             auto d = static_cast<const char*> (data);
             auto handle = choc::memory::readNativeEndian<cmaj::EndpointHandle> (d);
@@ -744,6 +753,7 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
 
         moveOutputEventsToQueue();
         numFramesProcessed += numFrames;
+        ++processCallCount;
         return true;
     }
     catch (const std::exception& e)
@@ -899,5 +909,26 @@ inline void AudioMIDIPerformer::moveOutputEventsToQueue()
             outputEventsReadyHandler();
     }
 }
+
+inline bool AudioMIDIPerformer::isStuckInInfiniteLoop (uint32_t thresholdMilliseconds)
+{
+    auto currentCount = processCallCount.load();
+
+    if ((currentCount & 1) == 0)
+        return false; // we're not inside a call, so no problem
+
+    auto now = Clock::now();
+
+    if (lastCheckedProcessCallCount != currentCount)
+    {
+        // inside a different call to last time
+        lastCheckedProcessCallCount = currentCount;
+        lastCheckedProcessCallTime = now;
+        return false;
+    }
+
+    return (now - lastCheckedProcessCallTime) > std::chrono::milliseconds (thresholdMilliseconds);
+}
+
 
 } // namespace cmaj
