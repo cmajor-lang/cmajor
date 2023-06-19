@@ -515,7 +515,7 @@ struct CPUMonitor
     std::atomic<uint32_t> framesPerCallback { 0 };
 
 private:
-    using Clock = std::chrono::high_resolution_clock;
+    using Clock = choc::HighResolutionSteadyClock;
     using TimePoint = Clock::time_point;
     using Seconds = std::chrono::duration<double>;
 

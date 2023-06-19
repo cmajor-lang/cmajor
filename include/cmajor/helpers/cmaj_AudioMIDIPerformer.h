@@ -163,10 +163,9 @@ private:
     static constexpr uint32_t maxFramesPerBlock = 512;
     uint32_t currentMaxBlockSize = 0;
 
-    using Clock = std::chrono::high_resolution_clock;
     std::atomic<uint32_t> processCallCount { 0 };
     uint32_t lastCheckedProcessCallCount = 0;
-    Clock::time_point lastCheckedProcessCallTime = {};
+    choc::HighResolutionSteadyClock::time_point lastCheckedProcessCallTime = {};
 
     //==============================================================================
     // To create an AudioMIDIPerformer, use a Builder object
@@ -917,7 +916,7 @@ inline bool AudioMIDIPerformer::isStuckInInfiniteLoop (uint32_t thresholdMillise
     if ((currentCount & 1) == 0)
         return false; // we're not inside a call, so no problem
 
-    auto now = Clock::now();
+    auto now = choc::HighResolutionSteadyClock::now();
 
     if (lastCheckedProcessCallCount != currentCount)
     {
