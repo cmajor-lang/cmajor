@@ -237,10 +237,7 @@ inline AudioMIDIPerformer::Builder::Builder (cmaj::Engine e, uint32_t eventFIFOS
 
 inline void AudioMIDIPerformer::Builder::ensureInputScratchBufferChannelCount (uint32_t channelsNeeded)
 {
-    auto& buffer = result->audioInputScratchBuffer.buffer;
-
-    buffer.resize ({ std::max (buffer.getNumChannels(), channelsNeeded),
-                     std::max (buffer.getNumFrames(), maxFramesPerBlock) });
+    [[maybe_unused]] auto resized = result->audioInputScratchBuffer.getInterleavedBuffer ({ channelsNeeded, maxFramesPerBlock });
 }
 
 inline bool AudioMIDIPerformer::Builder::connectAudioInputTo (const std::vector<uint32_t>& inputChannels,
