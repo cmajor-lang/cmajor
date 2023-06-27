@@ -18,7 +18,7 @@ juce_add_plugin(CmajPlugin
 )
 
 target_compile_features(CmajPlugin PRIVATE ${CMAJ_TARGET_COMPILER})
-target_compile_options(CmajPlugin PRIVATE ${CMAJ_WARNING_FLAGS} -Wno-nullable-to-nonnull-conversion)
+target_compile_options(CmajPlugin PRIVATE ${CMAJ_WARNING_FLAGS})
 
 juce_generate_juce_header(CmajPlugin)
 
