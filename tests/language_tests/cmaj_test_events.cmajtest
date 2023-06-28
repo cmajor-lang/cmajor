@@ -480,7 +480,7 @@ processor P
     void main() { advance(); }
 }
 
-## expectError ("5:17: error: 'tests::P::S' is not a valid data type for endpoints")
+## expectError ("5:17: error: 'tests::P::S' is not a valid data type for this endpoint type")
 
 processor P
 {
@@ -493,7 +493,7 @@ processor P
     struct S { int x; wrap<10> w, y; float64 f; }
 }
 
-## expectError ("5:17: error: 'tests::P::S' is not a valid data type for endpoints")
+## expectError ("5:17: error: 'tests::P::S' is not a valid data type for this endpoint type")
 
 processor P
 {

@@ -1380,15 +1380,7 @@ function validateInputData (inputName, inputData, testSection, type)
             return false;
         }
 
-        if (type == "event")
-        {
-            if (inputData[i].event == undefined)
-            {
-                testSection.reportFail (inputName + ": Failed validation, missing event attribute for item " + i);
-                return false;
-            }
-        }
-        else if (type == "value")
+        if (type == "value")
         {
             if (inputData[i].value == undefined)
             {

@@ -134,10 +134,14 @@ struct EndpointTypeCoercionHelperList
 
     struct CoercedData
     {
+        CoercedData (const void* d, uint32_t s) : data (d), size (s), valid (true) {}
+        CoercedData() {}
+
         const void* data = nullptr;
         uint32_t size = 0;
+        bool valid = false;
 
-        operator bool() const       { return data != nullptr; }
+        operator bool() const       { return valid; }
     };
 
     struct CoercedDataWithIndex
@@ -343,6 +347,7 @@ private:
             if (destType.isInt32())    { auto v = getInt<int32_t>  (source);   memcpy (destData, std::addressof (v), sizeof (v)); return true; }
             if (destType.isInt64())    { auto v = getInt<int64_t>  (source);   memcpy (destData, std::addressof (v), sizeof (v)); return true; }
             if (destType.isBool())     { auto v = getInt<int32_t>  (source);   memcpy (destData, std::addressof (v), sizeof (v)); return true; }
+            if (destType.isVoid())     { return true; }
 
             if (destType.isVector() || destType.isArray())
             {

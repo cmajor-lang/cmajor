@@ -683,15 +683,56 @@ processor P
     void main() { advance(); }
 }
 
-## expectError ("4:26: error: 'void' is not a valid data type for endpoints")
+## expectError ("7:11: error: Event 'in' does not support type 'int32'")
 
 processor P
 {
-    output event (int32, void) out;
+    input event void in;
+    output stream float out;
+
+    event in (int i) {}
+}
+
+## expectError ("7:11: error: Event 'in' does not support type 'float32'")
+
+processor P
+{
+    input event void in[3];
+    output stream float out;
+
+    event in (int index, float f) {}
+}
+
+
+## expectError ("7:11: error: Event Handlers for event arrays need a first argument index integer type")
+
+processor P
+{
+    input event float in[3];
+    output stream float out;
+
+    event in (float f) {}
+}
+
+## expectError ("7:11: error: Event Handlers for event arrays need a first argument index integer type")
+
+processor P
+{
+    input event void in[3];
+    output stream float out;
+
+    event in() {}
+}
+
+## expectError ("4:18: error: 'void' is not a valid data type for this endpoint type")
+
+processor P
+{
+    output value void out;
     void main() { advance(); }
 }
 
-## expectError ("5:18: error: 'void' is not a valid data type for endpoints")
+## expectError ("5:18: error: 'void' is not a valid data type for this endpoint type")
 
 processor P
 {
