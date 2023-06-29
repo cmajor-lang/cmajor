@@ -1106,6 +1106,7 @@ processor P
     output event MyStruct out2;      // an output of more complex object events
     output event (string, int) out3; // an output event stream which can accept either strings or ints
     output stream float<2> out4[4];  // an array of 4 output streams which each hold float<2> vectors
+    input event void in;             // An input event with no value
 
     // If you have a lot of endpoints, you can also use braces to group together definitions:
     output
@@ -1162,6 +1163,25 @@ processor P
 
     event myInput (string e) { ... }
     event myInput (float<2> e) { ... }
+}
+```
+
+Event endpoints also support the `void` datatype, for situations where the event does not include any data. Event handlers for `void` datatypes do not take a datatype, and there is special `void` syntax for send an event to such an endpoint:
+
+```cpp
+processor P
+{
+    input event (void, int) myInput;        // Input endpoint taking either a void or int value
+    output event void myOutput;
+
+    event myInput() {}                      // Handler for the void datatype
+    event myInput (int i) {}                // Handler for the int datatype
+
+    void main()
+    {
+        myOutput <- void;                   // Write a void event to myOutput
+        advance();
+    }
 }
 ```
 
