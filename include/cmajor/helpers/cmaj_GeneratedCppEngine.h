@@ -174,29 +174,26 @@ private:
 
         void iterateOutputEvents (EndpointHandle endpoint, void* context, PerformerInterface::HandleOutputEventCallback callback) override
         {
-            if constexpr (GeneratedCppClass::maxOutputEventSize != 0)
+            if (auto numEvents = generatedObject.getNumOutputEvents (endpoint))
             {
-                if (auto numEvents = generatedObject.getNumOutputEvents (endpoint))
+                if (numEvents > GeneratedCppClass::eventBufferSize)
                 {
-                    if (numEvents > GeneratedCppClass::eventBufferSize)
-                    {
-                        numEvents = GeneratedCppClass::eventBufferSize;
-                        ++xruns;
-                    }
-
-                    for (uint32_t i = 0; i < numEvents; ++i)
-                    {
-                        uint8_t data[GeneratedCppClass::maxOutputEventSize];
-                        auto frame = generatedObject.readOutputEvent (endpoint, i, data);
-                        auto type = generatedObject.getOutputEventType (endpoint, i);
-                        auto dataSize = generatedObject.getOutputEventDataSize (endpoint, type);
-
-                        if (! callback (context, endpoint, type, frame, data, dataSize))
-                            break;
-                    }
-
-                    generatedObject.resetOutputEventCount (endpoint);
+                    numEvents = GeneratedCppClass::eventBufferSize;
+                    ++xruns;
                 }
+
+                for (uint32_t i = 0; i < numEvents; ++i)
+                {
+                    uint8_t data[GeneratedCppClass::maxOutputEventSize];
+                    auto frame = generatedObject.readOutputEvent (endpoint, i, data);
+                    auto type = generatedObject.getOutputEventType (endpoint, i);
+                    auto dataSize = generatedObject.getOutputEventDataSize (endpoint, type);
+
+                    if (! callback (context, endpoint, type, frame, data, dataSize))
+                        break;
+                }
+
+                generatedObject.resetOutputEventCount (endpoint);
             }
         }
 
