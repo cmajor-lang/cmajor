@@ -1400,6 +1400,7 @@ struct Patch::BuildThread
 
     void startBuild (std::unique_ptr<Build> build)
     {
+        std::lock_guard<decltype(buildLock)> lock (buildLock);
         cancelBuild();
         activeTasks.push_back (std::make_unique<BuildTask> (*this, std::move (build)));
     }
