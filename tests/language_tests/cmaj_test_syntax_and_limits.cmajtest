@@ -2431,3 +2431,17 @@ processor Test
         advance();
     }
 }
+
+
+## expectError ("8:13: error: Cannot implicitly convert 'void' to 'int32, float32'")
+
+processor Test
+{
+    output event (int, float) out;
+
+    void main()
+    {
+        out <- void;
+        advance();
+    }
+}
