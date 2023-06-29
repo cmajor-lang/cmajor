@@ -4998,3 +4998,14 @@ processor T
         advance();
     }
 }
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    input stream float64 in;
+    output stream float out;
+
+    connection
+        float(in) -> [1] -> out;
+}
