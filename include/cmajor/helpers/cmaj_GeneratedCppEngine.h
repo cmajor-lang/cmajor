@@ -184,7 +184,7 @@ private:
 
                 for (uint32_t i = 0; i < numEvents; ++i)
                 {
-                    uint8_t data[GeneratedCppClass::maxOutputEventSize];
+                    uint8_t data[GeneratedCppClass::maxOutputEventSize + 1];
                     auto frame = generatedObject.readOutputEvent (endpoint, i, data);
                     auto type = generatedObject.getOutputEventType (endpoint, i);
                     auto dataSize = generatedObject.getOutputEventDataSize (endpoint, type);
