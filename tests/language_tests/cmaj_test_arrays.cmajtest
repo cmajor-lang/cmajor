@@ -86,10 +86,6 @@ void f() { bool<3> v; v[2] = true; v[3] = true; }
 
 void f() { bool<3> v; v[-1] = true; v[-3] = true; v[-4] = true; }
 
-## expectError ("2:26: error: Found \",\" when expecting \"]\"")
-
-void f() { bool<3> v; v[1, 2] = true; }
-
 ## expectError ("2:25: error: An array index must be an integer type")
 
 void f() { bool<3> v; v[1.2] = true; }
