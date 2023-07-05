@@ -304,3 +304,25 @@ bool arrayOperator()
 
     return true;
 }
+
+## testCompile()
+
+processor Test [[ main ]]
+{
+    output stream complex<2> arrayOut;
+    output stream complex   elementOut;
+    output stream float<2>  realOut;
+    output stream float     imagElementOut;
+
+    void main()
+    {
+        const complex<2> v = complex<2> (1.0f + 1.0fi, 2.0f + 2.0fi);
+
+        arrayOut <- v;
+        elementOut <- v[0];
+        realOut <- v.real;
+        imagElementOut <- v[1].imag;
+
+        advance();
+    }
+}
