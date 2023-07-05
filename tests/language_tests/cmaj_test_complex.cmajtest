@@ -326,3 +326,36 @@ processor Test [[ main ]]
         advance();
     }
 }
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    input stream complex<2> in;
+    output stream complex<2> out;
+    output stream complex elementOut;
+    output stream float<2> realOut;
+    output stream float imagElementOut;
+
+    connection
+    {
+        in -> out;
+        complex (in[0]) -> elementOut;
+        in.real -> realOut;
+        in[1].imag -> imagElementOut;
+    }
+}
+
+
+## testFunction()
+
+bool testComplexConversions()
+{
+    var c = complex<2> (0.0f, 1.0f);
+    var d1    = complex (c[1]);
+    var d2    = complex64 (c[1]);
+    var d3    = complex<4> (c[1]);
+    var d4    = complex64<4> (c[1]);
+
+    return d1.real == 1.0f && d2.real == 1.0 && d3[1].real == 1.0f && d4[2].real == 1.0;
+}
