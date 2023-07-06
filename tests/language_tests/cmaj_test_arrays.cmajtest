@@ -445,6 +445,12 @@ bool test_slices12()
     return size1 == 3 && size2 == 0 && a.size == 2;
 }
 
+int[3] get1()  { return int[] (4, 5, 6); }
+int[3] get2()  { return get1(); }
+bool test_return1() { return get2()[0] == 4; }
+bool test_return2() { return get2()[1] == 5; }
+bool test_return3() { return get2()[2] == 6; }
+
 ## testFunction()
 
 int readSliceElement (int[] x, int index)   { return x.read (index); }
