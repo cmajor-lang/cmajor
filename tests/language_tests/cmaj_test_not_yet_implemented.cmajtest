@@ -210,3 +210,77 @@ void foo()
     switch (1)
     {}
 }
+
+## expectError ("error: Language feature not yet implemented: Slices of endpoints!")
+
+graph Test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+    {
+        in -> P.in;
+        P.out -> out;
+    }
+}
+
+graph P
+{
+    input stream float in[10];
+    output stream float out[10];
+
+    connection
+    {
+        in -> out[1:5];
+    }
+}
+
+## expectError ("6:10: error: Language feature not yet implemented: Slices of graph nodes!")
+
+graph P [[ main ]]
+{
+    input stream float in;
+
+    node a = A[5];
+
+    connection
+    {
+        in -> a[3:];
+    }
+}
+
+processor A
+{
+    output stream float out;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+
+## expectError ("6:10: error: Language feature not yet implemented: Slices of graph nodes!")
+
+graph P [[ main ]]
+{
+    output stream float out;
+
+    node a = A[5];
+
+    connection
+    {
+        a[1:3] -> out;
+    }
+}
+
+processor A
+{
+    output stream float out;
+
+    void main()
+    {
+        advance();
+    }
+}
