@@ -463,7 +463,7 @@ function testCompile (testLink, options)
     let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
     let error;
 
-    if (isErrorOrWarning (engine))
+    if (isError (engine, options))
     {
         testSection.reportFail (engine);
         return;
@@ -482,7 +482,7 @@ function testCompile (testLink, options)
     {
         error = engine.link();
 
-        if (isError (error))
+        if (isError (error, options))
         {
             testSection.reportFail (error);
             return;
@@ -492,7 +492,7 @@ function testCompile (testLink, options)
     engine.unload();
     error = buildEngineWithLoadedProgram (testSection, options, timingInfo, engine);
 
-    if (isError (error))
+    if (isError (error, options))
     {
         testSection.reportFail (error);
         return;
@@ -502,7 +502,7 @@ function testCompile (testLink, options)
     {
         error = engine.link();
 
-        if (isError (error))
+        if (isError (error, options))
         {
             testSection.reportFail (error);
             return;
