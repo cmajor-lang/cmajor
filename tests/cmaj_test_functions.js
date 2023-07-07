@@ -631,7 +631,7 @@ function performanceTest (options)
     let timingInfo = {};
     let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
 
-    if (isError (engine))
+    if (isError (engine, options))
     {
         testSection.reportFail (engine);
         return;
@@ -655,7 +655,7 @@ function performanceTest (options)
 
     timingInfo.linkTime = engine.link ();
 
-    if (isError (timingInfo.linkTime))
+    if (isError (timingInfo.linkTime, options))
     {
         if (timingInfo.linkTime.message == "Language feature not yet implemented: cpp performer on windows!")
             testSection.reportUnsupported (timingInfo.linkTime);
@@ -792,7 +792,7 @@ function runScript (options)
 
     let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
 
-    if (isError (engine))
+    if (isError (engine, options))
     {
         testSection.reportFail (engine);
         return;
@@ -888,7 +888,7 @@ function runScript (options)
 
     timingInfo.linkTime = engine.link();
 
-    if (isError (timingInfo.linkTime))
+    if (isError (timingInfo.linkTime, options))
     {
         if (timingInfo.linkTime.message == "Language feature not yet implemented: cpp performer on windows!")
             testSection.reportUnsupported (timingInfo.linkTime);
@@ -1171,13 +1171,13 @@ function buildEngineWithLoadedProgram (testSection, options, timingInfo, engine)
         program = new Program();
         let parseResult = program.parse (testSection.source + testSection.globalSource);
 
-        if (isError (parseResult))
+        if (isError (parseResult, options))
             return parseResult;
 
         timingInfo.parseTime = parseResult;
         timingInfo.loadTime = engine.load (program);
 
-        if (isError (timingInfo.loadTime))
+        if (isError (timingInfo.loadTime, options))
             return timingInfo.loadTime;
 
         let externals = engine.getExternalVariables();
