@@ -134,7 +134,7 @@ void f() { wrap<4> i = 2; int[i] a; }
 
 void foo() { int[2] a; a.at (int) = 1; }
 
-## expectError ("2:33: error: The 'at' method expects one argument")
+## expectError ("2:41: error: The 'at' method for this type expects 1 argument(s)")
 
 void f() { float[2] x; let y = x.at (2, 3); }
 

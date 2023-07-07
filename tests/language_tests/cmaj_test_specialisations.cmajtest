@@ -655,7 +655,7 @@ T f<T> (T a)        { return a; }
 T f<T> (const T& a) { return a; }
 void f1() { f(123); }
 
-## expectError ("2:46: error: Language feature not yet implemented: Multi-dimensional arrays!")
+## testCompile()
 
 namespace P2 (using SampleType) { struct S { SampleType[] x; } }
 
@@ -682,7 +682,6 @@ graph G [[main]]
     output event P2::S out;     // P2 specialisation arg missing
 }
 
-
 ## expectError ("6:18: error: The namespace 'P2' cannot be used without providing arguments for its parameters")
 
 namespace P2 (using SampleType) { struct S { SampleType[] x; } }
@@ -692,7 +691,6 @@ graph G [[main]]
     output event P2::S out;     // P2 specialisation arg missing
 }
 
-
 ## testCompile()
 
 namespace P2 (using SampleType = float) { struct S { SampleType[4] x; } }
@@ -701,7 +699,6 @@ graph G [[main]]
 {
     output event P2::S out;     // P2 specialisation arg missing, should use default of float
 }
-
 
 ## expectError ("4:12: error: Endpoint type not yet resolved")
 

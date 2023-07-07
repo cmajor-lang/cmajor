@@ -123,20 +123,6 @@ graph G
     connection i1, i2 -> o2, o1;
 }
 
-## expectError ("2:1: error: Language feature not yet implemented: Multi-dimensional arrays!")
-
-float[3][4] x;
-void f() { x[1][2] = 10.0f; }
-
-## expectError ("2:12: error: Language feature not yet implemented: Multi-dimensional arrays!")
-
-void f() { float[3][4] x; x[1][2] = 10.0f; }
-
-## expectError ("2:12: error: Language feature not yet implemented: Multi-dimensional arrays!")
-
-struct S { float[3][4] x; }
-void f() { S s; s.x[1][2] = 10.0f; }
-
 ## expectError ("5:23: error: Language feature not yet implemented: Dynamic slice indexes!")
 
 void f (int i)
