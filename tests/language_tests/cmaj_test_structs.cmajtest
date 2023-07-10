@@ -40,7 +40,7 @@ struct S1 { S3 s; }
 struct S2 { S1 s; }
 struct S3 { S2 s; }
 
-## expectError ("9:8: error: 'S2' and 'S1' reference each other recursively")
+## expectError ("6:12: error: 'S1' and 'S2' reference each other recursively")
 
 processor P
 {
@@ -50,6 +50,11 @@ processor P
 }
 
 struct S2 { int i; P::S1 s; }
+
+## expectError ("2:11: error: Cannot find symbol 'S'")
+
+using A = S[2, 2];
+void f() { var x = A ((1, 2), (2, 4), (3, 5)); }
 
 ## expectError ("2:12: error: A brace-enclosed declaration should not be followed by a semicolon")
 
