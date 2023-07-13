@@ -65,6 +65,15 @@ processor P
     void main() { advance(); }
 }
 
+## expectError ("4:54: error: Cannot resolve annotation value as a compile-time constant")
+
+processor P
+{
+    input event float testEvent [[ name: "Mix", min: kMinMix, max: kMaxMix, unit: "%", step: 0 ]];
+    output stream float out;
+    void main() { advance(); }
+}
+
 ## testCompile (false)
 
 processor P
