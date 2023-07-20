@@ -256,6 +256,35 @@ let a5 = x[3:-2];  // Returns a copy of elements 3 to 5
 z[3:6] = y[5:8];  // If the sizes and types match, you can copy sub-sections between arrays
 ```
 
+### Multi-dimensional arrays
+
+Multi-dimensional arrays can be declared with a list of comma-separated sizes inside the square brackets:
+
+```cpp
+int[3, 4, 5] x;
+
+x[1, 2, 3] = 99;
+```
+
+An alternative syntax is to use multiple nested brackets:
+
+```cpp
+int[5][4][3] x;  // same as int[3, 4, 5]
+
+x[1][2][3] = 99;   // same as x[1, 2, 3]
+x[1, 2][3] = 99;   // same as x[1, 2, 3]
+x[1][2, 3] = 99;   // same as x[1, 2, 3]
+```
+
+You can access one of the inner dimensions as a sub-array by indexing into it with fewer arguments than there are dimensions:
+
+```cpp
+int[3, 4, 5] x;
+
+let y = x[1];     // the type of y is int[4, 5]
+let z = x[1, 2];  // the type of z is int[5];
+```
+
 ### Arrays vs Slices
 
 Arrays are copied around by value, but often you want to work with references to sections of arrays. This is done with *slices* (also sometimes called "fat pointers" in other languages).
@@ -296,6 +325,8 @@ arraySlice = originalArray[2:4]; // now make our slice point at the last two ele
 console <- arraySlice.size <- " " // prints 2
         <- arraySlice[1];         // prints 4
 ```
+
+Slices of multi-dimensional arrays are not yet supported.
 
 ### Scope of slice data
 
