@@ -67,7 +67,7 @@ processor P [[ main ]]
 
 ## expectError ("4:54: error: Cannot resolve annotation value as a compile-time constant")
 
-processor P
+processor P [[ main ]]
 {
     input event float testEvent [[ name: "Mix", min: kMinMix, max: kMaxMix, unit: "%", step: 0 ]];
     output stream float out;
