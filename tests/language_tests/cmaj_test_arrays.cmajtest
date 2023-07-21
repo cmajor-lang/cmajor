@@ -144,7 +144,7 @@ void f() { float x; let y = x.at (1); }
 
 ## expectError ("6:27: error: The 'at' method can only be applied to a vector or array")
 
-processor P
+processor P [[ main ]]
 {
     input stream int in;
     output stream int out;
@@ -157,7 +157,7 @@ void f() { var f = 1.0f; f += 0.1f; let x = f[0]; }
 
 ## expectError ("10:17: error: Expected a vector or array to the left of the bracket operator")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     input stream complex in;
@@ -172,7 +172,7 @@ processor P
 
 ## expectError ("6:24: error: Writing to an endpoint is not allowed inside an expression")
 
-processor P
+processor P [[ main ]]
 {
     input stream int in;
     output stream int out;
@@ -181,7 +181,7 @@ processor P
 
 ## expectError ("5:38: error: Index is out of range")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out[2];
     void main() { out[1] <- 123; out[2] <- 123; advance(); }
@@ -265,7 +265,7 @@ void f() { int[5] a = (3); ++a[2]; let b = float[4] (int[4] (a)); }
 
 ## testProcessor()
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
 
@@ -563,7 +563,7 @@ bool testSliceOfReturnValue()
 
 ## testProcessor()
 
-processor test
+processor test [[ main ]]
 {
     output event int results;
 
@@ -632,7 +632,7 @@ float[] getSliceOfNope() { var a = returnArray(); return a; }
 
 ## expectError ("8:46: error: Values which may contain slices of local data cannot be assigned to variables which may outlive them")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
 
@@ -665,7 +665,7 @@ void foo() { f1 (int[](1, 2)); var a = int[](1, 2, 3); let x = f2 (a); }
 
 ## expectError ("8:52: error: Values which may contain slices of local data cannot be assigned to variables which may outlive them //// 9:45: note: See context where local data is assigned")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
 
@@ -678,7 +678,7 @@ processor P
 
 ## expectError ("21:14: error: Values which may contain slices of local data cannot be assigned to variables which may outlive them //// 20:17: note: See context where local data is assigned")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
 
@@ -889,7 +889,7 @@ bool test4() { let a = int[](1, 2, 3); S s = (a); S2 s2; s2.set (s); return s2.s
 
 ## expectError ("8:20: error: Cannot assign to an element of a slice")
 
-processor P
+processor P [[ main ]]
 {
     output event int results;
     external float[] data [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
@@ -906,7 +906,7 @@ processor P
 
 ## expectError ("10:9: error: Expected an assignable target on the left of the '=' operator")
 
-processor P
+processor P [[ main ]]
 {
     output event int results;
     external float[] data [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];

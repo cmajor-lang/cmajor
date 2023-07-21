@@ -82,7 +82,7 @@ processor P (int f)
     void main() { f++; }
 }
 
-graph G
+graph G [[ main ]]
 {
     output event int out;
     node p = P(2);
@@ -1206,7 +1206,7 @@ processor P
 
 ## expectError ("5:31: error: Cannot read from an output")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     void main() { let x = 1 & out; advance(); }

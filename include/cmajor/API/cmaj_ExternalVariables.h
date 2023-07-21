@@ -35,6 +35,24 @@ struct ExternalVariable
     std::string name;
     choc::value::Type type;
     choc::value::Value annotation;
+
+    static ExternalVariable fromJSON (const choc::value::ValueView& json)
+    {
+        ExternalVariable e;
+
+        e.name = json["name"].getString();
+        e.type = choc::value::Type::fromValue (json["type"]);
+        e.annotation = json["annotation"];
+
+        return e;
+    }
+
+    choc::value::Value toJSON() const
+    {
+        return choc::json::create ("name", name,
+                                   "type", type.toValue(),
+                                   "annotation", annotation);
+    }
 };
 
 
@@ -53,15 +71,7 @@ struct ExternalVariableList
                 ExternalVariableList list;
 
                 for (uint32_t i = 0; i < json.size(); ++i)
-                {
-                    list.externals.push_back ({});
-                    auto& e = list.externals.back();
-
-                    auto element = json[i];
-                    e.name = element["name"].getString();
-                    e.type = choc::value::Type::fromValue (element["type"]);
-                    e.annotation = element["annotation"];
-                }
+                    list.externals.push_back (ExternalVariable::fromJSON (json[i]));
 
                 return list;
             }
@@ -77,9 +87,8 @@ struct ExternalVariableList
         auto list = choc::value::createEmptyArray();
 
         for (auto& e : externals)
-            list.addArrayElement (choc::json::create ("name", e.name,
-                                                      "type", e.type.toValue(),
-                                                      "annotation", e.annotation));
+            list.addArrayElement (e.toJSON());
+
         return list;
     }
 };

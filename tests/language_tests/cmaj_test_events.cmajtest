@@ -31,7 +31,7 @@ processor Forward (using Type)
 
 ## testProcessor()
 
-processor P
+processor P [[ main ]]
 {
     output event float64 out;
     void main() { out <- 1; advance(); out <- -1; }
@@ -39,7 +39,7 @@ processor P
 
 ## testProcessor()
 
-processor P
+processor P [[ main ]]
 {
     output event int32 out;
     void main() { out <- 1; advance(); out <- -1; }
@@ -47,7 +47,7 @@ processor P
 
 ## expectError ("4:19: error: Endpoint types cannot be references")
 
-processor P
+processor P [[ main ]]
 {
     output stream float32& out;
     void main() { out <- 1.0f; advance(); out <- -1.0f; }
@@ -55,7 +55,7 @@ processor P
 
 ## expectError ("5:18: error: Endpoint types cannot be references")
 
-processor P
+processor P [[ main ]]
 {
     output stream float32 out;
     input stream float& in;
@@ -64,7 +64,7 @@ processor P
 
 ## expectError ("5:26: error: Ambiguous cast from type 'int32' to 'int64, float32'")
 
-processor P
+processor P [[ main ]]
 {
     output event (int64, float32) out;
     void main() { out <- 2; advance(); }
@@ -72,7 +72,7 @@ processor P
 
 ## expectError ("6:40: error: Cannot resolve bracketed expression in this context")
 
-processor P
+processor P [[ main ]]
 {
     output event (int64, float32) out1;
     output event int out2;
@@ -98,7 +98,7 @@ processor Source [[ main ]]
 
 ## expectError ("6:14: error: Found \"{\" when expecting \"(\"")
 
-processor P
+processor P [[ main ]]
 {
     output stream float out;
     input event float in;
@@ -107,7 +107,7 @@ processor P
 
 ## expectError ("4:19: error: Cannot use a processor name as a type")
 
-processor X
+processor X [[ main ]]
 {
     output stream X out;
     void main() { advance(); }
@@ -138,7 +138,7 @@ processor Dest
     void main() { advance(); }
 }
 
-graph test
+graph test [[ main ]]
 {
     output event int eventOut;
     connection Source.eventOut -> Dest.eventIn;
@@ -317,7 +317,7 @@ graph test [[ main ]]
 
 ## expectError ("8:28: error: Streams cannot be used in event callback functions")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event int in;
@@ -329,7 +329,7 @@ processor P
 
 ## expectError ("8:32: error: Streams cannot be used in event callback functions")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event int in;
@@ -341,7 +341,7 @@ processor P
 
 ## expectError ("8:24: error: Streams cannot be used in event callback functions")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event int in;
@@ -354,7 +354,7 @@ processor P
 
 ## expectError ("8:24: error: Streams cannot be used in event callback functions")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event int in;
@@ -367,7 +367,7 @@ processor P
 
 ## expectError ("8:11: error: Event handler 'in2' does not match an event input")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event float in;
@@ -380,7 +380,7 @@ processor P
 
 ## expectError ("8:11: error: Event handler 'in' does not match an event input")
 
-processor P
+processor P [[ main ]]
 {
     output stream float out;
     input stream float in;
@@ -392,7 +392,7 @@ processor P
 
 ## expectError ("8:11: error: Event handler 'out' does not match an event input")
 
-processor P
+processor P [[ main ]]
 {
     output event float out;
     input event float in;
@@ -405,7 +405,7 @@ processor P
 
 ## expectError ("8:11: error: A function with matching parameters has already been defined")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event float in;
@@ -417,7 +417,7 @@ processor P
 
 ## expectError ("6:10: error: The name 'in' is already in use //// 5:17: note: See previous declaration")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event int in;
@@ -427,7 +427,7 @@ processor P
 
 ## expectError ("7:11: error: Event 'in' does not support type 'bool'")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event float in;
@@ -438,7 +438,7 @@ processor P
 
 ## expectError ("7:11: error: Event function arguments invalid")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event float in;
@@ -449,7 +449,7 @@ processor P
 
 ## expectError ("7:22: error: Event parameters cannot be non-const references")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event float in;
@@ -460,7 +460,7 @@ processor P
 
 ## expectError ("7:11: error: Event Handlers for event arrays need a first argument index integer type")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event float in[2];
@@ -471,7 +471,7 @@ processor P
 
 ## expectError ("7:11: error: Event 'in' does not support type 'float32<2>'")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event float in[2];
@@ -482,7 +482,7 @@ processor P
 
 ## expectError ("5:17: error: 'tests::P::S' is not a valid data type for this endpoint type")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event S in;
@@ -495,7 +495,7 @@ processor P
 
 ## expectError ("5:17: error: 'tests::P::S' is not a valid data type for this endpoint type")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event S in;
@@ -508,7 +508,7 @@ processor P
 
 ## expectError ("11:9: error: The in() function cannot be called from user code")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     input event int in;
@@ -524,7 +524,7 @@ processor P
 
 ## expectError ("9:16: error: The in() function cannot be called from user code")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     input event int in;
@@ -652,7 +652,7 @@ graph G [[main]]
 
 ## expectError ("6:51: error: Only source values which have global scope may be written to an endpoint //// 6:54: note: See context where local data is assigned")
 
-processor P2
+processor P2 [[ main ]]
 {
     output event S out;
     struct S { int[] x; }

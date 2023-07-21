@@ -1102,19 +1102,11 @@ struct Patch::Build
     {
         try
         {
-            if (! loadProgram (checkForStopSignal))
+            if (! loadProgram (resolveExternals, checkForStopSignal))
                 return;
 
             if (! resolveExternals)
                 return;
-
-            checkForStopSignal();
-
-            if (! resolvePatchExternals())
-            {
-                renderer->errors.add (cmaj::DiagnosticMessage::createError ("Failed to resolve external variables", {}));
-                return;
-            }
 
             checkForStopSignal();
             performerBuilder = std::make_unique<AudioMIDIPerformer::Builder> (engine);
@@ -1164,7 +1156,7 @@ private:
         return *performerBuilder;
     }
 
-    bool loadProgram (const std::function<void()>& checkForStopSignal)
+    bool loadProgram (bool resolveExternals, const std::function<void()>& checkForStopSignal)
     {
         renderer = std::make_shared<PatchRenderer>();
         renderer->manifest = std::move (loadParams.manifest);
@@ -1180,7 +1172,7 @@ private:
                 auto content = renderer->manifest.readFileContent (file);
 
                 if (content.empty()
-                        && renderer->manifest.getFileModificationTime (file) == std::filesystem::file_time_type())
+                    && renderer->manifest.getFileModificationTime (file) == std::filesystem::file_time_type())
                 {
                     renderer->errors.add (cmaj::DiagnosticMessage::createError ("Could not open source file: " + file, {}));
                     return false;
@@ -1192,12 +1184,27 @@ private:
         }
 
         engine.setBuildSettings (engine.getBuildSettings()
-                                    .setFrequency (playbackParams.sampleRate)
-                                    .setMaxBlockSize (playbackParams.blockSize));
+                                 .setFrequency (playbackParams.sampleRate)
+                                 .setMaxBlockSize (playbackParams.blockSize));
 
         checkForStopSignal();
 
-        if (engine.load (renderer->errors, program))
+        auto externals = getExternals();
+
+        if (engine.load (renderer->errors, program, [&] (const cmaj::ExternalVariable& v) -> choc::value::Value
+                                                    {
+                                                        if (! resolveExternals)
+                                                            return {};
+
+                                                        auto external = externals.find (v.name);
+
+                                                        if (external != externals.end())
+                                                            return replaceFilenameStringsWithAudioData (renderer->manifest,
+                                                                                                        external->second,
+                                                                                                        v.annotation);
+
+                                                        return {};
+                                                    }))
         {
             renderer->programDetails = engine.getProgramDetails();
             renderer->inputEndpoints = engine.getInputEndpoints();
@@ -1221,25 +1228,20 @@ private:
         }
     }
 
-    bool resolvePatchExternals()
+    std::unordered_map<std::string, choc::value::ValueView> getExternals()
     {
-        if (renderer->manifest.externals.isVoid())
-            return true;
+        std::unordered_map<std::string, choc::value::ValueView> externals;
 
-        if (! renderer->manifest.externals.isObject())
-            return false;
-
-        auto externals = engine.getExternalVariables();
-
-        for (auto& ev : externals.externals)
+        if (renderer->manifest.externals.isObject())
         {
-            auto value = renderer->manifest.externals[ev.name];
-
-            if (! engine.setExternalVariable (ev.name.c_str(), replaceFilenameStringsWithAudioData (renderer->manifest, value, ev.annotation)))
-                return false;
+            for (uint32_t i = 0; i < renderer->manifest.externals.size(); i++)
+            {
+                auto member = renderer->manifest.externals.getObjectMemberAt (i);
+                externals[member.name] = member.value;
+            }
         }
 
-        return true;
+        return externals;
     }
 
     //==============================================================================

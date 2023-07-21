@@ -46,9 +46,9 @@ namespace N { void v; }
 
 namespace N { const void v; }
 
-## expectError ("2:49: error: A variable type cannot be 'void'")
+## expectError ("2:60: error: A variable type cannot be 'void'")
 
-processor P { output stream int out; const void v; }
+processor P [[ main ]] { output stream int out; const void v; }
 
 ## expectError ("2:15: error: Only parameter variables can be given reference types")
 
@@ -89,13 +89,13 @@ namespace N { var v = float64[2]; }
 
 int f()  { int i, int (1 + 2); }
 
-## expectError ("2:42: error: Only constant variables can be declared inside a graph")
+## expectError ("2:53: error: Only constant variables can be declared inside a graph")
 
-graph G { output stream int out; float64 v; }
+graph G [[ main ]] { output stream int out; float64 v; }
 
-## expectError ("2:38: error: Only constant variables can be declared inside a graph")
+## expectError ("2:49: error: Only constant variables can be declared inside a graph")
 
-graph G { output stream int out; var v = 1.0f; }
+graph G [[ main ]] { output stream int out; var v = 1.0f; }
 
 ## expectError ("2:20: error: Only constant variables can be declared inside a namespace")
 
@@ -455,7 +455,7 @@ namespace ns { graph G { output event int out; const int x = 99; } }
 
 ## expectError ("13:39: error: Cannot reference a mutable variable belonging to another processor")
 
-processor P1
+processor P1 [[ main ]]
 {
     output event int out;
     void main() { advance(); }

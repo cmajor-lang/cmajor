@@ -79,25 +79,17 @@ class PatchManifest
         return list;
     }
 
-    resolveExternals (engine)
+    getExternals()
     {
-        const externalVars = engine.getExternalVariables();
+        let externals = {};
 
-        if (externalVars)
-        {
-            const externalDefs = this.manifest.externals;
+        const externalDefs = this.manifest.externals;
 
-            if (externalDefs)
-            {
-                for (const ev of externalVars)
-                {
-                    const def = externalDefs[ev.name];
+        if (externalDefs)
+            for (const [key, value] of Object.entries (externalDefs))
+                externals[key] = this.replaceStringsWithAudioData (value);
 
-                    if (def)
-                        engine.setExternalVariable (ev.name, this.replaceStringsWithAudioData (def));
-                }
-            }
-        }
+        return externals;
     }
 
     replaceStringsWithAudioData (o)
@@ -1159,12 +1151,10 @@ function buildEngineWithLoadedProgram (testSection, options, timingInfo, engine)
         if (isError (program))
             return program;
 
-        timingInfo.loadTime = engine.load (program);
+        timingInfo.loadTime = engine.load (program, patch.getExternals());
 
         if (isError (timingInfo.loadTime))
             return timingInfo.loadTime;
-
-        patch.resolveExternals (engine);
     }
     else
     {
@@ -1175,31 +1165,14 @@ function buildEngineWithLoadedProgram (testSection, options, timingInfo, engine)
             return parseResult;
 
         timingInfo.parseTime = parseResult;
-        timingInfo.loadTime = engine.load (program);
+
+        let externalFilename = options.subDir + "/externals.json";
+        let externalData = testSection.readEventData (externalFilename);
+
+        timingInfo.loadTime = engine.load (program, externalData);
 
         if (isError (timingInfo.loadTime, options))
             return timingInfo.loadTime;
-
-        let externals = engine.getExternalVariables();
-
-        if (externals.length > 0)
-        {
-            let externalFilename = options.subDir + "/externals.json";
-            let externalData = testSection.readEventData (externalFilename);
-
-            if (isError (externalData))
-                return engine;
-
-            for (let i = 0; i < externals.length; i++)
-            {
-                let value = externalData[externals[i].name];
-
-                if (value == null)
-                    return { severity: "error", message: "Failed to find external for " + externals[i].name };
-
-                engine.setExternalVariable (externals[i].name, value);
-            }
-        }
     }
 
     return engine;

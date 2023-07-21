@@ -126,7 +126,7 @@ bool f() { complex c; let d = sin (c); return true; }
 
 ## expectError ("5:5: error: Only parameter variables can be given reference types")
 
-processor P
+processor P [[ main ]]
 {
     output stream float out;
     int& i;
@@ -135,7 +135,7 @@ processor P
 
 ## expectError ("5:13: error: Only parameter variables can be given reference types")
 
-processor P
+processor P [[ main ]]
 {
     output stream float out;
     out.type.makeReference i;
@@ -225,7 +225,7 @@ namespace N { const float c = 1.23456; }
 
 ## expectError ("5:26: error: Cannot implicitly convert 'float64' to 'float32'")
 
-processor P
+processor P [[ main ]]
 {
     output stream float32 out;
     void main() { out <- 1.23456; advance(); }
@@ -590,7 +590,7 @@ bool test() { return f1 (int[] (1, 0, 0, 0, 0)) && f2 (int[] (1, 0)); }
 
 ## expectError ("6:22: error: Failed to resolve external variable 'sample'")
 
-processor X
+processor X [[ main ]]
 {
     output stream float out;
 
@@ -724,7 +724,7 @@ processor X
 
 ## expectError ("5:21: error: Failed to resolve external variable 'foo'")
 
-processor X
+processor X [[ main ]]
 {
     output stream float out;
     external int[4] foo;
@@ -734,7 +734,7 @@ processor X
 
 ## expectError ("5:21: error: Failed to resolve external variable 'foo1'")
 
-processor X
+processor X [[ main ]]
 {
     output stream float out;
     external int[4] foo1, foo2, foo3;
@@ -744,7 +744,7 @@ processor X
 
 ## expectError ("5:21: error: Failed to resolve external variable 'foo1'")
 
-processor X
+processor X [[ main ]]
 {
     output stream float out;
     external int[4] foo1, foo2, foo3, foo4, foo5;
@@ -756,7 +756,7 @@ processor X
 
 namespace A { let x = 1; }
 
-processor test
+processor test [[ main ]]
 {
     input event A::x in;
     output event int out;

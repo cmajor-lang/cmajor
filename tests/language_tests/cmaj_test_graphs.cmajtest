@@ -109,9 +109,9 @@ processor ExpectAbs (int numToSkip, int numToCheck, int expected)
     }
 }
 
-## expectError ("2:21: error: Expected a stream type specifier or endpoint")
+## expectError ("2:32: error: Expected a stream type specifier or endpoint")
 
-graph test { output xx; }
+graph test [[ main ]] { output xx; }
 
 ## expectError ("2:21: error: Expected a stream type specifier")
 
@@ -129,13 +129,13 @@ graph test { output stream int out; node p::p = something; }
 
 graph test { output stream int out; node { p::p = something; } }
 
-## expectError ("2:48: error: Cannot find symbol 'a'")
+## expectError ("2:59: error: Cannot find symbol 'a'")
 
-graph test { output stream int out; connection a::b -> out; }
+graph test [[ main ]] { output stream int out; connection a::b -> out; }
 
 ## expectError ("2:7: error: 'G' cannot refer to itself recursively")
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
     node x = G;
@@ -143,7 +143,7 @@ graph G
 
 ## expectError ("14:7: error: 'C' cannot refer to itself recursively")
 
-graph A
+graph A [[ main ]]
 {
     output stream int out;
     node x = B;
@@ -580,28 +580,28 @@ processor IgnoreEvent
 
 ## expectError ("2:11: error: A processor must declare at least one output")
 
-processor P
+processor P [[ main ]]
 {
     void main() { advance(); }
 }
 
 ## expectError ("2:11: error: A processor must declare at least one output")
 
-processor P
+processor P [[ main ]]
 {
     input event int in;
 }
 
 ## expectError ("2:11: error: A processor must contain a main() function")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
 }
 
 ## expectError ("4:11: error: Cannot expose a child's output endpoint as an input")
 
-graph Parent
+graph Parent [[ main ]]
 {
     input child.out out2;
     output stream int out;
@@ -618,7 +618,7 @@ processor Child
 
 ## expectError ("4:12: error: Cannot expose a child's input endpoint as an output")
 
-graph Parent
+graph Parent [[ main ]]
 {
     output child.in;
     node child = Child;
@@ -634,14 +634,14 @@ processor Child
 
 ## testProcessor (false)
 
-processor Fail
+processor Fail [[ main ]]
 {
     output event int out;
 }
 
 ## testProcessor (false)
 
-processor Fail
+processor Fail [[ main ]]
 {
     output event int out;
     void main() { out <- 0 <- 1 <- -1; advance(); }
@@ -930,7 +930,7 @@ graph test [[main]]
 
 ## testProcessor()
 
-graph test
+graph test [[ main ]]
 {
     output stream float32 out;
 
@@ -970,7 +970,7 @@ processor ModifyValue
 
 ## testProcessor()
 
-graph test
+graph test [[ main ]]
 {
     output stream float32 out;
 
@@ -1011,7 +1011,7 @@ processor ModifyValue
 
 ## testProcessor()
 
-graph test
+graph test [[ main ]]
 {
     output stream float32 out;
 
@@ -1059,7 +1059,7 @@ processor ModifyValue
 
 ## testProcessor()
 
-graph test
+graph test [[ main ]]
 {
     output stream int out;
 
@@ -1120,7 +1120,7 @@ graph G [[main]]
 
 ## testCompile()
 
-graph test
+graph test [[ main ]]
 {
     output event float64 out1;
 
@@ -1140,7 +1140,7 @@ processor Processor
 ## testProcessor()
 // Two instances of the same Processor should have different sampleRates as one is oversampled
 
-graph test
+graph test [[ main ]]
 {
     output stream int out;
 
@@ -1181,7 +1181,7 @@ processor Processor
 
 ## testProcessor()
 
-graph test
+graph test [[ main ]]
 {
     output stream int out;
 
@@ -1232,7 +1232,7 @@ processor OversampledProcessor
 
 ## testProcessor()
 
-graph test
+graph test [[ main ]]
 {
     output stream int out;
 
@@ -1283,7 +1283,7 @@ processor UndersampledProcessor
 
 ## expectError ("5:26: error: Clock ratio must be a power of 2")
 
-graph test
+graph test [[ main ]]
 {
     output stream int out;
     node p = Processor * 7;
@@ -1297,7 +1297,7 @@ processor Processor
 
 ## expectError ("5:26: error: Clock ratio must be a power of 2")
 
-graph test
+graph test [[ main ]]
 {
     output stream int out;
     node p = Processor / 3;
@@ -1311,7 +1311,7 @@ processor Processor
 
 ## expectError ("5:26: error: Clock ratio out of range")
 
-graph test
+graph test [[ main ]]
 {
     output stream int out;
     node p = Processor / 0;
@@ -1325,7 +1325,7 @@ processor Processor
 
 ## expectError ("5:26: error: Clock ratio must be an integer constant")
 
-graph test
+graph test [[ main ]]
 {
     output stream int out;
     node p = Processor * 2.1;
@@ -1339,7 +1339,7 @@ processor Processor
 
 ## expectError ("5:26: error: Clock ratio must be an integer constant")
 
-graph test
+graph test [[ main ]]
 {
     output stream int out;
     node p = Processor / "x";
@@ -1672,7 +1672,7 @@ graph test [[main]]
 
 ## expectError ("4:18: error: Endpoint arrays cannot use array data types")
 
-processor P
+processor P [[ main ]]
 {
     output event int[4] out[2];
     void main() { advance(); }
@@ -1680,7 +1680,7 @@ processor P
 
 ## expectError ("8:23: error: Cannot connect two endpoint arrays with different sizes")
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
     node p1 = P;
@@ -1715,7 +1715,7 @@ graph G [[main]]
 
 ## expectError ("7:21: error: The endpoint 'p.in' is an input, so cannot be connected to 'out'")
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
     input stream int in;
@@ -1725,7 +1725,7 @@ graph G
 
 ## expectError ("5:19: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
 
-processor P
+processor P [[ main ]]
 {
     input stream bool in;
     output stream bool out;
@@ -1744,7 +1744,7 @@ graph G
 
 ## expectError ("7:19: error: The endpoint 'p.out' is an output, so cannot take an input from 'in'")
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
     input stream int in;
@@ -1754,7 +1754,7 @@ graph G
 
 ## expectError ("7:24: error: A processor that is chained between two others cannot specify an endpoint name")
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
     input stream int in;
@@ -1764,7 +1764,7 @@ graph G
 
 ## expectError ("7:24: error: A processor that is chained between two others cannot specify an endpoint name")
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
     input stream int in;
@@ -2241,7 +2241,7 @@ graph test [[main]]
 
 ## testProcessor()
 
-processor test  // this one is designed to stress the advance removal algorithm
+processor test [[ main ]] // this one is designed to stress the advance removal algorithm
 {
     output event int out;
 
@@ -2516,7 +2516,7 @@ processor Generator
 
 ## testCompile()
 
-graph test
+graph test [[ main ]]
 {
     output event (std::notes::NoteOn, std::notes::NoteOff) out;
     input event std::midi::Message in;
@@ -2526,7 +2526,7 @@ graph test
 
 ## testProcessor()
 
-processor test
+processor test [[ main ]]
 {
     output event int out;
 
@@ -2628,7 +2628,7 @@ graph test [[main]]
 
 ## testCompile()
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
 
@@ -2663,7 +2663,7 @@ processor Source
 
 ## expectError ("4:14: error: Cannot find symbol 'foo'")
 
-graph test
+graph test [[ main ]]
 {
     output x.foo.z.out2;
     node x = InnerGraph1;
@@ -2714,7 +2714,7 @@ processor test
 
 ## expectError ("5:25: error: Cannot use a processor name as a value")
 
-graph G
+graph G [[ main ]]
 {
     output stream int x;
     let n = std::noise::White;
@@ -2800,7 +2800,7 @@ processor P2
     void main() { loop { out <- f(); advance(); } }
 }
 
-graph G
+graph G [[ main ]]
 {
     output event int out;
     connection P1 -> P2 -> out;
@@ -2948,7 +2948,7 @@ graph G [[main]]
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
 
@@ -2965,7 +2965,7 @@ graph G
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
 
@@ -2984,7 +2984,7 @@ graph G
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
 
@@ -3004,7 +3004,7 @@ graph G
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
 
@@ -3025,7 +3025,7 @@ graph G
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
 
@@ -3044,7 +3044,7 @@ graph G
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
 
@@ -3063,7 +3063,7 @@ graph G
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
 
@@ -3085,7 +3085,7 @@ graph G
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
 
@@ -3108,7 +3108,7 @@ graph G
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output event int out;
     connection LatencyCheck (20) -> out;
@@ -3157,7 +3157,7 @@ processor Checker
 
 ## expectError ("6:29: error: The processor.latency value must be declared as a constant integer or float")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { advance(); }
@@ -3166,7 +3166,7 @@ processor P
 
 ## expectError ("6:22: error: Found \";\" when expecting \"=\"")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { advance(); }
@@ -3175,7 +3175,7 @@ processor P
 
 ## expectError ("6:28: error: This latency value is out of range")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { advance(); }
@@ -3184,7 +3184,7 @@ processor P
 
 ## expectError ("6:25: error: This latency value is out of range")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { advance(); }
@@ -3193,7 +3193,7 @@ processor P
 
 ## expectError ("7:15: error: The processor.latency value must not be set more than once")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { advance(); }
@@ -3203,7 +3203,7 @@ processor P
 
 ## expectError ("5:37: error: Processor properties are constants, and cannot be modified")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { processor.latency = 20; advance(); }
@@ -3218,7 +3218,7 @@ graph G (namespace n)
 
 ## expectError ("6:15: error: Expected a function or variable declaration")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { advance(); }
@@ -3311,7 +3311,7 @@ processor G3
 
 ## expectError ("8:10: error: A processor called 'duplicateNodeName' is already visible in this scope //// 7:10: note: See previous declaration")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3323,7 +3323,7 @@ graph test
 
 ## expectError ("11:12: error: Cannot connect in (float32) to gain.in (float64)")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3339,7 +3339,7 @@ graph test
 
 ## expectError ("11:12: error: Cannot connect in (float32) to gain.in (float32<2>)")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3355,7 +3355,7 @@ graph test
 
 ## expectError ("11:12: error: Cannot connect in (float32) to gain.in (float32<2>)")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3371,7 +3371,7 @@ graph test
 
 ## expectError ("11:12: error: Cannot connect in (event) to gain.in (stream)")
 
-graph test
+graph test [[ main ]]
 {
     input event float in;
     output stream float out;
@@ -3387,7 +3387,7 @@ graph test
 
 ## expectError ("12:18: error: Cannot connect gain.out (stream) to out (event)")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output event float out;
@@ -3403,7 +3403,7 @@ graph test
 
 ## testCompile()
 
-graph test
+graph test [[ main ]]
 {
     input value float in;
     output stream float out;
@@ -3419,7 +3419,7 @@ graph test
 
 ## expectError ("13:19: error: Feedback cycle in graph: gain1 -> gain2 -> gain1")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3438,7 +3438,7 @@ graph test
 
 ## expectError ("12:18: error: Feedback cycle in graph: gain -> gain")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3455,7 +3455,7 @@ graph test
 
 ## testCompile()
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3472,7 +3472,7 @@ graph test
 
 ## testCompile()
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3545,7 +3545,7 @@ graph test
 
 ## expectError ("9:25: error: A delay line length must be greater than zero")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3557,7 +3557,7 @@ graph test
 
 ## expectError ("9:25: error: Found \"]\" when expecting identifier")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3569,7 +3569,7 @@ graph test
 
 ## expectError ("9:25: error: A delay line length must be an integer")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3581,7 +3581,7 @@ graph test
 
 ## expectError ("9:25: error: This exceeds the maximum delay line length (262144)")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3593,7 +3593,7 @@ graph test
 
 ## expectError ("9:25: error: Integer literal is too large to be represented")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3606,7 +3606,7 @@ graph test
 
 ## expectError ("9:25: error: A delay line length must be greater than zero")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3787,7 +3787,7 @@ graph test [[ main ]]
 
 ## expectError ("7:27: error: Cannot connect m.eventOut (NoteOn, NoteOff, PitchBend, Slide, Pressure, Control) to out (int32)")
 
-graph test
+graph test [[ main ]]
 {
     output event int out;
 
@@ -3797,7 +3797,7 @@ graph test
 
 ## testCompile()
 
-graph test
+graph test [[ main ]]
 {
     output event (std::notes::NoteOn, int) out;
 
@@ -3879,7 +3879,7 @@ graph test [[ main ]]
 
 ## expectError ("7:30: error: Wrong number of arguments to instantiate processor 'ConstantGain'")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3891,7 +3891,7 @@ graph test
 
 ## expectError ("7:44: error: Expected a type")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3902,7 +3902,7 @@ graph test
 
 ## expectError ("7:53: error: Cannot implicitly convert 0.123456789 ('float64') to 'float32'")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3914,7 +3914,7 @@ graph test
 
 ## testCompile()
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3924,7 +3924,7 @@ graph test
 
 ## testCompile()
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -3934,7 +3934,7 @@ graph test
 
 ## expectError ("7:78: error: An implicitly-created graph node cannot be used more than once: create a named instance instead")
 
-graph test
+graph test [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -4153,7 +4153,7 @@ processor Compare
 
 ## testCompile()
 
-processor Test
+processor Test [[ main ]]
 {
     output value int32 result;
 
@@ -4167,7 +4167,7 @@ processor Test
 
 ## expectError ("4:12: error: Expected a stream type specifier or endpoint")
 
-graph G
+graph G [[ main ]]
 {
     output p;
     node p = P;
@@ -4583,7 +4583,7 @@ graph Test
 
 ## expectError ("4:27: error: Array or vector size must be an integer")
 
-graph Test
+graph Test [[ main ]]
 {
     output stream float<n + 2> out;
     let n = 2.3;
@@ -4863,7 +4863,7 @@ graph voice [[main]]
 
 ## testCompile()
 
-processor Test
+processor Test [[ main ]]
 {
     input stream float in;
     output stream float out;

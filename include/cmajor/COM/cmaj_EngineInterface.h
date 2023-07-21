@@ -61,10 +61,26 @@ struct EngineInterface   : public choc::com::Object
     /// various functions like load(), link() and createPerformer() as required.
     virtual void setBuildSettings (const char*) = 0;
 
+
     //==============================================================================
+    using RequestExternalVariableFn = void(*)(void* context, const char* externalVariable);
+
     /// Attempts to load a program, returning either a nullptr or a JSON error string
     /// which can be parsed into something more useful with DiagnosticMessageList::fromJSONString()
-    [[nodiscard]] virtual choc::com::String* load (ProgramInterface*) = 0;
+    /// The RequestExternalVariableFn specifies a handler function for external variables. This
+    /// will be called by the program during load, and expects a call to setExternalVariable
+    /// to set the given variable value.
+    [[nodiscard]] virtual choc::com::String* load (ProgramInterface*, void* callbackContext, RequestExternalVariableFn) = 0;
+
+    //==============================================================================
+    /// Sets the value of an external variable.
+    /// This may be called during the loading of a program.
+    /// If the type of object provided doesn't fit, the engine may return true here but
+    /// emit an error about the problem later on during the linking process. If there's no
+    /// such variable or other problems, then you can expect this method to return false.
+    virtual bool setExternalVariable (const char* name,
+                                      const void* serialisedValueData,
+                                      size_t serialisedValueDataSize) = 0;
 
     /// Unloads the current program and completely resets the state of the engine.
     virtual void unload() = 0;
@@ -79,16 +95,6 @@ struct EngineInterface   : public choc::com::Object
     /// This may be called after successfully loading a program, and before linking has happened.
     /// If the ID isn't found, this will return an invalid handle.
     virtual EndpointHandle getEndpointHandle (const char* endpointID) = 0;
-
-    //==============================================================================
-    /// Sets the value of an external variable.
-    /// This may be called after successfully loading a program, and before linking.
-    /// If the type of object provided doesn't fit, the engine may return true here but
-    /// emit an error about the problem later on during the linking process. If there's no
-    /// such variable or other problems, then you can expect this method to return false.
-    virtual bool setExternalVariable (const char* name,
-                                      const void* serialisedValueData,
-                                      size_t serialisedValueDataSize) = 0;
 
     //==============================================================================
     /// Attempts to link the currently-loaded program into a state that can be executed.

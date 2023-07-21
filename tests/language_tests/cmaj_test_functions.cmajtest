@@ -113,7 +113,7 @@ void f() { f1(0); }
 
 ## expectError ("5:9: error: The main() function must return 'void'")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     int main() { advance(); }
@@ -146,7 +146,7 @@ void f2() { let v = std::tanx (1.0); }
 
 ## expectError ("5:21: error: Unknown function: 'foo' (did you mean 'floor'?)")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { x.foo(); advance(); }
@@ -155,7 +155,7 @@ processor P
 
 ## expectError ("6:13: error: Cannot find symbol 'y'")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { x.foo(); advance(); }
@@ -164,7 +164,7 @@ processor P
 
 ## expectError ("6:13: error: Unknown function: 'y' (did you mean 'std::filters::tpt::svf::Processor::q'?)")
 
-processor P
+processor P [[ main ]]
 {
     output event int out;
     void main() { x.foo(); advance(); }
@@ -570,7 +570,7 @@ bool testLargeByValParam()
 
 void f() { P::f(); }
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     void f() { out <- 3; }
@@ -579,7 +579,7 @@ processor P
 
 ## expectError ("6:27: error: Event inputs must be handled in event callback functions, they cannot be read as expressions")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input event int in;
@@ -588,7 +588,7 @@ processor P
 
 ## testProcessor()
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
 
@@ -600,7 +600,7 @@ processor P
 
 ## testProcessor()
 
-processor test
+processor test [[ main ]]
 {
     output event int out;
     int v = 1;
@@ -632,7 +632,7 @@ int& tryAndReturnReferenceToLocal() { int i; return i; }
 
 ## expectError ("5:10: error: The main() function must call advance()")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     void main() { loop { out <- 1; } }
@@ -640,7 +640,7 @@ processor P
 
 ## testProcessor()
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
 
@@ -664,7 +664,7 @@ processor P
 
 ## testProcessor()
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
 
@@ -725,7 +725,7 @@ bool test3() { let x = nan; let nan = x; return isnan (x) && isnan (nan); }
 
 ## expectError ("12:16: error: Function is not visible from this scope")
 
-processor Test
+processor Test [[ main ]]
 {
     output event int out;
 
@@ -740,7 +740,7 @@ bool test()
 
 ## expectError ("18:13: error: Function is not visible from this scope")
 
-processor Test
+processor Test [[ main ]]
 {
     output event int out;
 
@@ -761,7 +761,7 @@ bool test()
 
 ## expectError ("18:13: error: Function is not visible from this scope")
 
-processor Test
+processor Test [[ main ]]
 {
     output event int out;
 
@@ -782,7 +782,7 @@ bool test()
 
 ## expectError ("19:13: error: Function is not visible from this scope")
 
-processor Test
+processor Test [[ main ]]
 {
     output event int out;
 
@@ -809,7 +809,7 @@ bool test2()
 
 ## expectError ("25:21: error: Function is not visible from this scope")
 
-processor Test1
+processor Test1 [[ main ]]
 {
     input stream float in;
     output stream float out;
@@ -840,7 +840,7 @@ processor Test2
 
 ## expectError ("20:21: error: Function is not visible from this scope")
 
-graph Test1
+graph Test1 [[ main ]]
 {
     input stream float in;
     output stream float out;

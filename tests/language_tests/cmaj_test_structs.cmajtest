@@ -18,7 +18,7 @@ struct S { int& x; }
 
 ## expectError ("5:25: error: Struct members cannot be references")
 
-processor P
+processor P [[ main ]]
 {
     output stream float<1> audioOut;
     struct S { float a; int& x; }

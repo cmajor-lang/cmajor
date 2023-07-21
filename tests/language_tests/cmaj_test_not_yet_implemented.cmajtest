@@ -45,7 +45,7 @@ processor P
     void main() { advance(); }
 }
 
-graph G
+graph G [[ main ]]
 {
     output p[0].out;
     node p = P[2];
@@ -53,7 +53,7 @@ graph G
 
 ## expectError ("4:19: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
 
-processor P
+processor P [[ main ]]
 {
     output stream StreamType out;
     using StreamType = string;
@@ -62,7 +62,7 @@ processor P
 
 ## expectError ("5:18: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
 
-processor P
+processor P [[ main ]]
 {
     output stream float out;
     input stream bool in;
@@ -71,7 +71,7 @@ processor P
 
 ## expectError ("4:23: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
 
-processor P
+processor P [[ main ]]
 {
     output stream bool<3> out;
     input stream bool in;
@@ -80,7 +80,7 @@ processor P
 
 ## expectError ("4:19: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
 
-processor P
+processor P [[ main ]]
 {
     output stream string out;
     input stream int<3> in;
@@ -89,7 +89,7 @@ processor P
 
 ## expectError ("5:18: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
 
-processor P
+processor P [[ main ]]
 {
     output stream float<5> out;
     input stream string in;
@@ -98,7 +98,7 @@ processor P
 
 ## expectError ("5:25: error: Language feature not yet implemented: top-level arrays of inputs!")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out;
     input stream int in[3];
@@ -107,7 +107,7 @@ processor P
 
 ## expectError ("4:27: error: Language feature not yet implemented: top-level arrays of outputs!")
 
-processor P
+processor P [[ main ]]
 {
     output stream int out[4];
     input stream int in;
@@ -116,7 +116,7 @@ processor P
 
 ## expectError ("6:23: error: Language feature not yet implemented: Many-to-many connections are not currently supported!")
 
-graph G
+graph G [[ main ]]
 {
     output stream int32 o1, o2;
     input stream int32 i1, i2;
@@ -154,7 +154,7 @@ bool testSliceOfSlice()
 
 ## expectError ("16:21: error: Language feature not yet implemented: Slices of slices!")
 
-processor test
+processor test [[ main ]]
 {
     output event int results;
     external float[] data [[ squarewave, rate: 1000, frequency: 10, numFrames: 1000 ]];

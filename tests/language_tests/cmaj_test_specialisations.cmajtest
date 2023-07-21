@@ -18,7 +18,7 @@ namespace n (processor p) {}
 
 ## expectError ("6:18: error: Expected a processor name")
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
     connection P(G) -> out;
@@ -163,7 +163,7 @@ processor P (float x)
 
 ## expectError ("6:18: error: Expected a type")
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
     connection P(const int) -> out;
@@ -192,7 +192,7 @@ graph G (processor GG)
     node x = GG;
 }
 
-graph G2
+graph G2 [[ main ]]
 {
     output stream int out;
     node g = G (G2);
@@ -306,7 +306,7 @@ namespace n (using T, int n)
     }
 }
 
-graph G
+graph G [[ main ]]
 {
     output event float out;
     namespace n2 = n (out.type, 1);
@@ -326,7 +326,7 @@ namespace n (using T)
     }
 }
 
-graph test
+graph test [[ main ]]
 {
     output event int out;
     connection n(int)::P -> out;
@@ -501,7 +501,7 @@ namespace n
         void main() { out <- result <- -1; advance(); }
     }
 
-    graph G { output event int out; connection P(1) -> out; }
+    graph G [[ main ]] { output event int out; connection P(1) -> out; }
 }
 
 ## expectError ("8:22: error: Cannot use a processor name as a type")
@@ -516,7 +516,7 @@ namespace n
         void main() { out <- result <- -1; advance(); }
     }
 
-    graph G { output event int out; connection P(1) -> out; }
+    graph G [[ main ]] { output event int out; connection P(1) -> out; }
 }
 
 ## expectError ("7:40: error: Cannot implicitly convert 'int32' to 'tests::n::P::T'")
@@ -530,7 +530,7 @@ namespace n
         struct T { int x; }
     }
 
-    graph G { output event int out; connection P(1) -> out; }
+    graph G [[ main ]] { output event int out; connection P(1) -> out; }
 }
 
 ## expectError ("2:8: error: Expected a generic function wildcard name")
@@ -719,7 +719,7 @@ namespace P2
     struct S { SampleType[] x; }
 }
 
-processor Test
+processor Test [[ main ]]
 {
     output stream float out;
 
@@ -823,7 +823,7 @@ graph Test [[ main ]]
 }
 
 
-## expectError ("11:20: error: Cannot determine the type of the value to be written to this endpoint")
+## testCompile()
 
 processor Test [[ main ]]
 {

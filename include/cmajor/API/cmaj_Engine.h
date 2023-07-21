@@ -75,10 +75,14 @@ struct Engine
     /// various functions like load(), link() and createPerformer() as required.
     void setBuildSettings (const BuildSettings& newSettings);
 
+
     //==============================================================================
+    using ExternalVariableProviderFn = std::function<choc::value::Value (const cmaj::ExternalVariable&)>;
+
     /// Attempts to load a program into this engine.
     /// Returns true if it succeeds, and adds any errors or messages to the list provided.
-    bool load (DiagnosticMessageList& messages, const Program& programToLoad);
+    /// The ExternalVariableProviderFn will be called during load for each external variable
+    bool load (DiagnosticMessageList& messages, const Program& programToLoad, ExternalVariableProviderFn fn);
 
     /// Unloads the current program and completely resets the state of the engine.
     void unload();
@@ -96,12 +100,6 @@ struct Engine
     /// This may be called after successfully loading a program, and before linking has happened.
     /// If the ID isn't found, this will return an invalid handle.
     EndpointHandle getEndpointHandle (const char* endpointID) const;
-
-    //==============================================================================
-    /// Returns a list describing all the external variables in the loaded program.
-    /// This may be called after successfully loading a program, at which point all these
-    /// variables must be given a value with setExternalVariable() before the program can be linked.
-    ExternalVariableList getExternalVariables() const;
 
     /// Sets the value of an external variable.
     /// This may be called after successfully loading a program, and before linking.
@@ -222,8 +220,36 @@ inline void Engine::setBuildSettings (const BuildSettings& newSettings)
         engine->setBuildSettings (newSettings.toJSON().c_str());
 }
 
-inline bool Engine::load (DiagnosticMessageList& messages, const Program& programToLoad)
+inline bool Engine::load (DiagnosticMessageList& messages, const Program& programToLoad, ExternalVariableProviderFn fn)
 {
+    struct ExternalVariableRequstor
+    {
+        ExternalVariableRequstor (EnginePtr e, ExternalVariableProviderFn f) : engine (e), requestor (f) {}
+
+        EnginePtr engine;
+        ExternalVariableProviderFn requestor;
+
+        static void Provider (void* context, const char* ext)
+        {
+            ExternalVariableRequstor* instance = static_cast<ExternalVariableRequstor*> (context);
+
+            try
+            {
+                auto externalVariable = ExternalVariable::fromJSON (choc::json::parse (ext));
+                auto v = instance->requestor (externalVariable);
+
+                if (! v.isVoid())
+                {
+                    auto s = v.serialise();
+                    instance->engine->setExternalVariable (externalVariable.name.c_str(), s.data.data(), s.data.size());
+                }
+            }
+            catch (const std::exception&)
+            {
+            }
+        }
+    };
+
     // You need to create a valid Engine using Engine::create() before you can load things into it.
     if (engine == nullptr)
     {
@@ -231,7 +257,9 @@ inline bool Engine::load (DiagnosticMessageList& messages, const Program& progra
         return false;
     }
 
-    if (auto result = choc::com::StringPtr (engine->load (programToLoad.program.get())))
+    ExternalVariableRequstor requstor (engine, fn);
+
+    if (auto result = choc::com::StringPtr (engine->load (programToLoad.program.get(), &requstor, ExternalVariableRequstor::Provider)))
         return messages.addFromJSONString (result);
 
     return true;
@@ -270,20 +298,6 @@ inline EndpointHandle Engine::getEndpointHandle (const char* endpointID) const
         return {};
 
     return engine->getEndpointHandle (endpointID);
-}
-
-inline ExternalVariableList Engine::getExternalVariables() const
-{
-    // This method is only valid on a loaded but not-yet-linked engine
-    if (! isLoaded() || isLinked())
-        return {};
-
-    auto details = getProgramDetails();
-
-    if (details.isObject())
-        return ExternalVariableList::fromJSON (details["externals"]);
-
-    return {};
 }
 
 inline bool Engine::setExternalVariable (const char* name, const choc::value::ValueView& value)

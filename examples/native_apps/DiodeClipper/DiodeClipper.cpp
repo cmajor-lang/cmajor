@@ -160,7 +160,7 @@ int main (int argc, char** argv)
                                 .setFrequency (44100)
                                 .setSessionID (123456));
 
-    if (! engine.load (messages, program))
+    if (! engine.load (messages, program, [&] (const cmaj::ExternalVariable&) -> choc::value::Value { return {}; }))
     {
         std::cout << "Failed to load!" << std::endl
                   << messages.toString() << std::endl;
