@@ -23,6 +23,9 @@
 
 #include "cmaj_Performer.h"
 
+#include <functional>
+#include <vector>
+
 namespace cmaj
 {
 
