@@ -1114,17 +1114,17 @@ void foo() { primitiveType(void[3]) x = 0; }
 
 void foo() { primitiveType(void<3>) x = 0; }
 
-## expectError ("3:19: error: 'size' cannot be applied to this type")
+## expectError ("3:20: error: 'size' cannot be applied to an argument of type 'tests::S'")
 
 struct S { int x; }
 bool f() { return S.size == 1; }
 
-## expectError ("3:9: error: 'size' cannot be applied to this type")
+## expectError ("3:31: error: 'size' cannot be applied to an argument of type 'const tests::S&'")
 
 struct S { int x; }
 bool f (const S& s) { return s.size == 1; }
 
-## expectError ("3:19: error: Cannot find symbol 'f1'")
+## expectError ("3:19: error: Did not expect a function name in this context")
 
 void f1() {}
 bool f() { return f1.size == 1; }
