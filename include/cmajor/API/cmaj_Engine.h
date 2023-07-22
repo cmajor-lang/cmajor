@@ -104,13 +104,6 @@ struct Engine
     /// If the ID isn't found, this will return an invalid handle.
     EndpointHandle getEndpointHandle (const char* endpointID) const;
 
-    /// Sets the value of an external variable.
-    /// This may be called after successfully loading a program, and before linking.
-    /// If the type of object provided doesn't fit, the engine may return true here but
-    /// emit an error about the problem later on during the linking process. If there's no
-    /// such variable or other problems, then you can expect this method to return false.
-    bool setExternalVariable (const char* name, const choc::value::ValueView& value);
-
     /// If a program has been successfully loaded, this returns a JSON object with
     /// information about its properties.
     /// This may be called after successfully loading a program.
@@ -301,16 +294,6 @@ inline EndpointHandle Engine::getEndpointHandle (const char* endpointID) const
         return {};
 
     return engine->getEndpointHandle (endpointID);
-}
-
-inline bool Engine::setExternalVariable (const char* name, const choc::value::ValueView& value)
-{
-    // This method is only valid on a loaded but not-yet-linked engine
-    if (! isLoaded() || isLinked())
-        return false;
-
-    auto s = value.serialise();
-    return engine->setExternalVariable (name, s.data.data(), s.data.size());
 }
 
 inline choc::value::Value Engine::getProgramDetails() const
