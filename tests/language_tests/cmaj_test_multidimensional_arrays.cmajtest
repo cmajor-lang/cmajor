@@ -1,0 +1,722 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## testFunction()
+
+let global = int[2, 4][] (((111, 112, 113, 114), (121, 122, 123, 124)),
+                          ((211, 212, 213, 214), (221, 222, 223, 224)),
+                          ((311, 312, 313, 314), (321, 322, 323, 324)));
+
+int[3, 2, 4] getMultidimValue() { return (((111, 112, 113, 114), (121, 122, 123, 124)),
+                                          ((211, 212, 213, 214), (221, 222, 223, 224)),
+                                          ((311, 312, 313, 314), (321, 322, 323, 324))); }
+
+int<2>[3, 2, 4] getMultidimValueVec() { return (((111, 112, 113, 114), (121, 122, 123, 124)),
+                                                ((211, 212, 213, 214), (221, 222, 223, 224)),
+                                                ((311, 312, 313, 314), (321, 322, 323, 324))); }
+
+int[3, 2, 4] get1() { return global; }
+int[2, 4] trim (int[3, 2, 4] n) { return n[1]; }
+int[2, 4] get2() { return trim (get1()); }
+
+bool check (int[3, 2, 4] n)
+{
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                if (n[a, b, c] != (a + 1) * 100 + (b + 1) * 10 + (c + 1))
+                    return false;
+
+    return true;
+}
+
+bool test01()
+{
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                if (get1()[a, b, c] != (a + 1) * 100 + (b + 1) * 10 + (c + 1))
+                    return false;
+
+    return true;
+}
+
+bool test02()
+{
+    for (wrap<2> b)
+        for (wrap<4> c)
+            if (get2()[b, c] != (1 + 1) * 100 + (b + 1) * 10 + (c + 1))
+                return false;
+
+    return true;
+}
+
+bool test03()
+{
+    return check (global) && check (get1());
+}
+
+bool test04()
+{
+    let n = get1();
+    var n2 = n;
+    n2[0, 0] = ();
+    return check (n) && ! check (n2) && n2[0, 0, 0] == 0;
+}
+
+bool test1()
+{
+    int32[2, 3] a;
+    a[0, 0] = 1;
+    a[1, 1] = 2;
+    a[1, 2] = 3;
+    return a[0, 0] == 1 && a[1, 1] == 2 && a[1, 2] == 3;
+}
+
+bool test2()
+{
+    int32[2, 3] a;
+    int i = 0;
+    a[i++, 0] = 1;
+    a[i, i] = 2;
+    a[1, i + 1] = 3;
+    return a[0, 0] == 1 && a[1, 1] == 2 && a[1, 2] == 3;
+}
+
+bool test3()
+{
+    int32[2, 3, 4] a;
+
+    for (int i = 1; i < 4; ++i)
+    {
+        a[0, 0, i] = 1;
+        a[1, 1, i] = 2;
+        a[1, 2, i] = 3;
+
+        if (! (a.at (0, 0, i) == 1 && a.at (1, 1, i) == 2 && a.at (1, 2, i) == 3))
+            return false;
+    }
+
+    return true;
+}
+
+bool test4()
+{
+    int32[2, 3, 4] a;
+
+    for (int i = 1; i < 4; ++i)
+    {
+        a.at (0, 0, i) = 1;
+        a.at (1, 1, i) = 2;
+        a.at (1, 2, i) = 3;
+
+        if (! (a[0, 0, i] == 1 && a[1, 1, i] == 2 && a[1, 2, i] == 3))
+            return false;
+    }
+
+    return true;
+}
+
+bool test5()
+{
+    let n = int[4][2][] (((111, 112, 113, 114), (121, 122, 123, 124)),
+                          ((211, 212, 213, 214), (221, 222, 223, 224)),
+                          ((311, 312, 313, 314), (321, 322, 323, 324)));
+
+    for (int a = 0; a < 3; ++a)
+        for (int b = 0; b < 2; ++b)
+            for (int c = 0; c < 4; ++c)
+                if (n[a, b, c] != (a + 1) * 100 + (b + 1) * 10 + (c + 1))
+                    return false;
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                if (n[a, b, c] != (a + 1) * 100 + (b + 1) * 10 + (c + 1))
+                    return false;
+
+    return true;
+}
+
+bool test6()
+{
+    let n1 = int[3, 2, 4] (((111, 112, 113, 114), (121, 122, 123, 124)),
+                           ((211, 212, 213, 214), (221, 222, 223, 224)),
+                           ((311, 312, 313, 314), (321, 322, 323, 324)));
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                if (n1[a, b, c] != getMultidimValue()[a, b, c])
+                    return false;
+
+    return true;
+}
+
+bool test7()
+{
+    var n = getMultidimValue();
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                ++n[a, b, c];
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                if (n[a, b, c] != (a + 1) * 100 + (b + 1) * 10 + (c + 1) + 1)
+                    return false;
+
+    return true;
+}
+
+bool test72()
+{
+    var n = getMultidimValue();
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                n[a][b][c]++;
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                if (n[a, b, c] != (a + 1) * 100 + (b + 1) * 10 + (c + 1) + 1)
+                    return false;
+
+    return true;
+}
+
+bool test8()
+{
+    let n = int[3, 2, 4] (((111), (121)),
+                          ((211), (221)),
+                          ((311), (321)));
+
+    for (int a = 0; a < 3; ++a)
+        for (int b = 0; b < 2; ++b)
+            for (int c = 0; c < 4; ++c)
+                if (n[a, b, c] != (a + 1) * 100 + (b + 1) * 10 + (1))
+                    return false;
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                if (n[a, b, c] != (a + 1) * 100 + (b + 1) * 10 + (1))
+                    return false;
+
+    return true;
+}
+
+bool test9()
+{
+    int[3, 2, 4] n;
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                n[a, b, c] = (a + 1) * 100 + (b + 1) * 10 + (c + 1);
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                if (n[a, b, c] != (a + 1) * 100 + (b + 1) * 10 + (c + 1))
+                    return false;
+
+    return true;
+}
+
+bool test10()
+{
+    var n = getMultidimValue();
+    let n2 = n[1, 1];
+    return n2[0] == 221 && n2[3] == 224;
+}
+
+bool test11()
+{
+    var n = getMultidimValue();
+    let n2 = n[1];
+    return n2[1][0] == 221 && n2[1, 3] == 224;
+}
+
+bool test12()
+{
+    var n = getMultidimValue();
+    let n2 = n[1][1];
+    return n2[0] == 221 && n2[3] == 224;
+}
+
+void setValue (int[5, 1, 8, 2]& n) { n[1, 0, 6, 1] = 5; }
+void setValue2<T> (T& n) { n[1, 0, 6, 1] = 5; }
+void setValue3<T> (T[5, 1, 8, 2]& n) { n[1, 0, 6, 1] = 5; }
+
+bool test13() { int[5, 1, 8, 2] n; setValue (n); return n[1, 0, 6, 1] == 5; }
+bool test14() { int[5, 1, 8, 2] n; setValue2 (n); return n[1, 0, 6, 1] == 5; }
+bool test15() { int[5, 1, 8, 2] n; setValue3 (n); return n[1, 0, 6, 1] == 5; }
+
+bool test16()
+{
+    int<2>[3, 2] x = (((1, 1), (2, 2)), ((1, 1), (2, 2)), ((1, 1), (2, 2)));
+    return x[0, 1][1] == 2;
+}
+
+bool test17()
+{
+    int<2>[3, 2] x = ((1, 2), (1, 2), (1, 2));
+    return x[2, 1][1] == 2;
+}
+
+bool test18()
+{
+    var n = getMultidimValueVec();
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                ++n[a, b, c];
+
+    for (wrap<3> a)
+        for (wrap<2> b)
+            for (wrap<4> c)
+                if (! allTrue (n[a, b, c] == (a + 1) * 100 + (b + 1) * 10 + (c + 1) + 1))
+                    return false;
+
+    return true;
+}
+
+struct S { string b; float64<3> c; }
+using A = S[3, 2];
+
+bool test19()
+{
+    let x = A ((("a", (1.0,   2.0,  3.0)), ("d", ( -1.0,  -2.0,  -3.0))),
+               (("b", (11.0, 12.0, 13.0)), ("e", (-11.0, -12.0, -13.0))),
+               (("b", (21.0, 22.0, 23.0)), ("f", (-21.0, -22.0, -23.0))));
+    return x[1, 1].b == "e" && x[0, 0].b == "a" && x[2, 1].c[2] == -23;
+}
+
+struct S2 { string b; float64[2, 3] c; }
+using A2 = S2[3, 2];
+
+bool test20()
+{
+    var x = A2 ((("a", ((1, 2, 3), (4, 5, 6))), ("d", ((7, 8, 9), (7, 6, 5)))),
+                (("b", ((1, 2, 3), (4, 5, 6))), ("e", ((7, 8, 9), (7, 6, 99.0)))),
+                (("b", ((1, 2, 3), (4, 5, 6))), ("f", ((7, 8, 9), (7, 6, 5)))));
+    x[0, 0].b = "q";
+    return x[0, 0].b == "q" && x[1, 1].b == "e" && x[1, 1].c[1, 2] == 99.0;
+}
+
+bool test21()
+{
+    return getMultidimValueVec().size == 3
+        && getMultidimValueVec().elementType.size == 2
+        && getMultidimValueVec().elementType.elementType.size == 4;
+}
+
+bool test22()
+{
+    return getMultidimValue().numDimensions == 3
+        && float[2, 3, 4].numDimensions == 3
+        && float[2, 3, 4].elementType.numDimensions == 2
+        && float[2, 3, 4].elementType.elementType.numDimensions == 1
+        && (int[] (1, 2, 3)).numDimensions == 1;
+}
+
+bool test23()
+{
+    return getMultidimValueVec().numDimensions == 3
+        && float[2, 3, 4].numDimensions == 3
+        && float[2, 3, 4].elementType.numDimensions == 2
+        && float[2, 3, 4].elementType.elementType.numDimensions == 1
+        && float<3>[2, 3, 4].elementType.elementType.elementType.numDimensions == 1
+        && float<3>.numDimensions == 1
+        && (int[] (1, 2, 3)).numDimensions == 1;
+}
+
+bool test221()
+{
+    return getMultidimValueVec().elementType.isArray
+        && getMultidimValueVec().innermostElementType.isVector
+        && getMultidimValueVec().innermostElementType.elementType.isInt;
+}
+
+void change1 (int[4]& x) { x = int[](5, 6, 7, 8); }
+void change2<T> (T& x)   { x = int[](5, 6, 7, 8); }
+
+bool test24()
+{
+    int[2, 4] x;
+    change1 (x[1]);
+    return x[1, 1] == 6 && x[1, 3] == 8;
+}
+
+bool test25()
+{
+    int[2, 4] x;
+    change2 (x[1]);
+    return x[1, 1] == 6 && x[1, 3] == 8;
+}
+
+bool test26()
+{
+    return getMultidimValue()[2][1, 3] == 324
+        && getMultidimValue()[2, 1][3] == 324
+        && getMultidimValue()[2][1, 3] == 324
+        && getMultidimValue()[2, 1, 3] == 324;
+}
+
+int getWithSlice (int[] s, int n)   { return s.at (n); }
+
+bool test27()
+{
+    return getWithSlice (getMultidimValue()[2][1], 3) == 324
+        && getWithSlice (getMultidimValue()[2, 1], 3) == 324;
+}
+
+bool test28()
+{
+    var a = getMultidimValue();
+    var b = a, c = a;
+
+    a[1][1][1] = 9;
+    b[1, 1][1] = 9;
+    c[1][1, 1] = 9;
+
+    return a[1, 1, 1] == 9 && b[1, 1, 1] == 9 && c[1, 1, 1] == 9
+        && a[1, 1][1] == 9 && b[1, 1][1] == 9 && c[1, 1][1] == 9
+        && a[1][1, 1] == 9 && b[1][1, 1] == 9 && c[1][1, 1] == 9;
+}
+
+## expectError ("2:28: error: Number of indexes supplied does not match the type: expected 2, but got 0")
+
+void f() { bool[3, 4] v; v[] = true; }
+
+## expectError ("7:24: error: Number of indexes supplied does not match the type: expected 3, but got 4")
+
+void f()
+{
+    let n = int[3, 2, 4] (((111, 112, 113, 114), (121, 122, 123, 124)),
+                          ((211, 212, 213, 214), (221, 222, 223, 224)),
+                          ((311, 312, 313, 314), (321, 322, 323, 324)));
+    let x = n[0, 0, 0, 0];
+}
+
+## expectError ("2:17: error: Expected an array size, not a range")
+
+void f() { bool[3:4, 4] v; v[2] = true; }
+
+## expectError ("2:33: error: An array size must be a constant")
+
+void f() { var i = 1; ++i; bool[i, 4] v; }
+
+## expectError ("2:23: error: Expected an array size, not a range")
+
+void f() { bool[3, 4, :6] v; v[2] = true; }
+
+## expectError ("2:20: error: Expected an array size, not a range")
+
+void f() { bool[3, :] v; v[2] = true; }
+
+## expectError ("2:20: error: Expected an array size, not a range")
+
+void f() { bool[3, 4:] v; v[2] = true; }
+
+## expectError ("2:31: error: Index is out of range")
+
+void f() { bool[3, 4] v; v[2, 5] = true; }
+
+## expectError ("2:31: error: Index is out of range")
+
+void f() { bool[3, 4] v; v[1, -5] = true; }
+
+## expectError ("2:17: error: Illegal array size")
+
+void f() { bool[0, 0] v; v[2, 5] = true; }
+
+## expectError ("2:20: error: Illegal array size")
+
+void f() { bool[1, 0] v; v[2, 5] = true; }
+
+## expectError ("2:23: error: Language feature not yet implemented: Multi-dimensional array slices!")
+
+void f() { bool[3, 4, ] v; v[2, 5] = true; }
+
+## expectError ("2:28: error: Language feature not yet implemented: Slices of non-primitive arrays!")
+
+void f() { bool[3, 4] v; v[1:2][0] = true; }
+
+## expectError ("2:17: error: Found \",\" when expecting identifier")
+
+void f() { bool[,] v; v[2, 5] = true; }
+
+## expectError ("2:20: error: Expected a value")
+
+void f() { bool[3, int] v; v[2, 5] = true; }
+
+## expectError ("2:17: error: Illegal array size")
+
+void f() { bool[-3, -4] v; v[2, 5] = true; }
+
+## expectError ("2:34: error: Index is out of range")
+
+void f() { bool[3, 3, 3] v; v[2, 3] = true; }
+
+## expectError ("2:28: error: Number of indexes supplied does not match the type: expected 1, but got 2")
+
+void f() { bool[3] v; v[0, 0] = true; }
+
+## expectError ("2:34: error: Number of indexes supplied does not match the type: expected 2, but got 3")
+
+void f() { bool[3, 4] v; v[0, 0, 0] = true; }
+
+## expectError ("2:31: error: Index is out of range")
+
+void f() { bool[3, 4] v; v[2, 5] = true; }
+
+## expectError ("2:20: error: Array or vector size must be an integer")
+
+void f() { bool[3, 4.3] v; v[2, 5] = true; }
+
+## expectError ("2:28: error: An array index must be an integer type")
+
+void f() { bool[3, 4] v; v[2.1, 5] = true; }
+
+## expectError ("2:36: error: An array size must be a constant")
+
+void f() { int i = 0; ++i; bool[3, i] v; v[2, 5] = true; }
+
+## expectError ("2:31: error: Expected a value")
+
+void f() { bool[3, 4] v; v[2, float] = true; }
+
+## expectError ("2:20: error: Expected a vector or array to the left of the bracket operator")
+
+void f() { bool v; v[2, 5] = true; }
+
+## expectError ("3:21: error: 'numDimensions' cannot be applied to an argument of type 'tests::S'")
+
+struct S {}
+void f() { let x = S.numDimensions; }
+
+## expectError ("3:20: error: Did not expect a function name in this context")
+
+void f2() {}
+void f() { let x = f2.numDimensions; }
+
+## expectError ("3:21: error: 'innermostElementType' cannot be applied to an argument of type 'tests::S'")
+
+struct S {}
+void f() { let x = S.innermostElementType; }
+
+## expectError ("2:40: error: 'numDimensions' cannot be applied to an argument of type 'float32'")
+
+void f() { let x = float[2].elementType.numDimensions; }
+
+## expectError ("error: Language feature not yet implemented: Slices of endpoints!")
+
+processor P [[ main ]]
+{
+    output stream int out[2];
+    void main() { out[1:2] <- 123; out[2] <- 123; advance(); }
+}
+
+## expectError ("6:27: error: Expected a vector or array to the left of the bracket operator")
+
+processor P [[ main ]]
+{
+    input stream int in;
+    output stream int out;
+    void main() { let x = in[2, 2]; advance(); }
+}
+
+## expectError ("6:23: error: Language feature not yet implemented: Multi-dimensional indexing of endpoints!")
+
+processor P
+{
+    input stream int in;
+    output stream int out;
+    void main() { out[2, 2] <- (); advance(); }
+}
+
+## expectError ("2:34: error: Expected an assignable target on the left of the '=' operator")
+
+void f() { let v = bool[3, 4](); v[2, 2] = true; }
+
+## expectError ("2:28: error: Language feature not yet implemented: Multi-dimensional array slices!")
+
+void f() { bool[3, 4] v; v[1:2, 5] = true; }
+
+## expectError ("2:51: error: Cannot convert type 'int32[5, 5]' to 'int32[4, 5]'")
+
+void f() { int[5, 5] a; ++a[2, 2]; let b = int[5][4] (a); }
+
+## expectError ("3:42: error: Cannot convert type 'int32[5, 1, 8, 3]' to 'int32[5, 1, 8, 2]&'")
+
+void setValue3<T> (T[5, 1, 8, 2]& n) { n[1, 0, 6, 1] = 5; }
+void f() { int[5, 1, 8, 3] n; setValue3 (n); }
+
+## expectError ("2:19: error: Language feature not yet implemented: Multi-dimensional vectors!")
+
+void f() { int<2, 3> x; }
+
+## expectError ("2:16: error: Found \">\" when expecting identifier")
+
+void f() { int<> x; }
+
+## expectError ("2:16: error: Found \",\" when expecting identifier")
+
+void f() { int<,> x; }
+
+## expectError ("2:20: error: Found \">\" when expecting identifier")
+
+void f() { int<2,3,> x; }
+
+## expectError ("2:28: error: The size of a 'wrap' or 'clamp' type must be a single value")
+
+void f() { let x = wrap<2, 3>(); }
+
+## testFunction()
+
+bool testSize()
+{
+    int[2, 3, 4] i;
+
+    return i[1, 1].size == 4 &&
+           i[1].size == 3 &&
+           i.size == 2;
+}
+
+bool testAssign()
+{
+    int [2, 3, 4] a;
+
+    a[1, 1] = 1;
+
+    int sum = 0;
+
+    for (wrap<2> i)
+        for (wrap<3> j)
+            for (wrap<4> k)
+                sum += a[i, j, k];
+
+    return sum == 4;
+}
+
+## expectError ("6:18: error: Language feature not yet implemented: Multi-dimensional graph nodes!")
+
+graph Test [[ main ]]
+{
+    output stream float out;
+
+    node p = P [2, 3];
+
+    connection
+    {
+        p[0, 1] -> out;
+        p[1, 2] -> out;
+    }
+
+}
+
+## expectError ("4:30: error: Language feature not yet implemented: Multi-dimensional endpoint arrays!")
+
+processor P [[ main ]]
+{
+    output stream float out[5, 6];
+
+    void main()
+    {
+        out <- 1.0f;
+        advance();
+    }
+}
+
+## expectError ("10:11: error: Language feature not yet implemented: Multi-dimensional indexing of endpoints!")
+
+graph Test [[ main ]]
+{
+    output stream float out;
+
+    node p = P [3];
+
+    connection
+    {
+        p[0, 1] -> out;
+        p[1, 2] -> out;
+    }
+}
+
+## global
+
+namespace matrix
+{
+    T1.innermostElementType[mat1.size, mat2[0].size] matMul<T1, T2> (T1 mat1, T2 mat2)
+    {
+        if const (mat1.numDimensions == 2 && mat2.numDimensions == 2)
+        {
+            static_assert ((mat1[0].size == mat2.size), "Matrix size incompatible");
+            
+            mat1.innermostElementType[mat1.size, mat2[0].size] result;
+
+            for (wrap<mat1.size> i)
+                for (wrap<mat2[0].size> j)
+                    for (wrap<mat1[0].size> o)
+                        result[i][j] += mat1[i][o] * mat2[o][j];
+
+            return result;
+        }
+    }
+}
+
+## testFunction ()
+
+bool matMul2Dtest1 ()
+{
+    let result = matrix::matMul (int[2, 3] ((1,2,3),(4,5,6)), int[3, 2]((1,2),(3, 4),(5,6)));
+
+    if (result[0][0] == 22 && result[0][1] == 28 && result[1][0] == 49 && result[1][1] == 64)
+        return true;
+    
+    return false;
+}
+
+bool matMul2Dtest2 ()
+{
+    let result = matrix::matMul (int[10, 2] ((1, 2),(3, 4),(5, 6),(7, 8),(9, 10),(11, 12),(13, 14),(15, 16),(17, 18),(19, 20)), int[2, 4]((1,2,3, 4),(5,6,7,8)));
+
+    if (result[0][0] == 11 && result[0][1] == 14 && result[1][0] == 23 && result[1][1] == 30)
+        return true;
+    
+    return false;
+}
+
+bool matMul2Dtest3 ()
+{
+    let result = matrix::matMul (float[2, 3] ((1.0f, 2.0f, 3.0f),(4.0f, 5.0f, 6.0f)), float[3, 2]((1.0f, 2.0f),(3.0f, 4.0f),(5.0f, 6.0f)));
+
+    if (result[0][0] == 22.0f && result[0][1] == 28.0f && result[1][0] == 49.0f && result[1][1] == 64.0f)
+        return true;
+    
+    return false;
+}
+
+bool matMul2Dtest4 ()
+{
+    let result = matrix::matMul (float64[2, 3] ((1.0, 2.0, 3.0),(4.0, 5.0, 6.0)), float[3, 2]((1.0, 2.0), (3.0, 4.0), (5.0, 6.0)));
+
+    if (result[0][0] == 22.0 && result[0][1] == 28.0 && result[1][0] == 49.0 && result[1][1] == 64.0)
+        return true;
+    
+    return false;
+}
