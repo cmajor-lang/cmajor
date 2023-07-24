@@ -847,3 +847,56 @@ namespace test (float64 externalValue)
         return externalValue;
     }
 }
+
+## expectError ("2:21: error: Failed to resolve external variable 'channelCount'")
+
+processor Gain (int channelCount) [[ main ]]
+{
+    input stream float<channelCount> in;
+    output stream float<channelCount> out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * 0.5f;
+            advance();
+        }
+    }
+}
+
+
+## testCompile()
+
+processor Gain (int channelCount = 2) [[ main ]]
+{
+    input stream float<channelCount> in;
+    output stream float<channelCount> out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * 0.5f;
+            advance();
+        }
+    }
+}
+
+
+## expectError ("2:23: error: Only value main processor specialisations are supported")
+
+processor Gain (using DataType) [[ main ]]
+{
+    input stream DataType in;
+    output stream DataType out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * 0.5f;
+            advance();
+        }
+    }
+}
