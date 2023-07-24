@@ -1209,6 +1209,7 @@ function updateBuildSettings (engine, defaultFrequency, defaultBlockSize, ignore
         if (options.maxStackSize !== undefined)       buildSettings.maxStackSize = options.maxStackSize;
         if (options.sessionID !== undefined)          buildSettings.sessionID = options.sessionID;
         if (options.optimisationLevel !== undefined)  buildSettings.optimisationLevel = options.optimisationLevel;
+        if (options.mainProcessor !== undefined)      buildSettings.mainProcessor = options.mainProcessor;
     }
 
     engine.setBuildSettings (buildSettings);

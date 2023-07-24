@@ -1185,7 +1185,8 @@ private:
 
         engine.setBuildSettings (engine.getBuildSettings()
                                  .setFrequency (playbackParams.sampleRate)
-                                 .setMaxBlockSize (playbackParams.blockSize));
+                                 .setMaxBlockSize (playbackParams.blockSize)
+                                 .setMainProcessor (renderer->manifest.mainProcessor));
 
         checkForStopSignal();
 

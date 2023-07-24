@@ -438,11 +438,13 @@ namespace n = P;
 
 processor P(using x) { output event x x; }
 namespace n = P(int);
+graph test [[ main ]] { output stream float out; }
 
 ## expectError ("3:15: error: Expected a namespace name")
 
 processor P(using x) { output event x y; }
 namespace n = P(int);
+graph test [[ main ]] { output stream float out; }
 
 ## expectError ("2:16: error: Found \"return\" when expecting identifier")
 
@@ -1010,7 +1012,7 @@ processor test
     }
 }
 
-## expectError ("error: Cannot find a main processor or graph to use", {"doNotWrapInTestNamespace":true})
+## testCompile()
 
 processor test (int i = 1) [[ main ]]
 {
@@ -1522,6 +1524,7 @@ void f()  { P p; }
 
 processor P (using X) { output event int x; void main() { advance(); } }
 void f()  { P p; }
+graph test [[ main ]] { output stream float out; }
 
 ## expectError ("3:24: error: Cannot use a processor name as a type")
 
@@ -1533,6 +1536,7 @@ void f() { N::f(); }
 
 processor P (int y) { output event int x; void main() { advance(); } }
 void f()  { let x = P(); }
+graph test [[ main ]] { output stream float out; }
 
 ## expectError ("3:25: error: Cannot use a processor name as a value")
 
@@ -1578,11 +1582,13 @@ struct S { P p; }
 
 processor P (using T) { output event int x; void main() { advance(); } }
 void f()  { let x = P.xyz; }
+graph test [[ main ]] { output stream float out; }
 
 ## expectError ("3:21: error: No such operation is supported on a processor")
 
 processor P (int y) { output event int x; void main() { advance(); } }
 void f()  { let x = P.type; }
+graph test [[ main ]] { output stream float out; }
 
 ## expectError ("3:21: error: No such operation is supported on a processor")
 

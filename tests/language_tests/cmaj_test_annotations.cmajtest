@@ -146,7 +146,7 @@ processor X (int intConstant, string stringConstant)  [[ s: "s", i32: 123, i64: 
     void main()  { out <- foo[0]; advance(); out <- -1; loop advance(); }
 }
 
-graph G
+graph G [[ main ]]
 {
     output stream int out;
     node x = X(234, "hello");

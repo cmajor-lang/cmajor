@@ -216,7 +216,7 @@ namespace n
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output event int out;
     connection P(P2(c::c::c)) -> out;
@@ -242,7 +242,7 @@ processor P2 (int<2>[2] x)
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output event int out;
     connection P(P2(c::c, c::c.size)) -> out;
@@ -270,7 +270,7 @@ graph G = P;
 
 ## testProcessor()
 
-graph G
+graph G [[ main ]]
 {
     output event int out;
     connection A2 -> out;
@@ -364,7 +364,7 @@ graph G (processor P)
     connection P -> out;
 }
 
-graph test
+graph test [[ main ]]
 {
     output event int out;
     connection G (n::P(1)) -> out;

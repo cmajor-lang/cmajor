@@ -44,6 +44,7 @@ struct BuildSettings
     bool         shouldDumpDebugInfo() const               { return getWithDefault (debugMember, false); }
     bool         isDebugFlagSet() const                    { return getWithDefault (debugMember, false); }
     bool         shouldUseFastMaths() const                { return getOptimisationLevel() >= 4; }
+    std::string  getMainProcessor() const                  { return getWithDefault (mainProcessorMember, ""); }
 
     BuildSettings& setMaxFrequency (double f)              { setProperty (maxFrequencyMember, f); return *this; }
     BuildSettings& setFrequency (double f)                 { setProperty (frequencyMember, f); return *this; }
@@ -54,6 +55,7 @@ struct BuildSettings
     BuildSettings& setOptimisationLevel (int level)        { setProperty (optimisationLevelMember, level); return *this; }
     BuildSettings& setSessionID (int32_t id)               { setProperty (sessionIDMember, id); return *this; }
     BuildSettings& setDebugFlag (bool b)                   { setProperty (debugMember, b); return *this; }
+    BuildSettings& setMainProcessor (std::string_view s)   { setProperty (mainProcessorMember, s); return *this; }
 
     void reset()                                           { settings = choc::value::Value(); }
 

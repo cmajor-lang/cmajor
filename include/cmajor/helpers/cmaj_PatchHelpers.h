@@ -59,7 +59,7 @@ struct PatchManifest
     bool reload();
 
     choc::value::Value manifest;
-    std::string manifestFile, ID, name, description, category, manufacturer, version;
+    std::string manifestFile, ID, name, description, category, manufacturer, version, mainProcessor;
     bool isInstrument = false;
     std::vector<std::string> sourceFiles;
     choc::value::Value externals;
@@ -257,6 +257,7 @@ inline bool PatchManifest::reload()
     category = {};
     manufacturer = {};
     version = {};
+    mainProcessor = {};
     isInstrument = false;
     sourceFiles.clear();
     externals = choc::value::Value();
@@ -276,6 +277,7 @@ inline bool PatchManifest::reload()
         description    = manifest["description"].toString();
         category       = manifest["category"].toString();
         manufacturer   = manifest["manufacturer"].toString();
+        mainProcessor  = manifest["mainProcessor"].toString();
         version        = manifest["version"].toString();
         isInstrument   = manifest["isInstrument"].getWithDefault<bool> (false);
         externals      = manifest["externals"];
