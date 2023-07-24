@@ -398,6 +398,38 @@ bool test28()
         && a[1][1, 1] == 9 && b[1][1, 1] == 9 && c[1][1, 1] == 9;
 }
 
+int[1, arr.size] widen1 (int[6] arr) { return arr; }
+
+bool test29()
+{
+    let y = widen1 (int[6] (1, 2, 3, 4, 5, 6));
+    return y[0, 0] == 1 && y[0, 5] == 6;
+}
+
+int[2, 3] widen2 (int n) { return ((n), (n)); }
+
+bool test30()
+{
+    let x = widen2 (99);
+    return x[0, 0] == 99 && x[1, 2] == 99;
+}
+
+int[3, 2] widen3 (int[6] arr) { return arr; }
+
+bool test31()
+{
+    let y = widen3 (int[6] (1, 2, 3, 4, 5, 6));
+    return y[0, 0] == 1 && y[2, 1] == 6;
+}
+
+int[2, 3] widen4 (int n) { return n; }
+
+bool test32()
+{
+    let x = widen4 (99);
+    return x[0, 0] == 99 && x[1, 2] == 99;
+}
+
 ## expectError ("2:28: error: Number of indexes supplied does not match the type: expected 2, but got 0")
 
 void f() { bool[3, 4] v; v[] = true; }
@@ -447,6 +479,38 @@ void f() { bool[0, 0] v; v[2, 5] = true; }
 ## expectError ("2:20: error: Illegal array size")
 
 void f() { bool[1, 0] v; v[2, 5] = true; }
+
+## expectError ("2:42: error: Cannot convert type 'int32[6]' to 'int32[6, 2]'")
+
+int[arr.size, 2] f (int[6] arr) { return arr; }
+
+## expectError ("2:42: error: Cannot convert type 'int32[6]' to 'int32[2, 6]'")
+
+int[2, arr.size] f (int[6] arr) { return arr; }
+
+## expectError ("2:46: error: Cannot implicitly convert 'float64[6]' to 'int32[1, 6]'")
+
+int[1, arr.size] f (float64[6] arr) { return arr; }
+
+## expectError ("2:43: error: Cannot implicitly convert 'float64[6]' to 'int32[6]'")
+
+int[arr.size] f (float64[6] arr) { return arr; }
+
+## expectError ("2:46: error: Cannot implicitly convert 'float64[6]' to 'int32[1, 6]'")
+
+int[1, arr.size] f (float64[6] arr) { return arr; }
+
+## expectError ("2:33: error: Cannot convert type 'int32<6>' to 'int32[2, 3]'")
+
+int[2, 3] f (int<6> n) { return n; }
+
+## expectError ("2:40: error: Cannot convert type 'float64[2, 3]' to 'int32[2, 3]'")
+
+int[2, 3] f (float64[2, 3] n) { return n; }
+
+## expectError ("2:37: error: Cannot implicitly convert 'float64[6]' to 'int32[2, 3]'")
+
+int[2, 3] f (float64[6] n) { return n; }
 
 ## expectError ("2:23: error: Language feature not yet implemented: Multi-dimensional array slices!")
 
@@ -657,7 +721,7 @@ graph Test [[ main ]]
     }
 }
 
-## global
+## testFunction()
 
 namespace matrix
 {
@@ -666,7 +730,7 @@ namespace matrix
         if const (mat1.numDimensions == 2 && mat2.numDimensions == 2)
         {
             static_assert ((mat1[0].size == mat2.size), "Matrix size incompatible");
-            
+
             mat1.innermostElementType[mat1.size, mat2[0].size] result;
 
             for (wrap<mat1.size> i)
@@ -679,44 +743,42 @@ namespace matrix
     }
 }
 
-## testFunction ()
-
-bool matMul2Dtest1 ()
+bool matMul2Dtest1()
 {
     let result = matrix::matMul (int[2, 3] ((1,2,3),(4,5,6)), int[3, 2]((1,2),(3, 4),(5,6)));
 
     if (result[0][0] == 22 && result[0][1] == 28 && result[1][0] == 49 && result[1][1] == 64)
         return true;
-    
+
     return false;
 }
 
-bool matMul2Dtest2 ()
+bool matMul2Dtest2()
 {
     let result = matrix::matMul (int[10, 2] ((1, 2),(3, 4),(5, 6),(7, 8),(9, 10),(11, 12),(13, 14),(15, 16),(17, 18),(19, 20)), int[2, 4]((1,2,3, 4),(5,6,7,8)));
 
     if (result[0][0] == 11 && result[0][1] == 14 && result[1][0] == 23 && result[1][1] == 30)
         return true;
-    
+
     return false;
 }
 
-bool matMul2Dtest3 ()
+bool matMul2Dtest3()
 {
     let result = matrix::matMul (float[2, 3] ((1.0f, 2.0f, 3.0f),(4.0f, 5.0f, 6.0f)), float[3, 2]((1.0f, 2.0f),(3.0f, 4.0f),(5.0f, 6.0f)));
 
     if (result[0][0] == 22.0f && result[0][1] == 28.0f && result[1][0] == 49.0f && result[1][1] == 64.0f)
         return true;
-    
+
     return false;
 }
 
-bool matMul2Dtest4 ()
+bool matMul2Dtest4()
 {
     let result = matrix::matMul (float64[2, 3] ((1.0, 2.0, 3.0),(4.0, 5.0, 6.0)), float[3, 2]((1.0, 2.0), (3.0, 4.0), (5.0, 6.0)));
 
     if (result[0][0] == 22.0 && result[0][1] == 28.0 && result[1][0] == 49.0 && result[1][1] == 64.0)
         return true;
-    
+
     return false;
 }
