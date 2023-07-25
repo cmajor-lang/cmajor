@@ -459,6 +459,28 @@ bool test10()   { return get1s (global) == 4 && get1c (global) == 4; }
 Type.elementType getFirstElement<Type> (Type array)  { return array[0]; }
 bool test11()   { return getFirstElement (int[] (2, 3, 4)) == 2; }
 
+T[n] genericWithValues1<T, n> (T[n] x, T[n] y) { return x; }
+T[n, m] genericWithValues2<T, n, m> (T[n, m] x, T[n, m] y) { return x; }
+T[n, m] genericWithValues3<T, n, m> (T[n, m] x, T[m] y) { return x; }
+bool genericWithValues4<a> (int[2, a] x) { return true; }
+T[n] genericWithValues5<T, n> (T<n> x) { T[n] y; for (wrap<n> i) y[i] = x[i]; return y; }
+
+bool testGenericValues()
+{
+    var a = int[3] (99);
+    var b = int[2, 3] (99);
+
+    return genericWithValues1 (a, int[3]())[1] == 99
+        && genericWithValues1 (int[3](), a)[1] == 0
+        && genericWithValues2 (b, int[2, 3]())[1, 1] == 99
+        && genericWithValues2 (int[2, 3](), b)[1, 1] == 0
+        && genericWithValues3 (b, int[3]())[1, 1] == 99
+        && genericWithValues3 (int[2, 3](), int[3]())[1, 1] == 0
+        && genericWithValues4 (int[2, 5]())
+        && genericWithValues5 (int<3> (1, 2, 3))[1] == 2
+        && genericWithValues5 (int<4> (1, 2, 3, 4))[3] == 4;
+}
+
 ## expectError ("2:11: error: Exceeded the maximum number of specialised namespace instances (100) - possible namespace recursion")
 
 namespace n1 (using T)
@@ -560,6 +582,16 @@ void f<int T> (T x) {}
 
 void f<x::y> (x::y x) {}
 
+## expectError ("3:30: error: Cannot convert int32[3, 3] () ('int32[3, 3]') to 'int32[2, 3]'")
+
+bool f<a> (int[2, a] x) { return true; }
+void test() { let x = f (int[3, 3]()); }
+
+## expectError ("2:11: error: The name 'A' is already in use")
+
+void f<A, A> (A x) {}
+void foo() { f(1); }
+
 ## expectError ("3:13: error: Failed to resolve generic function call f(int32, int32) //// 2:32: error: Expected an assignable target on the left of the '=' operator")
 
 void f<T> (const T& a, T b)  { a = b; }
@@ -570,7 +602,7 @@ void f1() { f (1, 2); }
 T f<T> (T[4] a)  { return a[3]; }
 void f() { let b = f(int[4]()) + f(100.0i); }
 
-## expectError ("3:30: error: Failed to resolve generic function call f(int32[5]) //// 2:5: error: Could not resolve generic parameter 'T'")
+## expectError ("3:32: error: Cannot convert type 'int32[5]' to 'int32[4]'")
 
 T f<T> (T[4] a)  { return a[3]; }
 void f() { int[5] a; let b = f(a); }
