@@ -639,6 +639,11 @@ T f<T> (const T& a, const T.elementType b) { return a > b ? a : b; }
 void f1() { let a = f(2, 3); }
 void f2() { let a = f(2, 3L); }
 
+## expectError ("3:23: error: Failed to resolve generic function call f(float64[3, 1], float64[1]) //// 2:17: error: Could not resolve generic parameter 'm'")
+
+T[n, m] f<T, n, m, k> (T[n, k] a, T[k, m] b) { return a; }
+void test() { let x = f (float64[3, 1] ((1.0), (2.0), (3.0)), float64[1](1.0)); }
+
 ## expectError ("3:28: error: Multiple matches found when looking for 'f' //// 2:8: note: See possible candidate //// 3:8: note: See possible candidate")
 
 int<4> f (int<4> n) { return n; }
@@ -914,7 +919,6 @@ processor Gain (int channelCount = 2) [[ main ]]
         }
     }
 }
-
 
 ## expectError ("2:23: error: Only value main processor specialisations are supported")
 
