@@ -430,6 +430,13 @@ bool test32()
     return x[0, 0] == 99 && x[1, 2] == 99;
 }
 
+bool test33()
+{
+    var x = int[1, 2] ((1, 2));
+    x[0, 0]++;
+    return x[0, 0] == 2;
+}
+
 ## expectError ("2:28: error: Number of indexes supplied does not match the type: expected 2, but got 0")
 
 void f() { bool[3, 4] v; v[] = true; }
