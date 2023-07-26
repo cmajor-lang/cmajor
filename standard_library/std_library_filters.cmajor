@@ -8,9 +8,9 @@
 //                                           ,88
 //                                        888P"
 
-/**
-    std.filters
+/// std.filters
 
+/**
     This module contains standard filter types, using implementations which allow for
     the filter parameters to be modulated.
 */

@@ -8,10 +8,11 @@
 //                                           ,88
 //                                        888P"
 
-/**
-    std.intrinsics
+/// std.intrinsics
 
-    Built-in and low-level functions.
+/**
+    This module contains a lot of the fundamental low-level functions for
+    basic maths operations.
 */
 
 /**
