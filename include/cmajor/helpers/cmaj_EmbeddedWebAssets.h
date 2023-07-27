@@ -451,16 +451,15 @@ R"(
         };
 
         this.addEventListener ("mousedown", onMouseDown);
-        this.addEventListener ("mouseup", onMouseUp);
         this.addEventListener ("dblclick", () => this.resetToDefault());
         this.addEventListener ('touchstart', onTouchStart);
-    })"
-R"(
+    }
 
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter";
-    }
+    })"
+R"(
 
     setRotation (degrees, force)
     {
@@ -1988,7 +1987,7 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 24954) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 24900) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 19559) },

@@ -240,7 +240,6 @@ export class Knob  extends ParameterControlBase
         };
 
         this.addEventListener ("mousedown", onMouseDown);
-        this.addEventListener ("mouseup", onMouseUp);
         this.addEventListener ("dblclick", () => this.resetToDefault());
         this.addEventListener ('touchstart', onTouchStart);
     }
