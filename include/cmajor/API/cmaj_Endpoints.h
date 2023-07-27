@@ -209,6 +209,25 @@ bool doesObjectHaveTypeAsProperty (const choc::value::ValueView&);
 choc::value::Value convertTypePropertyToObjectType (const choc::value::ValueView&);
 
 
+//==============================================================================
+/// Sanitises a string to make it a valid Cmajor identifier
+inline std::string makeSafeIdentifierName (std::string s)
+{
+    for (auto& c : s)
+        if (std::string_view (" ,./;:").find (c) != std::string_view::npos)
+            c = '_';
+
+    s.erase (std::remove_if (s.begin(), s.end(), [&] (char c)
+    {
+        return ! ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= '0' && c <= '9'));
+    }), s.end());
+
+    // Identifiers can't start with a digit
+    if (s[0] >= '0' && s[0] <= '9')
+        s = "_" + s;
+
+    return s;
+}
 
 //==============================================================================
 //        _        _           _  _
