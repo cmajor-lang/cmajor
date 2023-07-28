@@ -2464,3 +2464,18 @@ processor Test [[ main ]]
         advance();
     }
 }
+
+## expectError ("10:9: error: No suitable override found for function call: f(float64)")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void f (float v) {}
+
+    void main()
+    {
+        f (processor.frequency);
+        advance();
+    }
+}

@@ -98,7 +98,7 @@ processor Processor [[ main ]]
 
     void main()
     {
-        out <- delayLine.process(0, 0);
+        out <- delayLine.process(0.0f, 0.0f);
         advance();
     }
 }

@@ -56,7 +56,7 @@ bool testFreqConversion()
 
     return helpers::near (std::notes::noteToFrequency (69),            440.0f)
         && helpers::near (std::notes::noteToFrequency (69.0f),         440.0f)
-        && helpers::near (std::notes::noteToFrequency (69, 442),       442.0f)
+        && helpers::near (std::notes::noteToFrequency (69, 442.0f),    442.0f)
         && helpers::near (std::notes::noteToFrequency (69 + 12),       880.0f)
         && helpers::near (std::notes::noteToFrequency (69.0f + 12),    880.0f)
         && helpers::near (std::notes::noteToFrequency (69 + 24),       1760.0f)

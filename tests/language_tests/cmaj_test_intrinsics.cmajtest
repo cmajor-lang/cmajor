@@ -521,7 +521,7 @@ bool test_lerp()
 
 bool test_lerpVector()
 {
-    return near (lerp (float64<2> (1.0, 2.0), float64<2> (2.0, 4.0), 0.5), float64<2> (1.5, 3.0));
+    return near (lerp (float64<2> (1.0, 2.0), float64<2> (2.0, 4.0), 0.5f), float64<2> (1.5, 3.0));
 }
 
 
@@ -808,7 +808,7 @@ void f() { let a = sum (123.0i); }
 
 ## expectError ("2:20: error: lerp() requires floating point arguments")
 
-void f() { let a = lerp (1, 2, 3); }
+void f() { let a = lerp (1, 2, 3.0f); }
 
 ## expectError ("2:20: error: sqrt() requires floating point arguments")
 

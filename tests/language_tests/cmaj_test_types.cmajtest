@@ -799,9 +799,9 @@ bool testShuffle()
 {
     float<vectorSize> value;
 
-    value = rotate (value, 1);
-    value = rotate (value, 2);
-    value = rotate (value, 3);
+    value = rotate (value, 1.0f);
+    value = rotate (value, 2.0f);
+    value = rotate (value, 3.0f);
 
     return value[2] == 1 && value[1] == 2 && value[0] == 3;
 }

@@ -310,11 +310,6 @@ void f() { let a = f(int<4> (1, 2, 3, 4)); }
 void f<T> (T& x) {}
 void f() { let a = f(int<4> (1)); }
 
-## expectError ("3:31: error: Cannot convert 3 ('const int32') to 'int32&'")
-
-void f (int& x) { x = 1; }
-void f() { const int n = 3; f(n); }
-
 ## expectError ("3:44: error: Cannot convert type 'const std::midi::Message&' to 'std::midi::Message&'")
 
 void f1 (std::midi::Message& m) {}
@@ -329,26 +324,45 @@ void f2() { let m = std::midi::Message(); f1(m); }
 
 void f (XX& x) {}
 
-## expectError ("5:48: error: Ambiguous function call: f(int32, float64)")
+## expectError ("10:24: error: No suitable override found for function call: f(float32, int32)")
 
-bool f (int a, int b)           { return true; }
+bool f (int a, int b)           { return false; }
+bool f (float32 a, float32 b)   { return true; }
+
+bool f()
+{
+    int a = 1;
+    float32 b = 2.0f;
+
+    return f (b, b) && f (b, a) && f (a, b);
+}
+
+## testFunction()
+
+bool f (int a, int b)           { return false; }
 bool f (float64 a, float64 b)   { return true; }
 
-void f() { let x = f(1.2, 3.0) && f(1.1, 2) && f(1, 2.0); }
+bool f()
+{
+    int a = 1;
+    float32 b = 2.0f;
 
-## expectError ("5:48: error: Ambiguous function call: f(float32, float32)")
+    return f (b, b) && f (b, a) && f (a, b);
+}
 
-bool f (int a, int b)           { return true; }
+## testFunction()
+
+bool f (int a, int b)           { return false; }
 bool f (float64 a, float64 b)   { return true; }
 
-void f() { let x = f(1.2, 3.0) && f(1.1, 2) && f(1.0f, 2.0f); }
+bool f() { return f(1.2, 3.0) && f(1.1, 2) && f(1.0f, 2.0f); }
 
-## expectError ("5:48: error: Ambiguous function call: f(float64, float32)")
+## expectError ("5:19: error: No suitable override found for function call: f(float64, float64)")
 
-bool f (int a, int b)           { return true; }
-bool f (float64 a, float64 b)   { return true; }
+bool f (int a, int b)           { return false; }
+bool f (float32 a, float32 b)   { return true; }
 
-void f() { let x = f(1.2, 3.0) && f(1.1, 2) && f(float64 (1.0f), float32 (2)); }
+bool f() { return f(1.2, 3.0) && f(1.1, 2) && f(1.0f, 2.0f); }
 
 ## expectError ("5:21: error: Ambiguous function call: f(bool<2>)")
 
