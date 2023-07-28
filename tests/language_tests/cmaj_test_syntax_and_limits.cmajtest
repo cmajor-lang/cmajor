@@ -2479,3 +2479,54 @@ processor Test [[ main ]]
         advance();
     }
 }
+
+
+## expectError ("23:17: error: A connection cannot refer to nested graph nodes")
+
+graph P
+{
+    input stream float in;
+    output stream float out;
+}
+
+graph S
+{
+    output stream float out;
+
+    node p = P;
+}
+
+graph Test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node s = S;
+
+    connection
+        in -> s.p.in;
+}
+
+## expectError ("21:11: error: A connection cannot refer to nested graph nodes")
+
+graph P
+{
+    output stream float out;
+}
+
+graph S
+{
+    output stream float out;
+
+    node p = P;
+}
+
+graph Test [[ main ]]
+{
+    output stream float out;
+
+    node s = S;
+
+    connection
+        s.p.out -> out;
+}
