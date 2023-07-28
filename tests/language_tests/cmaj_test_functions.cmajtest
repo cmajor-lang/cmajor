@@ -279,7 +279,7 @@ bool test()
 void f (int& x) { x = 1; }
 void f() { let i = 5; f(i); }
 
-## expectError ("3:31: error: Cannot convert 5 ('const int32') to 'int32&'")
+## expectError ("3:31: error: Cannot convert type 'const int32' to 'int32&'")
 
 void f (int& x) { x = 1; }
 void f() { const int i = 5; f(i); }

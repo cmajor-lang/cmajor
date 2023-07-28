@@ -2465,7 +2465,7 @@ processor Test [[ main ]]
     }
 }
 
-## expectError ("10:9: error: No suitable override found for function call: f(float64)")
+## expectError ("10:22: error: Cannot implicitly convert 'float64' to 'float32'")
 
 processor Test [[ main ]]
 {

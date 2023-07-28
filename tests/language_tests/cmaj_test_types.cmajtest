@@ -214,7 +214,7 @@ int cast (float32 f) { int i = f; return i; }
 
 int cast (bool b) { return b; }
 
-## expectError ("3:33: error: Cannot implicitly convert 1.23456 ('float64') to 'float32'")
+## expectError ("3:33: error: Cannot implicitly convert 'float64' to 'float32'")
 
 void f (float32 f) {}
 void f2() { let n = 1.23456; f (n); }
@@ -1414,13 +1414,13 @@ enum A { a, b }
 enum B { a, b }
 bool f() { return A::a == B::a; }
 
-## expectError ("4:17: error: Cannot convert enum A::a ('enum A') to 'bool'")
+## expectError ("4:17: error: Cannot convert type 'enum A' to 'bool'")
 
 enum A { a, b }
 void f1 (bool n) {}
 void f() { f1 (A::a); }
 
-## expectError ("5:17: error: Cannot convert enum A::a ('enum A') to 'const enum B&'")
+## expectError ("5:17: error: Cannot convert type 'enum A' to 'const enum B&'")
 
 enum A { a, b }
 enum B { a, b }
