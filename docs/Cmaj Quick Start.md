@@ -100,7 +100,7 @@ This is a very quick summary of the main concepts in Cmajor. For a deep dive on 
 
 A Cmajor *program* refers to any collection of processors, graphs and namespaces. A host app can load a Cmaj program, instantiate a *processor* and use it to render audio (or any other type of data).
 
-A Cmajor *patch* is a bundle which has a form that makes it suitable for use as an audio plugin. A patch is folder containing metadata files, program files, and other resources (such as GUI scripts and audio files) which a DAW-like host can load and use like, in the same way they might load a traditional plugin such as a VST or AU.
+A Cmajor *patch* is a bundle which has a form that makes it suitable for use as an audio plugin. A patch is folder containing metadata files, program files, and other resources (such as GUI scripts and audio files) which a DAW-like host can load and use in the same way that they might load a traditional plugin such as a VST or AU.
 
 The Cmajor tools include utilities to load patches via a VST/AU plugin, and can also code-generate a native VST/AU plugin from a patch.
 
