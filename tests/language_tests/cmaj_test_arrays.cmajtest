@@ -451,6 +451,15 @@ bool test_return1() { return get2()[0] == 4; }
 bool test_return2() { return get2()[1] == 5; }
 bool test_return3() { return get2()[2] == 6; }
 
+bool test_allEqual2D()
+{
+    const int[3, 2] x = ((1, 2), (3, 4), (5, 6));
+    var y = x;
+    bool b1 = allEqual (x, y);
+    ++y[1, 1];
+    return b1 && ! allEqual (x, y);
+}
+
 ## testFunction()
 
 int readSliceElement (int[] x, int index)   { return x.read (index); }

@@ -312,14 +312,31 @@ namespace intrinsics
         static_assert ((Array1.isVector || Array1.isArray) && (Array2.isVector || Array2.isArray),
                        "allEqual() expects vectors or arrays for its arguments");
 
-        if const (array1.isFixedSizeArray && array2.isFixedSizeArray)
+        static_assert (Array1.numDimensions <= 2 && Array2.numDimensions <= 2,
+                       "allEqual() currently doesn't handle arrays with more than 2 dimensions");
+
+        if const (Array1.isFixedSizeArray && array2.isFixedSizeArray)
         {
-            if const (array1.size != array2.size)
+            if const (Array1.size != array2.size || Array1.numDimensions != Array2.numDimensions)
+            {
                 return false;
+            }
+            else if const (Array1.numDimensions == 2)
+            {
+                if const (Array1.elementType.size != Array2.elementType.size)
+                    return false;
+                else
+                    for (wrap<array1.size> i)
+                        for (wrap<array1.elementType.size> j)
+                           if (anyTrue (array1[i, j] != array2[i, j]))
+                                return false;
+            }
             else
+            {
                 for (wrap<array1.size> i)
                     if (anyTrue (array1[i] != array2[i]))
                         return false;
+            }
         }
         else
         {
