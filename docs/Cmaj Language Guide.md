@@ -256,7 +256,7 @@ let a5 = x[3:-2];  // Returns a copy of elements 3 to 5
 z[3:6] = y[5:8];  // If the sizes and types match, you can copy sub-sections between arrays
 ```
 
-### Multi-dimensional arrays
+### Multi-Dimensional Arrays
 
 Multi-dimensional arrays can be declared with a list of comma-separated sizes inside the square brackets:
 
@@ -342,7 +342,7 @@ The compiler is fairly conservative when it comes to deciding what is safe, so s
 
 Vectors are similar to arrays, but with a few differences:
 
-- The maximum number of elements is small (this is platform-specifc but is unlikely to be more than about 128)
+- The maximum number of elements is small (this is platform-specific but is unlikely to be more than about 128)
 - Vectors can only contain primitive numeric types such as integers, floats, bools or complex numbers.
 - They support parallel mathematical operators which are applied to all their elements
 - On suitable hardware, vector operations may be implemented with SIMD instructions for better performance
@@ -644,7 +644,7 @@ A processor which only has `event` endpoints, and which performs all its work in
 
 #### `void init()`
 
-If you have a large amount of setup work to be done before the processor starts, you can add an `init()` function to your processor, and this is called at initialisation time, outside of the normal realtime callback.
+If you have a large amount of setup work to be done before the processor starts, you can add an `init()` function to your processor, and this is called at initialisation time, outside of the normal real time callback.
 
 For very simple setup tasks, this can be done at the start of your `main()` function.
 
@@ -656,7 +656,7 @@ Recursion isn't allowed! (Well, not at the moment, at least...)
 
 This is a deliberate policy: without recursion, the compiler can determine the maximum stack size needed by a program, and avoid the overhead of runtime checking and reallocations/errors if there's an overflow.
 
-> Note that it *is* legal to write a generic function whichs calls a version of itself with different specialisation parameters. This loophole does allow finite recursion to be done if written cunningly, and we use it in some of our library code.
+> Note that it *is* legal to write a generic function which calls a version of itself with different specialisation parameters. This loophole does allow finite recursion to be done if written cunningly, and we use it in some of our library code.
 
 ### Generic functions
 
@@ -674,7 +674,7 @@ let z = add (1, "nope") // error! can't resolve the 'Type' template!
 void myFunction<T1, T2> (const T1& a, T2[3] b, T1<4> c)   {  ...  }
 ```
 
-The compiler will attempt to pattern-match all of the template parameters against the function parameters and the funtion's return type, and if successful, will generate a specialised version of the function for the resulting types.
+The compiler will attempt to pattern-match all of the template parameters against the function parameters and the function's return type, and if successful, will generate a specialised version of the function for the resulting types.
 
 It is also often handy to apply metafunctions and `static_assert`s to generic types, e.g.
 
@@ -827,10 +827,10 @@ In addition, `for` supports a syntax for visiting the values in a range type
 ```cpp
 
 for (wrap<5> i)
-    console <- i;               // prints 0, 1, 2, 3, 4, 5
+    console <- i;               // prints 0, 1, 2, 3, 4
 
 for (clamp<5> i = 2)            // you can set an initial value
-    console <- i;               // prints 2, 3, 4, 5
+    console <- i;               // prints 2, 3, 4
 ```
 
 ### `loop`
@@ -865,7 +865,7 @@ my_outer_loop: loop (100) // prefixing a `loop` or `for` block with a label give
 }
 ```
 
-You can also use break to jump forwrds out of a normal block if it has a label:
+You can also use break to jump forwards out of a normal block if it has a label:
 
 ```cpp
 my_block:
@@ -1265,7 +1265,7 @@ graph Parent
 }
 ```
 
-...or using the hoisted enpoint syntax, shorten it to this:
+...or using the hoisted endpoint syntax, shorten it to this:
 
 ```cpp
 graph Parent
@@ -1384,7 +1384,7 @@ node
 }
 ```
 
-Each node declares an instance of a processor type - if you're fmailiar with object-oriented programming, think of processors as being like classes, and nodes as being instances of those classes.
+Each node declares an instance of a processor type - if you're familiar with object-oriented programming, think of processors as being like classes, and nodes as being instances of those classes.
 
 If you're only planning to use a single instance of a processor, then as a shortcut you can skip declaring a node, and just use the processor name in your connection list instead of the node name. This will implicitly create an unnamed instance node for that processor. If you need to refer to the processor more than once in your connection list, you'll need to declare a node for it and give it a name.
 

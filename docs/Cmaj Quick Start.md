@@ -73,7 +73,7 @@ In our [binary releases](https://github.com/SoundStacks/cmajor/releases), you'll
 
 When you create an instance of this plugin in a DAW, you can drag-and-drop a `.cmajorpatch` file onto the plugin's GUI to make it load that patch.
 
-It's worth noting that the nature of the VST/AU plugin formats make it practically impossible for a plugin to dynamically change its parameter list or the number of input/output channels that it provides. This obviously means that when you ask the plugin to load a patch with a different number of parameters or a different endpoint configuration, DAWs aren't always going to deal with that situation correctly. In respose, we've had to resort to some annoying restrictions (like always having a fixed-size list of parameters regardless of how many the patch has), but we'll keep trying to find new tricks and workarounds in the future to make this work better.
+It's worth noting that the nature of the VST/AU plugin formats make it practically impossible for a plugin to dynamically change its parameter list or the number of input/output channels that it provides. This obviously means that when you ask the plugin to load a patch with a different number of parameters or a different endpoint configuration, DAWs aren't always going to deal with that situation correctly. In response, we've had to resort to some annoying restrictions (like always having a fixed-size list of parameters regardless of how many the patch has), but we'll keep trying to find new tricks and workarounds in the future to make this work better.
 
 -------------------------------------------------------------------------------
 
@@ -100,7 +100,7 @@ This is a very quick summary of the main concepts in Cmajor. For a deep dive on 
 
 A Cmajor *program* refers to any collection of processors, graphs and namespaces. A host app can load a Cmaj program, instantiate a *processor* and use it to render audio (or any other type of data).
 
-A Cmajor *patch* is a bundle which has a form that makes it suitable for use as an audio plugin. A patch is folder containing metadata files, program files, and other resources (such as GUI scripts and audio files) which a DAW-like host can load and use like, in the same way they might load a traditional plugin such as a VST or AU.
+A Cmajor *patch* is a bundle which has a form that makes it suitable for use as an audio plugin. A patch is a folder containing metadata files, program files, and other resources (such as GUI scripts and audio files) which a DAW-like host can load and use in the same way they might load a traditional plugin such as a VST or AU.
 
 The Cmajor tools include utilities to load patches via a VST/AU plugin, and can also code-generate a native VST/AU plugin from a patch.
 
