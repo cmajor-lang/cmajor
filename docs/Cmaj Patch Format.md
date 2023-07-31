@@ -42,7 +42,7 @@ Other optional properties include:
 
 - `description` - a longer description that a host can display to its users
 - `manufacturer` - the name of you or your company
-- `category` - hosts will be give this string, but how they choose to interpret it will be host-dependent
+- `category` - hosts will be given this string, but how they choose to interpret it will be host-dependent
 - `isInstrument` - if specified, this marks the patch as being an instrument rather an effect. Some hosts may treat a plugin differently depending on this flag.
 
 ## Cmajor source files
