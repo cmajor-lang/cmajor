@@ -148,7 +148,7 @@ The runtime will attempt to coerce these JSON values to fit the data type of the
 
 So in the example above, the `samples` variable has the type `PianoSample[5]`. The JSON value is an array containing 5 objects. So it then attempts to convert each of these objects into a `PianoSample` value.
 
-Simple types like integers, floats, bools and strings are converted as you'd expect, and when objects are probided, the JSON objects should have members with the same names as the Cmajor struct members.
+Simple types like integers, floats, bools and strings are converted as you'd expect, and when objects are provided, the JSON objects should have members with the same names as the Cmajor struct members.
 
 The runtime also supports loading audio data from files, as is done in this example. When attempting to convert a string to some other kind of target object, the runtime will check whether the string is actually the name of an audio resource file in the patch, and if so will load it. It'll then attempt to copy the audio frames and sample rate into the target struct type.
 
