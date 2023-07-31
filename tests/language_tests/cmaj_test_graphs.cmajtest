@@ -1723,7 +1723,7 @@ graph G [[ main ]]
     connection p.in -> out;
 }
 
-## expectError ("5:19: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
+## expectError ("5:19: error: 'bool' is not a valid data type for this endpoint type")
 
 processor P [[ main ]]
 {
@@ -5008,4 +5008,110 @@ graph Test [[ main ]]
 
     connection
         float(in) -> [1] -> out;
+}
+
+
+## expectError ("4:19: error: 'string' is not a valid data type for this endpoint type")
+
+processor P [[ main ]]
+{
+    output stream StreamType out;
+    using StreamType = string;
+    void main() { out <- 1; advance(); }
+}
+
+## expectError ("5:18: error: 'bool' is not a valid data type for this endpoint type")
+
+processor P [[ main ]]
+{
+    output stream float out;
+    input stream bool in;
+    void main() { advance(); }
+}
+
+## expectError ("4:23: error: 'bool<3>' is not a valid data type for this endpoint type")
+
+processor P [[ main ]]
+{
+    output stream bool<3> out;
+    input stream bool in;
+    void main() { advance(); }
+}
+
+## expectError ("4:19: error: 'string' is not a valid data type for this endpoint type")
+
+processor P [[ main ]]
+{
+    output stream string out;
+    input stream int<3> in;
+    void main() { advance(); }
+}
+
+## expectError ("5:18: error: 'string' is not a valid data type for this endpoint type")
+
+processor P [[ main ]]
+{
+    output stream float<5> out;
+    input stream string in;
+    void main() { advance(); }
+}
+
+## testProcessor()
+
+graph Test [[ main ]]
+{
+    output stream int out;
+
+    node p = P;
+    node forwarder = BoundedForwarder;
+
+    connection
+    {
+        p.out -> forwarder.in;
+        (forwarder.out -1) -> out;
+    }
+}
+
+graph BoundedForwarder
+{
+    input stream wrap<5> in;
+    output stream clamp<7> out;
+
+    connection
+        in -> out;
+}
+
+processor P
+{
+    output stream wrap<5> out;
+
+    void main()
+    {
+        out <- 2;
+        advance();
+        out <- 0;
+        advance();
+    }
+}
+
+## expectError ("8:12: error: Cannot connect in (wrap<5>) to out (int32)")
+
+graph Test [[ main ]]
+{
+    input stream wrap<5> in;
+    output stream int out;
+
+    connection
+        in -> out;
+}
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    input stream int in;
+    output stream wrap<5> out;
+
+    connection
+        wrap<5> (in) -> out;
 }

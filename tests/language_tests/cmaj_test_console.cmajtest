@@ -265,3 +265,30 @@ namespace test
         return A();
     }
 }
+
+
+## testConsole ("1 2 3 4 0 1 2 3 4 ")
+processor Test
+{
+    output stream float out;
+
+    void main()
+    {
+        console <- 1.0f;
+        console <- " ";
+        console <- 2.0;
+        console <- " ";
+        console <- 3;
+        console <- " ";
+        console <- 4i64;
+        console <- " ";
+
+        for (wrap<5> i)
+        {
+            console <- i;
+            console <- " ";
+        }
+
+        advance();
+    }
+}

@@ -480,7 +480,7 @@ processor P [[ main ]]
     void main() { advance(); }
 }
 
-## expectError ("5:17: error: 'tests::P::S' is not a valid data type for this endpoint type")
+## expectError ("5:17: error: 'tests::P::S' is not a valid data type for a top level processor endpoint")
 
 processor P [[ main ]]
 {
@@ -493,7 +493,7 @@ processor P [[ main ]]
     struct S { int x; wrap<10> w, y; float64 f; }
 }
 
-## expectError ("5:17: error: 'tests::P::S' is not a valid data type for this endpoint type")
+## expectError ("5:17: error: 'tests::P::S' is not a valid data type for a top level processor endpoint")
 
 processor P [[ main ]]
 {
@@ -657,4 +657,22 @@ processor P2 [[ main ]]
     output event S out;
     struct S { int[] x; }
     void main() { var a = int[] (1, 2, 3); out <- S (a); advance(); }
+}
+
+## testCompile()
+
+processor Test [[ main ]]
+{
+    output event S out;
+
+    struct S
+    {
+        int i;
+    }
+
+    void main()
+    {
+        out <- S (1);
+        advance();
+    }
 }

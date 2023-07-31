@@ -51,51 +51,6 @@ graph G [[ main ]]
     node p = P[2];
 }
 
-## expectError ("4:19: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
-
-processor P [[ main ]]
-{
-    output stream StreamType out;
-    using StreamType = string;
-    void main() { out <- 1; advance(); }
-}
-
-## expectError ("5:18: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
-
-processor P [[ main ]]
-{
-    output stream float out;
-    input stream bool in;
-    void main() { advance(); }
-}
-
-## expectError ("4:23: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
-
-processor P [[ main ]]
-{
-    output stream bool<3> out;
-    input stream bool in;
-    void main() { advance(); }
-}
-
-## expectError ("4:19: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
-
-processor P [[ main ]]
-{
-    output stream string out;
-    input stream int<3> in;
-    void main() { advance(); }
-}
-
-## expectError ("5:18: error: Language feature not yet implemented: Streams currently support only scalar types and vectors!")
-
-processor P [[ main ]]
-{
-    output stream float<5> out;
-    input stream string in;
-    void main() { advance(); }
-}
-
 ## expectError ("5:25: error: Language feature not yet implemented: top-level arrays of inputs!")
 
 processor P [[ main ]]
