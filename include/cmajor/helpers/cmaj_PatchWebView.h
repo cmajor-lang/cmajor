@@ -21,10 +21,9 @@
 
 #pragma once
 
-#include "../../choc/gui/choc_WebView.h"
-
 #include "cmaj_Patch.h"
 #include "cmaj_EmbeddedWebAssets.h"
+#include "../../choc/gui/choc_WebView.h"
 
 #include <memory>
 

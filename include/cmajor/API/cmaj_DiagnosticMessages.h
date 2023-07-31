@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include "../../choc/text/choc_JSON.h"
 #include "cmaj_SourceFiles.h"
+#include "../../choc/text/choc_JSON.h"
 
 
 namespace cmaj
