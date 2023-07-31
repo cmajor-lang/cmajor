@@ -10,6 +10,7 @@
 //  //                                           888P"
 
 #include <JuceHeader.h>
+#include <assert.h>
 
 #define CHOC_ASSERT(x) assert(x)
 #include "../../../include/cmajor/helpers/cmaj_JUCEPlugin.h"
