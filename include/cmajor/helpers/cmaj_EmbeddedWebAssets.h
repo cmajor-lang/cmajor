@@ -384,14 +384,14 @@ R"(
             this.previousScreenY = event.screenY;
 
             const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
-            this.accumlatedRotation = nextRotation (this.accumlatedRotation, movementY * speedMultiplier);
-            this.setValue (toValue (this.accumlatedRotation));
+            this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
+            this.setValue (toValue (this.accumulatedRotation));
         };
 
         const onMouseUp = (event) =>
         {
             this.previousScreenY = undefined;
-            this.accumlatedRotation = undefined;
+            this.accumulatedRotation = undefined;
             window.removeEventListener ("mousemove", onMouseMove);
             window.removeEventListener ("mouseup", onMouseUp);
             this.endGesture();
@@ -400,7 +400,7 @@ R"(
         const onMouseDown = (event) =>
         {
             this.previousScreenY = event.screenY;
-            this.accumlatedRotation = this.rotation;
+            this.accumulatedRotation = this.rotation;
             this.beginGesture();
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
@@ -411,7 +411,7 @@ R"(
         const onTouchStart = (event) =>
         {
             this.previousClientY = event.changedTouches[0].clientY;
-            this.accumlatedRotation = this.rotation;
+            this.accumulatedRotation = this.rotation;
             this.touchIdentifier = event.changedTouches[0].identifier;
             this.beginGesture();
             window.addEventListener ("touchmove", onTouchMove);
@@ -435,8 +435,8 @@ R"(
                     this.previousClientY = touch.clientY;
 
                     const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
-                    this.accumlatedRotation = nextRotation (this.accumlatedRotation, movementY * speedMultiplier);
-                    this.setValue (toValue (this.accumlatedRotation));
+                    this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
+                    this.setValue (toValue (this.accumulatedRotation));
                 }
             }
         };
@@ -444,7 +444,7 @@ R"(
         const onTouchEnd = (event) =>
         {
             this.previousClientY = undefined;
-            this.accumlatedRotation = undefined;
+            this.accumulatedRotation = undefined;
             window.removeEventListener ("touchmove", onTouchMove);
             window.removeEventListener ("touchend", onTouchEnd);
             this.endGesture();
@@ -1987,7 +1987,7 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 24900) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 24910) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 19559) },

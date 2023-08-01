@@ -174,14 +174,14 @@ export class Knob  extends ParameterControlBase
             this.previousScreenY = event.screenY;
 
             const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
-            this.accumlatedRotation = nextRotation (this.accumlatedRotation, movementY * speedMultiplier);
-            this.setValue (toValue (this.accumlatedRotation));
+            this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
+            this.setValue (toValue (this.accumulatedRotation));
         };
 
         const onMouseUp = (event) =>
         {
             this.previousScreenY = undefined;
-            this.accumlatedRotation = undefined;
+            this.accumulatedRotation = undefined;
             window.removeEventListener ("mousemove", onMouseMove);
             window.removeEventListener ("mouseup", onMouseUp);
             this.endGesture();
@@ -190,7 +190,7 @@ export class Knob  extends ParameterControlBase
         const onMouseDown = (event) =>
         {
             this.previousScreenY = event.screenY;
-            this.accumlatedRotation = this.rotation;
+            this.accumulatedRotation = this.rotation;
             this.beginGesture();
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
@@ -200,7 +200,7 @@ export class Knob  extends ParameterControlBase
         const onTouchStart = (event) =>
         {
             this.previousClientY = event.changedTouches[0].clientY;
-            this.accumlatedRotation = this.rotation;
+            this.accumulatedRotation = this.rotation;
             this.touchIdentifier = event.changedTouches[0].identifier;
             this.beginGesture();
             window.addEventListener ("touchmove", onTouchMove);
@@ -224,8 +224,8 @@ export class Knob  extends ParameterControlBase
                     this.previousClientY = touch.clientY;
 
                     const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
-                    this.accumlatedRotation = nextRotation (this.accumlatedRotation, movementY * speedMultiplier);
-                    this.setValue (toValue (this.accumlatedRotation));
+                    this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
+                    this.setValue (toValue (this.accumulatedRotation));
                 }
             }
         };
@@ -233,7 +233,7 @@ export class Knob  extends ParameterControlBase
         const onTouchEnd = (event) =>
         {
             this.previousClientY = undefined;
-            this.accumlatedRotation = undefined;
+            this.accumulatedRotation = undefined;
             window.removeEventListener ("touchmove", onTouchMove);
             window.removeEventListener ("touchend", onTouchEnd);
             this.endGesture();
