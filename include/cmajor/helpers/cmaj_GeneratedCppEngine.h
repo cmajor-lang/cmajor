@@ -61,6 +61,8 @@ struct GeneratedCppEngine  : public choc::com::ObjectWithAtomicRefCount<EngineIn
 {
     GeneratedCppEngine() = default;
 
+    virtual ~GeneratedCppEngine() = default;
+
     //==============================================================================
     choc::com::String* getBuildSettings() override
     {
