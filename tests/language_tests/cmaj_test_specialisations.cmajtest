@@ -481,6 +481,16 @@ bool testGenericValues()
         && genericWithValues5 (int<4> (1, 2, 3, 4))[3] == 4;
 }
 
+int getSize<T> (const T& x) { return T.size; }
+bool overloaded<A1, a> (A1[a, a] x, A1[a, a] y)  { return getSize (int[a]()) == 2; }
+bool overloaded<A1, a> (A1[a] x, A1[a] y)        { return getSize (int[a]()) == 4; }
+
+bool testOverload1() { return   overloaded (int[2, 2](), int[2, 2]()); }
+bool testOverload2() { return ! overloaded (int[4, 4](), int[4, 4]()); }
+bool testOverload3() { return   overloaded (int[4](), int[4]()); }
+bool testOverload4() { return ! overloaded (int[2](), int[2]()); }
+
+
 ## expectError ("2:11: error: Exceeded the maximum number of specialised namespace instances (100) - possible namespace recursion")
 
 namespace n1 (using T)
