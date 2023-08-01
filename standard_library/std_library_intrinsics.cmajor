@@ -280,33 +280,100 @@ namespace intrinsics
     }
 
     //==============================================================================
-    /// Takes a bool vector, and returns true if any of its elements are true.
-    bool anyTrue (bool b) { return b; }
-    bool anyTrue<BoolVector> (BoolVector boolVector)
+    /// Returns the matrix product of two 2-dimensional arrays.
+    ElementType[n, m] matmul<ElementType, n, m, k> (ElementType[n, k] a,
+                                                    ElementType[k, m] b)
     {
-        static_assert (BoolVector.isVector && BoolVector.elementType.isBool, "anyTrue() expects a bool vector for its argument");
+        ElementType[n, m] result;
 
-        for (wrap<BoolVector.size> i)
-            if (boolVector[i])
-                return true;
+        for (wrap<n> i)
+            for (wrap<m> j)
+                for (wrap<k> o)
+                    result[i, j] += a[i, o] * b[o, j];
 
-        return false;
+        return result;
     }
 
-    /// Takes a bool vector, and returns true if all of its elements are true.
-    bool allTrue (bool b) { return b; }
-    bool allTrue<BoolVector> (BoolVector boolVector)
+    /// Returns the dot-product of two 1-dimensional arrays.
+    ElementType dotProduct<ElementType, n> (ElementType[n] a,
+                                            ElementType[n] b)
     {
-        static_assert (BoolVector.isVector && BoolVector.elementType.isBool, "allTrue() expects a bool vector for its argument");
+        ElementType product;
 
-        for (wrap<BoolVector.size> i)
-            if (! boolVector[i])
-                return false;
+        for (wrap<n> i)
+            product += a[i] * b[i];
 
-        return true;
+        return product;
     }
 
-    /// Takes two array or vector arguments, and returns true if all of the corresponding elements are equal.
+    /// Returns the dot-product of two 2-dimensional arrays.
+    /// (The dot product for 2D arrays is the same as a matrix multiplication).
+    ElementType[n, m] dotProduct<ElementType, n, m, k> (ElementType[n, k] a,
+                                                        ElementType[k, m] b)
+    {
+        return matmul (a, b);
+    }
+
+    //==============================================================================
+    /// Takes a vector or array of bools, and returns true if any of its elements are true.
+    bool anyTrue<BoolArray> (BoolArray boolArray)
+    {
+        if const (BoolArray.isBool && BoolArray.isPrimitive)
+        {
+            return boolArray;
+        }
+        else
+        {
+            static_assert ((BoolArray.isVector || BoolArray.isArray) && BoolArray.elementType.isBool,
+                           "anyTrue() expects a vector or array of bools for its argument");
+
+            if const (BoolArray.isFixedSizeArray || BoolArray.isVector)
+            {
+                for (wrap<BoolArray.size> i)
+                    if (boolArray[i])
+                        return true;
+            }
+            else
+            {
+                for (int i = 0; i < boolArray.size; ++i)
+                    if (boolArray.at(i))
+                        return true;
+            }
+
+            return false;
+        }
+    }
+
+    /// Takes a vector or array of bools, and returns true if all of its elements are true.
+    bool allTrue<BoolArray> (BoolArray boolArray)
+    {
+        if const (BoolArray.isBool && BoolArray.isPrimitive)
+        {
+            return boolArray;
+        }
+        else
+        {
+            static_assert ((BoolArray.isVector || BoolArray.isArray) && BoolArray.elementType.isBool,
+                           "allTrue() expects a vector or array of bools for its argument");
+
+            if const (BoolArray.isFixedSizeArray || BoolArray.isVector)
+            {
+                for (wrap<BoolArray.size> i)
+                    if (! boolArray[i])
+                        return false;
+            }
+            else
+            {
+                for (int i = 0; i < boolArray.size; ++i)
+                    if (! boolArray.at(i))
+                        return false;
+            }
+
+            return true;
+        }
+    }
+
+    /// Takes two array or vector arguments, and returns true if all of their corresponding elements are equal.
     bool allEqual<Array1, Array2> (const Array1& array1, const Array2& array2)
     {
         static_assert ((Array1.isVector || Array1.isArray) && (Array2.isVector || Array2.isArray),
