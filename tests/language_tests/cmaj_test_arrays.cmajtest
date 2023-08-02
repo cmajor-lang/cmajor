@@ -151,6 +151,10 @@ processor P [[ main ]]
     void main() { let v = in.at(2); advance(); }
 }
 
+## expectError ("2:38: error: Number of indexes supplied does not match the type: expected 1, but got 2")
+
+void f() { int<3>[3] x; let y = x[0, 0]; }
+
 ## expectError ("2:45: error: Expected a vector or array to the left of the bracket operator")
 
 void f() { var f = 1.0f; f += 0.1f; let x = f[0]; }

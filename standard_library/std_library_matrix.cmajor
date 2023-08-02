@@ -1,0 +1,79 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+/// std.matrix
+
+/**
+    This namespace contains various matrix manipulation functions.
+*/
+namespace std::matrix
+{
+    //==============================================================================
+    /// Returns the matrix product of two 2-dimensional arrays.
+    ElementType[n, m] multiply<ElementType, n, m, k> (ElementType[n, k] a,
+                                                      ElementType[k, m] b)
+    {
+        ElementType[n, m] result;
+
+        for (wrap<n> i)
+            for (wrap<m> j)
+                for (wrap<k> o)
+                    result[i, j] += a[i, o] * b[o, j];
+
+        return result;
+    }
+
+    /// Returns the dot-product of two 1-dimensional arrays.
+    ElementType dot<ElementType, n> (ElementType[n] a,
+                                     ElementType[n] b)
+    {
+        ElementType product;
+
+        for (wrap<n> i)
+            product += a[i] * b[i];
+
+        return product;
+    }
+
+    /// Returns the dot-product of two 2-dimensional arrays.
+    /// (The dot product for 2D arrays is the same as a matrix multiplication).
+    ElementType[n, m] dot<ElementType, n, m, k> (ElementType[n, k] a,
+                                                 ElementType[k, m] b)
+    {
+        return multiply (a, b);
+    }
+
+    /// Returns the sum of two 2-dimensional arrays.
+    ElementType[n, m] add<ElementType, n, m> (ElementType[n, m] a,
+                                              ElementType[n, m] b)
+    {
+        ElementType[n, m] result;
+
+        for (wrap<n> i)
+            for (wrap<m> j)
+                result[i, j] = a[i, j] + b[i, j];
+
+        return result;
+    }
+
+    /// Returns the difference between two 2-dimensional arrays.
+    ElementType[n, m] subtract<ElementType, n, m> (ElementType[n, m] a,
+                                                   ElementType[n, m] b)
+    {
+        ElementType[n, m] result;
+
+        for (wrap<n> i)
+            for (wrap<m> j)
+                result[i, j] = a[i, j] - b[i, j];
+
+        return result;
+    }
+
+} // namespace std::matrix

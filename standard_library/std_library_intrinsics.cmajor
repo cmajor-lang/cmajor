@@ -280,41 +280,6 @@ namespace intrinsics
     }
 
     //==============================================================================
-    /// Returns the matrix product of two 2-dimensional arrays.
-    ElementType[n, m] matmul<ElementType, n, m, k> (ElementType[n, k] a,
-                                                    ElementType[k, m] b)
-    {
-        ElementType[n, m] result;
-
-        for (wrap<n> i)
-            for (wrap<m> j)
-                for (wrap<k> o)
-                    result[i, j] += a[i, o] * b[o, j];
-
-        return result;
-    }
-
-    /// Returns the dot-product of two 1-dimensional arrays.
-    ElementType dotProduct<ElementType, n> (ElementType[n] a,
-                                            ElementType[n] b)
-    {
-        ElementType product;
-
-        for (wrap<n> i)
-            product += a[i] * b[i];
-
-        return product;
-    }
-
-    /// Returns the dot-product of two 2-dimensional arrays.
-    /// (The dot product for 2D arrays is the same as a matrix multiplication).
-    ElementType[n, m] dotProduct<ElementType, n, m, k> (ElementType[n, k] a,
-                                                        ElementType[k, m] b)
-    {
-        return matmul (a, b);
-    }
-
-    //==============================================================================
     /// Takes a vector or array of bools, and returns true if any of its elements are true.
     bool anyTrue<BoolArray> (BoolArray boolArray)
     {
@@ -416,6 +381,15 @@ namespace intrinsics
         }
 
         return true;
+    }
+
+    //==============================================================================
+    /// Swaps the contents of two assignable values.
+    void swap<Type> (Type& value1, Type& value2)
+    {
+        let temp = value1;
+        value1 = value2;
+        value2 = temp;
     }
 
     //==============================================================================
