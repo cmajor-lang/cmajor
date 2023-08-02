@@ -439,3 +439,42 @@ bool testTriangle3()
             helpers::near (std::oscillators::waveshape::triangle (1.0f,  1, 0.5f), -0.5f);
 }
 
+
+## testFunction()
+
+bool compare2DArrays<ElementType, n, m> (ElementType[n, m] arr1, ElementType[n, m] arr2, ElementType maxDiff)
+{
+    for (wrap<arr1.size> i)
+        for (wrap<arr1[0].size> j)
+            if (abs (arr1[i][j] - arr2[i][j]) > maxDiff)
+                return false;
+
+    return true;
+}
+
+
+bool testInvert()
+{
+    let m = float[3, 3] ((5, 7, 9),
+                         (4, 3, 8),
+                         (7, 5, 6));
+
+    let inverse = std::matrix::inverse (m);
+    let product = std::matrix::multiply (inverse, m);
+
+    let i = float[3, 3] ((1, 0, 0),
+                         (0, 1, 0),
+                         (0, 0, 1));
+
+    return compare2DArrays (product, i, 0.001f);
+}
+
+bool testInvertFailure()
+{
+    let m = float[2, 2] ((1, 2),
+                         (2, 4));
+
+    let inverse = std::matrix::inverse (m);
+
+    return compare2DArrays (inverse, float[2, 2](), 0.001f);
+}
