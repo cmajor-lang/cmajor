@@ -22,9 +22,10 @@ The `Engine` class acts like a compiler - you create an Engine, give it a Cmajor
 The general sequence of events is:
 1. Create an Engine with `cmaj::Engine::create()`
 2. If you want to apply any build settings (e.g. sample rate, block size, optimisation level), use `cmaj::Engine::setBuildSettings()` to do so
-3. Create a `cmaj::Program` object containing your code, and pass it into the `Engine::load()` method.
-4. If the `load()` completed without any compile errors, you can now find out about the program's endpoints and external variables using `Engine::getInputEndpoints()` and `Engine::getExternalVariables()`
-5. If your program has any external variables, you'll need to provide values for them with the `Engine::setExternalVariable()` method.
+3. Create a `cmaj::Program` object containing your code.
+4. Call `Engine::load()` with both the program and an `ExternalVariableProviderFn` function, which is used by the compiler to request values for any externals used by the program.
+4. If the `load()` completed without any compile errors, you can now find out about the program's endpoints using `Engine::getInputEndpoints()`.
+5. For any inputs and outputs that you want to use during execution of the program, you must call `Engine::getEndpointHandle()` with the `endpointID` specified in the endpoint information. The returned `EndpointHandle` is required during runtime to specify the endpoint.
 6. Next step is linking the program using `Engine::link()`
 7. If `link()` succeeded without any errors, you can now call `Engine::createPerformer()` method to create one or more performer instances, and these can be used to actually run the code.
 
