@@ -106,8 +106,8 @@ export class Knob  extends ParameterControlBase
 
         this.innerHTML = "";
         this.className = "knob-container";
-        this.min = this.endpointInfo.min || 0;
-        this.max = this.endpointInfo.max || 1;
+        const min = endpointInfo?.annotation?.min || 0;
+        const max = endpointInfo?.annotation?.max || 1;
 
         const createSvgElement = tag => window.document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
@@ -120,7 +120,7 @@ export class Knob  extends ParameterControlBase
         trackBackground.classList.add ("knob-track-background");
 
         const maxKnobRotation = 132;
-        const isBipolar = this.min + this.max === 0;
+        const isBipolar = min + max === 0;
         const dashLength = isBipolar ? 251.5 : 184;
         const valueOffset = isBipolar ? 0 : 132;
         this.getDashOffset = val => dashLength - 184 / (maxKnobRotation * 2) * (val + valueOffset);
@@ -145,9 +145,6 @@ export class Knob  extends ParameterControlBase
 
         this.appendChild (svg);
         this.appendChild (this.dial);
-
-        const min = endpointInfo?.annotation?.min || 0;
-        const max = endpointInfo?.annotation?.max || 1;
 
         const remap = (source, sourceFrom, sourceTo, targetFrom, targetTo) =>
                         (targetFrom + (source - sourceFrom) * (targetTo - targetFrom) / (sourceTo - sourceFrom));

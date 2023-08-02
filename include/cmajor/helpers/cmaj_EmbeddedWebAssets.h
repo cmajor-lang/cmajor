@@ -314,8 +314,8 @@ export class Knob  extends ParameterControlBase
 
         this.innerHTML = "";
         this.className = "knob-container";
-        this.min = this.endpointInfo.min || 0;
-        this.max = this.endpointInfo.max || 1;
+        const min = endpointInfo?.annotation?.min || 0;
+        const max = endpointInfo?.annotation?.max || 1;
 
         const createSvgElement = tag => window.document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
@@ -329,7 +329,7 @@ R"(
         trackBackground.classList.add ("knob-track-background");
 
         const maxKnobRotation = 132;
-        const isBipolar = this.min + this.max === 0;
+        const isBipolar = min + max === 0;
         const dashLength = isBipolar ? 251.5 : 184;
         const valueOffset = isBipolar ? 0 : 132;
         this.getDashOffset = val => dashLength - 184 / (maxKnobRotation * 2) * (val + valueOffset);
@@ -355,9 +355,6 @@ R"(
         this.appendChild (svg);
         this.appendChild (this.dial);
 
-        const min = endpointInfo?.annotation?.min || 0;
-        const max = endpointInfo?.annotation?.max || 1;
-
         const remap = (source, sourceFrom, sourceTo, targetFrom, targetTo) =>
                         (targetFrom + (source - sourceFrom) * (targetTo - targetFrom) / (sourceTo - sourceFrom));
 
@@ -365,12 +362,12 @@ R"(
         this.toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);
 
         this.rotation = this.toRotation (this.defaultValue);
-        this.setRotation (this.rotation, true);)"
-R"(
+        this.setRotation (this.rotation, true);
 
         const onMouseMove = (event) =>
         {
-            event.preventDefault(); // avoid scrolling whilst dragging
+            event.preventDefault(); // avoid scrolling whilst dragging)"
+R"(
 
             const nextRotation = (rotation, delta) =>
             {
@@ -405,8 +402,7 @@ R"(
             window.addEventListener ("mousemove", onMouseMove);
             window.addEventListener ("mouseup", onMouseUp);
             event.preventDefault();
-        };)"
-R"(
+        };
 
         const onTouchStart = (event) =>
         {
@@ -417,7 +413,8 @@ R"(
             window.addEventListener ("touchmove", onTouchMove);
             window.addEventListener ("touchend", onTouchEnd);
             event.preventDefault();
-        };
+        };)"
+R"(
 
         const onTouchMove = (event) =>
         {
@@ -458,8 +455,7 @@ R"(
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter";
-    })"
-R"(
+    }
 
     setRotation (degrees, force)
     {
@@ -469,7 +465,8 @@ R"(
             this.trackValue.setAttribute ("stroke-dashoffset", this.getDashOffset (this.rotation));
             this.dial.style.transform = `translate(-50%,-50%) rotate(${degrees}deg)`;
         }
-    }
+    })"
+R"(
 
     valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
     getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); }
@@ -523,8 +520,7 @@ R"(
 
         .knob-dial-tick {
             position: absolute;
-            display: inline-block;)"
-R"(
+            display: inline-block;
 
             height: 1rem;
             width: 0.15rem;
@@ -540,7 +536,8 @@ export class Switch  extends ParameterControlBase
     {
         super();
         this.setEndpoint (patchConnection, endpointInfo);
-    }
+    })"
+R"(
 
     setEndpoint (patchConnection, endpointInfo)
     {
@@ -585,8 +582,7 @@ export class Switch  extends ParameterControlBase
             --switch-outline-color: var(--foreground);
             --switch-thumb-color: var(--foreground);
             --switch-on-background-color: var(--background);
-            --switch-off-background-color: var(--background);)"
-R"(
+            --switch-off-background-color: var(--background);
 
             position: relative;
             display: flex;
@@ -606,7 +602,8 @@ R"(
             border-radius: 10rem;
             box-shadow: 0 0 0 0.15rem var(--switch-outline-color);
             transition: background-color 0.1s cubic-bezier(0.5, 0, 0.2, 1);
-        }
+        })"
+R"(
 
         .switch-thumb {
             position: absolute;
@@ -656,8 +653,7 @@ export class Options  extends ParameterControlBase
 
     setEndpoint (patchConnection, endpointInfo)
     {
-        super.setEndpoint (patchConnection, endpointInfo);)"
-R"(
+        super.setEndpoint (patchConnection, endpointInfo);
 
         const toValue = (min, step, index) => min + (step * index);
         const toStepCount = count => count > 0 ? count - 1 : 1;
@@ -668,7 +664,8 @@ R"(
             {
                 const optionList = endpointInfo.annotation.text.split ("|");
                 const stepCount = toStepCount (optionList.length);
-                let min = 0, max = stepCount, step = 1;
+                let min = 0, max = stepCount, step = 1;)"
+R"(
 
                 if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
                 {
@@ -710,8 +707,7 @@ R"(
 
         this.innerHTML = "";
 
-        this.select = document.createElement ("select");)"
-R"(
+        this.select = document.createElement ("select");
 
         for (const option of this.options)
         {
@@ -724,7 +720,8 @@ R"(
 
         this.select.addEventListener ("change", (e) =>
         {
-            const newIndex = e.target.selectedIndex;
+            const newIndex = e.target.selectedIndex;)"
+R"(
 
             // prevent local state change. the caller will update us when the backend actually applies the update
             e.target.selectedIndex = this.selectedIndex;
@@ -782,8 +779,7 @@ R"(
             overflow: hidden;
             text-overflow: ellipsis;
 
-            padding: 0 1.5rem 0 0.6rem;)"
-R"(
+            padding: 0 1.5rem 0 0.6rem;
 
             outline: none;
             color: var(--foreground);
@@ -798,7 +794,8 @@ R"(
         select option {
             background: var(--background);
             color: var(--foreground);
-        }
+        })"
+R"(
 
         .select-icon {
             position: absolute;
@@ -841,8 +838,7 @@ export class LabelledControlHolder  extends ParameterControlBase
         super.setEndpoint (patchConnection, endpointInfo);
 
         this.innerHTML = "";
-        this.className = "labelled-control";)"
-R"(
+        this.className = "labelled-control";
 
         const centeredControl = document.createElement ("div");
         centeredControl.className = "labelled-control-centered-control";
@@ -850,7 +846,8 @@ R"(
         centeredControl.appendChild (this.childControl);
 
         const titleValueHoverContainer = document.createElement ("div");
-        titleValueHoverContainer.className = "labelled-control-label-container";
+        titleValueHoverContainer.className = "labelled-control-label-container";)"
+R"(
 
         const nameText = document.createElement ("div");
         nameText.classList.add ("labelled-control-name");
@@ -905,8 +902,7 @@ R"(
             font-size: var(--labelled-control-font-size);
             color: var(--labelled-control-font-color);
             cursor: default;
-        })"
-R"(
+        }
 
         .labelled-control-name {
             overflow: hidden;
@@ -921,7 +917,8 @@ R"(
             overflow: hidden;
             text-overflow: ellipsis;
             opacity: 0;
-        }
+        })"
+R"(
 
         .labelled-control:hover .labelled-control-name,
         .labelled-control:active .labelled-control-name {
@@ -1987,7 +1984,7 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 24910) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 24805) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 19559) },
