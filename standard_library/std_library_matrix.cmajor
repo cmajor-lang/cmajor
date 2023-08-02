@@ -42,6 +42,14 @@ namespace std::matrix
         return product;
     }
 
+    /// Returns the dot-product of two 2-dimensional arrays.
+    /// (The dot product for 2D arrays is the same as a matrix multiplication).
+    ElementType[n, m] dot<ElementType, n, m, k> (ElementType[n, k] a,
+                                                 ElementType[k, m] b)
+    {
+        return multiply (a, b);
+    }
+
     /// Returns the inverse of the input 2-dimensional array.
     /// If no inverse is possible, it returns an empty array.
     /// This algorithm uses the Gaussian elimination method to calculate the inverse.
@@ -84,14 +92,6 @@ namespace std::matrix
                 result[i, j] = m[i][n + j];
 
         return result;
-    }
-
-    /// Returns the dot-product of two 2-dimensional arrays.
-    /// (The dot product for 2D arrays is the same as a matrix multiplication).
-    ElementType[n, m] dot<ElementType, n, m, k> (ElementType[n, k] a,
-                                                 ElementType[k, m] b)
-    {
-        return multiply (a, b);
     }
 
     /// Returns the sum of two 2-dimensional arrays.
