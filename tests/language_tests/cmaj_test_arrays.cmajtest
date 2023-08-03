@@ -874,6 +874,21 @@ void f()
     var a = s2[1], b = s1[1];
 }
 
+## expectError ("10:17: error: Values which may contain slices of local data cannot be assigned to variables which may outlive them //// 10:24: note: See context where local data is assigned")
+
+processor P [[main]]
+{
+    output stream int out;
+    int[] x;
+
+    void main()
+    {
+        var b = 2; ++b;
+        x = int[] (int[8] (1, 2, 3, 4, 5, 6, b, 8));
+        advance();
+    }
+}
+
 ## testFunction()
 
 struct S { int[] x; }
@@ -967,15 +982,275 @@ processor test
     }
 }
 
+## testConsole ("1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void main()
+    {
+        int b = 7; ++b;
+        let slice1 = int[] (int[8] (1, 2, 3, 4, 5, 6, 7, b));
+        let slice2 = int[] (int[8] (1, 2, 3, 4, 5, 6, 7, 8));
+
+        for (int i = 0; i < slice1.size; i++)
+        {
+            console <- slice1[i] <- " " <- slice2[i] <- " ";
+            loop (32) advance();
+        }
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void main()
+    {
+        int b = 7; ++b;
+        let slice = int[] (int[8] (1, 2, 3, 4, 5, 6, 7, b));
+
+        for (int i = 0; i < slice.size; i++)
+        {
+            console <- slice[i] <- " ";
+            loop (32) advance();
+        }
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void main()
+    {
+        let slice = int[] (int[8] (1, 2, 3, 4, 5, 6, 7, 8));
+
+        for (int i = 0; i < slice.size; i++)
+        {
+            console <- slice[i] <- " ";
+            loop (32) advance();
+        }
+    }
+}
+
+## disabled testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void write (const int[]& values)
+    {
+        for (int i = 0; i < values.size; i++)
+            console <- values[i] <- " ";
+    }
+
+    void main()
+    {
+        write (int[8] (1, 2, 3, 4, 5, 6, 7, 8));
+        advance();
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void write (int[8] values)
+    {
+        for (int i = 0; i < values.size; i++)
+        {
+            console <- values[i] <- " ";
+            loop (100) advance();
+        }
+    }
+
+    void main()
+    {
+        write (int[8] (1, 2, 3, 4, 5, 6, 7, 8));
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void write (int[] values)
+    {
+        for (int i = 0; i < values.size; i++)
+            console <- values[i] <- " ";
+    }
+
+    void main()
+    {
+        write (int[8] (1, 2, 3, 4, 5, 6, 7, 8));
+        advance();
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void main()
+    {
+        let values = int[8] (1, 2, 3, 4, 5, 6, 7, 8);
+        let slice = int[] (values);
+
+        for (int i = 0; i < slice.size; i++)
+        {
+            console <- slice[i] <- " ";
+            loop (32) advance();
+        }
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void main()
+    {
+        var values = int[8] (0, 2, 3, 4, 5, 6, 7, 8);
+        values[0] = 1;
+        let slice = int[] (values);
+
+        for (int i = 0; i < slice.size; i++)
+        {
+            console <- slice[i] <- " ";
+            loop (32) advance();
+        }
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void main()
+    {
+        let values = int[8] (1, 0, 0, 0, 0, 0, 0, 0);
+        let values2 = int[8] (0, 2, 3, 4, 5, 6, 7, 8);
+
+        var slice = int[] (values);
+
+        for (int i = 0; i < slice.size; i++)
+        {
+            console <- slice[i] <- " ";
+            loop (32) advance();
+            slice = values2;
+        }
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void main()
+    {
+        let values = int[8] (0, 1, 0, 0, 0, 0, 0, 0);
+        let values2 = int[8] (1, 2, 3, 4, 5, 6, 7, 8);
+
+        var slice = int[] (values);
+        slice = values2;
+
+        for (int i = 0; i < slice.size; i++)
+        {
+            console <- slice[i] <- " ";
+            loop (32) advance();
+        }
+    }
+}
+
+## testConsole ("0123456789")
+
+processor Test
+{
+    output stream float out;
+
+    void main()
+    {
+        for (wrap<10> i)
+        {
+            advance();
+            console <- i;
+        }
+    }
+}
+
+## testConsole ("0123456789")
+
+processor Test
+{
+    output stream float out;
+
+    void main()
+    {
+        for (wrap<10> i)
+        {
+            console <- i;
+            advance();
+        }
+    }
+}
+
+## testConsole ("0123456789")
+
+processor Test
+{
+    output stream float out;
+
+    void main()
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            advance();
+            console <- int (i);
+        }
+    }
+}
+
+## testConsole ("0123456789")
+
+processor Test
+{
+    output stream float out;
+
+    void main()
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            console <- i;
+            advance();
+        }
+    }
+}
 
 ## testFunction()
 
 bool test()
 {
     float<8> v = (1, 2, 3, 4, 5, 6, 7, 8);
-
     blankRange (v);
-
     return allTrue (v == float<8> (1, 2, 3, 0, 0, 0, 0, 8));
 }
 
