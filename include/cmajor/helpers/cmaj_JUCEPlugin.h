@@ -25,6 +25,8 @@
 #include "cmaj_GeneratedCppEngine.h"
 #include "../../choc/memory/choc_xxHash.h"
 
+#include <utility>
+
 #if JUCE_LINUX
  #define Font FontX  // Gotta love these C headers with global symbol clashes.. sigh..
  #define Time TimeX
@@ -62,7 +64,18 @@ public:
         {
             patch->stopPlayback    = [this] { suspendProcessing (true); };
             patch->startPlayback   = [this] { suspendProcessing (false); };
-            patch->patchChanged    = [this] { juce::MessageManager::callAsync ([this] { handlePatchChange(); }); };
+            patch->patchChanged    = [this]
+            {
+                const auto executeOrDeferToMessageThread = [] (auto&& fn) -> void
+                {
+                    if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+                        return fn();
+
+                    juce::MessageManager::callAsync (std::forward<decltype (fn)> (fn));
+                };
+
+                executeOrDeferToMessageThread ([this] { handlePatchChange(); });
+            };
             patch->statusChanged   = [this] (const auto& s) { setStatusMessage (s.statusMessage, s.messageList.hasErrors()); };
 
             patch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
