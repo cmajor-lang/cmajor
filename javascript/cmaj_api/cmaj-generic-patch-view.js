@@ -132,10 +132,7 @@ class GenericPatchView extends HTMLElement
                 text-align: center;
             }
 
-            ${Controls.Options.getCSS()}
-            ${Controls.Knob.getCSS()}
-            ${Controls.Switch.getCSS()}
-            ${Controls.LabelledControlHolder.getCSS()}
+            ${Controls.getAllCSS()}
 
             </style>
 

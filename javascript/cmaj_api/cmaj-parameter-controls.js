@@ -717,6 +717,15 @@ window.customElements.define ("cmaj-switch-control", Switch);
 window.customElements.define ("cmaj-options-control", Options);
 window.customElements.define ("cmaj-labelled-control-holder", LabelledControlHolder);
 
+//==============================================================================
+export function getAllCSS()
+{
+    return `
+        ${Options.getCSS()}
+        ${Knob.getCSS()}
+        ${Switch.getCSS()}
+        ${LabelledControlHolder.getCSS()}`;
+}
 
 //==============================================================================
 export function createControl (patchConnection, endpointInfo)
@@ -740,6 +749,18 @@ export function createLabelledControl (patchConnection, endpointInfo)
 
     if (control)
         return new LabelledControlHolder (patchConnection, endpointInfo, control);
+
+    return undefined;
+}
+
+//==============================================================================
+/// Takes a patch connection and its current status object, and tries to create
+/// a control for the given endpoint ID.
+export function createLabelledControlForEndpointID (patchConnection, status, endpointID)
+{
+    for (const endpointInfo of status?.details?.inputs)
+        if (endpointInfo.endpointID == endpointID)
+            return createLabelledControl (patchConnection, endpointInfo);
 
     return undefined;
 }

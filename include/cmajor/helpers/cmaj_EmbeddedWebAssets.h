@@ -936,6 +936,15 @@ window.customElements.define ("cmaj-switch-control", Switch);
 window.customElements.define ("cmaj-options-control", Options);
 window.customElements.define ("cmaj-labelled-control-holder", LabelledControlHolder);
 
+//==============================================================================
+export function getAllCSS()
+{
+    return `
+        ${Options.getCSS()}
+        ${Knob.getCSS()}
+        ${Switch.getCSS()}
+        ${LabelledControlHolder.getCSS()}`;
+}
 
 //==============================================================================
 export function createControl (patchConnection, endpointInfo)
@@ -959,6 +968,19 @@ export function createLabelledControl (patchConnection, endpointInfo)
 
     if (control)
         return new LabelledControlHolder (patchConnection, endpointInfo, control);
+
+    return undefined;
+})"
+R"(
+
+//==============================================================================
+/// Takes a patch connection and its current status object, and tries to create
+/// a control for the given endpoint ID.
+export function createLabelledControlForEndpointID (patchConnection, status, endpointID)
+{
+    for (const endpointInfo of status?.details?.inputs)
+        if (endpointInfo.endpointID == endpointID)
+            return createLabelledControl (patchConnection, endpointInfo);
 
     return undefined;
 }
@@ -1815,10 +1837,7 @@ R"(
                 text-align: center;
             }
 
-            ${Controls.Options.getCSS()}
-            ${Controls.Knob.getCSS()}
-            ${Controls.Switch.getCSS()}
-            ${Controls.LabelledControlHolder.getCSS()}
+            ${Controls.getAllCSS()}
 
             </style>
 
@@ -1984,11 +2003,11 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 24805) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 25555) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 19559) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4997) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4859) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6471) }
