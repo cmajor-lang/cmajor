@@ -1,0 +1,134 @@
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+
+graph RingMod  [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    input event float drive [[ min: 0.2,  max: 20, init:  1,  name: "Drive",   unit: "dB", step: 0.1 ]];
+    input modulator.frequencyIn modulationFrequency [[ min: 1.0, max: 200, init: 30, name: "Modulation Frequency", unit: "Hz", step: 0.1]];
+    input samplePlayer.triggerSample;
+
+    node modulator = std::oscillators::Sine (float, 30.0f);
+    node gain = std::levels::ConstantGain (float, 0.5f);
+    node phaseInsert = PhaseInvert;
+    node phaseInsert2 = PhaseInvert;
+    node diodeBlock1 = DiodeBlock;
+    node diodeBlock2 = DiodeBlock;
+    node samplePlayer = SamplePlayer;
+
+    connection
+    {
+        drive -> diodeBlock1.drive,
+                 diodeBlock2.drive;
+
+        in -> diodeBlock1.in,
+              diodeBlock2.in;
+
+        modulator -> gain;
+        gain -> diodeBlock1.in;
+        gain -> phaseInsert -> diodeBlock2.in;
+
+        diodeBlock1 -> out;
+        diodeBlock2 -> phaseInsert2 -> out;
+
+        samplePlayer -> diodeBlock1.in,
+                        diodeBlock2.in;
+    }
+}
+
+graph DiodeBlock
+{
+    input stream float in;
+    output stream float out;
+
+    input event float drive;
+
+    node distortion1 = Distortion;
+    node distortion2 = Distortion;
+    node inverter = PhaseInvert;
+
+    connection
+    {
+        drive -> distortion1.drive,
+                 distortion2.drive;
+
+        in -> distortion1.audioIn;
+        distortion1.audioOut -> out;
+
+        in -> inverter -> distortion2.audioIn;
+        distortion2.audioOut -> out;
+    }
+}
+
+graph PhaseInvert
+{
+    input stream float in;
+    output stream float out;
+
+    connection -in -> out;
+}
+
+processor Distortion
+{
+    input  stream float audioIn;
+    output stream float audioOut;
+
+    input event float drive;
+    var gain = 1.0f;
+    var gainInv = 1.0f;
+
+    event drive (float d)
+    {
+        gain = std::levels::dBtoGain (d);
+        gainInv = 1.0f / gain;
+    }
+
+    void main()
+    {
+        loop
+        {
+            if (audioIn > 0.0f)
+            {
+                let i = audioIn * gain;
+
+                let v = (i * i * i * i * i) * -0.0025f +
+                        (i * i * i * i) * 0.0451f +
+                        (i * i * i) * -0.3043f +
+                        (i * i) * 0.9589f +
+                        (i) * -0.3828f +
+                        0.0061f;
+
+                audioOut <- tanh (v) * gainInv;
+            }
+
+            advance();
+        }
+    }
+}
+
+graph SamplePlayer
+{
+    output samplePlayer.out;
+    input event int triggerSample;
+
+    node samplePlayer = std::audio_data::SamplePlayer (source1.type);
+
+    external std::audio_data::Mono source1, source2;
+
+    event triggerSample (int index)
+    {
+        samplePlayer.content <- index == 0 ? source1 : source2;
+        samplePlayer.speedRatio <- 1;
+    }
+}
