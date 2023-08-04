@@ -1039,7 +1039,7 @@ processor test
     }
 }
 
-## disabled testConsole ("1 2 3 4 5 6 7 8 ")
+## testConsole ("1 2 3 4 5 6 7 8 ")
 
 processor test
 {
