@@ -9,99 +9,193 @@
 //  //                                             ,88
 //  //                                           888P"
 
-/**
-    An example of a simple additive synthesiser!
-*/
-graph AdditiveSynth  [[ main ]]
+graph ElectricPiano  [[ main ]]
 {
-    input event std::midi::Message midiIn;
-    output stream float audioOut;
+    input event std::midi::Message midiIn  [[ name: "MIDI input" ]];
+    input paramsProcessor.*;
+
+    output stream float<2> audioOut  [[ name: "Audio Out" ]];
 
     node
     {
-        voices = Voice[8];
-        voiceAllocator = std::voices::VoiceAllocator(8);
+        voices = Voice[16];
+        voiceAllocator = std::voices::VoiceAllocator(16);
+        paramsProcessor = Instrument::ParamsProcessor;
+        tremolo = Tremolo;
     }
 
     connection
     {
-        midiIn -> std::midi::MPEConverter -> voiceAllocator;
+        midiIn -> std::midi::MPEConverter -> voiceAllocator -> voices.eventsIn;
 
-        // Plumb the voice allocator to the voices array
-        voiceAllocator.voiceEventOut -> voices.noteOn,
-                                        voices.noteOff,
-                                        voices.pitchBend;
+        paramsProcessor.paramsOut -> voices.paramsIn, tremolo.paramsIn;
+        voices.audioOut -> tremolo.in;
+        tremolo.out -> audioOut;
+    }
+}
 
-        // Sum the voices audio out to the output
-        voices -> audioOut;
+//==============================================================================
+namespace Instrument
+{
+    let harmonics = 32;
+
+    struct Params
+    {
+        float brightness;
+        float velocityScaling;
+        float decayRate;
+        float harmonicDecayRate;
+        float keyScaling;
+        float releaseRate;
+        float vibratoDepth;
+        float vibratoRate;
+
+        float<harmonics> getDecay (float note)
+        {
+            float baseDecayRate = (this.decayRate / 40000.0f);
+            float harmonicScaling = 1.0f - (this.harmonicDecayRate / 200000.0f);
+
+            float scalingMultiplier = (48.0f - note) / 12.0f;
+            float keyScalingFactor = scalingMultiplier * (this.keyScaling * 0.02f);
+
+            if (keyScalingFactor > 0)
+                baseDecayRate = 1.0f - (baseDecayRate / (1.0f + keyScalingFactor));
+            else
+                baseDecayRate = 1.0f - (baseDecayRate * (1.0f - keyScalingFactor));
+
+            float<harmonics> decay;
+            float scaling = 1.0f;
+
+            for (wrap<harmonics> i)
+            {
+                decay[i] = baseDecayRate * scaling;
+                scaling *= harmonicScaling;
+            }
+
+            return decay;
+        }
+
+        float<harmonics> getRelease (float note)
+        {
+            return 0.999f - (this.releaseRate / 1000.0f);
+        }
+
+        float<Instrument::harmonics> getInitialAmplitudes (float note, float  velocity)
+        {
+            let velocity100 = float<Instrument::harmonics> (0.150869f, 0.385766f, 0.215543f, 0.117811f, 0.100411f, 0.0128637f,
+                                                            0.0288844f, 0.00243388f, 0.00963092f, 0.0035634f, 0.00256945f, 0.00184799f,
+                                                            0.000399878f, 0.000660576f, 3.00995e-05f, 0.00021866f, 9.33705e-05f,
+                                                            0.000177973f, 0.0002545f, 0.000323602f, 0.000779045f, 0.000116569f,
+                                                            0.000772873f, 0.000364486f, 0.000248027f, 0.00018236f, 3.27292e-05f,
+                                                            6.64988e-05f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+            let velocity0   = float<Instrument::harmonics> (0.02f, 0.05f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+            var v = (velocity100 * velocity) + (velocity0 * (1.0f - velocity));
+
+            float brightnessScaling = -0.2f + (0.8f * (this.brightness * 0.01f));
+
+            brightnessScaling += (velocity * this.velocityScaling * 0.01f * 0.5f);
+
+            for (wrap<harmonics> i)
+                v[i] *= (1.0f + brightnessScaling * float (i));
+
+            return v;
+        }
+    }
+
+    Params createParams()
+    {
+        Params p;
+
+        p.decayRate = 10;
+        p.releaseRate = 20;
+        p.keyScaling = 50;
+        p.harmonicDecayRate = 20;
+
+        return p;
+    }
+
+    processor ParamsProcessor
+    {
+        input event float brightness            [[ name: "Brightness",          min: 0.0, max: 100.0, init: 30, unit: "%" ]];
+        input event float velocityScaling       [[ name: "Velocity Scaling",    min: 0.0, max: 100.0, init: 50, unit: "%" ]];
+        input event float decayRate             [[ name: "Decay Rate",          min: 0.0, max: 100.0, init: 10, unit: "%" ]];
+        input event float harmonicDecayRate     [[ name: "Harmonic Decay Rate", min: 0.0, max: 100.0, init: 30, unit: "%" ]];
+        input event float keyScaling            [[ name: "Key Scaling",         min: 0.0, max: 100.0, init: 50, unit: "%" ]];
+        input event float releaseRate           [[ name: "Release Rate",        min: 0.0, max: 100.0, init: 60, unit: "%" ]];
+        input event float vibratoDepth          [[ name: "Vibrato Intensity",   min: 0.0, max: 100.0, init: 25, unit: "%" ]];
+        input event float vibratoRate           [[ name: "Vibrato Speed",       min: 0.0, max: 100.0, init: 50, unit: "%" ]];
+
+        output event Instrument::Params paramsOut;
+
+        Instrument::Params params = createParams();
+
+        event brightness (float f)          { params.brightness = f;            paramsOut <- params; }
+        event velocityScaling (float f)     { params.velocityScaling = f;       paramsOut <- params; }
+        event decayRate (float f)           { params.decayRate = f;             paramsOut <- params; }
+        event harmonicDecayRate (float f)   { params.harmonicDecayRate = f;     paramsOut <- params; }
+        event keyScaling (float f)          { params.keyScaling = f;            paramsOut <- params; }
+        event releaseRate (float f)         { params.releaseRate = f;           paramsOut <- params; }
+        event vibratoDepth (float f)        { params.vibratoDepth = f;          paramsOut <- params; }
+        event vibratoRate (float f)         { params.vibratoRate = f;           paramsOut <- params; }
     }
 }
 
 //==============================================================================
 graph Voice
 {
-    input event
-    {
-        std::notes::NoteOn noteOn;
-        std::notes::NoteOff noteOff;
-        std::notes::PitchBend pitchBend;
-    }
+    input event Instrument::Params paramsIn;
+    input event (std::notes::NoteOn, std::notes::NoteOff) eventsIn;
 
     output stream float audioOut;
 
     node
     {
-        osc             = OscillatorBank (48);
+        osc = OscillatorBank (Instrument::harmonics);
         amplitudeSource = AmplitudeSource;
-        declickEnvelope = std::envelopes::FixedASR (0.0f, 0.02f);
-        attenuator      = std::levels::DynamicGain (float);
     }
 
     connection
     {
-        noteOn          -> osc.noteOn, amplitudeSource.noteOn;
-        pitchBend       -> osc.pitchBend;
-        noteOn, noteOff -> declickEnvelope.eventIn;
+        paramsIn  -> osc.paramsIn, amplitudeSource.paramsIn;
+        eventsIn  -> osc.eventsIn, amplitudeSource.eventsIn;
 
-        amplitudeSource.out         -> osc.amplitudes;
-        osc.audioOut                -> attenuator.in;
-        declickEnvelope.gainOut     -> attenuator.gain;
-        attenuator                  -> audioOut;
+        amplitudeSource.out -> osc.amplitudes;
+        osc.audioOut        -> audioOut;
     }
 }
 
 //==============================================================================
 processor OscillatorBank (int size = 64)
 {
-    input event
-    {
-        std::notes::NoteOn noteOn;
-        std::notes::PitchBend pitchBend;
-    }
-
+    input event (std::notes::NoteOn) eventsIn;
+    input event Instrument::Params paramsIn;
     input stream float<size> amplitudes;
 
     output stream float audioOut;
 
-    event noteOn (std::notes::NoteOn e)
+    event paramsIn (Instrument::Params p)
+    {
+        params = p;
+    }
+
+    event eventsIn (std::notes::NoteOn e)
     {
         notePitch = e.pitch;
-        bendSemitones = 0.0f;
         oscillators = 1.0f;
         setMultipliers();
     }
 
-    event pitchBend (std::notes::PitchBend e)
-    {
-        bendSemitones = e.bendSemitones;
-        setMultipliers();
-    }
+    Instrument::Params params;
 
-    float notePitch, bendSemitones;
+    float<Instrument::harmonics> decay, release;
+    float notePitch;
 
     void setMultipliers()
     {
-        let noteFrequency = std::notes::noteToFrequency (notePitch + bendSemitones);
+        let noteFrequency = std::notes::noteToFrequency (notePitch);
         let nyquist = float (processor.frequency / 2.0);
 
         for (wrap<size> i)
@@ -143,52 +237,87 @@ processor OscillatorBank (int size = 64)
 //==============================================================================
 processor AmplitudeSource
 {
-    input event std::notes::NoteOn noteOn;
-    output stream float<size> out;
+    input event (std::notes::NoteOn, std::notes::NoteOff) eventsIn;
+    input event Instrument::Params paramsIn;
 
-    external float<48>[] amplitudes;
+    output stream float<Instrument::harmonics> out;
 
-    let size = 48;
-    let stepRate = 1024;
+    Instrument::Params params;
+    let interpolatedSteps = 64;
+    float<Instrument::harmonics> currentValue, release, decay;
+    bool released = false;
 
-    event noteOn (std::notes::NoteOn e)
+    event paramsIn (Instrument::Params p)
     {
-        value = amplitudes[0];
-        increment = (amplitudes[1] - amplitudes[0]) / float<size> (stepRate);
-        nextSlot = 1;
-        steps = stepRate;
+        params = p;
     }
 
-    void next()
+    event eventsIn (std::notes::NoteOn e)
     {
-        if (nextSlot < amplitudes.size - 1)
-        {
-            value = amplitudes.at (nextSlot);
-            increment = (amplitudes.at (nextSlot + 1) - amplitudes.at (nextSlot)) / float<size> (stepRate);
-            nextSlot++;
-        }
-        else
-        {
-            increment = 0;
-        }
-
-        steps = stepRate;
+        release      = params.getRelease (e.pitch);
+        decay        = params.getDecay (e.pitch);
+        currentValue = params.getInitialAmplitudes (e.pitch, e.velocity);
+        released     = false;
     }
 
-    float<size> value, increment;
-    int nextSlot, steps;
+    event eventsIn (std::notes::NoteOff e)
+    {
+        released = true;
+    }
 
     void main()
     {
         loop
         {
-            out <- value;
-            value += increment;
+            let target = currentValue * (released ? release : decay);
+            let increment = (target - currentValue) / interpolatedSteps;
 
-            if (--steps == 0)
-                next();
+            loop (interpolatedSteps)
+            {
+                out <- currentValue;
+                currentValue += increment;
+                advance();
+            }
+        }
+    }
+}
 
+//==============================================================================
+processor Tremolo
+{
+    input stream float32 in;
+    output stream float32<2> out;
+
+    input event Instrument::Params paramsIn;
+
+    float frames = 10000;
+    float depth = 0;
+    float current = 0.5f;
+
+    event paramsIn (Instrument::Params p)
+    {
+        frames = float (processor.frequency) / (1 + (p.vibratoRate / 10.0f));
+        depth = p.vibratoDepth / 200.0f;
+    }
+
+    void stepTo (float target)
+    {
+        let step = (target - current) / frames;
+
+        loop (int (frames))
+        {
+            out <- float<2> (in * current, in * (1.0f - current));
+            current += step;
             advance();
+        }
+    }
+
+    void main()
+    {
+        loop
+        {
+            stepTo (0.5f + depth);
+            stepTo (0.5f - depth);
         }
     }
 }
