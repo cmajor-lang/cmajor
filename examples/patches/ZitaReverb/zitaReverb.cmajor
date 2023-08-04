@@ -1,0 +1,506 @@
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+
+/// Although entirely rewritten when porting from C++ to Cmajor, the original C++ version
+/// of this algorithm was written by Fons Adriaensen <fons@linuxaudio.org>
+
+graph ZitaReverb [[ main ]]
+{
+    input predelay.delayIn;
+    input core.crossoverIn;
+    input core.rtLowIn;
+    input core.rtMidIn;
+    input core.dampingIn;
+    input event float eq1FreqIn     [[ name: "EQ1 Freq",  min:  40,  max:  2500,  init:  400,  unit: "hz" ]];
+    input event float eq1GainIn     [[ name: "EQ1 Gain",  min: -15,  max:    15,  init:    0,  unit: "db" ]];
+    input event float eq2FreqIn     [[ name: "EQ2 Freq",  min: 160,  max: 10000,  init: 4000,  unit: "hz" ]];
+    input event float eq2GainIn     [[ name: "EQ2 Gain",  min: -15,  max:    15,  init:    0,  unit: "db" ]];
+    input dryWetMixer.mixIn;
+
+    input stream float<2> in;
+    output stream float<2> out;
+
+    node predelay = Delay(float<2>);
+    node core = ReverbCore;
+    node eq1 = ParametericEQ;
+    node eq2 = ParametericEQ;
+    node dryWetMixer = DryWetMixer;
+
+    connection
+    {
+        in               -> dryWetMixer.dryIn;
+        in               -> predelay.in;
+        eq1FreqIn        -> eq1.freqIn;
+        eq1GainIn        -> eq1.gainIn;
+        eq2FreqIn        -> eq2.freqIn;
+        eq2GainIn        -> eq2.gainIn;
+        predelay.out     -> core.in;
+        core.out         -> dryWetMixer.wetIn;
+        dryWetMixer.out  -> eq1.in;
+        eq1.out          -> eq2.in;
+        eq2.out          -> out;
+    }
+}
+
+//==============================================================================
+processor Delay (using DataType)
+{
+    input stream DataType in;
+    output stream DataType out;
+
+    input event float delayIn   [[ name: "Delay", min: 20, max: maxDelayLengthMs, init: 40, unit: "ms" ]];
+
+    let maxDelayLengthMs = 100;
+    let delaySize = int (processor.maxFrequency * maxDelayLengthMs / 1000.0);
+
+    wrap<delaySize> readPos, writePos;
+    DataType[delaySize] delay;
+
+    event delayIn (float delayMs)
+    {
+        let delayInSeconds = delayMs * 0.001f;
+        let delayInSamples = int (floor ((delayInSeconds - 0.020f) * float (processor.frequency) + 0.5f));
+        readPos = wrap<delaySize> (writePos - delayInSamples);
+    }
+
+    void main()
+    {
+        loop
+        {
+            delay[writePos++] = in;
+            out <- delay[readPos++];
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor DryWetMixer
+{
+    output stream float<2> out;
+    input event float mixIn         [[ name: "Mix", min: 0, max: 100, init: 50, unit: "%" ]];
+    input stream float<2> dryIn, wetIn;
+
+    bool paramsChanged;
+    float mix;
+    float dryLevel, dryLevelDelta;
+    float wetLevel, wetLevelDelta;
+
+    event mixIn (float f)      { paramsChanged = true; mix = f * 0.01f;  }
+
+    void prepare (int blockSize)
+    {
+        dryLevelDelta = 0;
+        wetLevelDelta = 0;
+
+        if (paramsChanged)
+        {
+            let dryLevelTarget = (1 - mix) * (1 + mix);
+            let wetLevelTarget = 0.7f * mix * (2 - mix);
+            dryLevelDelta = (dryLevelTarget - dryLevel) / blockSize;
+            wetLevelDelta = (wetLevelTarget - wetLevel) / blockSize;
+
+            paramsChanged = false;
+        }
+    }
+
+    void main()
+    {
+        let blockSize = 32;
+
+        loop
+        {
+            prepare (blockSize);
+
+            loop (blockSize)
+            {
+                wetLevel += wetLevelDelta;
+                dryLevel += dryLevelDelta;
+                out <- wetLevel * wetIn + dryLevel * dryIn;
+                advance();
+            }
+        }
+    }
+}
+
+//==============================================================================
+processor ReverbCore
+{
+    input event float crossoverIn   [[ name: "Crossover", min: 50, max: 1000, init: 200, unit: "hz" ]];
+    input event float rtLowIn       [[ name: "Low RT60", min: 1, max: 8, init: 3, unit: "secs" ]];
+    input event float rtMidIn       [[ name: "Mid RT60", min: 1, max: 8, init: 2, unit: "secs" ]];
+    input event float dampingIn     [[ name: "HF Damping", min: 1.5, max: 24, init: 6, unit: "khz" ]];
+
+    input stream float<2> in;
+    output stream float<2> out;
+
+    event crossoverIn (float f)     { paramsChanged = true; crossover = f; }
+    event rtLowIn (float f)         { paramsChanged = true; rtLow = f; }
+    event rtMidIn (float f)         { paramsChanged = true; rtMid = f; }
+    event dampingIn (float f)       { paramsChanged = true; damping = f * 1000.0f; }
+
+    let delaySize = 16384;
+
+    struct DelayWithFeedback
+    {
+        void initialise (int size, float c)
+        {
+            this.writePos = wrap<delaySize> (size);
+            this.c = c;
+        }
+
+        float process (float x)
+        {
+            let z = this.line[this.readPos];
+            x -= this.c * z;
+            this.line[this.writePos] = x;
+            this.writePos++;
+            this.readPos++;
+            return z + this.c * x;
+        }
+
+        float c;
+        wrap<delaySize> readPos, writePos;
+        float[delaySize] line;
+    }
+
+    struct Filter
+    {
+        void setParams (float del, float tmf, float tlo, float wlo, float thi, float chi)
+        {
+            this.gmf = pow (0.001f, del / tmf);
+            this.glo = pow (0.001f, del / tlo) / this.gmf - 1.0f;
+            this.wlo = wlo;
+            let g = pow (0.001f, del / thi) / this.gmf;
+            let t = (1 - g * g) / (2 * g * g * chi);
+            this.whi = (sqrt (1 + 4 * t) - 1) / (2 * t);
+        }
+
+        float process (float x)
+        {
+            this.slo += this.wlo * (x - this.slo) + 1e-10f;
+            x += this.glo * this.slo;
+            this.shi += this.whi * (x - this.shi);
+            return this.gmf * this.shi;
+        }
+
+        float gmf, glo, wlo, whi, slo, shi;
+    }
+
+    struct Delay
+    {
+        void initialise (int size)
+        {
+            this.writePos = wrap<delaySize> (size);
+            this.readPos = 0;
+        }
+
+        float read()
+        {
+            return this.line[this.readPos];
+        }
+
+        void write (float f)
+        {
+            this.line[this.writePos] = f;
+            this.writePos++;
+            this.readPos++;
+        }
+
+        wrap<delaySize> readPos, writePos;
+        float[delaySize] line;
+    }
+
+    DelayWithFeedback[8] delayWithFeedback;
+    Filter[8] filter;
+    Delay[8] delay;
+
+    bool paramsChanged;
+    float crossover;
+    float rtLow;
+    float rtMid;
+    float damping;
+    float mix;
+    float wetLevel, wetLevelDelta;
+
+    const float[8] delayParams1 = ( 20346e-6f, 24421e-6f, 31604e-6f, 27333e-6f, 22904e-6f, 29291e-6f, 13458e-6f, 19123e-6f );
+    const float[8] delayParams2 = ( 153129e-6f, 210389e-6f, 127837e-6f, 256891e-6f, 174713e-6f, 192303e-6f, 125000e-6f, 219991e-6f );
+
+    void prepare (int numFrames)
+    {
+        wetLevelDelta = 0;
+
+        if (paramsChanged)
+        {
+            let wlo = 6.2832f * crossover / float (processor.frequency);
+
+            float chi = (damping > 0.49f * float (processor.frequency))
+                           ? 2.0f
+                           : 1.0f - cos (6.2832f * damping / float (processor.frequency));
+
+            for (wrap<8> i)
+                filter[i].setParams (delayParams2[i], rtMid, rtLow, wlo, 0.5f * rtMid, chi);
+
+            let wetLevelTarget = 1.0f / sqrt (rtMid);
+            wetLevelDelta = (wetLevelTarget - wetLevel) / numFrames;
+
+            paramsChanged = false;
+        }
+    }
+
+    void init()
+    {
+        for (wrap<8> i)
+        {
+            let k1 = int (floor (delayParams1[i] * float (processor.frequency) + 0.5f));
+            let k2 = int (floor (delayParams2[i] * float (processor.frequency) + 0.5f));
+            delayWithFeedback[i].initialise (k1, (i & 1) != 0 ? -0.6f : 0.6f);
+            delay[i].initialise (k2 - k1);
+        }
+    }
+
+    void shuffle (float& x, float& y)
+    {
+        let diff = x - y;
+        x += y;
+        y = diff;
+    }
+
+    float[8] shuffle (float[8] x)
+    {
+        shuffle (x[0], x[1]);
+        shuffle (x[2], x[3]);
+        shuffle (x[4], x[5]);
+        shuffle (x[6], x[7]);
+        shuffle (x[0], x[2]);
+        shuffle (x[1], x[3]);
+        shuffle (x[4], x[6]);
+        shuffle (x[5], x[7]);
+        shuffle (x[0], x[4]);
+        shuffle (x[1], x[5]);
+        shuffle (x[2], x[6]);
+        shuffle (x[3], x[7]);
+
+        return x;
+    }
+
+    void main()
+    {
+        let blockSize = 32;
+        let g = sqrt (0.125f);
+
+        loop
+        {
+            prepare (blockSize);
+
+            loop (blockSize)
+            {
+                let t0 = 0.3f * in[0];
+                let t1 = 0.3f * in[1];
+
+                let x = float[8]
+                (
+                    delayWithFeedback[0].process (delay[0].read() + t0),
+                    delayWithFeedback[1].process (delay[1].read() + t0),
+                    delayWithFeedback[2].process (delay[2].read() - t0),
+                    delayWithFeedback[3].process (delay[3].read() - t0),
+                    delayWithFeedback[4].process (delay[4].read() + t1),
+                    delayWithFeedback[5].process (delay[5].read() + t1),
+                    delayWithFeedback[6].process (delay[6].read() - t1),
+                    delayWithFeedback[7].process (delay[7].read() - t1)
+                );
+
+                let y = shuffle (x);
+
+                wetLevel += wetLevelDelta;
+                out <- wetLevel * float<2> ((y[1] + y[2]),
+                                            (y[1] - y[2]));
+
+                delay[0].write (filter[0].process (g * y[0]));
+                delay[1].write (filter[1].process (g * y[1]));
+                delay[2].write (filter[2].process (g * y[2]));
+                delay[3].write (filter[3].process (g * y[3]));
+                delay[4].write (filter[4].process (g * y[4]));
+                delay[5].write (filter[5].process (g * y[5]));
+                delay[6].write (filter[6].process (g * y[6]));
+                delay[7].write (filter[7].process (g * y[7]));
+
+                advance();
+            }
+        }
+    }
+}
+
+//==============================================================================
+processor ParametericEQ
+{
+    input event float freqIn    [[ name: "EQ1 Freq", min:  40, max: 2500, init: 400, unit: "hz" ]];
+    input event float gainIn    [[ name: "EQ1 Gain", min: -15, max: 15,   init:   0, unit: "db" ]];
+
+    input stream float<2> in;
+    output stream float<2> out;
+
+    event freqIn (float f)
+    {
+        f0 = f;
+        paramsChanged = true;
+    }
+
+    event gainIn (float g)
+    {
+        g0 = pow (10.0f, 0.05f * g);
+        paramsChanged = true;
+    }
+
+    enum State
+    {
+        bypass,
+        static,
+        smooth
+    }
+
+    void prepare (int numFrames)
+    {
+        if (paramsChanged)
+        {
+            bool isSmoothing = false;
+
+            if (g0 != g1)
+            {
+                isSmoothing = true;
+                if      (g0 > 2 * g1) g1 *= 2;
+                else if (g1 > 2 * g0) g1 /= 2;
+                else                  g1 = g0;
+            }
+
+            if (f0 != f1)
+            {
+                isSmoothing = true;
+                if      (f0 > 2 * f1) f1 *= 2;
+                else if (f1 > 2 * f0) f1 /= 2;
+                else                  f1 = f0;
+            }
+
+            if (isSmoothing)
+            {
+                state = State::smooth;
+                calcFilterSettings (numFrames, g1, f1);
+            }
+            else
+            {
+                paramsChanged = false;
+
+                if (abs (g1 - 1) < 0.001f)
+                {
+                    state = State::bypass;
+                    z1 = ();
+                    z2 = ();
+                }
+                else
+                {
+                    state = State::static;
+                }
+            }
+        }
+    }
+
+    void calcFilterSettings (int numFrames, float g, float f)
+    {
+        f = f * float (pi / processor.frequency);
+        let b = 2 * f / sqrt (g);
+        let lgg = 0.5f * (g - 1);
+        let lc1 = -cos (2 * f);
+        let lc2 = (1 - b) / (1 + b);
+
+        if (numFrames > 0)
+        {
+            dc1 = (lc1 - c1) / numFrames;
+            dc2 = (lc2 - c2) / numFrames;
+            dgg = (lgg - gg) / numFrames;
+        }
+        else
+        {
+            c1 = lc1;
+            c2 = lc2;
+            gg = lgg;
+        }
+    }
+
+    float<2> process (float<2> in)
+    {
+        var y = in - c2 * z2;
+        let result = in - gg * (z2 + c2 * y - in);
+        y -= c1 * z1;
+        z2 = z1 + c1 * y;
+        z1 = y + 1e-20f;
+
+        return result;
+    }
+
+    void init()
+    {
+        g0 = 1;
+        g1 = 1;
+        f0 = 1e3f;
+        f1 = 1e3f;
+
+        state = State::bypass;
+        calcFilterSettings (0, g1, f1);
+    }
+
+    void main()
+    {
+        const int blockSize = 32;
+
+        loop
+        {
+            prepare (blockSize);
+
+            if (state == State::bypass)
+            {
+                loop (blockSize)
+                {
+                    out <- in;
+                    advance();
+                }
+            }
+            else if (state == State::static)
+            {
+                loop (blockSize)
+                {
+                    out <- process (in);
+                    advance();
+                }
+            }
+            else
+            {
+                loop (blockSize)
+                {
+                    c1 += dc1;
+                    c2 += dc2;
+                    gg += dgg;
+                    out <- process (in);
+                    advance();
+                }
+            }
+        }
+    }
+
+    bool paramsChanged;
+    State state;
+    float g0, g1;
+    float f0, f1;
+    float c1, dc1;
+    float c2, dc2;
+    float gg, dgg;
+    float<2> z1, z2;
+}

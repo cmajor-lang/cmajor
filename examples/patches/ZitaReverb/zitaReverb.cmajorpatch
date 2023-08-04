@@ -1,0 +1,12 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.zitaReverb",
+    "version":          "1.0",
+    "name":             "Zita Reverb",
+    "description":      "An implementation of the zita_rev1 reverb",
+    "category":         "generator",
+    "manufacturer":     "Sound Stacks Ltd",
+    "isInstrument":     false,
+
+    "source":           "zitaReverb.cmajor"
+}
