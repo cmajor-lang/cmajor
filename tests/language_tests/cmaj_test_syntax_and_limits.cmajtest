@@ -529,7 +529,7 @@ graph G
     graph P {}
 }
 
-## expectError ("2:1: error: Expected a function or variable declaration")
+## expectError ("2:6: error: Nodes cannot be declared within namespaces")
 
 node X = x;
 
