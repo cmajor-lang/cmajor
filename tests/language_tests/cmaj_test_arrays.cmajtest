@@ -1181,6 +1181,70 @@ processor test
     }
 }
 
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    int[8] get() { return (1, 2, 3, 4, 5, 6, 7, 8); }
+
+    void write (int[] values)
+    {
+        for (int i = 0; i < values.size; i++)
+            console <- values[i] <- " ";
+    }
+
+    void main()
+    {
+        let x = int[] (get());
+        int[4] y;
+        y[2]++;
+        write (x);
+        advance();
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    int[8] get() { return (1, 2, 3, 4, 5, 6, 7, 8); }
+
+    void write (int[] values)
+    {
+        for (int i = 0; i < values.size; i++)
+            console <- values[i] <- " ";
+    }
+
+    void main()
+    {
+        write (get());
+        advance();
+    }
+}
+
+## testConsole ("1 2 3 4 5 6 7 8 ")
+
+processor test
+{
+    output stream float out;
+
+    void write (const int[]& values)
+    {
+        for (int i = 0; i < values.size; i++)
+            console <- values[i] <- " ";
+    }
+
+    void main()
+    {
+        write (int[8] (1, 2, 3, 4, 5, 6, 7, 8));
+        advance();
+    }
+}
+
 ## testConsole ("0123456789")
 
 processor Test

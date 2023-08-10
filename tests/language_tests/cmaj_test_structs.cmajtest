@@ -192,7 +192,7 @@ bool testOverload3()        { const S2 s; return s.overloaded() == 2; }
 bool testOverload4()        { S2 s; return s.overloaded() == 1; }
 bool testOverload5()        { return S2().overloaded() == 2; }
 
-## expectError ("2:17: error: This function has no implementation")
+## expectError ("2:22: error: Found \";\" when expecting \"{\"")
 
 struct S { void foo(); }
 

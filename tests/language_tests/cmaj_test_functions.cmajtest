@@ -8,7 +8,7 @@
 //                                           ,88
 //                                        888P"
 
-## expectError ("6:5: error: A function declaration cannot be marked 'external'")
+## expectError ("6:26: error: An external function declaration cannot have a body")
 
 processor P
 {
@@ -254,7 +254,15 @@ namespace Parameterised (int x = 1, using Y)  {}
 
 namespace Parameterised (using X, int x = 1, using Y)  {}
 
-## expectError ("2:6: error: This function has no implementation")
+## expectError ("2:30: error: An external function declaration cannot have a body")
+
+struct S { external void f() {} }
+
+## expectError ("2:19: error: An external function declaration cannot have a body")
+
+external void f() {}
+
+## expectError ("2:15: error: Found \";\" when expecting \"{\"")
 
 bool f (int i);
 bool test() { return f(8); }
