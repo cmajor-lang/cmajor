@@ -80,9 +80,11 @@ struct GeneratedCppEngine  : public choc::com::ObjectWithAtomicRefCount<EngineIn
     bool isLoaded() override        { return loaded; }
     bool isLinked() override        { return linked; }
 
-    choc::com::String* load (ProgramInterface*, void*, EngineInterface::RequestExternalVariableFn) override { loaded = true; linked = false; return {}; }
-    choc::com::String* link (CacheDatabaseInterface*) override                                              { loaded = linked = true; return {}; }
-    choc::com::String* getLastBuildLog() override                                                           { return {}; }
+    choc::com::String* load (ProgramInterface*,
+                             void*, EngineInterface::RequestExternalVariableFn,
+                             void*, EngineInterface::RequestExternalFunctionFn) override   { loaded = true; linked = false; return {}; }
+    choc::com::String* link (CacheDatabaseInterface*) override                             { loaded = linked = true; return {}; }
+    choc::com::String* getLastBuildLog() override                                          { return {}; }
 
     PerformerInterface* createPerformer() override
     {

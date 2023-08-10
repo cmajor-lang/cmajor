@@ -1205,7 +1205,8 @@ private:
                                                                                                         v.annotation);
 
                                                         return {};
-                                                    }))
+                                                    },
+                                                    {}))
         {
             renderer->programDetails = engine.getProgramDetails();
             renderer->inputEndpoints = engine.getInputEndpoints();

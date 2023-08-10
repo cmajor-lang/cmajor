@@ -81,11 +81,17 @@ struct Engine
 
     //==============================================================================
     using ExternalVariableProviderFn = std::function<choc::value::Value (const cmaj::ExternalVariable&)>;
+    using ExternalFunctionProviderFn = std::function<void*(const char* functionName, const char* functionSignature)>;
 
     /// Attempts to load a program into this engine.
     /// Returns true if it succeeds, and adds any errors or messages to the list provided.
-    /// The ExternalVariableProviderFn will be called during load for each external variable
-    bool load (DiagnosticMessageList& messages, const Program& programToLoad, ExternalVariableProviderFn fn);
+    /// The ExternalVariableProviderFn and ExternalFunctionProviderFn are used to resolve
+    /// any external variables or functions that the program may contain. If your program
+    /// doesn't have any externals, you can pass null functors for these parameters.
+    bool load (DiagnosticMessageList& messages,
+               const Program& programToLoad,
+               ExternalVariableProviderFn getExternalVariable,
+               ExternalFunctionProviderFn getExternalFunction);
 
     /// Unloads the current program and completely resets the state of the engine.
     void unload();
@@ -216,33 +222,44 @@ inline void Engine::setBuildSettings (const BuildSettings& newSettings)
         engine->setBuildSettings (newSettings.toJSON().c_str());
 }
 
-inline bool Engine::load (DiagnosticMessageList& messages, const Program& programToLoad, ExternalVariableProviderFn fn)
+inline bool Engine::load (DiagnosticMessageList& messages, const Program& programToLoad,
+                          ExternalVariableProviderFn getExternalVariable,
+                          ExternalFunctionProviderFn getExternalFunction)
 {
-    struct ExternalVariableRequstor
+    struct ExternalResolver
     {
-        ExternalVariableRequstor (EnginePtr e, ExternalVariableProviderFn f) : engine (e), requestor (f) {}
+        EngineInterface& engine;
+        ExternalVariableProviderFn getVariable;
+        ExternalFunctionProviderFn getFunction;
 
-        EnginePtr engine;
-        ExternalVariableProviderFn requestor;
-
-        static void Provider (void* context, const char* ext)
+        static void resolveVariable (void* context, const char* ext)
         {
-            ExternalVariableRequstor* instance = static_cast<ExternalVariableRequstor*> (context);
-
             try
             {
-                auto externalVariable = ExternalVariable::fromJSON (choc::json::parse (ext));
-                auto v = instance->requestor (externalVariable);
+                auto instance = static_cast<ExternalResolver*> (context);
 
-                if (! v.isVoid())
+                if (instance->getVariable)
                 {
-                    auto s = v.serialise();
-                    instance->engine->setExternalVariable (externalVariable.name.c_str(), s.data.data(), s.data.size());
+                    auto externalVariable = ExternalVariable::fromJSON (choc::json::parse (ext));
+
+                    if (auto v = instance->getVariable (externalVariable); ! v.isVoid())
+                    {
+                        auto s = v.serialise();
+                        instance->engine.setExternalVariable (externalVariable.name.c_str(), s.data.data(), s.data.size());
+                    }
                 }
             }
-            catch (const std::exception&)
-            {
-            }
+            catch (const std::exception&) {}
+        }
+
+        static void* resolveFunction (void* context, const char* functionName, const char* functionSignature)
+        {
+            auto instance = static_cast<ExternalResolver*> (context);
+
+            if (instance->getFunction)
+                return instance->getFunction (functionName, functionSignature);
+
+            return {};
         }
     };
 
@@ -253,9 +270,11 @@ inline bool Engine::load (DiagnosticMessageList& messages, const Program& progra
         return false;
     }
 
-    ExternalVariableRequstor requstor (engine, fn);
+    ExternalResolver externalResolver { *engine, std::move (getExternalVariable), std::move (getExternalFunction) };
 
-    if (auto result = choc::com::StringPtr (engine->load (programToLoad.program.get(), &requstor, ExternalVariableRequstor::Provider)))
+    if (auto result = choc::com::StringPtr (engine->load (programToLoad.program.get(),
+                                                          std::addressof (externalResolver), ExternalResolver::resolveVariable,
+                                                          std::addressof (externalResolver), ExternalResolver::resolveFunction)))
         return messages.addFromJSONString (result);
 
     return true;

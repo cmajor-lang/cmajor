@@ -64,17 +64,21 @@ struct EngineInterface   : public choc::com::Object
 
     //==============================================================================
     using RequestExternalVariableFn = void(*)(void* context, const char* externalVariable);
+    using RequestExternalFunctionFn = void*(*)(void* context, const char* functionName, const char* functionSignature);
 
     /// Attempts to load a program, returning either a nullptr or a JSON error string
     /// which can be parsed into something more useful with DiagnosticMessageList::fromJSONString()
-    /// The RequestExternalVariableFn specifies a handler function for external variables. This
-    /// will be called by the program during load, and expects a call to setExternalVariable
-    /// to set the given variable value.
-    [[nodiscard]] virtual choc::com::String* load (ProgramInterface*, void* callbackContext, RequestExternalVariableFn) = 0;
+    /// The RequestExternalVariableFn callback will be used to resolve any external variables, and
+    /// must call setExternalVariable() to provide the value for the variable being requested. The
+    /// RequestExternalFunctionFn must return a function pointer that will be used to resolve an
+    /// external function.
+    [[nodiscard]] virtual choc::com::String* load (ProgramInterface*,
+                                                   void* requestVariableContext, RequestExternalVariableFn,
+                                                   void* requestFunctionContext, RequestExternalFunctionFn) = 0;
 
     //==============================================================================
     /// Sets the value of an external variable.
-    /// This may be called during the loading of a program.
+    /// This may be called during the load() method, inside your RequestExternalVariableFn callback.
     /// If the type of object provided doesn't fit, the engine may return true here but
     /// emit an error about the problem later on during the linking process. If there's no
     /// such variable or other problems, then you can expect this method to return false.
