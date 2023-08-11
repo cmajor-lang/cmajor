@@ -1805,9 +1805,7 @@ A commonly-used annotation is to add `[[ main ]]` to one of the processors in a 
 
 ------------------------------------------------------------------------------
 
-## Standard Library Functionality
-
-### Built-in Constants
+## Built-in Constants
 
 Inside a processor, the following special constants are available:
 
@@ -1829,9 +1827,11 @@ Some global numerical constants are also defined:
 
 (To get a float32 version of pi, just use a cast: `float32 (pi)`)
 
-### Intrinsic Functions
+## Intrinsic Functions
 
-Cmaj has a set of built-in intrinsic functions. float32, float64 and integers types are accepted, where appropriate. This is just a brief overviews, more information can be found in the standard library documentation. They function similarly to the C style language counterparts.
+The Cmajor standard library provides a set of basic built-in intrinsic functions that can be called like their C/C++ equivalents.
+
+For documentation on the many other functions and processors that the Cmajor standard library contains, please see the [online documentation](https://cmajor.dev/docs/StandardLibrary).
 
 #### Arithmetic Functions
 
@@ -1876,3 +1876,18 @@ Cmaj has a set of built-in intrinsic functions. float32, float64 and integers ty
 | `min()`    | Returns smallest value                                       |
 | `select()` | Compares two input vectors and choses based on boolean input |
 | `lerp()`   | Linear Interpolation                                         |
+
+
+## Calling native functions from Cmajor
+
+When embedding a Cmajor engine into a custom app, you may want to provide some native functions that can be called directly from the Cmajor code.
+
+Doing this is obviously very much an "expert" level feature, and opens up many interesting and subtle ways to make your app crash, and it's also only available on some back-ends (e.g. LLVM).
+
+If you really need to do this, then in your Cmajor code, you define a placeholder for the function using the `external` keyword, e.g.
+
+```cpp
+external int32 myNativeFunction (float x, double y, float[] z);  // no function body is declared
+```
+
+When building a program containing externals, the `cmaj::Engine::link()` method takes a functor which your app uses to provide raw C function pointers for any external functions that need to be resolved. Because these function pointers are simply a `void*`, it's your responsibilty to make sure the parameter and return types exactly match those of the Cmajor function! Only primitive types are permitted as parameters, but you can pass a slice (e.g. `int[]`) to allow arrays to be passed in. These come through as a raw C pointer, so it's up to you to not access it out-of-bounds.

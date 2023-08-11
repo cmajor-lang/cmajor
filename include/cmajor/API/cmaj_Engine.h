@@ -81,7 +81,7 @@ struct Engine
 
     //==============================================================================
     using ExternalVariableProviderFn = std::function<choc::value::Value (const cmaj::ExternalVariable&)>;
-    using ExternalFunctionProviderFn = std::function<void*(const char* functionName, const char* functionSignature)>;
+    using ExternalFunctionProviderFn = std::function<void*(const char* functionName, choc::span<choc::value::Type> parameterTypes)>;
 
     /// Attempts to load a program into this engine.
     /// Returns true if it succeeds, and adds any errors or messages to the list provided.
@@ -252,14 +252,47 @@ inline bool Engine::load (DiagnosticMessageList& messages, const Program& progra
             catch (const std::exception&) {}
         }
 
-        static void* resolveFunction (void* context, const char* functionName, const char* functionSignature)
+        static void* resolveFunction (void* context, const char* functionName, const char* parameterTypes)
         {
             auto instance = static_cast<ExternalResolver*> (context);
 
             if (instance->getFunction)
-                return instance->getFunction (functionName, functionSignature);
+            {
+                std::vector<choc::value::Type> types;
+
+                if (parseJSONTypeList (types, parameterTypes))
+                    return instance->getFunction (functionName, types);
+            }
 
             return {};
+        }
+
+        static bool parseJSONTypeList (std::vector<choc::value::Type>& result, std::string_view json)
+        {
+            try
+            {
+                auto paramTypes = choc::json::parse (json);
+
+                if (paramTypes.isArray())
+                {
+                    std::vector<choc::value::Type> typeArray;
+
+                    for (auto typeValue : paramTypes)
+                    {
+                        auto type = choc::value::Type::fromValue (typeValue);
+
+                        if (type.isVoid())
+                            return false;
+
+                        result.push_back (std::move (type));
+                    }
+
+                    return true;
+                }
+            }
+            catch (...) {}
+
+            return false;
         }
     };
 

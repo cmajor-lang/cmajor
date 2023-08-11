@@ -8,15 +8,6 @@
 //                                           ,88
 //                                        888P"
 
-## expectError ("6:26: error: An external function declaration cannot have a body")
-
-processor P
-{
-    output stream int out;
-    void main() { advance(); }
-    external void blah() {}
-}
-
 ## expectError ("2:17: error: Function parameters cannot be void")
 
 void nope (void nope) {}
@@ -254,6 +245,15 @@ namespace Parameterised (int x = 1, using Y)  {}
 
 namespace Parameterised (using X, int x = 1, using Y)  {}
 
+## expectError ("6:26: error: An external function declaration cannot have a body")
+
+processor P
+{
+    output stream int out;
+    void main() { advance(); }
+    external void blah() {}
+}
+
 ## expectError ("2:30: error: An external function declaration cannot have a body")
 
 struct S { external void f() {} }
@@ -261,6 +261,19 @@ struct S { external void f() {} }
 ## expectError ("2:19: error: An external function declaration cannot have a body")
 
 external void f() {}
+
+## expectError ("2:26: error: Failed to resolve external function 'f'")
+
+struct S { external void f(); }
+
+## expectError ("2:25: error: An external function can only take primitive parameter types")
+
+external void f (int[4] x);
+
+## expectError ("3:10: error: An external function can only take primitive parameter types")
+
+struct S {}
+external S f (int a, float b);
 
 ## expectError ("2:15: error: Found \";\" when expecting \"{\"")
 
