@@ -1498,6 +1498,83 @@ graph Test
 
 There are limits to what can be written as a graph function, specifically the function must be pure. Unlike processors, graphs cannot contain state, so you cannot, for example, implement an FIR filter, as the function cannot depend on previous input values.
 
+### Conditional connections
+
+It is possible to use an `if` statement within the connection block to create connections which are optionally included in the graph. This allows, for example, for the order of processors to be changed, or for additional processors to be included in some paths. There are currently restrictions on the condition so that it must be a compile time constant. For now, the constant value can be passed to the graph as a parameterised valuee, or can be specified as an external.
+
+```cpp
+
+graph Processor (bool distortionBeforeCompressor)
+{
+    input stream float in;
+    output stream float out;
+
+    node compressor = Compressor;
+    node distortion = Distortion;
+
+    connection
+    {
+        if (distortionBeforeCompressor)
+        {
+            in -> distortion -> compressor -> out;
+        }
+        else
+        {
+            in -> compressor -> distortion -> out;
+        }
+    }
+}
+```
+
+Support will be extended in the future to allow for fully dynamic graph routing.
+
+## Processor composition
+
+We can use the `node` concept within a processor, allowing processors to utilise DSP within another processor. Here is a simple example:
+
+```cpp
+processor FilterComposition
+{
+    input stream float in;
+    output stream float out;
+
+    node lowPass = std::filters::tpt::onepole::Processor (0, 1000);
+
+    void main()
+    {
+        loop
+        {
+            lowPass.in <- in;
+            lowPass.advance();
+            out <- lowPass.out;
+
+            advance();
+        }
+    }
+}
+```
+
+The main loop writes to the `in` input endpoint of the node, and then `advances` the node. This call triggers the `node` to step forward one frame, running the contained DSP, making it's outputs contain the processed result of the filter.
+
+All input types are supported (`stream`, `value` and `event`), but only `stream` and `value` outputs can be read in the wrapping processor.
+
+Like graph nodes, processor nodes can be marked as oversampled, and an array of nodes can also be declared.
+
+```cpp
+processor Test
+{
+    input stream float in;
+    output stream float out;
+
+    // An array of 10 one pole filters, all 2x oversampled
+    node lowPassArray = std::filters::tpt::onepole::Processor (0, 1000)[10] * 2;
+}
+```
+
+### Processor composition caveats
+
+Processor composition is an advanced feature, and it is possible to write very confusing DSP this way! Since the wrapping processor has control over how time is advanced within the wrapped processor, it is possible to created unexpected results. For example, if `advance` is not called on the wrapped processor, or if `advance` is not called for a number of frames, the wrapped processor is likely to have old internal state which is unlikely to produce surprising results.
+
 ## When to use a processor vs a graph
 
 The key to understanding this is to think about how a general audio model may look. An effect might use several audio processor nodes, with the signal flowing though these in parallel or series. These processor nodes are linked together in a graph structure to create a larger graph layout.
