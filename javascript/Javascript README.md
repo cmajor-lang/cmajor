@@ -1,4 +1,4 @@
-#### Cmajor javascript API
+# Cmajor javascript API
 
 This folder contains a set of javascript modules which are available for a patch's GUI code to import and use.
 
