@@ -2530,3 +2530,14 @@ graph Test [[ main ]]
     connection
         s.p.out -> out;
 }
+
+## expectError ("2:11: error: 'Test' cannot refer to itself recursively")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    node test = Test;
+
+    void main() { advance(); }
+}
