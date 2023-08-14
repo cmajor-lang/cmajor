@@ -24,6 +24,11 @@
 #include "../../choc/text/choc_UTF8.h"
 #include "../../choc/containers/choc_Value.h"
 
+#ifndef CMAJ_ASSERT
+ #define CMAJ_ASSERT(x) CHOC_ASSERT(x)
+ #define CMAJ_ASSERT_FALSE CMAJ_ASSERT(false)
+#endif
+
 namespace cmaj
 {
 

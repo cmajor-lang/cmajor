@@ -26,11 +26,6 @@
 #include "cmaj_EngineFactoryInterface.h"
 #include <memory>
 
-#ifndef CMAJ_ASSERT
- #define CMAJ_ASSERT(x) CHOC_ASSERT(x)
- #define CMAJ_ASSERT_FALSE CMAJ_ASSERT(false)
-#endif
-
 #ifndef CMAJOR_DLL
  /// This flag tells the helper functions below whether to load their functions
  /// from a DLL or whether they are being linked directly into the project
@@ -149,7 +144,7 @@ inline Library::SharedLibraryPtr Library::getSharedLibraryPtr()
 inline Library::EntryPoints& Library::getEntryPoints()
 {
     // Must call Library::initialise() to load the DLL before using any other functions!
-    CMAJ_ASSERT (entryPoints != nullptr);
+    CHOC_ASSERT (entryPoints != nullptr);
     return *entryPoints;
 }
 
