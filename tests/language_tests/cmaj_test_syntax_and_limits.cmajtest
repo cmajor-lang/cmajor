@@ -1465,7 +1465,7 @@ processor P [[ main ]]
     void init (int i) {}
 }
 
-## expectError ("5:16: error: The advance() function does not take any arguments")
+## expectError ("5:16: error: The advance() function argument must be a node type")
 
 processor P [[ main ]]
 {
@@ -1603,7 +1603,7 @@ graph G { output a::b.c; }
 
 graph G { output a.b::c; }
 
-## expectError ("5:31: error: The advance() function cannot be used as a method call")
+## expectError ("5:31: error: The advance() function argument must be a node type")
 
 processor P [[ main ]]
 {
