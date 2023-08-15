@@ -22,10 +22,14 @@
 #pragma once
 
 #include "../../choc/text/choc_Files.h"
+#include "../../choc/gui/choc_MessageLoop.h"
+#include "../../choc/threading/choc_ThreadSafeFunctor.h"
+#include "../../choc/threading/choc_TaskThread.h"
 #include "../../choc/audio/choc_AudioFileFormat_WAV.h"
 #include "../../choc/audio/choc_AudioFileFormat_Ogg.h"
 #include "../../choc/audio/choc_AudioFileFormat_FLAC.h"
 #include "../../choc/audio/choc_AudioFileFormat_MP3.h"
+#include "../../choc/platform/choc_HighResolutionSteadyClock.h"
 
 #include "../API/cmaj_Endpoints.h"
 #include "../API/cmaj_ExternalVariables.h"
@@ -97,6 +101,15 @@ struct PatchManifest
     /// Sets up the lambdas needed to read from a given file
     void createFileReaderFunctions (const std::filesystem::path&);
 
+    /// Parses and returns a map of names to externals to their values, if any are
+    /// specified in the manifest.
+    std::unordered_map<std::string, choc::value::ValueView> getExternalsList() const;
+
+    /// Returns a function that can auto-resolve externals for this manifest, using
+    /// the replaceFilenameStringsWithAudioData() helper function. This function
+    /// can be passed straight into the Engine::load() method.
+    std::function<choc::value::Value(const cmaj::ExternalVariable&)> createExternalResolverFunction() const;
+
 private:
     void addSource (const choc::value::ValueView&);
     void addView (const choc::value::ValueView&);
@@ -163,9 +176,126 @@ private:
 };
 
 //==============================================================================
-choc::value::Value replaceFilenameStringsWithAudioData (PatchManifest& manifest,
+choc::value::Value replaceFilenameStringsWithAudioData (const PatchManifest& manifest,
                                                         const choc::value::ValueView& sourceObject,
                                                         const choc::value::ValueView& annotation);
+
+//==============================================================================
+struct PatchFileChangeChecker
+{
+    struct ChangeType
+    {
+        bool cmajorFilesChanged = false,
+             assetFilesChanged = false,
+             manifestChanged = false;
+    };
+
+    PatchFileChangeChecker (const PatchManifest& m, std::function<void(ChangeType)>&& onChange)
+        : manifest (m), callback (std::move (onChange))
+    {
+        checkAndReset();
+
+        fileChangeCheckThread.start (1500, [this]
+        {
+            auto change = checkAndReset();
+
+            if (change.cmajorFilesChanged || change.assetFilesChanged || change.manifestChanged)
+                choc::messageloop::postMessage ([cb = callback, change] { cb (change); });
+        });
+    }
+
+    ~PatchFileChangeChecker()
+    {
+        fileChangeCheckThread.stop();
+        callback.reset();
+    }
+
+    ChangeType checkAndReset()
+    {
+        SourceFilesWithTimes newManifests, newSources, newAssets;
+
+        newManifests.add (manifest, manifest.manifestFile);
+
+        for (auto& f : manifest.sourceFiles)
+            newSources.add (manifest, f);
+
+        for (auto& v : manifest.views)
+            newAssets.add (manifest, v.getSource());
+
+        ChangeType changes;
+
+        if (manifestFiles != newManifests) { changes.manifestChanged    = true;  manifestFiles = std::move (newManifests); }
+        if (cmajorFiles != newSources)     { changes.cmajorFilesChanged = true;  cmajorFiles = std::move (newSources); }
+        if (assetFiles != newAssets)       { changes.assetFilesChanged  = true;  assetFiles = std::move (newAssets); }
+
+        return changes;
+    }
+
+private:
+    struct SourceFilesWithTimes
+    {
+        SourceFilesWithTimes() = default;
+        SourceFilesWithTimes (SourceFilesWithTimes&&) = default;
+        SourceFilesWithTimes& operator= (SourceFilesWithTimes&&) = default;
+
+        struct File
+        {
+            std::string file;
+            std::filesystem::file_time_type lastWriteTime;
+
+            bool operator== (const File& other) const   { return file == other.file && lastWriteTime == other.lastWriteTime; }
+            bool operator!= (const File& other) const   { return ! operator== (other); }
+        };
+
+        void add (const PatchManifest& m, const std::string& file)
+        {
+            files.push_back ({ file, m.getFileModificationTime (file) });
+        }
+
+        bool operator== (const SourceFilesWithTimes& other) const { return files == other.files; }
+        bool operator!= (const SourceFilesWithTimes& other) const { return ! (files == other.files); }
+
+        std::vector<File> files;
+    };
+
+    PatchManifest manifest;
+    SourceFilesWithTimes manifestFiles, cmajorFiles, assetFiles;
+    choc::threading::ThreadSafeFunctor<std::function<void(ChangeType)>> callback;
+    choc::threading::TaskThread fileChangeCheckThread;
+};
+
+//==============================================================================
+struct CPUMonitor
+{
+    void reset (double sampleRate);
+
+    /// Starts timing a process block
+    void startProcess();
+    /// Ends timing the current block, and possibly calls handleCPULevel
+    /// with a new level, if available.
+    void endProcess (uint32_t numFrames);
+
+    /// This will be called to deliver new CPU levels when it either changes
+    /// significantly, or just periodically if it remains constant.
+    std::function<void(float)> handleCPULevel;
+
+    /// Sets the minimum number of frames to sample between each call to
+    /// the handleCPULevel callback. If this is 0, no callbacks are made
+    std::atomic<uint32_t> framesPerCallback { 0 };
+
+private:
+    using Clock = choc::HighResolutionSteadyClock;
+    using TimePoint = Clock::time_point;
+    using Seconds = std::chrono::duration<double>;
+
+    double inverseRate = 0;
+    TimePoint processStartTime;
+    double average = 0;
+    uint32_t frameCount = 0, minFramesPerCallback = 0;
+    float lastLevelSent = 0;
+    uint32_t lastLevelConstantCounter = 0;
+};
+
 
 
 //==============================================================================
@@ -393,6 +523,35 @@ inline uint32_t PatchManifest::View::getWidth() const      { return view["width"
 inline uint32_t PatchManifest::View::getHeight() const     { return view["height"].getWithDefault<uint32_t> (0); }
 inline bool PatchManifest::View::isResizable() const       { return view["resizable"].getWithDefault<bool> (true); }
 
+inline std::unordered_map<std::string, choc::value::ValueView> PatchManifest::getExternalsList() const
+{
+    std::unordered_map<std::string, choc::value::ValueView> result;
+
+    if (externals.isObject())
+    {
+        for (uint32_t i = 0; i < externals.size(); i++)
+        {
+            auto member = externals.getObjectMemberAt (i);
+            result[member.name] = member.value;
+        }
+    }
+
+    return result;
+}
+
+inline std::function<choc::value::Value(const cmaj::ExternalVariable&)> PatchManifest::createExternalResolverFunction() const
+{
+    return [this, list = getExternalsList()] (const cmaj::ExternalVariable& v) -> choc::value::Value
+    {
+        auto external = list.find (v.name);
+
+        if (external != list.end())
+            return replaceFilenameStringsWithAudioData (*this, external->second, v.annotation);
+
+        return {};
+    };
+}
+
 //==============================================================================
 inline choc::value::Value& TimelineEventGenerator::getTimeSigEvent (int numerator, int denominator)
 {
@@ -422,7 +581,7 @@ inline choc::value::Value& TimelineEventGenerator::getPositionEvent (int64_t cur
 }
 
 //==============================================================================
-inline choc::value::Value replaceFilenameStringsWithAudioData (PatchManifest& manifest,
+inline choc::value::Value replaceFilenameStringsWithAudioData (const PatchManifest& manifest,
                                                                const choc::value::ValueView& v,
                                                                const choc::value::ValueView& annotation)
 {
@@ -686,5 +845,62 @@ inline float PatchParameterProperties::toValueFromDiscreteOptionIndex (size_t i)
     auto index0to1 = static_cast<double> (i) / static_cast<double> (stepCount);
     return convertFrom0to1 (static_cast<float> (index0to1));
 }
+
+//==============================================================================
+inline void CPUMonitor::reset (double sampleRate)
+{
+    inverseRate = 1.0 / sampleRate;
+    frameCount = 0;
+    average = 0;
+}
+
+inline void CPUMonitor::startProcess()
+{
+    minFramesPerCallback = framesPerCallback;
+
+    if (minFramesPerCallback != 0)
+    {
+        processStartTime = Clock::now();
+    }
+    else
+    {
+        frameCount = 0;
+        average = 0;
+    }
+}
+
+inline void CPUMonitor::endProcess (uint32_t numFrames)
+{
+    if (minFramesPerCallback != 0)
+    {
+        Seconds secondsInBlock = Clock::now() - processStartTime;
+        auto blockLengthSeconds = Seconds (numFrames * inverseRate);
+        auto proportionInBlock = secondsInBlock / blockLengthSeconds;
+
+        average += (proportionInBlock - average) * 0.1;
+
+        if (average < 0.001)
+            average = 0;
+
+        frameCount += numFrames;
+
+        if (frameCount >= minFramesPerCallback)
+        {
+            frameCount = 0;
+            auto newLevel = static_cast<float> (average);
+
+            if (++lastLevelConstantCounter > 10
+                || std::fabs (lastLevelSent - newLevel) > 0.002)
+            {
+                lastLevelConstantCounter = 0;
+                lastLevelSent = newLevel;
+
+                if (handleCPULevel)
+                    handleCPULevel (newLevel);
+            }
+        }
+    }
+}
+
 
 } // namespace cmaj
