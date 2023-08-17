@@ -5115,3 +5115,35 @@ graph Test [[ main ]]
     connection
         wrap<5> (in) -> out;
 }
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    input event float in;
+    output event float<2> out;
+
+    node a = A;
+
+    connection
+    {
+        in -> a.in;
+        a.out -> out;
+    }
+}
+
+namespace P
+{
+    let S = 2;
+}
+
+processor A
+{
+    input event float in;
+    output event float<P::S> out;
+
+    event in (float f)
+    {
+        out <- (f, f);
+    }
+}
