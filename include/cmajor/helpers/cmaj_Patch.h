@@ -221,22 +221,21 @@ struct Patch
     cmaj::CacheDatabaseInterface::Ptr cache;
 
     // These dispatch various types of event to any active views that the patch has open.
-    void sendMessageToViews (std::string_view type, const choc::value::ValueView&);
-    void sendPatchStatusChangeToViews();
-    void sendParameterChangeToViews (const EndpointID&, float value);
-    void sendCurrentParameterValueToViews (const EndpointID&);
-    void sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView&);
-    void sendCPUInfoToViews (float level);
-    void sendStoredStateValueToViews (const std::string& key);
-    void sendGeneratedCodeToViews (const std::string& type, const choc::value::ValueView& options);
+    void sendMessageToViews (std::string_view type, const choc::value::ValueView&) const;
+    void sendPatchStatusChangeToViews() const;
+    void sendParameterChangeToViews (const EndpointID&, float value) const;
+    void sendCurrentParameterValueToViews (const EndpointID&) const;
+    void sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView&) const;
+    void sendCPUInfoToViews (float level) const;
+    void sendStoredStateValueToViews (const std::string& key) const;
 
     // These can be called by things like the GUI to control the patch
     bool handleClientMessage (const choc::value::ValueView&);
-    void sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&, int32_t rampFrames = -1);
-    void sendMIDIInputEvent (const EndpointID&, choc::midi::ShortMessage);
+    void sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&, int32_t rampFrames = -1) const;
+    void sendMIDIInputEvent (const EndpointID&, choc::midi::ShortMessage) const;
 
-    void sendGestureStart (const EndpointID&);
-    void sendGestureEnd (const EndpointID&);
+    void sendGestureStart (const EndpointID&) const;
+    void sendGestureEnd (const EndpointID&) const;
 
     void setCPUInfoMonitorChunkSize (uint32_t);
 
@@ -304,16 +303,15 @@ private:
     std::vector<choc::midi::ShortMessage> midiMessages;
     std::vector<int> midiMessageTimes;
 
+    std::unique_ptr<BuildThread> buildThread;
+
     void sendPatchChange();
     void setNewRenderer (std::shared_ptr<PatchRenderer>);
-    void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
+    void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&) const;
     void startCheckingForChanges();
     void handleFileChange (PatchFileChangeChecker::ChangeType);
     void setStatus (std::string);
     void setErrorStatus (const std::string& error, const std::string& file, choc::text::LineAndColumn, bool unloadFirst);
-
-    //==============================================================================
-    std::unique_ptr<BuildThread> buildThread;
 };
 
 //==============================================================================
@@ -329,7 +327,6 @@ struct PatchParameter  : public std::enable_shared_from_this<PatchParameter>
 
     //==============================================================================
     const PatchParameterProperties properties;
-    std::weak_ptr<Patch::PatchRenderer> renderer;
     EndpointHandle endpointHandle;
     float currentValue = 0;
 
@@ -338,6 +335,9 @@ struct PatchParameter  : public std::enable_shared_from_this<PatchParameter>
 
     // optional callbacks for gesture start/end events
     std::function<void()> gestureStart, gestureEnd;
+
+private:
+    std::weak_ptr<Patch::PatchRenderer> renderer;
 };
 
 //==============================================================================
@@ -606,7 +606,13 @@ struct Patch::ClientEventQueue
 //==============================================================================
 struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer>
 {
-    PatchRenderer (const Patch& p) : patch (p) {}
+    PatchRenderer (const Patch& p) : patch (p)
+    {
+        handleOutputEvent = [&p] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
+        {
+            p.sendOutputEvent (frame, endpointID, v);
+        };
+    }
 
     ~PatchRenderer()
     {
@@ -1230,7 +1236,7 @@ struct Patch::Build
         return renderer->errors;
     }
 
-    void build (const std::function<void()>& checkForStopSignal)
+    Engine build (const std::function<void()>& checkForStopSignal)
     {
         CMAJ_ASSERT (patch.createEngine);
         auto engine = patch.createEngine();
@@ -1239,6 +1245,7 @@ struct Patch::Build
         renderer = std::make_shared<PatchRenderer> (patch);
         renderer->build (engine, loadParams, patch.currentPlaybackParams,
                          resolveExternals, performLink, patch.cache, checkForStopSignal);
+        return engine;
     }
 
     std::shared_ptr<PatchRenderer> takeRenderer()
@@ -1455,13 +1462,10 @@ inline bool Patch::loadPatchFromFile (const std::string& patchFile)
 
 inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, const std::string& target, const std::string& options)
 {
-    CMAJ_ASSERT (createEngine);
     unload();
-    auto engine = createEngine();
-    CMAJ_ASSERT (engine);
 
     auto build = std::make_unique<Build> (*this, params, true, false);
-    build->build ([] {});
+    auto engine = build->build ([] {});
 
     if (build->getMessageList().hasErrors())
     {
@@ -1761,7 +1765,7 @@ inline void Patch::sendPosition (int64_t currentFrame, double ppq, double ppqBar
     renderer->sendPosition (currentFrame, ppq, ppqBar);
 }
 
-inline void Patch::sendMessageToViews (std::string_view type, const choc::value::ValueView& message)
+inline void Patch::sendMessageToViews (std::string_view type, const choc::value::ValueView& message) const
 {
     auto msg = choc::json::create ("type", type,
                                    "message", message);
@@ -1769,7 +1773,7 @@ inline void Patch::sendMessageToViews (std::string_view type, const choc::value:
         pv->sendMessage (msg);
 }
 
-inline void Patch::sendPatchStatusChangeToViews()
+inline void Patch::sendPatchStatusChangeToViews() const
 {
     if (renderer)
     {
@@ -1879,7 +1883,7 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
     return true;
 }
 
-inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, float value)
+inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, float value) const
 {
     if (endpointID)
         sendMessageToViews ("param_value",
@@ -1887,19 +1891,19 @@ inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, flo
                                                 "value", value));
 }
 
-inline void Patch::sendCPUInfoToViews (float level)
+inline void Patch::sendCPUInfoToViews (float level) const
 {
     sendMessageToViews ("cpu_info",
                         choc::json::create ("level", level));
 }
 
-inline void Patch::sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView& value)
+inline void Patch::sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView& value) const
 {
     if (! (value.isVoid() || endpointID.empty()))
         sendMessageToViews ("event_" + std::string (endpointID), value);
 }
 
-inline void Patch::sendStoredStateValueToViews (const std::string& key)
+inline void Patch::sendStoredStateValueToViews (const std::string& key) const
 {
     if (! key.empty())
         if (auto found = storedState.find (key); found != storedState.end())
@@ -1925,26 +1929,25 @@ inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
     if (stopPlayback)
         stopPlayback();
 
+    fileChangeChecker.reset();
     renderer.reset();
     sendPatchChange();
-    renderer = std::move (newRenderer);
 
-    if (renderer != nullptr)
+    if (newRenderer != nullptr)
     {
-        renderer->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
-        {
-            sendOutputEvent (frame, endpointID, v);
-        };
-
+        renderer = std::move (newRenderer);
         sendPatchChange();
-    }
 
-    if (isPlayable())
-    {
-        clientEventQueue->prepare (renderer->sampleRate);
+        if (isPlayable())
+        {
+            clientEventQueue->prepare (renderer->sampleRate);
 
-        if (startPlayback)
-            startPlayback();
+            if (startPlayback)
+                startPlayback();
+
+            if (handleInfiniteLoop)
+                renderer->startInfiniteLoopCheck (handleInfiniteLoop);
+        }
     }
 
     if (statusChanged)
@@ -1961,41 +1964,38 @@ inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
     }
 
     startCheckingForChanges();
-
-    if (handleInfiniteLoop)
-        renderer->startInfiniteLoopCheck (handleInfiniteLoop);
 }
 
-inline void Patch::sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
+inline void Patch::sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v) const
 {
     handleOutputEvent (frame, endpointID, v);
     sendOutputEventToViews (endpointID, v);
 }
 
-inline void Patch::sendEventOrValueToPatch (const EndpointID& endpointID, const choc::value::ValueView& value, int32_t rampFrames)
+inline void Patch::sendEventOrValueToPatch (const EndpointID& endpointID, const choc::value::ValueView& value, int32_t rampFrames) const
 {
     if (renderer != nullptr)
         renderer->sendEventOrValueToPatch (*clientEventQueue, endpointID, value, rampFrames);
 }
 
-inline void Patch::sendMIDIInputEvent (const EndpointID& endpointID, choc::midi::ShortMessage message)
+inline void Patch::sendMIDIInputEvent (const EndpointID& endpointID, choc::midi::ShortMessage message) const
 {
     sendEventOrValueToPatch (endpointID, cmaj::MIDIEvents::createMIDIMessageObject (message));
 }
 
-inline void Patch::sendGestureStart (const EndpointID& endpointID)
+inline void Patch::sendGestureStart (const EndpointID& endpointID) const
 {
     if (renderer != nullptr)
         renderer->sendGestureStart (endpointID);
 }
 
-inline void Patch::sendGestureEnd (const EndpointID& endpointID)
+inline void Patch::sendGestureEnd (const EndpointID& endpointID) const
 {
     if (renderer != nullptr)
         renderer->sendGestureEnd (endpointID);
 }
 
-inline void Patch::sendCurrentParameterValueToViews (const EndpointID& endpointID)
+inline void Patch::sendCurrentParameterValueToViews (const EndpointID& endpointID) const
 {
     if (auto param = findParameter (endpointID))
         sendParameterChangeToViews (endpointID, param->currentValue);
@@ -2156,7 +2156,7 @@ inline bool Patch::handleClientMessage (const choc::value::ValueView& msg)
 
 //==============================================================================
 inline PatchParameter::PatchParameter (std::shared_ptr<Patch::PatchRenderer> r, const EndpointDetails& details, cmaj::EndpointHandle handle)
-    : properties (details), renderer (std::move (r)), endpointHandle (handle), currentValue (properties.defaultValue)
+    : properties (details), endpointHandle (handle), currentValue (properties.defaultValue), renderer (std::move (r))
 {
 }
 
@@ -2178,11 +2178,7 @@ inline void PatchParameter::setValue (float newValue, bool forceSend, int32_t ex
 
 inline void PatchParameter::setValue (const choc::value::ValueView& v, bool forceSend, int32_t explicitRampFrames)
 {
-    if (v.isString())
-        if (auto val = properties.getStringAsValue (v.getString()))
-            return setValue (*val, forceSend, explicitRampFrames);
-
-    setValue (v.getWithDefault<float> (properties.defaultValue), forceSend, explicitRampFrames);
+    setValue (properties.parseValue (v), forceSend, explicitRampFrames);
 }
 
 inline void PatchParameter::resetToDefaultValue (bool forceSend)

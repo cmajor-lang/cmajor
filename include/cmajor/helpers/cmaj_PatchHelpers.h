@@ -146,6 +146,11 @@ struct PatchParameterProperties
     /// on the contents and format of `valueStrings` and other hints.
     std::string getValueAsString (float value) const;
 
+    /// Attempts to turn a ValueView into a parameter value, by either parsing it as
+    /// a string, or converting it to a float. If no valid value can be extracted, this
+    /// just returns `defaultValue`.
+    float parseValue (const choc::value::ValueView&) const;
+
     /// Maps a value from the range (minValue, maxValue) to the range (0, 1.0).
     /// This will also clamp any out-of-range values so that the value returned
     /// is always between 0 and 1.0.
@@ -703,6 +708,15 @@ inline std::optional<float> PatchParameterProperties::getStringAsValue (std::str
     catch (...) {}
 
     return {};
+}
+
+inline float PatchParameterProperties::parseValue (const choc::value::ValueView& v) const
+{
+    if (v.isString())
+        if (auto val = getStringAsValue (v.getString()))
+            return *val;
+
+    return v.getWithDefault<float> (defaultValue);
 }
 
 inline float PatchParameterProperties::convertTo0to1 (float v) const
