@@ -528,7 +528,7 @@ private:
 
         for (auto& p : patch->getParameterList())
             paramList.appendChild (juce::ValueTree (ids.PARAM,
-                                                    { { ids.ID, juce::String (p->endpointID.toString()) },
+                                                    { { ids.ID, juce::String (p->properties.endpointID) },
                                                       { ids.V, p->currentValue } }),
                                    nullptr);
 
@@ -746,7 +746,7 @@ private:
         juce::String getName (int maxLength) const override         { return patchParam == nullptr ? "unknown" : patchParam->properties.name.substr (0, (size_t) maxLength); }
         juce::String getLabel() const override                      { return patchParam == nullptr ? juce::String() : patchParam->properties.unit; }
         Category getCategory() const override                       { return Category::genericParameter; }
-        bool isDiscrete() const override                            { return patchParam != nullptr && patchParam->properties.numDiscreteOptions > 0; }
+        bool isDiscrete() const override                            { return patchParam != nullptr && patchParam->properties.discrete; }
         bool isBoolean() const override                             { return patchParam != nullptr && patchParam->properties.boolean; }
         bool isAutomatable() const override                         { return patchParam == nullptr || patchParam->properties.automatable; }
         bool isMetaParameter() const override                       { return patchParam != nullptr && patchParam->properties.hidden; }
@@ -777,14 +777,21 @@ private:
 
         float getValueForText (const juce::String& text) const override
         {
-            return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->properties.getStringAsValue (text.toStdString()))
-                                         : 0.0f;
+            if (patchParam != nullptr)
+            {
+                if (auto value = patchParam->properties.getStringAsValue (text.toStdString()))
+                    return *value;
+
+                return patchParam->properties.defaultValue;
+            }
+
+            return 0;
         }
 
         int getNumSteps() const override
         {
             if (patchParam != nullptr)
-                if (auto steps = patchParam->properties.numDiscreteOptions)
+                if (auto steps = patchParam->properties.getNumDiscreteOptions())
                     return static_cast<int> (steps);
 
             return AudioProcessor::getDefaultNumParameterSteps();
@@ -805,7 +812,7 @@ private:
             {
                 Parameter* add (const PatchParameterPtr& param)
                 {
-                    auto newParam = std::make_unique<Parameter> (param->endpointID.toString());
+                    auto newParam = std::make_unique<Parameter> (param->properties.endpointID);
                     auto rawParam = newParam.get();
 
                     if (! param->properties.group.empty())

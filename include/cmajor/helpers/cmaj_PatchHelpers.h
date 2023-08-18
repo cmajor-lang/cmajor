@@ -35,6 +35,7 @@
 #include "../API/cmaj_ExternalVariables.h"
 
 #include <algorithm>
+#include <optional>
 
 namespace cmaj
 {
@@ -116,38 +117,55 @@ private:
 };
 
 
-
 //==============================================================================
 /// This helper class implements the logic for interpreting an EndpointDetails
 /// object as a set of more parameter-focued values.
 struct PatchParameterProperties
 {
+    /// Initialises all the properties in this class from the details provided.
     PatchParameterProperties (const EndpointDetails&);
 
+    std::string endpointID, name, unit, group;
     float minValue = 0, maxValue = 0, step = 0, defaultValue = 0;
-    std::string name, unit, group;
     std::vector<std::string> valueStrings;
-    bool isEvent = false, boolean = false, automatable = false, hidden = false;
-    uint64_t numDiscreteOptions = 0;
+    bool isEvent = false, boolean = false, automatable = false, hidden = false, discrete = false;
     uint32_t rampFrames = 0;
 
+    /// Takes a full-range value, clamps it to lie between minValue and maxValue,
+    /// and also applies any snapping that may be required according to the `step`
+    /// or `valueStrings` members.
     float snapAndConstrainValue (float newValue) const;
 
-    float getStringAsValue (std::string_view text) const;
+    /// Attempts to parse a text string (possibly entered by a user) to a value.
+    /// If the string doesn't contain anything numeric, this will return a null optional.
+    /// If the string is an out of range value, it'll be returned so that the caller can
+    /// decide whether to clip it or reject it.
+    std::optional<float> getStringAsValue (std::string_view text) const;
+
+    /// Converts a (full-range) numeric value to a text string, using rules based
+    /// on the contents and format of `valueStrings` and other hints.
     std::string getValueAsString (float value) const;
 
+    /// Maps a value from the range (minValue, maxValue) to the range (0, 1.0).
+    /// This will also clamp any out-of-range values so that the value returned
+    /// is always between 0 and 1.0.
     float convertTo0to1 (float) const;
+
+    /// Maps a value from the range (0, 1.0) to the range (minValue, maxValue).
+    /// No clamping is applied here, as the input is expected to be valid.
     float convertFrom0to1 (float) const;
 
-    static std::string parseFormatString (choc::text::UTF8Pointer, float value);
+    /// If the parameter is quantised into steps or options, this returns how
+    /// many there are, or returns 0 if the value is continuous.
+    uint64_t getNumDiscreteOptions() const;
 
 private:
+    //==============================================================================
     bool hasFormatString() const;
     bool hasDiscreteTextOptions() const;
     size_t toDiscreteOptionIndex (float newValue) const;
-    float toValueFromDiscreteOptionIndex (size_t) const;
-
-    uint64_t stepCount = 0;
+    std::optional<float> toValueFromDiscreteOptionIndex (size_t) const;
+    static std::string parseFormatString (choc::text::UTF8Pointer, float value);
 };
 
 
@@ -190,46 +208,10 @@ struct PatchFileChangeChecker
              manifestChanged = false;
     };
 
-    PatchFileChangeChecker (const PatchManifest& m, std::function<void(ChangeType)>&& onChange)
-        : manifest (m), callback (std::move (onChange))
-    {
-        checkAndReset();
+    PatchFileChangeChecker (const PatchManifest&, std::function<void(ChangeType)>&& onChange);
+    ~PatchFileChangeChecker();
 
-        fileChangeCheckThread.start (1500, [this]
-        {
-            auto change = checkAndReset();
-
-            if (change.cmajorFilesChanged || change.assetFilesChanged || change.manifestChanged)
-                choc::messageloop::postMessage ([cb = callback, change] { cb (change); });
-        });
-    }
-
-    ~PatchFileChangeChecker()
-    {
-        fileChangeCheckThread.stop();
-        callback.reset();
-    }
-
-    ChangeType checkAndReset()
-    {
-        SourceFilesWithTimes newManifests, newSources, newAssets;
-
-        newManifests.add (manifest, manifest.manifestFile);
-
-        for (auto& f : manifest.sourceFiles)
-            newSources.add (manifest, f);
-
-        for (auto& v : manifest.views)
-            newAssets.add (manifest, v.getSource());
-
-        ChangeType changes;
-
-        if (manifestFiles != newManifests) { changes.manifestChanged    = true;  manifestFiles = std::move (newManifests); }
-        if (cmajorFiles != newSources)     { changes.cmajorFilesChanged = true;  cmajorFiles = std::move (newSources); }
-        if (assetFiles != newAssets)       { changes.assetFilesChanged  = true;  assetFiles = std::move (newAssets); }
-
-        return changes;
-    }
+    ChangeType checkAndReset();
 
 private:
     struct SourceFilesWithTimes
@@ -646,12 +628,13 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
 {
     isEvent = details.isEvent();
 
-    name     = details.annotation["name"].getWithDefault<std::string> (details.endpointID.toString());
-    unit     = details.annotation["unit"].toString();
-    group    = details.annotation["group"].toString();
-    minValue = details.annotation["min"].getWithDefault<float> (0);
-    maxValue = details.annotation["max"].getWithDefault<float> (1.0f);
-    step     = details.annotation["step"].getWithDefault<float> (0);
+    endpointID = details.endpointID.toString();
+    name       = details.annotation["name"].getWithDefault<std::string> (endpointID);
+    unit       = details.annotation["unit"].toString();
+    group      = details.annotation["group"].toString();
+    minValue   = details.annotation["min"].getWithDefault<float> (0);
+    maxValue   = details.annotation["max"].getWithDefault<float> (1.0f);
+    step       = details.annotation["step"].getWithDefault<float> (0);
 
     if (auto text = details.annotation["text"].toString(); ! text.empty())
     {
@@ -676,30 +659,14 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
     automatable   = details.annotation["automatable"].getWithDefault<bool> (true);
     boolean       = details.annotation["boolean"].getWithDefault<bool> (false);
     hidden        = details.annotation["hidden"].getWithDefault<bool> (false);
+    discrete      = details.annotation["discrete"].getWithDefault<bool> (false);
     rampFrames    = details.annotation["rampFrames"].getWithDefault<uint32_t> (0);
-
-    const auto calculateNumDiscreteOptions = [&details, this]() -> uint64_t
-    {
-        if (this->boolean)
-            return 2;
-
-        if (hasDiscreteTextOptions())
-            return valueStrings.size();
-
-        if (details.annotation["discrete"].getWithDefault<bool> (false))
-            if (step > 0)
-                return static_cast<uint64_t> ((maxValue - minValue) / step) + 1u;
-
-        return 0;
-    };
-    numDiscreteOptions = calculateNumDiscreteOptions();
-    stepCount = numDiscreteOptions > 0 ? numDiscreteOptions - 1 : 0;
 }
 
 inline float PatchParameterProperties::snapAndConstrainValue (float newValue) const
 {
-    if (numDiscreteOptions > 0)
-        return toValueFromDiscreteOptionIndex (toDiscreteOptionIndex (newValue));
+    if (getNumDiscreteOptions() > 1)
+        return *toValueFromDiscreteOptionIndex (toDiscreteOptionIndex (newValue));
 
     if (step > 0)
         newValue = std::round (newValue / step) * step;
@@ -720,12 +687,12 @@ inline std::string PatchParameterProperties::getValueAsString (float value) cons
     return choc::text::floatToString (value);
 }
 
-inline float PatchParameterProperties::getStringAsValue (std::string_view text) const
+inline std::optional<float> PatchParameterProperties::getStringAsValue (std::string_view text) const
 {
     auto target = std::string (choc::text::trim (text));
 
-    if (hasDiscreteTextOptions())
-        for (size_t i = 0; i < static_cast<size_t> (numDiscreteOptions); ++i)
+    if (valueStrings.size() > 1)
+        for (size_t i = 0; i < valueStrings.size(); ++i)
             if (choc::text::toLowerCase (choc::text::trim (valueStrings[i])) == choc::text::toLowerCase (target))
                 return toValueFromDiscreteOptionIndex (i);
 
@@ -735,7 +702,7 @@ inline float PatchParameterProperties::getStringAsValue (std::string_view text) 
     }
     catch (...) {}
 
-    return 0;
+    return {};
 }
 
 inline float PatchParameterProperties::convertTo0to1 (float v) const
@@ -835,15 +802,35 @@ inline bool PatchParameterProperties::hasDiscreteTextOptions() const
     return valueStrings.size() > 1;
 }
 
-inline size_t PatchParameterProperties::toDiscreteOptionIndex (float value) const
+inline uint64_t PatchParameterProperties::getNumDiscreteOptions() const
 {
-    return std::min (static_cast<size_t> (convertTo0to1 (value) * numDiscreteOptions), static_cast<size_t> (stepCount));
+    if (valueStrings.size() > 1)
+        return valueStrings.size();
+
+    if (boolean)
+        return 2;
+
+    if (discrete && step > 0)
+        return static_cast<uint64_t> ((maxValue - minValue) / step) + 1u;
+
+    return 0;
 }
 
-inline float PatchParameterProperties::toValueFromDiscreteOptionIndex (size_t i) const
+inline size_t PatchParameterProperties::toDiscreteOptionIndex (float value) const
 {
-    auto index0to1 = static_cast<double> (i) / static_cast<double> (stepCount);
-    return convertFrom0to1 (static_cast<float> (index0to1));
+    auto numDiscreteSteps = getNumDiscreteOptions();
+    return std::min (static_cast<size_t> (convertTo0to1 (value) * numDiscreteSteps), static_cast<size_t> (numDiscreteSteps > 0 ? numDiscreteSteps - 1 : 0));
+}
+
+inline std::optional<float> PatchParameterProperties::toValueFromDiscreteOptionIndex (size_t i) const
+{
+    if (auto numDiscreteSteps = getNumDiscreteOptions(); numDiscreteSteps > 1)
+    {
+        auto index0to1 = static_cast<double> (i) / static_cast<double> (numDiscreteSteps - 1);
+        return convertFrom0to1 (static_cast<float> (index0to1));
+    }
+
+    return {};
 }
 
 //==============================================================================
@@ -902,5 +889,46 @@ inline void CPUMonitor::endProcess (uint32_t numFrames)
     }
 }
 
+//==============================================================================
+inline PatchFileChangeChecker::PatchFileChangeChecker (const PatchManifest& m, std::function<void(ChangeType)>&& onChange)
+    : manifest (m), callback (std::move (onChange))
+{
+    checkAndReset();
+
+    fileChangeCheckThread.start (1500, [this]
+    {
+        auto change = checkAndReset();
+
+        if (change.cmajorFilesChanged || change.assetFilesChanged || change.manifestChanged)
+            choc::messageloop::postMessage ([cb = callback, change] { cb (change); });
+    });
+}
+
+inline PatchFileChangeChecker::~PatchFileChangeChecker()
+{
+    fileChangeCheckThread.stop();
+    callback.reset();
+}
+
+inline PatchFileChangeChecker::ChangeType PatchFileChangeChecker::checkAndReset()
+{
+    SourceFilesWithTimes newManifests, newSources, newAssets;
+
+    newManifests.add (manifest, manifest.manifestFile);
+
+    for (auto& f : manifest.sourceFiles)
+        newSources.add (manifest, f);
+
+    for (auto& v : manifest.views)
+        newAssets.add (manifest, v.getSource());
+
+    ChangeType changes;
+
+    if (manifestFiles != newManifests) { changes.manifestChanged    = true;  manifestFiles = std::move (newManifests); }
+    if (cmajorFiles != newSources)     { changes.cmajorFilesChanged = true;  cmajorFiles = std::move (newSources); }
+    if (assetFiles != newAssets)       { changes.assetFilesChanged  = true;  assetFiles = std::move (newAssets); }
+
+    return changes;
+}
 
 } // namespace cmaj

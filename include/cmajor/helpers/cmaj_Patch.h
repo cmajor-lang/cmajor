@@ -224,7 +224,6 @@ struct Patch
     void sendMessageToViews (std::string_view type, const choc::value::ValueView&);
     void sendPatchStatusChangeToViews();
     void sendParameterChangeToViews (const EndpointID&, float value);
-    void sendRealtimeParameterChangeToViews (const std::string&, float value);
     void sendCurrentParameterValueToViews (const EndpointID&);
     void sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView&);
     void sendCPUInfoToViews (float level);
@@ -287,8 +286,6 @@ private:
     struct PatchRenderer;
     struct Build;
     struct BuildThread;
-    struct AudioLevelMonitor;
-    struct EventMonitor;
     friend struct PatchView;
     friend struct PatchParameter;
 
@@ -308,7 +305,7 @@ private:
     std::vector<int> midiMessageTimes;
 
     void sendPatchChange();
-    void applyFinishedBuild (Build&);
+    void setNewRenderer (std::shared_ptr<PatchRenderer>);
     void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
     void startCheckingForChanges();
     void handleFileChange (PatchFileChangeChecker::ChangeType);
@@ -331,14 +328,15 @@ struct PatchParameter  : public std::enable_shared_from_this<PatchParameter>
     void resetToDefaultValue (bool forceSend);
 
     //==============================================================================
-    std::weak_ptr<Patch::PatchRenderer> renderer;
-    EndpointID endpointID;
-    EndpointHandle endpointHandle;
     const PatchParameterProperties properties;
+    std::weak_ptr<Patch::PatchRenderer> renderer;
+    EndpointHandle endpointHandle;
     float currentValue = 0;
 
     // optional callback that's invoked when the value is changed
     std::function<void(float)> valueChanged;
+
+    // optional callbacks for gesture start/end events
     std::function<void()> gestureStart, gestureEnd;
 };
 
@@ -606,103 +604,10 @@ struct Patch::ClientEventQueue
 };
 
 //==============================================================================
-struct Patch::AudioLevelMonitor
-{
-    AudioLevelMonitor (const EndpointDetails& endpoint)
-        : endpointID (endpoint.endpointID.toString())
-    {
-        auto numChannels = endpoint.getNumAudioChannels();
-        CMAJ_ASSERT (numChannels > 0);
-
-        levels.resize ({ numChannels, 2 });
-    }
-
-    template <typename SampleType>
-    void process (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
-    {
-        if (auto framesPerChunk = granularity.load())
-        {
-            // handle min/max chunks
-            auto numFrames = data.getNumFrames();
-            auto numChannels = data.getNumChannels();
-
-            for (uint32_t i = 0; i < numFrames; ++i)
-            {
-                for (uint32_t chan = 0; chan < numChannels; ++chan)
-                {
-                    auto level = static_cast<float> (data.getSample (chan, i));
-                    auto minMax = levels.getIterator (chan);
-
-                    if (frameCount == 0)
-                    {
-                        *minMax = level;
-                        ++minMax;
-                        *minMax = level;
-                    }
-                    else
-                    {
-                        *minMax = std::min (level, *minMax);
-                        ++minMax;
-                        *minMax = std::max (level, *minMax);
-                    }
-                }
-
-                if (++frameCount == framesPerChunk)
-                {
-                    frameCount = 0;
-                    queue.postAudioMinMaxUpdate (endpointID, levels);
-                }
-            }
-        }
-    }
-
-    std::atomic<uint32_t> granularity { 0 };
-    std::string endpointID;
-
-private:
-    choc::buffer::ChannelArrayBuffer<float> levels;
-    uint32_t frameCount = 0;
-};
-
-//==============================================================================
-struct Patch::EventMonitor
-{
-    EventMonitor (const EndpointDetails& endpoint)
-        : endpointID (endpoint.endpointID.toString()),
-          isMIDI (endpoint.isMIDI())
-    {
-    }
-
-    bool process (ClientEventQueue& queue, const std::string& endpoint, const choc::value::ValueView& message)
-    {
-        if (activeListeners > 0 && endpointID == endpoint)
-        {
-            queue.postEndpointEvent (endpointID, message);
-            return true;
-        }
-
-        return false;
-    }
-
-    bool process (ClientEventQueue& queue, const std::string& endpoint, choc::midi::ShortMessage message)
-    {
-        if (isMIDI && activeListeners > 0 && endpointID == endpoint)
-        {
-            queue.postEndpointMIDI (endpointID, message);
-            return true;
-        }
-
-        return false;
-    }
-
-    std::string endpointID;
-    bool isMIDI;
-    std::atomic<int32_t> activeListeners { 0 };
-};
-
-//==============================================================================
 struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer>
 {
+    PatchRenderer (const Patch& p) : patch (p) {}
+
     ~PatchRenderer()
     {
         infiniteLoopCheckTimer.clear();
@@ -722,6 +627,101 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         return performer.get();
     }
 
+    //==============================================================================
+    struct AudioLevelMonitor
+    {
+        AudioLevelMonitor (const EndpointDetails& endpoint)
+            : endpointID (endpoint.endpointID.toString())
+        {
+            auto numChannels = endpoint.getNumAudioChannels();
+            CMAJ_ASSERT (numChannels > 0);
+
+            levels.resize ({ numChannels, 2 });
+        }
+
+        template <typename SampleType>
+        void process (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
+        {
+            if (auto framesPerChunk = granularity.load())
+            {
+                // handle min/max chunks
+                auto numFrames = data.getNumFrames();
+                auto numChannels = data.getNumChannels();
+
+                for (uint32_t i = 0; i < numFrames; ++i)
+                {
+                    for (uint32_t chan = 0; chan < numChannels; ++chan)
+                    {
+                        auto level = static_cast<float> (data.getSample (chan, i));
+                        auto minMax = levels.getIterator (chan);
+
+                        if (frameCount == 0)
+                        {
+                            *minMax = level;
+                            ++minMax;
+                            *minMax = level;
+                        }
+                        else
+                        {
+                            *minMax = std::min (level, *minMax);
+                            ++minMax;
+                            *minMax = std::max (level, *minMax);
+                        }
+                    }
+
+                    if (++frameCount == framesPerChunk)
+                    {
+                        frameCount = 0;
+                        queue.postAudioMinMaxUpdate (endpointID, levels);
+                    }
+                }
+            }
+        }
+
+        std::atomic<uint32_t> granularity { 0 };
+        std::string endpointID;
+
+    private:
+        choc::buffer::ChannelArrayBuffer<float> levels;
+        uint32_t frameCount = 0;
+    };
+
+    //==============================================================================
+    struct EventMonitor
+    {
+        EventMonitor (const EndpointDetails& endpoint)
+           : endpointID (endpoint.endpointID.toString()), isMIDI (endpoint.isMIDI())
+        {
+        }
+
+        bool process (ClientEventQueue& queue, const std::string& endpoint, const choc::value::ValueView& message)
+        {
+            if (activeListeners > 0 && endpointID == endpoint)
+            {
+                queue.postEndpointEvent (endpointID, message);
+                return true;
+            }
+
+            return false;
+        }
+
+        bool process (ClientEventQueue& queue, const std::string& endpoint, choc::midi::ShortMessage message)
+        {
+            if (isMIDI && activeListeners > 0 && endpointID == endpoint)
+            {
+                queue.postEndpointMIDI (endpointID, message);
+                return true;
+            }
+
+            return false;
+        }
+
+        std::string endpointID;
+        bool isMIDI;
+        std::atomic<int32_t> activeListeners { 0 };
+    };
+
+    //==============================================================================
     bool createPerformer (AudioMIDIPerformer::Builder& builder)
     {
         performer = builder.createPerformer();
@@ -799,9 +799,107 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     };
 
     //==============================================================================
+    void build (cmaj::Engine& engine,
+                LoadParams& loadParams,
+                const PlaybackParams& playbackParams,
+                bool shouldResolveExternals,
+                bool shouldLink,
+                const cmaj::CacheDatabaseInterface::Ptr& c,
+                const std::function<void()>& checkForStopSignal)
+    {
+        try
+        {
+            manifest = std::move (loadParams.manifest);
+
+            if (! loadProgram (engine, playbackParams, shouldResolveExternals, checkForStopSignal))
+                return;
+
+            if (! shouldResolveExternals)
+                return;
+
+            checkForStopSignal();
+            AudioMIDIPerformer::Builder performerBuilder (engine);
+            scanEndpointList (engine);
+            checkForStopSignal();
+            connectPerformerEndpoints (playbackParams, performerBuilder);
+            checkForStopSignal();
+
+            if (! shouldLink)
+                return;
+
+            if (! engine.link (errors, c.get()))
+                return;
+
+            sampleRate = playbackParams.sampleRate;
+            lastBuildLog = engine.getLastBuildLog();
+
+            if (performerBuilder.setEventOutputHandler ([this] { outputEventsReady(); }))
+                startOutputEventThread();
+
+            if (createPerformer (performerBuilder))
+                applyParameterValues (loadParams.parameterValues);
+        }
+        catch (const choc::json::ParseError& e)
+        {
+            errors.add (cmaj::DiagnosticMessage::createError (std::string (e.what()) + ":" + e.lineAndColumn.toString(), {}));
+        }
+        catch (const std::runtime_error& e)
+        {
+            errors.add (cmaj::DiagnosticMessage::createError (e.what(), {}));
+        }
+    }
+
+    bool loadProgram (cmaj::Engine& engine,
+                      const PlaybackParams& playbackParams,
+                      bool shouldResolveExternals,
+                      const std::function<void()>& checkForStopSignal)
+    {
+        cmaj::Program program;
+
+        if (manifest.needsToBuildSource)
+        {
+            for (auto& file : manifest.sourceFiles)
+            {
+                checkForStopSignal();
+
+                auto content = manifest.readFileContent (file);
+
+                if (content.empty()
+                    && manifest.getFileModificationTime (file) == std::filesystem::file_time_type())
+                {
+                    errors.add (cmaj::DiagnosticMessage::createError ("Could not open source file: " + file, {}));
+                    return false;
+                }
+
+                if (! program.parse (errors, manifest.getFullPathForFile (file), std::move (content)))
+                    return false;
+            }
+        }
+
+        engine.setBuildSettings (engine.getBuildSettings()
+                                   .setFrequency (playbackParams.sampleRate)
+                                   .setMaxBlockSize (playbackParams.blockSize)
+                                   .setMainProcessor (manifest.mainProcessor));
+
+        checkForStopSignal();
+
+        if (engine.load (errors, program,
+                         shouldResolveExternals ? manifest.createExternalResolverFunction()
+                                                : [] (const cmaj::ExternalVariable&) -> choc::value::Value { return {}; },
+                         {}))
+        {
+            programDetails = engine.getProgramDetails();
+            inputEndpoints = engine.getInputEndpoints();
+            outputEndpoints = engine.getOutputEndpoints();
+            return true;
+        }
+
+        return false;
+    }
+
+    //==============================================================================
     void connectPerformerEndpoints (const PlaybackParams& playbackParams,
-                                    AudioMIDIPerformer::Builder& performerBuilder,
-                                    const std::function<std::shared_ptr<DataListener>(AudioLevelMonitor&, const EndpointID&)>& createListener)
+                                    AudioMIDIPerformer::Builder& performerBuilder)
     {
         uint32_t inputChanIndex = 0;
 
@@ -824,7 +922,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 }
 
                 performerBuilder.connectAudioInputTo (inChans, e, endpointChans,
-                                                      createDataListener (e.endpointID, createListener));
+                                                      createDataListener (e.endpointID));
             }
             else if (e.isMIDI())
             {
@@ -868,7 +966,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 }
 
                 performerBuilder.connectAudioOutputTo (e, endpointChans, outChans,
-                                                       createDataListener (e.endpointID, createListener));
+                                                       createDataListener (e.endpointID));
             }
             else if (e.isMIDI())
             {
@@ -877,14 +975,20 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         }
     }
 
-    std::shared_ptr<DataListener> createDataListener (const EndpointID& endpointID,
-                                                      const std::function<std::shared_ptr<DataListener>(AudioLevelMonitor&, const EndpointID&)>& createListener)
+    std::shared_ptr<DataListener> createDataListener (const EndpointID& endpointID)
     {
         for (auto& m : audioEndpointMonitors)
         {
             if (endpointID.toString() == m->endpointID)
             {
-                auto l = createListener (*m, endpointID);
+                auto l = std::make_shared<PatchRenderer::DataListener> (*patch.clientEventQueue, *m);
+
+                if (auto s = patch.getCustomAudioSourceForInput (endpointID))
+                {
+                    l->customSource = s;
+                    s->prepare (sampleRate);
+                }
+
                 dataListeners[endpointID.toString()] = l;
                 return l;
             }
@@ -948,6 +1052,19 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         return {};
     }
 
+    void applyParameterValues (const std::unordered_map<std::string, float>& values) const
+    {
+        for (auto& p : parameterIDMap)
+        {
+            auto oldValue = values.find (p.first);
+
+            if (oldValue != values.end())
+                p.second->setValue (oldValue->second, true);
+            else
+                p.second->resetToDefaultValue (true);
+        }
+    }
+
     void sendEventOrValueToPatch (ClientEventQueue& queue, const EndpointID& endpointID,
                                   const choc::value::ValueView& value, int32_t rampFrames = -1)
     {
@@ -1007,6 +1124,23 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     }
 
     //==============================================================================
+    void postParameterChange (const PatchParameterProperties& properties, EndpointHandle endpointHandle,
+                              float newValue, int32_t explicitRampFrames)
+    {
+        if (performer)
+        {
+            if (properties.isEvent)
+                performer->postEvent (endpointHandle, choc::value::createFloat32 (newValue));
+            else
+                performer->postValue (endpointHandle, choc::value::createFloat32 (newValue),
+                                      explicitRampFrames >= 0 ? static_cast<uint32_t> (explicitRampFrames)
+                                                              : properties.rampFrames);
+        }
+
+        patch.clientEventQueue->postParameterChange (properties.endpointID, newValue);
+    }
+
+    //==============================================================================
     void startOutputEventThread()
     {
         outputEventThread.start (0, [this] { sendOutputEventMessages(); });
@@ -1045,6 +1179,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         }
     }
 
+    const Patch& patch;
     PatchManifest manifest;
     cmaj::DiagnosticMessageList errors;
     std::string lastBuildLog;
@@ -1065,10 +1200,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     std::unordered_map<std::string, std::shared_ptr<DataListener>> dataListeners;
 
     choc::threading::ThreadSafeFunctor<HandleOutputEventFn> handleOutputEvent;
-    std::function<void(const EndpointID&, float newValue)> handleParameterChange;
 
 private:
-    friend struct Build;
     std::unique_ptr<cmaj::AudioMIDIPerformer> performer;
 
     std::unordered_map<std::string, PatchParameterPtr> parameterIDMap;
@@ -1085,16 +1218,10 @@ private:
 //==============================================================================
 struct Patch::Build
 {
-    Build (Patch& p,
-           cmaj::Engine e,
-           LoadParams lp,
-           PlaybackParams pp,
-           bool shouldResolveExternals,
-           bool shouldLink,
-           cmaj::CacheDatabaseInterface::Ptr c)
-       : patch (p), engine (e), loadParams (std::move (lp)),
-         playbackParams (pp), resolveExternals (shouldResolveExternals),
-         performLink (shouldLink), cache (std::move (c))
+    Build (Patch& p, LoadParams lp, bool shouldResolveExternals, bool shouldLink)
+       : patch (p), loadParams (std::move (lp)),
+         resolveExternals (shouldResolveExternals),
+         performLink (shouldLink)
     {}
 
     cmaj::DiagnosticMessageList& getMessageList()
@@ -1105,58 +1232,13 @@ struct Patch::Build
 
     void build (const std::function<void()>& checkForStopSignal)
     {
-        try
-        {
-            if (! loadProgram (checkForStopSignal))
-                return;
+        CMAJ_ASSERT (patch.createEngine);
+        auto engine = patch.createEngine();
+        CMAJ_ASSERT (engine);
 
-            if (! resolveExternals)
-                return;
-
-            checkForStopSignal();
-            performerBuilder = std::make_unique<AudioMIDIPerformer::Builder> (engine);
-            renderer->scanEndpointList (engine);
-            checkForStopSignal();
-
-            renderer->connectPerformerEndpoints (playbackParams, *performerBuilder,
-                                                 [&] (AudioLevelMonitor& monitor, const EndpointID& endpointID) -> std::shared_ptr<PatchRenderer::DataListener>
-            {
-                auto l = std::make_shared<PatchRenderer::DataListener> (*patch.clientEventQueue, monitor);
-
-                if (auto s = patch.getCustomAudioSourceForInput (endpointID))
-                {
-                    l->customSource = s;
-                    s->prepare (renderer->sampleRate);
-                }
-
-                return l;
-            });
-
-            checkForStopSignal();
-
-            if (! performLink)
-                return;
-
-            if (! engine.link (renderer->errors, cache.get()))
-                return;
-
-            renderer->sampleRate = playbackParams.sampleRate;
-            renderer->lastBuildLog = engine.getLastBuildLog();
-
-            if (performerBuilder->setEventOutputHandler ([p = renderer.get()] { p->outputEventsReady(); }))
-                renderer->startOutputEventThread();
-
-            if (renderer->createPerformer (*performerBuilder))
-                applyParameterValues();
-        }
-        catch (const choc::json::ParseError& e)
-        {
-            renderer->errors.add (cmaj::DiagnosticMessage::createError (std::string (e.what()) + ":" + e.lineAndColumn.toString(), {}));
-        }
-        catch (const std::runtime_error& e)
-        {
-            renderer->errors.add (cmaj::DiagnosticMessage::createError (e.what(), {}));
-        }
+        renderer = std::make_shared<PatchRenderer> (patch);
+        renderer->build (engine, loadParams, patch.currentPlaybackParams,
+                         resolveExternals, performLink, patch.cache, checkForStopSignal);
     }
 
     std::shared_ptr<PatchRenderer> takeRenderer()
@@ -1167,75 +1249,10 @@ struct Patch::Build
 
 private:
     const Patch& patch;
-    Engine engine;
     LoadParams loadParams;
-    const PlaybackParams playbackParams;
     const bool resolveExternals, performLink;
-    const cmaj::CacheDatabaseInterface::Ptr cache;
     std::shared_ptr<PatchRenderer> renderer;
     std::unique_ptr<AudioMIDIPerformer::Builder> performerBuilder;
-
-    bool loadProgram (const std::function<void()>& checkForStopSignal)
-    {
-        renderer = std::make_shared<PatchRenderer>();
-        auto& manifest = loadParams.manifest;
-
-        cmaj::Program program;
-
-        if (manifest.needsToBuildSource)
-        {
-            for (auto& file : manifest.sourceFiles)
-            {
-                checkForStopSignal();
-
-                auto content = manifest.readFileContent (file);
-
-                if (content.empty()
-                    && manifest.getFileModificationTime (file) == std::filesystem::file_time_type())
-                {
-                    renderer->errors.add (cmaj::DiagnosticMessage::createError ("Could not open source file: " + file, {}));
-                    return false;
-                }
-
-                if (! program.parse (renderer->errors, manifest.getFullPathForFile (file), std::move (content)))
-                    return false;
-            }
-        }
-
-        engine.setBuildSettings (engine.getBuildSettings()
-                                 .setFrequency (playbackParams.sampleRate)
-                                 .setMaxBlockSize (playbackParams.blockSize)
-                                 .setMainProcessor (manifest.mainProcessor));
-
-        checkForStopSignal();
-
-        if (engine.load (renderer->errors, program,
-                         resolveExternals ? manifest.createExternalResolverFunction()
-                                          : [] (const cmaj::ExternalVariable&) -> choc::value::Value { return {}; },
-                         {}))
-        {
-            renderer->manifest = std::move (manifest);
-            renderer->programDetails = engine.getProgramDetails();
-            renderer->inputEndpoints = engine.getInputEndpoints();
-            renderer->outputEndpoints = engine.getOutputEndpoints();
-            return true;
-        }
-
-        return false;
-    }
-
-    void applyParameterValues()
-    {
-        for (auto& p : renderer->parameterIDMap)
-        {
-            auto oldValue = loadParams.parameterValues.find (p.first);
-
-            if (oldValue != loadParams.parameterValues.end())
-                p.second->setValue (oldValue->second, true);
-            else
-                p.second->resetToDefaultValue (true);
-        }
-    }
 };
 
 //==============================================================================
@@ -1336,7 +1353,7 @@ private:
         }
 
         if (finishedTask && finishedTask->build)
-            owner.applyFinishedBuild (*(finishedTask->build));
+            owner.setNewRenderer (finishedTask->build->takeRenderer());
     }
 
     void clearTaskList()
@@ -1368,21 +1385,13 @@ inline Patch::~Patch()
 
 inline bool Patch::preload (const PatchManifest& m)
 {
-    CMAJ_ASSERT (createEngine);
-
     LoadParams params;
     params.manifest = m;
 
-    if (auto engine = createEngine())
-    {
-        auto build = std::make_unique<Build> (*this, std::move (engine), params,
-                                              currentPlaybackParams, false, false, cache);
-        build->build ([] {});
-        applyFinishedBuild (*build);
-        return ! renderer->errors.hasErrors();
-    }
-
-    return false;
+    auto build = std::make_unique<Build> (*this, params, false, false);
+    build->build ([] {});
+    setNewRenderer (build->takeRenderer());
+    return renderer != nullptr && ! renderer->errors.hasErrors();
 }
 
 inline bool Patch::loadPatch (const LoadParams& params)
@@ -1395,9 +1404,7 @@ inline bool Patch::loadPatch (const LoadParams& params)
     if (std::addressof (lastLoadParams) != std::addressof (params))
         lastLoadParams = params;
 
-    CMAJ_ASSERT (createEngine);
-    auto build = std::make_unique<Build> (*this, createEngine(), params,
-                                          currentPlaybackParams, true, true, cache);
+    auto build = std::make_unique<Build> (*this, params, true, true);
 
     setStatus ("Loading: " + params.manifest.manifestFile);
 
@@ -1408,7 +1415,7 @@ inline bool Patch::loadPatch (const LoadParams& params)
     }
 
     build->build ([] {});
-    applyFinishedBuild (*build);
+    setNewRenderer (build->takeRenderer());
     return isPlayable();
 }
 
@@ -1453,8 +1460,7 @@ inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, cons
     auto engine = createEngine();
     CMAJ_ASSERT (engine);
 
-    auto build = std::make_unique<Build> (*this, std::move (engine), params,
-                                          currentPlaybackParams, true, false, cache);
+    auto build = std::make_unique<Build> (*this, params, true, false);
     build->build ([] {});
 
     if (build->getMessageList().hasErrors())
@@ -1536,7 +1542,7 @@ inline void Patch::rebuild()
     {
         if (isPlayable())
             for (auto& param : renderer->parameterList)
-                lastLoadParams.parameterValues[param->endpointID.toString()] = param->currentValue;
+                lastLoadParams.parameterValues[param->properties.endpointID] = param->currentValue;
 
         if (lastLoadParams.manifest.reload())
         {
@@ -1813,7 +1819,7 @@ inline choc::value::Value Patch::getFullStoredState() const
     auto parameters = choc::value::createArray (static_cast<uint32_t> (paramsToSave.size()),
                                                 [&] (uint32_t i)
     {
-        return choc::json::create ("name", paramsToSave[i]->endpointID.toString(),
+        return choc::json::create ("name", paramsToSave[i]->properties.endpointID,
                                    "value", paramsToSave[i]->currentValue);
     });
 
@@ -1838,7 +1844,7 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
 
         for (auto& param : getParameterList())
         {
-            auto newValue = explicitParamValues.find (param->endpointID.toString());
+            auto newValue = explicitParamValues.find (param->properties.endpointID);
 
             if (newValue != explicitParamValues.end())
                 param->setValue (newValue->second, true);
@@ -1871,11 +1877,6 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
         setStoredStateValue (key, {});
 
     return true;
-}
-
-inline void Patch::sendRealtimeParameterChangeToViews (const std::string& endpointID, float value)
-{
-    clientEventQueue->postParameterChange (endpointID, value);
 }
 
 inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, float value)
@@ -1916,26 +1917,27 @@ inline void Patch::sendPatchChange()
         patchChanged();
 }
 
-inline void Patch::applyFinishedBuild (Build& build)
+inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
 {
+    if (renderer == nullptr && newRenderer == nullptr)
+        return;
+
     if (stopPlayback)
         stopPlayback();
 
     renderer.reset();
     sendPatchChange();
-    renderer = build.takeRenderer();
+    renderer = std::move (newRenderer);
 
-    renderer->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
+    if (renderer != nullptr)
     {
-        sendOutputEvent (frame, endpointID, v);
-    };
+        renderer->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
+        {
+            sendOutputEvent (frame, endpointID, v);
+        };
 
-    renderer->handleParameterChange = [this] (const EndpointID& endpointID, float value)
-    {
-        sendRealtimeParameterChangeToViews (endpointID.toString(), value);
-    };
-
-    sendPatchChange();
+        sendPatchChange();
+    }
 
     if (isPlayable())
     {
@@ -2154,9 +2156,8 @@ inline bool Patch::handleClientMessage (const choc::value::ValueView& msg)
 
 //==============================================================================
 inline PatchParameter::PatchParameter (std::shared_ptr<Patch::PatchRenderer> r, const EndpointDetails& details, cmaj::EndpointHandle handle)
-    : renderer (std::move (r)), endpointID (details.endpointID), endpointHandle (handle), properties (details)
+    : properties (details), renderer (std::move (r)), endpointHandle (handle), currentValue (properties.defaultValue)
 {
-    currentValue = properties.defaultValue;
 }
 
 inline void PatchParameter::setValue (float newValue, bool forceSend, int32_t explicitRampFrames)
@@ -2168,20 +2169,7 @@ inline void PatchParameter::setValue (float newValue, bool forceSend, int32_t ex
         currentValue = newValue;
 
         if (auto r = renderer.lock())
-        {
-            if (auto performer = r->getPerformerPointer())
-            {
-                if (properties.isEvent)
-                    performer->postEvent (endpointHandle, choc::value::createFloat32 (newValue));
-                else
-                    performer->postValue (endpointHandle, choc::value::createFloat32 (newValue),
-                                          explicitRampFrames >= 0 ? static_cast<uint32_t> (explicitRampFrames)
-                                                                  : properties.rampFrames);
-            }
-
-            if (r->handleParameterChange)
-                r->handleParameterChange (endpointID, newValue);
-        }
+            r->postParameterChange (properties, endpointHandle, newValue, explicitRampFrames);
 
         if (valueChanged)
             valueChanged (newValue);
@@ -2190,9 +2178,11 @@ inline void PatchParameter::setValue (float newValue, bool forceSend, int32_t ex
 
 inline void PatchParameter::setValue (const choc::value::ValueView& v, bool forceSend, int32_t explicitRampFrames)
 {
-    setValue (v.isString() ? properties.getStringAsValue (v.getString())
-                           : v.getWithDefault<float> (0),
-              forceSend, explicitRampFrames);
+    if (v.isString())
+        if (auto val = properties.getStringAsValue (v.getString()))
+            return setValue (*val, forceSend, explicitRampFrames);
+
+    setValue (v.getWithDefault<float> (properties.defaultValue), forceSend, explicitRampFrames);
 }
 
 inline void PatchParameter::resetToDefaultValue (bool forceSend)
