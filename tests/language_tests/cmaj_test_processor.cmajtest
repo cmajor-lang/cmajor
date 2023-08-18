@@ -1,0 +1,492 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+
+## testProcessor()
+
+processor Source [[ main ]]
+{
+    output stream int out;
+
+    void main() { out <- 1; advance(); out <- -1;}
+}
+
+## testProcessor()
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Source;
+
+    void main()
+    {
+        loop
+        {
+            source.advance();
+            out <- source.out;
+            advance();
+        }
+    }
+}
+
+processor Source
+{
+    output stream int out;
+
+    void main() { out <- 1; advance(); out <- -1;}
+}
+
+
+## testProcessor()
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Source;
+
+    void main()
+    {
+        for (wrap<3> i)
+        {
+            source.advance();
+            out <- source.out[i];
+            advance();
+        }
+    }
+}
+
+processor Source
+{
+    output stream int out[3];
+
+    void main() { out[0] <- 1; advance(); out[1] <- -1; advance();}
+}
+
+
+## testProcessor()
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Echo;
+
+    int process (int i)
+    {
+        source.in <- i;
+        source.advance();
+        return source.out;
+    }
+
+    void main()
+    {
+        out <- process (1);
+        advance();
+
+        out <- process (-1);
+        advance();
+    }
+}
+
+processor Echo
+{
+    input stream int in;
+    output stream int out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in;
+            advance();
+        }
+    }
+}
+
+## testProcessor()
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Echo;
+
+    int process (int i)
+    {
+        source.in[1] <- i;
+        source.advance();
+        return source.out[1];
+    }
+
+    void main()
+    {
+        out <- process (1);
+        advance();
+
+        out <- process (-1);
+        advance();
+    }
+}
+
+processor Echo
+{
+    input stream int in[3];
+    output stream int out[3];
+
+    void main()
+    {
+        loop
+        {
+            out <- in;
+            advance();
+        }
+    }
+}
+
+## testProcessor()
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Echo[3];
+
+    int process (wrap<3> n, int i)
+    {
+        source[n].in[1] <- i;
+        source[n].advance();
+        return source[n].out[1];
+    }
+
+    void main()
+    {
+        out <- process (0, 1);
+        advance();
+
+        out <- process (1, -1);
+        advance();
+    }
+}
+
+processor Echo
+{
+    input stream int in[3];
+    output stream int out[3];
+
+    void main()
+    {
+        loop
+        {
+            out <- in;
+            advance();
+        }
+    }
+}
+
+
+## expectError ("6:19: error: Cannot find symbol 'Unknown'")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Unknown;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+## expectError ("2:11: error: 'Test' cannot refer to itself recursively")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Test;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+## expectError ("12:20: error: This node is not an array")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Source;
+
+    void main()
+    {
+        loop
+        {
+            source[0].advance();
+            out <- source.out;
+            advance();
+        }
+    }
+}
+
+processor Source
+{
+    output stream int out;
+
+    void main() { out <- 1; advance(); out <- -1;}
+}
+
+## expectError ("13:27: error: This node is not an array")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Source;
+
+    void main()
+    {
+        loop
+        {
+            source.advance();
+            out <- source[0].out;
+            advance();
+        }
+    }
+}
+
+processor Source
+{
+    output stream int out;
+
+    void main() { out <- 1; advance(); out <- -1;}
+}
+
+## expectError ("8:10: error: The main() function must call advance()")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Source;
+
+    void main()
+    {
+        loop
+        {
+            source.advance();
+            out <- source.out;
+        }
+    }
+}
+
+processor Source
+{
+    output stream int out;
+
+    void main() { out <- 1; advance(); out <- -1;}
+}
+
+## expectError ("error: Cannot read an array endpoint from a processor array - you must specify a processor array instance")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Source[3];
+
+    void main()
+    {
+        let x = source.out;
+        advance();
+    }
+}
+
+processor Source
+{
+    output stream int out[3];
+
+    void main() { advance(); }
+}
+
+## expectError ("error: Cannot read an array endpoint from a processor array - you must specify a processor array instance")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node source = Source[3];
+
+    void main()
+    {
+        let x = source.out;
+        advance();
+    }
+}
+
+processor Source
+{
+    output value int out[3];
+
+    void main() { advance(); }
+}
+
+## testProcessor()
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node streamSource = StreamEcho;
+    node valueSource  = ValueEcho;
+
+    bool equals (int[3] a, int[3] b)
+    {
+        return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
+    }
+
+    bool process (int[3] in)
+    {
+        streamSource.in <- in;
+        valueSource.in <- in;
+        streamSource.advance();
+        valueSource.advance();
+
+        return equals (streamSource.out, valueSource.out);
+    }
+
+    void main()
+    {
+        if (process (int[3] (1, 2, 3)))
+            out <- 1;
+
+        advance();
+
+        if (process (int[3] (5, 6, 7)))
+            out <- -1;
+
+        advance();
+    }
+}
+
+processor StreamEcho
+{
+    input stream int in[3];
+    output stream int out[3];
+
+    void main()
+    {
+        loop
+        {
+            out <- in;
+            advance();
+        }
+    }
+}
+
+processor ValueEcho
+{
+    input value int in[3];
+    output value int out[3];
+
+    void main()
+    {
+        loop
+        {
+            out <- in;
+            advance();
+        }
+    }
+}
+
+
+## testProcessor()
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    node streamSource = StreamEcho;
+    node valueSource  = ValueEcho;
+
+    bool equals (int[3] a, int[3] b)
+    {
+        return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
+    }
+
+    bool process (int[3] in)
+    {
+        streamSource.in[0] <- in[0];
+        streamSource.in[1] <- in[1];
+        streamSource.in[2] <- in[2];
+        valueSource.in[0] <- in[0];
+        valueSource.in[1] <- in[1];
+        valueSource.in[2] <- in[2];
+
+        streamSource.advance();
+        valueSource.advance();
+
+        return equals (streamSource.out, valueSource.out);
+    }
+
+    void main()
+    {
+        if (process (int[3] (1, 2, 3)))
+            out <- 1;
+
+        advance();
+
+        if (process (int[3] (5, 6, 7)))
+            out <- -1;
+
+        advance();
+    }
+}
+
+processor StreamEcho
+{
+    input event int in[3];
+    output stream int out[3];
+
+    event in (int index, int a) { i.at (index) = a; }
+
+    int[3] i;
+
+    void main()
+    {
+        loop
+        {
+            out <- i;
+            advance();
+        }
+    }
+}
+
+processor ValueEcho
+{
+    input event int in[3];
+    output value int out[3];
+
+    event in (int index, int a) { i.at (index) = a; }
+
+    int[3] i;
+
+    void main()
+    {
+        loop
+        {
+            out <- i;
+            advance();
+        }
+    }
+}
