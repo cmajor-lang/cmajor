@@ -1119,15 +1119,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             param->resetToDefaultValue (true);
     }
 
-    void beginProcessBlock()
-    {
-        processLock.lock();
-    }
-
-    void endProcessBlock()
-    {
-        processLock.unlock();
-    }
+    void beginProcessBlock()    { processLock.lock(); }
+    void endProcessBlock()      { processLock.unlock(); }
 
     //==============================================================================
     void postParameterChange (const PatchParameterProperties& properties, EndpointHandle endpointHandle,
@@ -1144,6 +1137,23 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         }
 
         patch.clientEventQueue->postParameterChange (properties.endpointID, newValue);
+    }
+
+    //==============================================================================
+    void processMIDIMessage (choc::midi::ShortMessage message)
+    {
+        for (auto& monitor : eventEndpointMonitors)
+            if (monitor->isMIDI)
+                monitor->process (*patch.clientEventQueue, monitor->endpointID, message);
+    }
+
+    void processMIDIBlock (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+    {
+        if (! block.midiMessages.empty())
+            for (auto& monitor : eventEndpointMonitors)
+                if (monitor->isMIDI)
+                    for (auto& m : block.midiMessages)
+                        monitor->process (*patch.clientEventQueue, monitor->endpointID, m);
     }
 
     //==============================================================================
@@ -1203,21 +1213,20 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
     std::vector<std::unique_ptr<EventMonitor>> eventEndpointMonitors;
     std::vector<std::unique_ptr<AudioLevelMonitor>> audioEndpointMonitors;
-    std::unordered_map<std::string, std::shared_ptr<DataListener>> dataListeners;
-
-    choc::threading::ThreadSafeFunctor<HandleOutputEventFn> handleOutputEvent;
 
 private:
     std::unique_ptr<cmaj::AudioMIDIPerformer> performer;
-
     std::unordered_map<std::string, PatchParameterPtr> parameterIDMap;
-
+    std::unordered_map<std::string, std::shared_ptr<DataListener>> dataListeners;
+    choc::threading::ThreadSafeFunctor<HandleOutputEventFn> handleOutputEvent;
+    choc::threading::TaskThread outputEventThread;
+    choc::messageloop::Timer infiniteLoopCheckTimer;
     TimelineEventGenerator timelineEvents;
     cmaj::EndpointID timeSigEventID, tempoEventID, transportStateEventID, positionEventID;
 
-    choc::threading::TaskThread outputEventThread;
-    choc::messageloop::Timer infiniteLoopCheckTimer;
-
+    // The process callback is protected by a mutex that is uncontended during normal
+    // playback. The only times that another thread may lock it are when a newly compiled
+    // engine is being swapped over, or a new custom source is being applied.
     std::mutex processLock;
 };
 
@@ -1545,7 +1554,7 @@ inline void Patch::rebuild()
     try
     {
         if (isPlayable())
-            for (auto& param : renderer->parameterList)
+            for (auto& param : getParameterList())
                 lastLoadParams.parameterValues[param->properties.endpointID] = param->currentValue;
 
         if (lastLoadParams.manifest.reload())
@@ -1574,7 +1583,7 @@ inline void Patch::rebuild()
 
 inline void Patch::resetToInitialState()
 {
-    if (renderer)
+    if (renderer != nullptr)
         renderer->resetToInitialState();
 }
 
@@ -1631,23 +1640,23 @@ inline std::string Patch::getManifestFile() const
 }
 
 inline bool Patch::isPlayable() const                       { return renderer != nullptr && renderer->isPlayable(); }
-inline std::string Patch::getDescription() const            { return isLoaded() ? renderer->manifest.description : std::string(); }
-inline std::string Patch::getManufacturer() const           { return isLoaded() ? renderer->manifest.manufacturer : std::string(); }
-inline std::string Patch::getVersion() const                { return isLoaded() ? renderer->manifest.version : std::string(); }
-inline std::string Patch::getCategory() const               { return isLoaded() ? renderer->manifest.category : std::string(); }
-inline std::string Patch::getPatchFile() const              { return isLoaded() ? renderer->manifest.manifestFile : std::string(); }
-inline bool Patch::isInstrument() const                     { return isLoaded() && renderer->manifest.isInstrument; }
-inline bool Patch::hasMIDIInput() const                     { return isLoaded() && renderer->hasMIDIInputs; }
-inline bool Patch::hasMIDIOutput() const                    { return isLoaded() && renderer->hasMIDIOutputs; }
-inline bool Patch::hasAudioInput() const                    { return isLoaded() && renderer->numAudioInputChans != 0; }
-inline bool Patch::hasAudioOutput() const                   { return isLoaded() && renderer->numAudioOutputChans != 0; }
-inline bool Patch::wantsTimecodeEvents() const              { return renderer->hasTimecodeInputs; }
-inline double Patch::getFramesLatency() const               { return isLoaded() ? renderer->framesLatency : 0.0; }
-inline choc::value::Value Patch::getProgramDetails() const  { return isLoaded() ? renderer->programDetails : choc::value::Value(); }
+inline std::string Patch::getDescription() const            { return renderer != nullptr ? renderer->manifest.description : std::string(); }
+inline std::string Patch::getManufacturer() const           { return renderer != nullptr ? renderer->manifest.manufacturer : std::string(); }
+inline std::string Patch::getVersion() const                { return renderer != nullptr ? renderer->manifest.version : std::string(); }
+inline std::string Patch::getCategory() const               { return renderer != nullptr ? renderer->manifest.category : std::string(); }
+inline std::string Patch::getPatchFile() const              { return renderer != nullptr ? renderer->manifest.manifestFile : std::string(); }
+inline bool Patch::isInstrument() const                     { return renderer != nullptr && renderer->manifest.isInstrument; }
+inline bool Patch::hasMIDIInput() const                     { return renderer != nullptr && renderer->hasMIDIInputs; }
+inline bool Patch::hasMIDIOutput() const                    { return renderer != nullptr && renderer->hasMIDIOutputs; }
+inline bool Patch::hasAudioInput() const                    { return renderer != nullptr && renderer->numAudioInputChans != 0; }
+inline bool Patch::hasAudioOutput() const                   { return renderer != nullptr && renderer->numAudioOutputChans != 0; }
+inline bool Patch::wantsTimecodeEvents() const              { return renderer != nullptr && renderer->hasTimecodeInputs; }
+inline double Patch::getFramesLatency() const               { return renderer != nullptr ? renderer->framesLatency : 0.0; }
+inline choc::value::Value Patch::getProgramDetails() const  { return renderer != nullptr ? renderer->programDetails : choc::value::Value(); }
 
 inline std::string Patch::getMainProcessorName() const
 {
-    if (renderer && renderer->programDetails.isObject())
+    if (renderer != nullptr && renderer->programDetails.isObject())
         return renderer->programDetails["mainProcessor"].toString();
 
     return {};
@@ -1655,7 +1664,7 @@ inline std::string Patch::getMainProcessorName() const
 
 inline EndpointDetailsList Patch::getInputEndpoints() const
 {
-    if (renderer)
+    if (renderer != nullptr)
         return renderer->inputEndpoints;
 
     return {};
@@ -1663,7 +1672,7 @@ inline EndpointDetailsList Patch::getInputEndpoints() const
 
 inline EndpointDetailsList Patch::getOutputEndpoints() const
 {
-    if (renderer)
+    if (renderer != nullptr)
         return renderer->outputEndpoints;
 
     return {};
@@ -1671,7 +1680,7 @@ inline EndpointDetailsList Patch::getOutputEndpoints() const
 
 inline choc::span<PatchParameterPtr> Patch::getParameterList() const
 {
-    if (renderer)
+    if (renderer != nullptr)
         return renderer->parameterList;
 
     return {};
@@ -1694,10 +1703,8 @@ inline void Patch::addMIDIMessage (int frameIndex, const void* data, uint32_t le
         midiMessages.push_back (message);
         midiMessageTimes.push_back (frameIndex);
 
-        if (! renderer->eventEndpointMonitors.empty())
-            for (auto& m : renderer->eventEndpointMonitors)
-                if (m->isMIDI)
-                    m->process (*clientEventQueue, m->endpointID, message);
+        if (renderer != nullptr)
+            renderer->processMIDIMessage (message);
     }
 }
 
@@ -1731,12 +1738,7 @@ inline void Patch::processChunk (const choc::audio::AudioMIDIBlockDispatcher::Bl
 {
     renderer->getPerformer().process (block, replaceOutput);
     clientEventQueue->postProcessChunk (block);
-
-    if (! block.midiMessages.empty())
-        for (auto& monitor : renderer->eventEndpointMonitors)
-            if (monitor->isMIDI)
-                for (auto& m : block.midiMessages)
-                    monitor->process (*clientEventQueue, monitor->endpointID, m);
+    renderer->processMIDIBlock (block);
 }
 
 inline void Patch::endChunkedProcess()
@@ -1782,7 +1784,7 @@ inline void Patch::sendPatchStatusChangeToViews() const
                                 "error", renderer->errors.toString(),
                                 "manifest", renderer->manifest.manifest,
                                 "details", renderer->programDetails,
-                                "sampleRate", currentPlaybackParams.sampleRate));
+                                "sampleRate", renderer->sampleRate));
     }
 }
 
@@ -1948,19 +1950,19 @@ inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
             if (handleInfiniteLoop)
                 renderer->startInfiniteLoopCheck (handleInfiniteLoop);
         }
-    }
 
-    if (statusChanged)
-    {
-        Status s;
+        if (statusChanged)
+        {
+            Status s;
 
-        if (renderer->errors.hasErrors())
-            s.statusMessage = renderer->errors.toString();
-        else
-            s.statusMessage = getName().empty() ? std::string() : "Loaded: " + getName();
+            if (renderer->errors.hasErrors())
+                s.statusMessage = renderer->errors.toString();
+            else
+                s.statusMessage = getName().empty() ? std::string() : "Loaded: " + getName();
 
-        s.messageList = renderer->errors;
-        statusChanged (s);
+            s.messageList = renderer->errors;
+            statusChanged (s);
+        }
     }
 
     startCheckingForChanges();
@@ -2193,7 +2195,6 @@ inline PatchView::PatchView (Patch& p) : PatchView (p, {})
 inline PatchView::PatchView (Patch& p, const PatchManifest::View& view) : patch (p)
 {
     update (view);
-
     setActive (true);
 }
 
