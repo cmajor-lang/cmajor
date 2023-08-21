@@ -145,33 +145,41 @@ R"(
     // Listener methods:)"
 R"(
 
-    /// Attaches a listener function which will be called whenever an event passes through a specific endpoint.
-    /// This can be used to monitor both input and output endpoints.
-    /// The listener function will be called with an argument which is the value of the event.
-    addEndpointEventListener (endpointID, listener)
+    /// Attaches a listener function that will receive updates with the events or audio data
+    /// that is being sent or received by an endpoint.
+    /// If the endpoint is an event or value, the callback will be given an argument which is
+    /// the new value.
+    /// If the endpoint has the right shape to be treated as "audio" then the callback will receive
+    /// a stream of updates of the min/max range of chunks of data that is flowing through it.
+    /// There will be one callback per chunk of data, and the size of chunks is specified by
+    /// the optional granularity parameter. The listener will receive an argument object containing
+    /// two properties 'min' and 'max', which are each an array of values, one element per audio
+    /// channel. This allows you to find the highest and lowest samples in that chunk for each channel.
+    addEndpointListener (endpointID, listener, granularity)
     {
-        this.addEventListener ("event_" + endpointID, listener);
-        this.sendMessageToServer ({ type: "set_endpoint_event_monitoring", endpoint: endpointID, active: true });
+        listener.eventID = "event_" + endpointID + "_" + (Math.floor (Math.random() * 100000000)).toString();
+        this.addEventListener (listener.eventID, listener);
+        this.sendMessageToServer ({ type: "add_endpoint_listener", endpoint: endpointID, replyType: listener.eventID, granularity: granularity });
     }
 
-    /// Removes a listener that was previously added with addEndpointEventListener()
-    removeEndpointEventListener (endpointID, listener)
+    /// Removes a listener that was previously added with addEndpointListener()
+    removeEndpointListener (endpointID, listener)
     {
-        this.removeEventListener ("event_" + endpointID, listener);
-        this.sendMessageToServer ({ type: "set_endpoint_event_monitoring", endpoint: endpointID, active: false });
+        this.removeEventListener (listener.eventID, listener);
+        this.sendMessageToServer ({ type: "remove_endpoint_listener", endpoint: endpointID, replyType: listener.eventID });
     }
 
     /// This will trigger an asynchronous callback to any parameter listeners that are
     /// attached, providing them with its up-to-date current value for the given endpoint.
     /// Use addAllParameterListener() to attach a listener to receive the result.
-    requestParameterValue (endpointID)                  { this.sendMessageToServer ({ type: "req_param_value", id: endpointID }); }
+    requestParameterValue (endpointID)                  { this.sendMessageToServer ({ type: "req_param_value", id: endpointID }); })"
+R"(
 
     /// Attaches a listener function which will be called whenever the value of a specific parameter changes.
     /// The listener function will be called with an argument which is the new value.
     addParameterListener (endpointID, listener)         { this.addEventListener ("param_value_" + endpointID.toString(), listener); }
     /// Removes a listener that was previously added with addParameterListener()
-    removeParameterListener (endpointID, listener)      { this.removeEventListener ("param_value_" + endpointID.toString(), listener); })"
-R"(
+    removeParameterListener (endpointID, listener)      { this.removeEventListener ("param_value_" + endpointID.toString(), listener); }
 
     /// Attaches a listener function which will be called whenever the value of any parameter changes in the patch.
     /// The listener function will be called with an argument object with the fields 'endpointID' and 'value'.
@@ -189,7 +197,8 @@ R"(
 
 
     //==============================================================================
-    // Private methods follow this point..
+    // Private methods follow this point..)"
+R"(
 
     /// For internal use - delivers an incoming message object from the underlying API.
     deliverMessageFromServer (msg)
@@ -1376,45 +1385,6 @@ R"(
 
                 return this.session.status.httpRootURL
                         + (path.startsWith ("/") ? path.substr (1) : path);
-            })"
-R"(
-
-            /// Attaches a listener function that can monitor floating-point audio data on a suitable
-            /// input or output endpoint.
-            /// If an endpoint has the right shape to be treated as "audio" then this can be used to
-            /// get a stream of updates of the min/max range of chunks of data that is flowing through it.
-            /// There will be one callback per chunk of data, and the size of chunks can be modified by
-            /// calling setAudioDataGranularity().
-            /// The listener will receive an argument object containing two properties 'min' and 'max',
-            /// which are each an array of values, one element per audio channel. This allows you to
-            /// find the highest and lowest samples in that chunk for each channel.
-            addEndpointAudioListener (endpointID, listener)
-            {
-                this.addEventListener ("audio_data_" + endpointID, listener);
-                this.setAudioDataGranularity (endpointID, undefined);
-            }
-
-            /// Removes a listener that was previously added with addEndpointAudioListener()
-            removeEndpointAudioListener (endpointID, listener)
-            {
-                this.removeEventListener ("audio_data_" + endpointID, listener);
-                this.setAudioDataGranularity (endpointID, undefined);
-            }
-
-            /// This can be used to change the size of chunk being sent to an audio endpoint listener
-            /// for a given endpoint. See addEndpointAudioListener() to attach the listeners.
-            setAudioDataGranularity (endpointID, framesPerCallback)
-            {
-                if (! this.endpointAudioGranularities)
-                    this.endpointAudioGranularities = {};
-
-                if (framesPerCallback && framesPerCallback > 0 && framesPerCallback <= 96000)
-                    this.endpointAudioGranularities[endpointID] = framesPerCallback;)"
-R"(
-
-                const currentGranularity = this.endpointAudioGranularities[endpointID] || 1024;
-                const gran = this.getNumListenersForType ("audio_data_" + endpointID) > 0 ? currentGranularity : 0;
-                this.sendMessageToServer ({ type: "set_endpoint_audio_monitoring", endpoint: endpointID, granularity: gran });
             }
         }
 
@@ -1432,7 +1402,8 @@ R"(
     /// `addAudioInputModeListener()`)
     setAudioInputSource (endpointID, shouldMute, fileDataToPlay)
     {
-        const loopFile = "_audio_source_" + endpointID;
+        const loopFile = "_audio_source_" + endpointID;)"
+R"(
 
         if (fileDataToPlay)
         {
@@ -1454,8 +1425,7 @@ R"(
                                         endpoint: endpointID,
                                         mute: !! shouldMute });
         }
-    })"
-R"(
+    }
 
     /// Attaches a listener function to be told when the input source for a particular
     /// endpoint is changed by a call to `setAudioInputSource()`.
@@ -1472,7 +1442,8 @@ R"(
 
     /// Enables or disables audio playback.
     /// When playback state changes, a status update is sent to any status listeners.
-    setAudioPlaybackActive (shouldBeActive)             { this.sendMessageToServer ({ type: "set_audio_playback_active", active: shouldBeActive }); }
+    setAudioPlaybackActive (shouldBeActive)             { this.sendMessageToServer ({ type: "set_audio_playback_active", active: shouldBeActive }); })"
+R"(
 
     /// Asks the server to apply a new set of audio device properties.
     /// The properties object uses the same format as the object that is passed to the listeners
@@ -1483,14 +1454,14 @@ R"(
     /// changed. The listener function will be passed an argument object containing all the
     /// details about the device.
     /// Remove the listener when it's no longer needed with `removeAudioDevicePropertiesListener()`.
-    addAudioDevicePropertiesListener (listener)         { this.addEventListener    ("audio_device_properties", listener); })"
-R"(
+    addAudioDevicePropertiesListener (listener)         { this.addEventListener    ("audio_device_properties", listener); }
 
     /// Removes a listener that was added with `addAudioDevicePropertiesListener()`
     removeAudioDevicePropertiesListener (listener)      { this.removeEventListener ("audio_device_properties", listener); }
 
     /// Causes an asynchronous callback to any audio device listeners that are registered.
-    requestAudioDeviceProperties()                      { this.sendMessageToServer ({ type: "req_audio_device_props" }); }
+    requestAudioDeviceProperties()                      { this.sendMessageToServer ({ type: "req_audio_device_props" }); })"
+R"(
 
     //==============================================================================
     /// Asks the server to asynchronously generate some code from the currently loaded patch.
@@ -1511,8 +1482,7 @@ R"(
     }
 
     //==============================================================================
-    // File change monitoring:)"
-R"(
+    // File change monitoring:
 
     /// Attaches a listener to be told when a file change is detected in the currently-loaded
     /// patch. The function will be called with an object that gives rough details about the
@@ -1523,7 +1493,8 @@ R"(
     removeFileChangeListener (listener)                 { this.removeEventListener ("patch_source_changed", listener); }
 
     //==============================================================================
-    // CPU level monitoring methods:
+    // CPU level monitoring methods:)"
+R"(
 
     /// Attaches a listener function which will be sent messages containing CPU info.
     /// To remove the listener, call `removeCPUListener()`. To change the rate of these
@@ -1534,8 +1505,7 @@ R"(
     removeCPUListener (listener)                    { this.removeEventListener ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
     /// Changes the frequency at which CPU level update messages are sent to listeners.
-    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); })"
-R"(
+    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); }
 
     /// Attaches a listener to be told when a file change is detected in the currently-loaded
     /// patch. The function will be called with an object that gives rough details about the
@@ -1543,7 +1513,8 @@ R"(
     /// won't provide any information about exactly which files are involved.
     addInfiniteLoopListener (listener)              { this.addEventListener    ("infinite_loop_detected", listener); }
     /// Removes a listener that was previously added with `addFileChangeListener()`.
-    removeInfiniteLoopListener (listener)           { this.removeEventListener ("infinite_loop_detected", listener); }
+    removeInfiniteLoopListener (listener)           { this.removeEventListener ("infinite_loop_detected", listener); })"
+R"(
 
     //==============================================================================
     /// Registers a virtual file with the server, under the given name.
@@ -1570,8 +1541,7 @@ R"(
         this.sendMessageToServer ({ type: "remove_file",
                                     filename: filename });
         this.files?.delete (filename);
-    })"
-R"(
+    }
 
     //==============================================================================
     /// Sends a ping message to the server.
@@ -1590,7 +1560,8 @@ R"(
     }
 
     //==============================================================================
-    // Private methods from this point...
+    // Private methods from this point...)"
+R"(
 
     // An implementation subclass must call this when the session first connects
     handleSessionConnection()
@@ -1634,8 +1605,7 @@ R"(
                 break;
 
             case "ping":
-                break;)"
-R"(
+                break;
 
             default:
                 if (type.startsWith ("audio_input_mode_") || type.startsWith ("reply_"))
@@ -1656,7 +1626,8 @@ R"(
         this.status = newStatus;
         this.dispatchEvent ("session_status", this.status);
         this.updateCPULevelUpdateRate();
-    }
+    })"
+R"(
 
     updateCPULevelUpdateRate()
     {
@@ -2002,11 +1973,11 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 9387) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 10105) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 25555) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
-        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 19559) },
+        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 17264) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4859) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },

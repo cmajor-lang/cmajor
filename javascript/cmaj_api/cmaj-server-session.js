@@ -118,43 +118,6 @@ export class ServerSession   extends EventListenerList
                 return this.session.status.httpRootURL
                         + (path.startsWith ("/") ? path.substr (1) : path);
             }
-
-            /// Attaches a listener function that can monitor floating-point audio data on a suitable
-            /// input or output endpoint.
-            /// If an endpoint has the right shape to be treated as "audio" then this can be used to
-            /// get a stream of updates of the min/max range of chunks of data that is flowing through it.
-            /// There will be one callback per chunk of data, and the size of chunks can be modified by
-            /// calling setAudioDataGranularity().
-            /// The listener will receive an argument object containing two properties 'min' and 'max',
-            /// which are each an array of values, one element per audio channel. This allows you to
-            /// find the highest and lowest samples in that chunk for each channel.
-            addEndpointAudioListener (endpointID, listener)
-            {
-                this.addEventListener ("audio_data_" + endpointID, listener);
-                this.setAudioDataGranularity (endpointID, undefined);
-            }
-
-            /// Removes a listener that was previously added with addEndpointAudioListener()
-            removeEndpointAudioListener (endpointID, listener)
-            {
-                this.removeEventListener ("audio_data_" + endpointID, listener);
-                this.setAudioDataGranularity (endpointID, undefined);
-            }
-
-            /// This can be used to change the size of chunk being sent to an audio endpoint listener
-            /// for a given endpoint. See addEndpointAudioListener() to attach the listeners.
-            setAudioDataGranularity (endpointID, framesPerCallback)
-            {
-                if (! this.endpointAudioGranularities)
-                    this.endpointAudioGranularities = {};
-
-                if (framesPerCallback && framesPerCallback > 0 && framesPerCallback <= 96000)
-                    this.endpointAudioGranularities[endpointID] = framesPerCallback;
-
-                const currentGranularity = this.endpointAudioGranularities[endpointID] || 1024;
-                const gran = this.getNumListenersForType ("audio_data_" + endpointID) > 0 ? currentGranularity : 0;
-                this.sendMessageToServer ({ type: "set_endpoint_audio_monitoring", endpoint: endpointID, granularity: gran });
-            }
         }
 
         return new ServerPatchConnection (this);

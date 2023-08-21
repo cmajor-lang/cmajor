@@ -15,13 +15,13 @@ class TimelineView extends HTMLElement
         this.quarterNote = "?";
         this.barQuarterNote = "?";
 
-        this.patchConnection.addEndpointEventListener ("timeSigOut", value =>
+        this.patchConnection.addEndpointListener ("timeSigOut", value =>
         {
             this.timeSig = value.numerator + "/" + value.denominator;
             this.refreshDisplay();
         });
 
-        this.patchConnection.addEndpointEventListener ("positionOut", value =>
+        this.patchConnection.addEndpointListener ("positionOut", value =>
         {
             this.framePos = value.frameIndex;
             this.quarterNote = value.quarterNote;
@@ -29,7 +29,7 @@ class TimelineView extends HTMLElement
             this.refreshDisplay();
         });
 
-        this.patchConnection.addEndpointEventListener ("transportStateOut", value =>
+        this.patchConnection.addEndpointListener ("transportStateOut", value =>
         {
             if (value.flags & 2)
                 this.transport = "Recording";
@@ -42,7 +42,7 @@ class TimelineView extends HTMLElement
             this.refreshDisplay();
         });
 
-        this.patchConnection.addEndpointEventListener ("tempoOut", value =>
+        this.patchConnection.addEndpointListener ("tempoOut", value =>
         {
             this.tempo = value.bpm;
             this.refreshDisplay();

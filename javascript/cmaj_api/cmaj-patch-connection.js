@@ -92,20 +92,28 @@ export class PatchConnection  extends EventListenerList
     //==============================================================================
     // Listener methods:
 
-    /// Attaches a listener function which will be called whenever an event passes through a specific endpoint.
-    /// This can be used to monitor both input and output endpoints.
-    /// The listener function will be called with an argument which is the value of the event.
-    addEndpointEventListener (endpointID, listener)
+    /// Attaches a listener function that will receive updates with the events or audio data
+    /// that is being sent or received by an endpoint.
+    /// If the endpoint is an event or value, the callback will be given an argument which is
+    /// the new value.
+    /// If the endpoint has the right shape to be treated as "audio" then the callback will receive
+    /// a stream of updates of the min/max range of chunks of data that is flowing through it.
+    /// There will be one callback per chunk of data, and the size of chunks is specified by
+    /// the optional granularity parameter. The listener will receive an argument object containing
+    /// two properties 'min' and 'max', which are each an array of values, one element per audio
+    /// channel. This allows you to find the highest and lowest samples in that chunk for each channel.
+    addEndpointListener (endpointID, listener, granularity)
     {
-        this.addEventListener ("event_" + endpointID, listener);
-        this.sendMessageToServer ({ type: "set_endpoint_event_monitoring", endpoint: endpointID, active: true });
+        listener.eventID = "event_" + endpointID + "_" + (Math.floor (Math.random() * 100000000)).toString();
+        this.addEventListener (listener.eventID, listener);
+        this.sendMessageToServer ({ type: "add_endpoint_listener", endpoint: endpointID, replyType: listener.eventID, granularity: granularity });
     }
 
-    /// Removes a listener that was previously added with addEndpointEventListener()
-    removeEndpointEventListener (endpointID, listener)
+    /// Removes a listener that was previously added with addEndpointListener()
+    removeEndpointListener (endpointID, listener)
     {
-        this.removeEventListener ("event_" + endpointID, listener);
-        this.sendMessageToServer ({ type: "set_endpoint_event_monitoring", endpoint: endpointID, active: false });
+        this.removeEventListener (listener.eventID, listener);
+        this.sendMessageToServer ({ type: "remove_endpoint_listener", endpoint: endpointID, replyType: listener.eventID });
     }
 
     /// This will trigger an asynchronous callback to any parameter listeners that are
