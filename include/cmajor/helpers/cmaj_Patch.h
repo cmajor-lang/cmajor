@@ -243,7 +243,10 @@ struct Patch
     /// For audio endpoints, granularity == 1 sends complete blocks of all incoming data
     /// For audio endpoints, granularity > 1 sends min/max ranges for each chunk of this many frames
     /// For non-audio endpoints, granularity is ignored.
-    bool startEndpointData (const EndpointID&, std::string replyType, uint32_t granularity);
+    /// If fullAudioData is true, then instead of min/max levels, the entire audio stream is
+    /// sent, in chunks that are the size specified by granularity.
+    bool startEndpointData (const EndpointID&, std::string replyType,
+                            uint32_t granularity, bool fullAudioData);
 
     /// Disables a client callback that was previously added with startEndpointData().
     bool stopEndpointData (const EndpointID&, std::string replyType);
@@ -450,7 +453,7 @@ struct Patch::ClientEventQueue
         patch.sendCPUInfoToViews (value);
     }
 
-    void postAudioData (const std::string& eventName, const choc::buffer::ChannelArrayBuffer<float>& levels)
+    void postAudioMinMax (const std::string& eventName, const choc::buffer::ChannelArrayBuffer<float>& levels)
     {
         triggerDispatchOnEndOfBlock = true;
         auto numChannels = levels.getNumChannels();
@@ -461,7 +464,7 @@ struct Patch::ClientEventQueue
         fifo.push (2 + numChannels * sizeof (float) * 2 + eventNameLen, [&] (void* dest)
         {
             auto d = static_cast<char*> (dest);
-            *d++ = static_cast<char> (EventType::audioLevels);
+            *d++ = static_cast<char> (EventType::audioMinMaxLevels);
             *d++ = static_cast<char> (numChannels);
 
             for (uint32_t chan = 0; chan < numChannels; ++chan)
@@ -478,7 +481,7 @@ struct Patch::ClientEventQueue
         });
     }
 
-    void dispatchAudioData (const char* d, const char* end)
+    void dispatchAudioMinMax (const char* d, const char* end)
     {
         ++d;
         auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
@@ -498,6 +501,63 @@ struct Patch::ClientEventQueue
                                   choc::json::create (
                                      "min", choc::value::createArrayView (mins.data(), static_cast<uint32_t> (mins.size())),
                                      "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size()))));
+    }
+
+    void postAudioFullData (const std::string& eventName, const choc::buffer::ChannelArrayBuffer<float>& levels)
+    {
+        triggerDispatchOnEndOfBlock = true;
+        auto numChannels = levels.getNumChannels();
+        auto numFrames = levels.getNumFrames();
+        CMAJ_ASSERT (numFrames < 65536);
+
+        auto eventNameChars = eventName.data();
+        auto eventNameLen = static_cast<uint32_t> (eventName.length());
+
+        fifo.push (4 + numChannels * sizeof (float) * 2 + eventNameLen, [&] (void* dest)
+        {
+            auto d = static_cast<char*> (dest);
+            *d++ = static_cast<char> (EventType::audioFullData);
+            *d++ = static_cast<char> (numChannels);
+            choc::memory::writeNativeEndian<uint16_t> (d, static_cast<uint16_t> (numFrames));
+            d += sizeof (uint16_t);
+
+            for (uint32_t chan = 0; chan < numChannels; ++chan)
+            {
+                auto i = levels.getIterator (chan);
+
+                for (uint32_t frame = 0; frame < numFrames; ++frame)
+                {
+                    choc::memory::writeNativeEndian (d, *i++);
+                    d += sizeof (float);
+                }
+            }
+
+            memcpy (d, eventNameChars, eventNameLen);
+        });
+    }
+
+    void dispatchAudioFullData (const char* d, const char* end)
+    {
+        ++d;
+        auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
+        auto numFrames = static_cast<uint32_t> (choc::memory::readNativeEndian<uint16_t> (d));
+        d += sizeof (uint16_t);
+        auto audioData = d;
+        d += numFrames * numChannels * sizeof (float);
+        CMAJ_ASSERT (end > d);
+
+        auto levels = choc::value::createArray (numChannels, [=] (uint32_t channel)
+        {
+            auto channelData = audioData + channel * numFrames * sizeof (float);
+
+            return choc::value::createArray (numFrames, [=] (uint32_t frame)
+            {
+                return choc::memory::readNativeEndian<float> (channelData + frame * sizeof (float));
+            });
+        });
+
+        patch.sendMessageToViews (std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
+                                  choc::json::create ("data", std::move (levels)));
     }
 
     void postEndpointEvent (const std::string& eventName, const void* messageData, uint32_t messageSize)
@@ -572,7 +632,8 @@ struct Patch::ClientEventQueue
             switch (static_cast<EventType> (d[0]))
             {
                 case EventType::paramChange:            dispatchParameterChange (d, size); break;
-                case EventType::audioLevels:            dispatchAudioData (d, d + size); break;
+                case EventType::audioMinMaxLevels:      dispatchAudioMinMax (d, d + size); break;
+                case EventType::audioFullData:          dispatchAudioFullData (d, d + size); break;
                 case EventType::endpointEvent:          dispatchEndpointEvent (d, size); break;
                 case EventType::cpuLevel:               dispatchCPULevel (d); break;
                 default:                                break;
@@ -583,7 +644,8 @@ struct Patch::ClientEventQueue
     enum class EventType  : char
     {
         paramChange,
-        audioLevels,
+        audioMinMaxLevels,
+        audioFullData,
         endpointEvent,
         cpuLevel
     };
@@ -633,63 +695,99 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     //==============================================================================
     struct AudioLevelMonitor
     {
-        AudioLevelMonitor (const EndpointDetails& endpoint, std::string type, uint32_t gran)
+        AudioLevelMonitor (const EndpointDetails& endpoint, std::string type, uint32_t gran, bool fullData)
             : endpointID (endpoint.endpointID.toString()),
-              replyType (std::move (type)), granularity (gran)
+              replyType (std::move (type)),
+              sendFullData (fullData),
+              granularity (gran >= minGranularity && gran <= maxGranularity ? gran : defaultGranularity)
         {
             auto numChannels = endpoint.getNumAudioChannels();
             CMAJ_ASSERT (numChannels > 0);
 
-            levels.resize ({ numChannels, 2 });
+            if (sendFullData)
+                levels.resize ({ numChannels, granularity });
+            else
+                levels.resize ({ numChannels, 2 });
         }
 
         template <typename SampleType>
         void process (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
         {
-            if (granularity != 0)
-            {
-                if (granularity == 1)
-                {
-                    // TODO: different format for full-rate data..
+            if (sendFullData)
+                processFullData (queue, data);
+            else
+                processMinMax (queue, data);
+        }
 
+        template <typename SampleType>
+        void processMinMax (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
+        {
+            auto numFrames = data.getNumFrames();
+            auto numChannels = data.getNumChannels();
+
+            for (uint32_t i = 0; i < numFrames; ++i)
+            {
+                for (uint32_t chan = 0; chan < numChannels; ++chan)
+                {
+                    auto level = static_cast<float> (data.getSample (chan, i));
+                    auto minMax = levels.getIterator (chan);
+
+                    if (frameCount == 0)
+                    {
+                        *minMax = level;
+                        ++minMax;
+                        *minMax = level;
+                    }
+                    else
+                    {
+                        *minMax = std::min (level, *minMax);
+                        ++minMax;
+                        *minMax = std::max (level, *minMax);
+                    }
                 }
 
-                // handle min/max chunks
-                auto numFrames = data.getNumFrames();
-                auto numChannels = data.getNumChannels();
-
-                for (uint32_t i = 0; i < numFrames; ++i)
+                if (++frameCount == granularity)
                 {
-                    for (uint32_t chan = 0; chan < numChannels; ++chan)
-                    {
-                        auto level = static_cast<float> (data.getSample (chan, i));
-                        auto minMax = levels.getIterator (chan);
-
-                        if (frameCount == 0)
-                        {
-                            *minMax = level;
-                            ++minMax;
-                            *minMax = level;
-                        }
-                        else
-                        {
-                            *minMax = std::min (level, *minMax);
-                            ++minMax;
-                            *minMax = std::max (level, *minMax);
-                        }
-                    }
-
-                    if (++frameCount == granularity)
-                    {
-                        frameCount = 0;
-                        queue.postAudioData (replyType, levels);
-                    }
+                    frameCount = 0;
+                    queue.postAudioMinMax (replyType, levels);
                 }
             }
         }
 
+        template <typename SampleType>
+        void processFullData (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
+        {
+            auto numFrames = data.getNumFrames();
+            choc::buffer::FrameCount sourceStart = 0;
+
+            while (numFrames != 0)
+            {
+                auto numToAdd = std::min (numFrames, granularity - frameCount);
+
+                copy (levels.getFrameRange ({ frameCount, frameCount + numToAdd }),
+                      data.getFrameRange ({ sourceStart, sourceStart + numToAdd }));
+
+                frameCount += numToAdd;
+
+                if (frameCount == granularity)
+                {
+                    frameCount = 0;
+                    queue.postAudioFullData (replyType, levels);
+                    break;
+                }
+
+                sourceStart += numToAdd;
+                numFrames -= numToAdd;
+            }
+        }
+
         const std::string endpointID, replyType;
+        const bool sendFullData;
         const uint32_t granularity;
+
+        static constexpr uint32_t minGranularity = 64;
+        static constexpr uint32_t maxGranularity = 8192;
+        static constexpr uint32_t defaultGranularity = 500;
 
     private:
         choc::buffer::ChannelArrayBuffer<float> levels;
@@ -1034,13 +1132,13 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         return false;
     }
 
-    bool startEndpointData (const EndpointID& e, std::string replyType, uint32_t granularity)
+    bool startEndpointData (const EndpointID& e, std::string replyType, uint32_t granularity, bool fullData)
     {
         if (auto details = findEndpointDetails (e))
         {
             if (auto l = findDataListener (e))
             {
-                auto monitor = std::make_unique<AudioLevelMonitor> (*details, std::move (replyType), granularity);
+                auto monitor = std::make_unique<AudioLevelMonitor> (*details, std::move (replyType), granularity, fullData);
 
                 std::lock_guard<decltype(processLock)> lock (processLock);
                 l->audioMonitors.push_back (std::move (monitor));
@@ -1048,8 +1146,10 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             }
             else if (details->isEvent())
             {
+                auto monitor = std::make_unique<EventMonitor> (*details, std::move (replyType));
+
                 std::lock_guard<decltype(processLock)> lock (processLock);
-                eventEndpointMonitors.push_back (std::make_unique<EventMonitor> (*details, std::move (replyType)));
+                eventEndpointMonitors.push_back (std::move (monitor));
                 return true;
             }
         }
@@ -2080,9 +2180,9 @@ inline void Patch::sendCurrentParameterValueToViews (const EndpointID& endpointI
         sendParameterChangeToViews (endpointID, param->currentValue);
 }
 
-inline bool Patch::startEndpointData (const EndpointID& endpointID, std::string replyType, uint32_t granularity)
+inline bool Patch::startEndpointData (const EndpointID& endpointID, std::string replyType, uint32_t granularity, bool fullData)
 {
-    return renderer != nullptr && renderer->startEndpointData (endpointID, replyType, granularity);
+    return renderer != nullptr && renderer->startEndpointData (endpointID, replyType, granularity, fullData);
 }
 
 inline bool Patch::stopEndpointData (const EndpointID& endpointID, std::string replyType)
@@ -2201,7 +2301,8 @@ inline bool Patch::handleClientMessage (const choc::value::ValueView& msg)
         {
             startEndpointData (cmaj::EndpointID::create (msg["endpoint"].toString()),
                                msg["replyType"].toString(),
-                               static_cast<uint32_t> (msg["granularity"].getWithDefault<int64_t> (0)));
+                               static_cast<uint32_t> (msg["granularity"].getWithDefault<int64_t> (0)),
+                               msg["fullAudioData"].getWithDefault<bool> (false));
             return true;
         }
 

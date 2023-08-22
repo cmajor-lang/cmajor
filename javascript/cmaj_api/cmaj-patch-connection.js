@@ -99,14 +99,18 @@ export class PatchConnection  extends EventListenerList
     /// If the endpoint has the right shape to be treated as "audio" then the callback will receive
     /// a stream of updates of the min/max range of chunks of data that is flowing through it.
     /// There will be one callback per chunk of data, and the size of chunks is specified by
-    /// the optional granularity parameter. The listener will receive an argument object containing
+    /// the optional granularity parameter.
+    /// If sendFullAudioData is false, the listener will receive an argument object containing
     /// two properties 'min' and 'max', which are each an array of values, one element per audio
     /// channel. This allows you to find the highest and lowest samples in that chunk for each channel.
-    addEndpointListener (endpointID, listener, granularity)
+    /// If sendFullAudioData is true, the listener's argument will have a property 'data' which is an
+    /// array containing one array per channel of raw audio samples data.
+    addEndpointListener (endpointID, listener, granularity, sendFullAudioData)
     {
         listener.eventID = "event_" + endpointID + "_" + (Math.floor (Math.random() * 100000000)).toString();
         this.addEventListener (listener.eventID, listener);
-        this.sendMessageToServer ({ type: "add_endpoint_listener", endpoint: endpointID, replyType: listener.eventID, granularity: granularity });
+        this.sendMessageToServer ({ type: "add_endpoint_listener", endpoint: endpointID, replyType:
+                                    listener.eventID, granularity: granularity, fullAudioData: sendFullAudioData });
     }
 
     /// Removes a listener that was previously added with addEndpointListener()

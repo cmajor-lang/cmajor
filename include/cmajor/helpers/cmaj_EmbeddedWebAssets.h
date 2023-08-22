@@ -152,14 +152,18 @@ R"(
     /// If the endpoint has the right shape to be treated as "audio" then the callback will receive
     /// a stream of updates of the min/max range of chunks of data that is flowing through it.
     /// There will be one callback per chunk of data, and the size of chunks is specified by
-    /// the optional granularity parameter. The listener will receive an argument object containing
+    /// the optional granularity parameter.
+    /// If sendFullAudioData is false, the listener will receive an argument object containing
     /// two properties 'min' and 'max', which are each an array of values, one element per audio
     /// channel. This allows you to find the highest and lowest samples in that chunk for each channel.
-    addEndpointListener (endpointID, listener, granularity)
+    /// If sendFullAudioData is true, the listener's argument will have a property 'data' which is an
+    /// array containing one array per channel of raw audio samples data.
+    addEndpointListener (endpointID, listener, granularity, sendFullAudioData)
     {
         listener.eventID = "event_" + endpointID + "_" + (Math.floor (Math.random() * 100000000)).toString();
         this.addEventListener (listener.eventID, listener);
-        this.sendMessageToServer ({ type: "add_endpoint_listener", endpoint: endpointID, replyType: listener.eventID, granularity: granularity });
+        this.sendMessageToServer ({ type: "add_endpoint_listener", endpoint: endpointID, replyType:
+                                    listener.eventID, granularity: granularity, fullAudioData: sendFullAudioData });
     }
 
     /// Removes a listener that was previously added with addEndpointListener()
@@ -167,13 +171,13 @@ R"(
     {
         this.removeEventListener (listener.eventID, listener);
         this.sendMessageToServer ({ type: "remove_endpoint_listener", endpoint: endpointID, replyType: listener.eventID });
-    }
+    })"
+R"(
 
     /// This will trigger an asynchronous callback to any parameter listeners that are
     /// attached, providing them with its up-to-date current value for the given endpoint.
     /// Use addAllParameterListener() to attach a listener to receive the result.
-    requestParameterValue (endpointID)                  { this.sendMessageToServer ({ type: "req_param_value", id: endpointID }); })"
-R"(
+    requestParameterValue (endpointID)                  { this.sendMessageToServer ({ type: "req_param_value", id: endpointID }); }
 
     /// Attaches a listener function which will be called whenever the value of a specific parameter changes.
     /// The listener function will be called with an argument which is the new value.
@@ -185,7 +189,8 @@ R"(
     /// The listener function will be called with an argument object with the fields 'endpointID' and 'value'.
     addAllParameterListener (listener)                  { this.addEventListener ("param_value", listener); }
     /// Removes a listener that was previously added with addAllParameterListener()
-    removeAllParameterListener (listener)               { this.removeEventListener ("param_value", listener); }
+    removeAllParameterListener (listener)               { this.removeEventListener ("param_value", listener); })"
+R"(
 
     /// This takes a relative path to an asset within the patch bundle, and converts it to a
     /// path relative to the root of the browser that is showing the view.
@@ -197,8 +202,7 @@ R"(
 
 
     //==============================================================================
-    // Private methods follow this point..)"
-R"(
+    // Private methods follow this point..
 
     /// For internal use - delivers an incoming message object from the underlying API.
     deliverMessageFromServer (msg)
@@ -1973,7 +1977,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 10105) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 10409) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 25555) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
