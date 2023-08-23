@@ -1266,8 +1266,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             performer->postValue (endpointID, value, rampFrames > 0 ? (uint32_t) rampFrames : 0);
 
         for (auto& m : eventEndpointMonitors)
-            if (m->process (queue, endpointID.toString(), value))
-                break;
+            m->process (queue, endpointID.toString(), value);
     }
 
     void sendGestureStart (const EndpointID& endpointID)
