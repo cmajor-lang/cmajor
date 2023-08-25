@@ -379,17 +379,6 @@ struct Patch::ClientEventQueue
 {
     ClientEventQueue (Patch& p) : patch (p)
     {
-        struct FakeSerialiser
-        {
-            FakeSerialiser (const choc::value::Type& t) { t.serialise (*this); }
-            size_t size = 0;
-            void write (const void*, size_t s) { size += s; }
-        };
-
-        auto midiMessage = cmaj::MIDIEvents::createMIDIMessageObject (choc::midi::ShortMessage (0x90, 0, 0));
-        serialisedMIDIMessage = midiMessage.serialise();
-        serialisedMIDIContent = serialisedMIDIMessage.data.data() + FakeSerialiser (midiMessage.getType()).size;
-
         cpu.handleCPULevel = [this] (float newLevel) { postCPULevel (newLevel); };
     }
 
@@ -404,7 +393,7 @@ struct Patch::ClientEventQueue
     void prepare (double sampleRate)
     {
         cpu.reset (sampleRate);
-        fifo.reset (8192);
+        fifo.reset (32768);
         dispatchClientEventsCallback = [this] { dispatchClientEvents(); };
         clientEventHandlerThread.start (0, [this]
         {
@@ -513,7 +502,7 @@ struct Patch::ClientEventQueue
         auto eventNameChars = eventName.data();
         auto eventNameLen = static_cast<uint32_t> (eventName.length());
 
-        fifo.push (4 + numChannels * sizeof (float) * 2 + eventNameLen, [&] (void* dest)
+        fifo.push (4 + numChannels * numFrames * sizeof (float) + eventNameLen, [&] (void* dest)
         {
             auto d = static_cast<char*> (dest);
             *d++ = static_cast<char> (EventType::audioFullData);
@@ -585,9 +574,8 @@ struct Patch::ClientEventQueue
 
     void postEndpointMIDI (const std::string& eventName, choc::midi::ShortMessage message)
     {
-        auto packedMIDI = cmaj::MIDIEvents::midiMessageToPackedInt (message);
-        memcpy (serialisedMIDIContent, std::addressof (packedMIDI), 4);
-        postEndpointEvent (eventName, serialisedMIDIMessage.data.data(), static_cast<uint32_t> (serialisedMIDIMessage.data.size()));
+        auto data = serialisedMIDIMessage.getSerialisedData (message);
+        postEndpointEvent (eventName, data.data, data.size);
     }
 
     void dispatchEndpointEvent (const char* d, uint32_t size)
@@ -654,8 +642,7 @@ struct Patch::ClientEventQueue
     choc::fifo::VariableSizeFIFO fifo;
     choc::threading::TaskThread clientEventHandlerThread;
     choc::threading::ThreadSafeFunctor<std::function<void()>> dispatchClientEventsCallback;
-    choc::value::SerialisedData serialisedMIDIMessage;
-    void* serialisedMIDIContent = {};
+    MIDIEvents::SerialisedShortMIDIMessage serialisedMIDIMessage;
     bool triggerDispatchOnEndOfBlock = false;
     uint32_t framesProcessedInBlock = 0;
 

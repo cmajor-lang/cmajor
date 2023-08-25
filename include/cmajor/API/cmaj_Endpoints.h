@@ -74,6 +74,22 @@ namespace MIDIEvents
     bool isMIDIMessageType (const choc::value::Type&);
 
     choc::value::Value createMIDIMessageObject (choc::midi::ShortMessage);
+
+    struct SerialisedShortMIDIMessage
+    {
+        struct Data
+        {
+            void* data;
+            uint32_t size;
+        };
+
+        SerialisedShortMIDIMessage();
+        Data getSerialisedData (choc::midi::ShortMessage);
+
+    private:
+        choc::value::SerialisedData serialisedMIDIMessage;
+        void* serialisedMIDIContent = {};
+    };
 }
 
 //==============================================================================
@@ -297,6 +313,27 @@ inline bool MIDIEvents::isMIDIMessageType (const choc::value::Type& type)
 inline choc::value::Value MIDIEvents::createMIDIMessageObject (choc::midi::ShortMessage m)
 {
     return choc::value::createObject ("Message", "message", midiMessageToPackedInt (m));
+}
+
+inline MIDIEvents::SerialisedShortMIDIMessage::SerialisedShortMIDIMessage()
+{
+    struct FakeSerialiser
+    {
+        FakeSerialiser (const choc::value::Type& t) { t.serialise (*this); }
+        size_t size = 0;
+        void write (const void*, size_t s) { size += s; }
+    };
+
+    auto midiMessage = createMIDIMessageObject (choc::midi::ShortMessage (0x90, 0, 0));
+    serialisedMIDIMessage = midiMessage.serialise();
+    serialisedMIDIContent = serialisedMIDIMessage.data.data() + FakeSerialiser (midiMessage.getType()).size;
+}
+
+inline MIDIEvents::SerialisedShortMIDIMessage::Data MIDIEvents::SerialisedShortMIDIMessage::getSerialisedData (choc::midi::ShortMessage message)
+{
+    auto packedMIDI = midiMessageToPackedInt (message);
+    memcpy (serialisedMIDIContent, std::addressof (packedMIDI), sizeof (packedMIDI));
+    return { serialisedMIDIMessage.data.data(), static_cast<uint32_t> (serialisedMIDIMessage.data.size()) };
 }
 
 inline EndpointPurpose EndpointDetails::getSuggestedPurpose() const
