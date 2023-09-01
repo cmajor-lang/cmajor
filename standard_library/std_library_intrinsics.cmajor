@@ -407,7 +407,7 @@ namespace intrinsics
     /// Hyperbolic cosine of an angle.
     T cosh<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "cosh() requires a floating point argument");  return 0.5f * (exp(n) + exp(-n)); }
     /// Hyperbolic tangent of an angle.
-    T tanh<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "tanh() requires a floating point argument");  let e = exp (n * 2); return (e - 1) / (e + 1); }
+    T tanh<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "tanh() requires a floating point argument");  let e = exp (min (n, T (20)) * 2); return (e - 1) / (e + 1); }
     /// Arc hyperbolic tangent.
     T atanh<T> (T n)       { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "atanh() requires a floating point argument"); return 0.5f * log ((1 + n) / (1 - n)); }
 

@@ -662,6 +662,19 @@ bool test_inverse_trig()
         && near (b, atanh (tanh (b)));
 }
 
+bool test_tanh()
+{
+    for (float<2> f = 10; f[0] < 10000; f++)
+        if (isnan (tanh (f)[0]) || isnan (tanh (f[0])))
+            return false;
+
+    for (float<2> f = -10; f[0] > -10000; f--)
+        if (isnan (tanh (f)[0]) || isnan (tanh (f[0])))
+            return false;
+
+    return true;
+}
+
 bool test_atan2()
 {
     return near (atan2 (0.0f, 0.0f), 0.0f)
@@ -996,3 +1009,4 @@ void f()  { float c = 1.0f; let p = pow (c, 2); }
 ## expectError ("2:43: error: Could not resolve argument types for function call pow(const float32, int32)")
 
 void f()  { const float c = 1.0f; let p = pow (c, 2); }
+
