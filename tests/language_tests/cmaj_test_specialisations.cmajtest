@@ -946,3 +946,36 @@ processor Gain (using DataType) [[ main ]]
         }
     }
 }
+
+## testCompile ()
+
+graph G [[ main ]]
+{
+    output event float32 out;
+
+    let vals = float32[1, 2] ((1.0f, 2.0f));
+
+    node n = P (vals);
+}
+
+processor P (float32[1, 2] v)
+{
+    output event float32 out;
+}
+
+## testCompile ()
+
+graph G [[ main ]]
+{
+    output event float32 out;
+
+    let a = 1;
+    const float32[1,2] b = ((1.0f, 2.0f));
+
+    node N = P (a);
+}
+
+processor P (float32[1, 2] v)
+{
+    output event float32 out;
+}
