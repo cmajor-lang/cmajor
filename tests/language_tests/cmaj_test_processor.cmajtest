@@ -490,3 +490,34 @@ processor ValueEcho
         }
     }
 }
+
+
+## testConsole ("1")
+
+processor Test [[ main ]]
+{
+    output value float32 out;
+
+    node p = P;
+
+    void main()
+    {
+        console <- p.out;
+        advance();
+    }
+}
+
+processor P
+{
+    output value float32 out;
+
+    void init()
+    {
+        out <- 1.0f;
+    }
+
+    void main()
+    {
+        advance();
+    }
+}

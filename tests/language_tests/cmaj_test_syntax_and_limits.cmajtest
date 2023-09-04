@@ -1426,7 +1426,7 @@ processor P [[ main ]]
     void init() { out <- 123; }
 }
 
-## expectError ("7:23: error: Endpoints cannot be read or written during init()")
+## testCompile()
 
 processor P [[ main ]]
 {
