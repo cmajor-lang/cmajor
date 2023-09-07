@@ -221,7 +221,8 @@ struct Patch
     cmaj::CacheDatabaseInterface::Ptr cache;
 
     // These dispatch various types of event to any active views that the patch has open.
-    void sendMessageToViews (std::string_view type, const choc::value::ValueView&) const;
+    void sendMessageToView (PatchView&, std::string_view type, const choc::value::ValueView&) const;
+    void broadcastMessageToViews (std::string_view type, const choc::value::ValueView&) const;
     void sendPatchStatusChangeToViews() const;
     void sendParameterChangeToViews (const EndpointID&, float value) const;
     void sendCurrentParameterValueToViews (const EndpointID&) const;
@@ -229,7 +230,7 @@ struct Patch
     void sendStoredStateValueToViews (const std::string& key) const;
 
     // These can be called by things like the GUI to control the patch
-    bool handleClientMessage (const choc::value::ValueView&);
+    bool handleClientMessage (PatchView&, const choc::value::ValueView&);
     void sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&, int32_t rampFrames = -1) const;
     void sendMIDIInputEvent (const EndpointID&, choc::midi::ShortMessage) const;
 
@@ -245,11 +246,11 @@ struct Patch
     /// For non-audio endpoints, granularity is ignored.
     /// If fullAudioData is true, then instead of min/max levels, the entire audio stream is
     /// sent, in chunks that are the size specified by granularity.
-    bool startEndpointData (const EndpointID&, std::string replyType,
+    bool startEndpointData (PatchView&, const EndpointID&, std::string replyType,
                             uint32_t granularity, bool fullAudioData);
 
     /// Disables a client callback that was previously added with startEndpointData().
-    bool stopEndpointData (const EndpointID&, std::string replyType);
+    bool stopEndpointData (PatchView&, const EndpointID&, std::string replyType);
 
     /// This base class is used for defining audio sources which can be attached to
     /// an audio input endpoint with `setCustomAudioSourceForInput()`
@@ -304,14 +305,18 @@ private:
     std::vector<int> midiMessageTimes;
 
     std::unique_ptr<BuildThread> buildThread;
+    std::atomic<uint16_t> nextViewID { 0 };
 
     void sendPatchChange();
     void setNewRenderer (std::shared_ptr<PatchRenderer>);
     void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&) const;
+    PatchView* findViewForID (uint16_t) const;
     void startCheckingForChanges();
     void handleFileChange (PatchFileChangeChecker::ChangeType);
     void setStatus (std::string);
     void setErrorStatus (const std::string& error, const std::string& file, choc::text::LineAndColumn, bool unloadFirst);
+    void addActiveView (PatchView&);
+    void removeActiveView (PatchView&);
 };
 
 //==============================================================================
@@ -359,6 +364,7 @@ struct PatchView
     bool resizable = true;
 
     Patch& patch;
+    const uint16_t viewID;
 };
 
 
@@ -442,7 +448,7 @@ struct Patch::ClientEventQueue
         patch.sendCPUInfoToViews (value);
     }
 
-    void postAudioMinMax (const std::string& eventName, const choc::buffer::ChannelArrayBuffer<float>& levels)
+    void postAudioMinMax (const PatchView& view, const std::string& eventName, const choc::buffer::ChannelArrayBuffer<float>& levels)
     {
         triggerDispatchOnEndOfBlock = true;
         auto numChannels = levels.getNumChannels();
@@ -450,10 +456,12 @@ struct Patch::ClientEventQueue
         auto eventNameChars = eventName.data();
         auto eventNameLen = static_cast<uint32_t> (eventName.length());
 
-        fifo.push (2 + numChannels * sizeof (float) * 2 + eventNameLen, [&] (void* dest)
+        fifo.push (4 + numChannels * sizeof (float) * 2 + eventNameLen, [&] (void* dest)
         {
             auto d = static_cast<char*> (dest);
             *d++ = static_cast<char> (EventType::audioMinMaxLevels);
+            choc::memory::writeNativeEndian<uint16_t> (d, view.viewID);
+            d += sizeof (uint16_t);
             *d++ = static_cast<char> (numChannels);
 
             for (uint32_t chan = 0; chan < numChannels; ++chan)
@@ -472,27 +480,32 @@ struct Patch::ClientEventQueue
 
     void dispatchAudioMinMax (const char* d, const char* end)
     {
-        ++d;
-        auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
-        choc::SmallVector<float, 8> mins, maxs;
+        auto viewID = choc::memory::readNativeEndian<uint16_t> (++d);
 
-        for (uint32_t chan = 0; chan < numChannels; ++chan)
+        if (auto view = patch.findViewForID (viewID))
         {
-            mins.push_back (choc::memory::readNativeEndian<float> (d));
-            d += sizeof (float);
-            maxs.push_back (choc::memory::readNativeEndian<float> (d));
-            d += sizeof (float);
+            d += sizeof (uint16_t);
+            auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
+            choc::SmallVector<float, 8> mins, maxs;
+
+            for (uint32_t chan = 0; chan < numChannels; ++chan)
+            {
+                mins.push_back (choc::memory::readNativeEndian<float> (d));
+                d += sizeof (float);
+                maxs.push_back (choc::memory::readNativeEndian<float> (d));
+                d += sizeof (float);
+            }
+
+            CMAJ_ASSERT (end > d);
+
+            patch.sendMessageToView (*view, std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
+                                     choc::json::create (
+                                        "min", choc::value::createArrayView (mins.data(), static_cast<uint32_t> (mins.size())),
+                                        "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size()))));
         }
-
-        CMAJ_ASSERT (end > d);
-
-        patch.sendMessageToViews (std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
-                                  choc::json::create (
-                                     "min", choc::value::createArrayView (mins.data(), static_cast<uint32_t> (mins.size())),
-                                     "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size()))));
     }
 
-    void postAudioFullData (const std::string& eventName, const choc::buffer::ChannelArrayBuffer<float>& levels)
+    void postAudioFullData (const PatchView& view, const std::string& eventName, const choc::buffer::ChannelArrayBuffer<float>& levels)
     {
         triggerDispatchOnEndOfBlock = true;
         auto numChannels = levels.getNumChannels();
@@ -502,10 +515,12 @@ struct Patch::ClientEventQueue
         auto eventNameChars = eventName.data();
         auto eventNameLen = static_cast<uint32_t> (eventName.length());
 
-        fifo.push (4 + numChannels * numFrames * sizeof (float) + eventNameLen, [&] (void* dest)
+        fifo.push (6 + numChannels * numFrames * sizeof (float) + eventNameLen, [&] (void* dest)
         {
             auto d = static_cast<char*> (dest);
             *d++ = static_cast<char> (EventType::audioFullData);
+            choc::memory::writeNativeEndian<uint16_t> (d, view.viewID);
+            d += sizeof (uint16_t);
             *d++ = static_cast<char> (numChannels);
             choc::memory::writeNativeEndian<uint16_t> (d, static_cast<uint16_t> (numFrames));
             d += sizeof (uint16_t);
@@ -527,66 +542,79 @@ struct Patch::ClientEventQueue
 
     void dispatchAudioFullData (const char* d, const char* end)
     {
-        ++d;
-        auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
-        auto numFrames = static_cast<uint32_t> (choc::memory::readNativeEndian<uint16_t> (d));
-        d += sizeof (uint16_t);
-        auto audioData = d;
-        d += numFrames * numChannels * sizeof (float);
-        CMAJ_ASSERT (end > d);
+        auto viewID = choc::memory::readNativeEndian<uint16_t> (++d);
 
-        auto levels = choc::value::createArray (numChannels, [=] (uint32_t channel)
+        if (auto view = patch.findViewForID (viewID))
         {
-            auto channelData = audioData + channel * numFrames * sizeof (float);
+            d += sizeof (uint16_t);
 
-            return choc::value::createArray (numFrames, [=] (uint32_t frame)
+            auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
+            auto numFrames = static_cast<uint32_t> (choc::memory::readNativeEndian<uint16_t> (d));
+            d += sizeof (uint16_t);
+            auto audioData = d;
+            d += numFrames * numChannels * sizeof (float);
+            CMAJ_ASSERT (end > d);
+
+            auto levels = choc::value::createArray (numChannels, [=] (uint32_t channel)
             {
-                return choc::memory::readNativeEndian<float> (channelData + frame * sizeof (float));
-            });
-        });
+                auto channelData = audioData + channel * numFrames * sizeof (float);
 
-        patch.sendMessageToViews (std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
-                                  choc::json::create ("data", std::move (levels)));
+                return choc::value::createArray (numFrames, [=] (uint32_t frame)
+                {
+                    return choc::memory::readNativeEndian<float> (channelData + frame * sizeof (float));
+                });
+            });
+
+            patch.sendMessageToView (*view, std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
+                                     choc::json::create ("data", std::move (levels)));
+        }
     }
 
-    void postEndpointEvent (const std::string& eventName, const void* messageData, uint32_t messageSize)
+    void postEndpointEvent (const PatchView& view, const std::string& eventName, const void* messageData, uint32_t messageSize)
     {
         auto eventNameChars = eventName.data();
         auto eventNameLen = static_cast<uint32_t> (eventName.length());
+        auto viewID = view.viewID;
 
-        fifo.push (2 + eventNameLen + messageSize, [=] (void* dest)
+        fifo.push (4 + eventNameLen + messageSize, [=] (void* dest)
         {
             auto d = static_cast<char*> (dest);
             d[0] = static_cast<char> (EventType::endpointEvent);
-            d[1] = static_cast<char> (eventNameLen);
-            memcpy (d + 2, eventNameChars, eventNameLen);
-            memcpy (d + 2 + eventNameLen, messageData, messageSize);
+            choc::memory::writeNativeEndian (d + 1, viewID);
+            d[3] = static_cast<char> (eventNameLen);
+            memcpy (d + 4, eventNameChars, eventNameLen);
+            memcpy (d + 4 + eventNameLen, messageData, messageSize);
         });
 
         triggerDispatchOnEndOfBlock = true;
     }
 
-    void postEndpointEvent (const std::string& eventName, const choc::value::ValueView& message)
+    void postEndpointEvent (const PatchView& view, const std::string& eventName, const choc::value::ValueView& message)
     {
         auto serialisedMessage = message.serialise();
-        postEndpointEvent (eventName, serialisedMessage.data.data(), static_cast<uint32_t> (serialisedMessage.data.size()));
+        postEndpointEvent (view, eventName, serialisedMessage.data.data(), static_cast<uint32_t> (serialisedMessage.data.size()));
     }
 
-    void postEndpointMIDI (const std::string& eventName, choc::midi::ShortMessage message)
+    void postEndpointMIDI (const PatchView& view, const std::string& eventName, choc::midi::ShortMessage message)
     {
         auto data = serialisedMIDIMessage.getSerialisedData (message);
-        postEndpointEvent (eventName, data.data, data.size);
+        postEndpointEvent (view, eventName, data.data, data.size);
     }
 
     void dispatchEndpointEvent (const char* d, uint32_t size)
     {
-        auto eventNameLen = d[1] == 0 ? 256u : static_cast<uint32_t> (static_cast<uint8_t> (d[1]));
-        CMAJ_ASSERT (eventNameLen + 4 < size);
-        auto valueData = choc::value::InputData { reinterpret_cast<const uint8_t*> (d + 2 + eventNameLen),
-                                                  reinterpret_cast<const uint8_t*> (d + size) };
+        auto viewID = choc::memory::readNativeEndian<uint16_t> (d + 1);
 
-        patch.sendMessageToViews (std::string_view (d + 2, eventNameLen),
-                                  choc::value::Value::deserialise (valueData));
+        if (auto view = patch.findViewForID (viewID))
+        {
+            auto eventNameLen = d[3] == 0 ? 256u : static_cast<uint32_t> (static_cast<uint8_t> (d[3]));
+            CMAJ_ASSERT (eventNameLen + 6 < size);
+            auto valueData = choc::value::InputData { reinterpret_cast<const uint8_t*> (d + 4 + eventNameLen),
+                                                    reinterpret_cast<const uint8_t*> (d + size) };
+
+            patch.sendMessageToView (*view, std::string_view (d + 4, eventNameLen),
+                                     choc::value::Value::deserialise (valueData));
+        }
     }
 
     void startOfProcessCallback()
@@ -682,8 +710,9 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     //==============================================================================
     struct AudioLevelMonitor
     {
-        AudioLevelMonitor (const EndpointDetails& endpoint, std::string type, uint32_t gran, bool fullData)
-            : endpointID (endpoint.endpointID.toString()),
+        AudioLevelMonitor (PatchView& v, const EndpointDetails& endpoint, std::string type, uint32_t gran, bool fullData)
+            : view (v),
+              endpointID (endpoint.endpointID.toString()),
               replyType (std::move (type)),
               sendFullData (fullData),
               granularity (gran >= minGranularity && gran <= maxGranularity ? gran : defaultGranularity)
@@ -736,7 +765,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 if (++frameCount == granularity)
                 {
                     frameCount = 0;
-                    queue.postAudioMinMax (replyType, levels);
+                    queue.postAudioMinMax (view, replyType, levels);
                 }
             }
         }
@@ -759,7 +788,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 if (frameCount == granularity)
                 {
                     frameCount = 0;
-                    queue.postAudioFullData (replyType, levels);
+                    queue.postAudioFullData (view, replyType, levels);
                     break;
                 }
 
@@ -768,6 +797,12 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             }
         }
 
+        bool isFor (PatchView& v, const EndpointID& e, const std::string& type) const
+        {
+            return std::addressof (view) == std::addressof (v) && replyType == type && endpointID == e.toString();
+        }
+
+        PatchView& view;
         const std::string endpointID, replyType;
         const bool sendFullData;
         const uint32_t granularity;
@@ -784,8 +819,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     //==============================================================================
     struct EventMonitor
     {
-        EventMonitor (const EndpointDetails& e, std::string type)
-           : endpointID (e.endpointID.toString()), replyType (std::move (type)), isMIDI (e.isMIDI())
+        EventMonitor (PatchView& v, const EndpointDetails& e, std::string type)
+           : view (v), endpointID (e.endpointID.toString()), replyType (std::move (type)), isMIDI (e.isMIDI())
         {
         }
 
@@ -793,7 +828,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         {
             if (endpointID == endpoint)
             {
-                queue.postEndpointEvent (replyType, message);
+                queue.postEndpointEvent (view, replyType, message);
                 return true;
             }
 
@@ -804,13 +839,19 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         {
             if (isMIDI && endpointID == endpoint)
             {
-                queue.postEndpointMIDI (replyType, message);
+                queue.postEndpointMIDI (view, replyType, message);
                 return true;
             }
 
             return false;
         }
 
+        bool isFor (PatchView& v, const EndpointID& e, const std::string& type) const
+        {
+            return std::addressof (view) == std::addressof (v) && replyType == type && endpointID == e.toString();
+        }
+
+        PatchView& view;
         const std::string endpointID, replyType;
         const bool isMIDI;
     };
@@ -849,6 +890,31 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
             for (auto& m : audioMonitors)
                 m->process (queue, block);
+        }
+
+        bool removeMonitor (PatchView& view, const EndpointID& e, const std::string& type)
+        {
+            auto oldEnd = audioMonitors.end();
+            auto newEnd = std::remove_if (audioMonitors.begin(), oldEnd,
+                                          [&] (auto& m) { return m->isFor (view, e, type); });
+
+            if (newEnd != oldEnd)
+            {
+                audioMonitors.erase (newEnd, oldEnd);
+                return true;
+            }
+
+            return false;
+        }
+
+        void removeMonitorsForView (PatchView& view)
+        {
+            auto oldEnd = audioMonitors.end();
+            auto newEnd = std::remove_if (audioMonitors.begin(), oldEnd,
+                                          [&] (auto& m) { return std::addressof (m->view) == std::addressof (view); });
+
+            if (newEnd != oldEnd)
+                audioMonitors.erase (newEnd, oldEnd);
         }
 
         ClientEventQueue& queue;
@@ -1119,13 +1185,13 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         return false;
     }
 
-    bool startEndpointData (const EndpointID& e, std::string replyType, uint32_t granularity, bool fullData)
+    bool startEndpointData (PatchView& view, const EndpointID& e, std::string replyType, uint32_t granularity, bool fullData)
     {
         if (auto details = findEndpointDetails (e))
         {
             if (auto l = findDataListener (e))
             {
-                auto monitor = std::make_unique<AudioLevelMonitor> (*details, std::move (replyType), granularity, fullData);
+                auto monitor = std::make_unique<AudioLevelMonitor> (view, *details, std::move (replyType), granularity, fullData);
 
                 std::lock_guard<decltype(processLock)> lock (processLock);
                 l->audioMonitors.push_back (std::move (monitor));
@@ -1133,7 +1199,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             }
             else if (details->isEvent())
             {
-                auto monitor = std::make_unique<EventMonitor> (*details, std::move (replyType));
+                auto monitor = std::make_unique<EventMonitor> (view, *details, std::move (replyType));
 
                 std::lock_guard<decltype(processLock)> lock (processLock);
                 eventEndpointMonitors.push_back (std::move (monitor));
@@ -1144,37 +1210,25 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         return false;
     }
 
-    bool stopEndpointData (const EndpointID& e, std::string replyType)
+    bool stopEndpointData (PatchView& view, const EndpointID& e, std::string replyType)
     {
         if (auto l = findDataListener (e))
         {
-            auto oldEnd = l->audioMonitors.end();
-
             std::lock_guard<decltype(processLock)> lock (processLock);
-
-            auto newEnd = std::remove_if (l->audioMonitors.begin(), oldEnd,
-                                          [&] (auto& m) { return m->replyType == replyType && m->endpointID == e.toString(); });
-
-            if (newEnd != oldEnd)
-            {
-                l->audioMonitors.erase (newEnd, oldEnd);
-                return true;
-            }
+            return l->removeMonitor (view, e, replyType);
         }
-        else
+
+        auto oldEnd = eventEndpointMonitors.end();
+
+        std::lock_guard<decltype(processLock)> lock (processLock);
+
+        auto newEnd = std::remove_if (eventEndpointMonitors.begin(), oldEnd,
+                                      [&] (auto& m) { return m->isFor (view, e, replyType); });
+
+        if (newEnd != oldEnd)
         {
-            auto oldEnd = eventEndpointMonitors.end();
-
-            std::lock_guard<decltype(processLock)> lock (processLock);
-
-            auto newEnd = std::remove_if (eventEndpointMonitors.begin(), oldEnd,
-                                          [&] (auto& m) { return m->replyType == replyType && m->endpointID == e.toString(); });
-
-            if (newEnd != oldEnd)
-            {
-                eventEndpointMonitors.erase (newEnd, oldEnd);
-                return true;
-            }
+            eventEndpointMonitors.erase (newEnd, oldEnd);
+            return true;
         }
 
         return false;
@@ -1185,7 +1239,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         if (! value.isVoid())
             for (auto& m : eventEndpointMonitors)
                 if (m->endpointID == endpointID)
-                    patch.sendMessageToViews (m->replyType, value);
+                    patch.sendMessageToView (m->view, m->replyType, value);
     }
 
     //==============================================================================
@@ -1347,6 +1401,22 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                                                 handler (frame, endpointID, value);
                                             });
         });
+    }
+
+    void removeReferencesToView (PatchView& v)
+    {
+        auto oldEnd = eventEndpointMonitors.end();
+
+        std::lock_guard<decltype(processLock)> lock (processLock);
+
+        auto newEnd = std::remove_if (eventEndpointMonitors.begin(), oldEnd,
+                                      [&] (auto& m) { return std::addressof (m->view) == std::addressof (v); });
+
+        if (newEnd != oldEnd)
+            eventEndpointMonitors.erase (newEnd, oldEnd);
+
+        for (auto& d : dataListeners)
+            d.second->removeMonitorsForView (v);
     }
 
     void startInfiniteLoopCheck (std::function<void()> handleInfiniteLoopFn)
@@ -1934,10 +2004,18 @@ inline void Patch::sendPosition (int64_t currentFrame, double ppq, double ppqBar
     renderer->sendPosition (currentFrame, ppq, ppqBar);
 }
 
-inline void Patch::sendMessageToViews (std::string_view type, const choc::value::ValueView& message) const
+inline void Patch::sendMessageToView (PatchView& view, std::string_view type, const choc::value::ValueView& message) const
+{
+    if (std::find (activeViews.begin(), activeViews.end(), std::addressof (view)) != activeViews.end())
+        view.sendMessage (choc::json::create ("type", type,
+                                              "message", message));
+}
+
+inline void Patch::broadcastMessageToViews (std::string_view type, const choc::value::ValueView& message) const
 {
     auto msg = choc::json::create ("type", type,
                                    "message", message);
+
     for (auto pv : activeViews)
         pv->sendMessage (msg);
 }
@@ -1946,12 +2024,12 @@ inline void Patch::sendPatchStatusChangeToViews() const
 {
     if (renderer)
     {
-        sendMessageToViews ("status",
-                            choc::json::create (
-                                "error", renderer->errors.toString(),
-                                "manifest", renderer->manifest.manifest,
-                                "details", renderer->programDetails,
-                                "sampleRate", renderer->sampleRate));
+        broadcastMessageToViews ("status",
+                                 choc::json::create (
+                                    "error", renderer->errors.toString(),
+                                    "manifest", renderer->manifest.manifest,
+                                    "details", renderer->programDetails,
+                                    "sampleRate", renderer->sampleRate));
     }
 }
 
@@ -2055,24 +2133,24 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
 inline void Patch::sendParameterChangeToViews (const EndpointID& endpointID, float value) const
 {
     if (endpointID)
-        sendMessageToViews ("param_value",
-                            choc::json::create ("endpointID", endpointID.toString(),
-                                                "value", value));
+        broadcastMessageToViews ("param_value",
+                                 choc::json::create ("endpointID", endpointID.toString(),
+                                                     "value", value));
 }
 
 inline void Patch::sendCPUInfoToViews (float level) const
 {
-    sendMessageToViews ("cpu_info",
-                        choc::json::create ("level", level));
+    broadcastMessageToViews ("cpu_info",
+                             choc::json::create ("level", level));
 }
 
 inline void Patch::sendStoredStateValueToViews (const std::string& key) const
 {
     if (! key.empty())
         if (auto found = storedState.find (key); found != storedState.end())
-            sendMessageToViews ("state_key_value",
-                                choc::json::create ("key", key,
-                                                    "value", found->second));
+            broadcastMessageToViews ("state_key_value",
+                                     choc::json::create ("key", key,
+                                                         "value", found->second));
 }
 
 inline void Patch::sendPatchChange()
@@ -2129,6 +2207,31 @@ inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
     startCheckingForChanges();
 }
 
+inline void Patch::addActiveView (PatchView& v)
+{
+    activeViews.push_back (std::addressof (v));
+}
+
+inline void Patch::removeActiveView (PatchView& v)
+{
+    const auto i = std::find (activeViews.begin(), activeViews.end(), std::addressof (v));
+
+    if (i != activeViews.end())
+        activeViews.erase (i);
+
+    if (renderer != nullptr)
+        renderer->removeReferencesToView (v);
+}
+
+inline PatchView* Patch::findViewForID (uint16_t viewID) const
+{
+    for (auto& v : activeViews)
+        if (v->viewID == viewID)
+            return v;
+
+    return {};
+}
+
 inline void Patch::sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v) const
 {
     handleOutputEvent (frame, endpointID, v);
@@ -2166,14 +2269,14 @@ inline void Patch::sendCurrentParameterValueToViews (const EndpointID& endpointI
         sendParameterChangeToViews (endpointID, param->currentValue);
 }
 
-inline bool Patch::startEndpointData (const EndpointID& endpointID, std::string replyType, uint32_t granularity, bool fullData)
+inline bool Patch::startEndpointData (PatchView& view, const EndpointID& endpointID, std::string replyType, uint32_t granularity, bool fullData)
 {
-    return renderer != nullptr && renderer->startEndpointData (endpointID, replyType, granularity, fullData);
+    return renderer != nullptr && renderer->startEndpointData (view, endpointID, replyType, granularity, fullData);
 }
 
-inline bool Patch::stopEndpointData (const EndpointID& endpointID, std::string replyType)
+inline bool Patch::stopEndpointData (PatchView& view, const EndpointID& endpointID, std::string replyType)
 {
-    return renderer != nullptr && renderer->stopEndpointData (endpointID, replyType);
+    return renderer != nullptr && renderer->stopEndpointData (view, endpointID, replyType);
 }
 
 inline Patch::CustomAudioSourcePtr Patch::getCustomAudioSourceForInput (const EndpointID& e) const
@@ -2200,7 +2303,7 @@ inline void Patch::setCPUInfoMonitorChunkSize (uint32_t framesPerCallback)
     clientEventQueue->cpu.framesPerCallback = framesPerCallback;
 }
 
-inline bool Patch::handleClientMessage (const choc::value::ValueView& msg)
+inline bool Patch::handleClientMessage (PatchView& sourceView, const choc::value::ValueView& msg)
 {
     if (! msg.isObject())
         return false;
@@ -2261,7 +2364,7 @@ inline bool Patch::handleClientMessage (const choc::value::ValueView& msg)
         if (type == "req_full_state")
         {
             if (auto replyType = msg["replyType"].toString(); ! replyType.empty())
-                sendMessageToViews (replyType, getFullStoredState());
+                sendMessageToView (sourceView, replyType, getFullStoredState());
 
             return true;
         }
@@ -2285,7 +2388,8 @@ inline bool Patch::handleClientMessage (const choc::value::ValueView& msg)
 
         if (type == "add_endpoint_listener")
         {
-            startEndpointData (cmaj::EndpointID::create (msg["endpoint"].toString()),
+            startEndpointData (sourceView,
+                               cmaj::EndpointID::create (msg["endpoint"].toString()),
                                msg["replyType"].toString(),
                                static_cast<uint32_t> (msg["granularity"].getWithDefault<int64_t> (0)),
                                msg["fullAudioData"].getWithDefault<bool> (false));
@@ -2294,7 +2398,8 @@ inline bool Patch::handleClientMessage (const choc::value::ValueView& msg)
 
         if (type == "remove_endpoint_listener")
         {
-            stopEndpointData (cmaj::EndpointID::create (msg["endpoint"].toString()),
+            stopEndpointData (sourceView,
+                              cmaj::EndpointID::create (msg["endpoint"].toString()),
                               msg["replyType"].toString());
             return true;
         }
@@ -2351,7 +2456,8 @@ inline void PatchParameter::resetToDefaultValue (bool forceSend)
 inline PatchView::PatchView (Patch& p) : PatchView (p, {})
 {}
 
-inline PatchView::PatchView (Patch& p, const PatchManifest::View& view) : patch (p)
+inline PatchView::PatchView (Patch& p, const PatchManifest::View& view)
+    : patch (p), viewID (++p.nextViewID)
 {
     update (view);
     setActive (true);
@@ -2374,16 +2480,13 @@ inline void PatchView::update (const PatchManifest::View& view)
 
 inline void PatchView::setActive (bool active)
 {
-    const auto i = std::find (patch.activeViews.begin(), patch.activeViews.end(), this);
-    const auto isCurrentlyActive = i != patch.activeViews.end();
-
-    if (active == isCurrentlyActive)
-        return;
-
-    if (active)
-        patch.activeViews.push_back (this);
-    else
-        patch.activeViews.erase (i);
+    if (active != isActive())
+    {
+        if (active)
+            patch.addActiveView (*this);
+        else
+            patch.removeActiveView (*this);
+    }
 }
 
 inline bool PatchView::isActive() const

@@ -88,7 +88,7 @@ struct PatchWebView::Impl
             try
             {
                 if (args.isArray() && args.size() != 0)
-                    patch.handleClientMessage (args[0]);
+                    patch.handleClientMessage (*ownerView, args[0]);
             }
             catch (const std::exception& e)
             {
@@ -99,6 +99,7 @@ struct PatchWebView::Impl
         });
     }
 
+    PatchWebView* ownerView = nullptr;
     Patch& patch;
     MimeTypeMappingFn toMimeTypeCustomImpl;
 
@@ -126,6 +127,7 @@ inline std::unique_ptr<PatchWebView> PatchWebView::create (Patch& p, const Patch
 inline PatchWebView::PatchWebView (std::unique_ptr<Impl> impl, const PatchManifest::View& view)
     : PatchView (impl->patch, view), pimpl (std::move (impl))
 {
+    impl->ownerView = this;
 }
 
 inline PatchWebView::~PatchWebView() = default;
