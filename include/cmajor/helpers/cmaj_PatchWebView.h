@@ -127,7 +127,7 @@ inline std::unique_ptr<PatchWebView> PatchWebView::create (Patch& p, const Patch
 inline PatchWebView::PatchWebView (std::unique_ptr<Impl> impl, const PatchManifest::View& view)
     : PatchView (impl->patch, view), pimpl (std::move (impl))
 {
-    impl->ownerView = this;
+    pimpl->ownerView = this;
 }
 
 inline PatchWebView::~PatchWebView() = default;
