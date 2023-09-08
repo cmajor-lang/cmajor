@@ -309,7 +309,7 @@ private:
 
     void sendPatchChange();
     void setNewRenderer (std::shared_ptr<PatchRenderer>);
-    void sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&) const;
+    void sendOutputEventToViews (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
     PatchView* findViewForID (uint16_t) const;
     void startCheckingForChanges();
     void handleFileChange (PatchFileChangeChecker::ChangeType);
@@ -610,7 +610,7 @@ struct Patch::ClientEventQueue
             auto eventNameLen = d[3] == 0 ? 256u : static_cast<uint32_t> (static_cast<uint8_t> (d[3]));
             CMAJ_ASSERT (eventNameLen + 6 < size);
             auto valueData = choc::value::InputData { reinterpret_cast<const uint8_t*> (d + 4 + eventNameLen),
-                                                    reinterpret_cast<const uint8_t*> (d + size) };
+                                                      reinterpret_cast<const uint8_t*> (d + size) };
 
             patch.sendMessageToView (*view, std::string_view (d + 4, eventNameLen),
                                      choc::value::Value::deserialise (valueData));
@@ -680,11 +680,11 @@ struct Patch::ClientEventQueue
 //==============================================================================
 struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer>
 {
-    PatchRenderer (const Patch& p) : patch (p)
+    PatchRenderer (Patch& p) : patch (p)
     {
         handleOutputEvent = [&p] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
         {
-            p.sendOutputEvent (frame, endpointID, v);
+            p.sendOutputEventToViews (frame, endpointID, v);
         };
     }
 
@@ -814,46 +814,6 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     private:
         choc::buffer::ChannelArrayBuffer<float> levels;
         uint32_t frameCount = 0;
-    };
-
-    //==============================================================================
-    struct EventMonitor
-    {
-        EventMonitor (PatchView& v, const EndpointDetails& e, std::string type)
-           : view (v), endpointID (e.endpointID.toString()), replyType (std::move (type)), isMIDI (e.isMIDI())
-        {
-        }
-
-        bool process (ClientEventQueue& queue, const std::string& endpoint, const choc::value::ValueView& message)
-        {
-            if (endpointID == endpoint)
-            {
-                queue.postEndpointEvent (view, replyType, message);
-                return true;
-            }
-
-            return false;
-        }
-
-        bool process (ClientEventQueue& queue, const std::string& endpoint, choc::midi::ShortMessage message)
-        {
-            if (isMIDI && endpointID == endpoint)
-            {
-                queue.postEndpointMIDI (view, replyType, message);
-                return true;
-            }
-
-            return false;
-        }
-
-        bool isFor (PatchView& v, const EndpointID& e, const std::string& type) const
-        {
-            return std::addressof (view) == std::addressof (v) && replyType == type && endpointID == e.toString();
-        }
-
-        PatchView& view;
-        const std::string endpointID, replyType;
-        const bool isMIDI;
     };
 
     //==============================================================================
@@ -1082,7 +1042,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 }
 
                 performerBuilder.connectAudioInputTo (inChans, e, endpointChans,
-                                                      createDataListener (e.endpointID));
+                                                      createAudioDataListener (e.endpointID));
             }
             else if (e.isMIDI())
             {
@@ -1126,7 +1086,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 }
 
                 performerBuilder.connectAudioOutputTo (e, endpointChans, outChans,
-                                                       createDataListener (e.endpointID));
+                                                       createAudioDataListener (e.endpointID));
             }
             else if (e.isMIDI())
             {
@@ -1135,7 +1095,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         }
     }
 
-    std::shared_ptr<DataListener> createDataListener (const EndpointID& endpointID)
+    std::shared_ptr<DataListener> createAudioDataListener (const EndpointID& endpointID)
     {
         auto l = std::make_shared<PatchRenderer::DataListener> (*patch.clientEventQueue);
 
@@ -1145,16 +1105,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             s->prepare (sampleRate);
         }
 
-        dataListeners[endpointID.toString()] = l;
+        endpointListeners.add (endpointID, l);
         return l;
-    }
-
-    DataListener* findDataListener (const EndpointID& e) const
-    {
-        if (auto l = dataListeners.find (e.toString()); l != dataListeners.end())
-            return l->second.get();
-
-        return {};
     }
 
     const EndpointDetails* findEndpointDetails (const EndpointID& e) const
@@ -1172,7 +1124,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
     bool setCustomAudioSource (const EndpointID& e, CustomAudioSourcePtr source)
     {
-        if (auto l = findDataListener (e))
+        if (auto l = endpointListeners.findAudioDataListener (e))
         {
             if (source != nullptr)
                 source->prepare (sampleRate);
@@ -1189,7 +1141,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     {
         if (auto details = findEndpointDetails (e))
         {
-            if (auto l = findDataListener (e))
+            if (auto l = endpointListeners.findAudioDataListener (e))
             {
                 auto monitor = std::make_unique<AudioLevelMonitor> (view, *details, std::move (replyType), granularity, fullData);
 
@@ -1197,12 +1149,13 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 l->audioMonitors.push_back (std::move (monitor));
                 return true;
             }
-            else if (details->isEvent())
+
+            if (details->isEvent())
             {
-                auto monitor = std::make_unique<EventMonitor> (view, *details, std::move (replyType));
+                auto monitor = std::make_unique<EndpointListeners::EventMonitor> (view, *details, std::move (replyType));
 
                 std::lock_guard<decltype(processLock)> lock (processLock);
-                eventEndpointMonitors.push_back (std::move (monitor));
+                endpointListeners.add (std::move (monitor));
                 return true;
             }
         }
@@ -1212,34 +1165,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
     bool stopEndpointData (PatchView& view, const EndpointID& e, std::string replyType)
     {
-        if (auto l = findDataListener (e))
-        {
-            std::lock_guard<decltype(processLock)> lock (processLock);
-            return l->removeMonitor (view, e, replyType);
-        }
-
-        auto oldEnd = eventEndpointMonitors.end();
-
         std::lock_guard<decltype(processLock)> lock (processLock);
-
-        auto newEnd = std::remove_if (eventEndpointMonitors.begin(), oldEnd,
-                                      [&] (auto& m) { return m->isFor (view, e, replyType); });
-
-        if (newEnd != oldEnd)
-        {
-            eventEndpointMonitors.erase (newEnd, oldEnd);
-            return true;
-        }
-
-        return false;
-    }
-
-    void sendOutputEventToViews (std::string_view endpointID, const choc::value::ValueView& value)
-    {
-        if (! value.isVoid())
-            for (auto& m : eventEndpointMonitors)
-                if (m->endpointID == endpointID)
-                    patch.sendMessageToView (m->view, m->replyType, value);
+        return endpointListeners.remove (view, e, replyType);
     }
 
     //==============================================================================
@@ -1306,7 +1233,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         if (! performer->postEvent (endpointID, value))
             performer->postValue (endpointID, value, rampFrames > 0 ? (uint32_t) rampFrames : 0);
 
-        for (auto& m : eventEndpointMonitors)
+        for (auto& m : endpointListeners.eventMonitors)
             m->process (queue, endpointID.toString(), value);
     }
 
@@ -1364,7 +1291,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     //==============================================================================
     void processMIDIMessage (choc::midi::ShortMessage message)
     {
-        for (auto& monitor : eventEndpointMonitors)
+        for (auto& monitor : endpointListeners.eventMonitors)
             if (monitor->isMIDI)
                 monitor->process (*patch.clientEventQueue, monitor->endpointID, message);
     }
@@ -1372,7 +1299,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     void processMIDIBlock (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
     {
         if (! block.midiMessages.empty())
-            for (auto& monitor : eventEndpointMonitors)
+            for (auto& monitor : endpointListeners.eventMonitors)
                 if (monitor->isMIDI)
                     for (auto& m : block.midiMessages)
                         monitor->process (*patch.clientEventQueue, monitor->endpointID, m);
@@ -1405,18 +1332,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
     void removeReferencesToView (PatchView& v)
     {
-        auto oldEnd = eventEndpointMonitors.end();
-
         std::lock_guard<decltype(processLock)> lock (processLock);
-
-        auto newEnd = std::remove_if (eventEndpointMonitors.begin(), oldEnd,
-                                      [&] (auto& m) { return std::addressof (m->view) == std::addressof (v); });
-
-        if (newEnd != oldEnd)
-            eventEndpointMonitors.erase (newEnd, oldEnd);
-
-        for (auto& d : dataListeners)
-            d.second->removeMonitorsForView (v);
+        endpointListeners.removeReferencesToView (v);
     }
 
     void startInfiniteLoopCheck (std::function<void()> handleInfiniteLoopFn)
@@ -1449,12 +1366,114 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     bool hasMIDIOutputs = false;
     bool hasTimecodeInputs = false;
 
-    std::vector<std::unique_ptr<EventMonitor>> eventEndpointMonitors;
+    //==============================================================================
+    struct EndpointListeners
+    {
+        struct EventMonitor
+        {
+            EventMonitor (PatchView& v, const EndpointDetails& e, std::string type)
+                : view (v), endpointID (e.endpointID.toString()), replyType (std::move (type)), isMIDI (e.isMIDI())
+            {
+            }
+
+            bool process (ClientEventQueue& queue, const std::string& endpoint, const choc::value::ValueView& message)
+            {
+                if (endpointID == endpoint)
+                {
+                    queue.postEndpointEvent (view, replyType, message);
+                    return true;
+                }
+
+                return false;
+            }
+
+            bool process (ClientEventQueue& queue, const std::string& endpoint, choc::midi::ShortMessage message)
+            {
+                if (isMIDI && endpointID == endpoint)
+                {
+                    queue.postEndpointMIDI (view, replyType, message);
+                    return true;
+                }
+
+                return false;
+            }
+
+            bool isFor (PatchView& v, const EndpointID& e, const std::string& type) const
+            {
+                return std::addressof (view) == std::addressof (v) && replyType == type && endpointID == e.toString();
+            }
+
+            PatchView& view;
+            const std::string endpointID, replyType;
+            const bool isMIDI;
+        };
+
+        void add (std::unique_ptr<EventMonitor> m)
+        {
+            eventMonitors.push_back (std::move (m));
+        }
+
+        void add (const EndpointID& e, std::shared_ptr<PatchRenderer::DataListener> l)
+        {
+            dataListeners[e.toString()] = l;
+        }
+
+        bool remove (PatchView& view, const EndpointID& e, std::string replyType)
+        {
+            if (auto l = findAudioDataListener (e))
+                return l->removeMonitor (view, e, replyType);
+
+            auto oldEnd = eventMonitors.end();
+            auto newEnd = std::remove_if (eventMonitors.begin(), oldEnd,
+                                          [&] (auto& m) { return m->isFor (view, e, replyType); });
+
+            if (newEnd != oldEnd)
+            {
+                eventMonitors.erase (newEnd, oldEnd);
+                return true;
+            }
+
+            return false;
+        }
+
+        DataListener* findAudioDataListener (const EndpointID& e) const
+        {
+            if (auto l = dataListeners.find (e.toString()); l != dataListeners.end())
+                return l->second.get();
+
+            return {};
+        }
+
+        void sendOutputEventToViews (Patch& p, std::string_view endpointID, const choc::value::ValueView& value)
+        {
+            if (! value.isVoid())
+                for (auto& m : eventMonitors)
+                    if (m->endpointID == endpointID)
+                        p.sendMessageToView (m->view, m->replyType, value);
+        }
+
+        void removeReferencesToView (PatchView& v)
+        {
+            auto oldEnd = eventMonitors.end();
+            auto newEnd = std::remove_if (eventMonitors.begin(), oldEnd,
+                                          [&] (auto& m) { return std::addressof (m->view) == std::addressof (v); });
+
+            if (newEnd != oldEnd)
+                eventMonitors.erase (newEnd, oldEnd);
+
+            for (auto& d : dataListeners)
+                d.second->removeMonitorsForView (v);
+        }
+
+        std::unordered_map<std::string, std::shared_ptr<DataListener>> dataListeners;
+        std::vector<std::unique_ptr<EventMonitor>> eventMonitors;
+    };
+
+    EndpointListeners endpointListeners;
 
 private:
     std::unique_ptr<cmaj::AudioMIDIPerformer> performer;
     std::unordered_map<std::string, PatchParameterPtr> parameterIDMap;
-    std::unordered_map<std::string, std::shared_ptr<DataListener>> dataListeners;
     choc::threading::ThreadSafeFunctor<HandleOutputEventFn> handleOutputEvent;
     choc::threading::TaskThread outputEventThread;
     choc::messageloop::Timer infiniteLoopCheckTimer;
@@ -1501,7 +1520,7 @@ struct Patch::Build
     }
 
 private:
-    const Patch& patch;
+    Patch& patch;
     LoadParams loadParams;
     const bool resolveExternals, performLink;
     std::shared_ptr<PatchRenderer> renderer;
@@ -2217,10 +2236,12 @@ inline void Patch::removeActiveView (PatchView& v)
     const auto i = std::find (activeViews.begin(), activeViews.end(), std::addressof (v));
 
     if (i != activeViews.end())
+    {
         activeViews.erase (i);
 
-    if (renderer != nullptr)
-        renderer->removeReferencesToView (v);
+        if (renderer != nullptr)
+            renderer->removeReferencesToView (v);
+    }
 }
 
 inline PatchView* Patch::findViewForID (uint16_t viewID) const
@@ -2232,12 +2253,12 @@ inline PatchView* Patch::findViewForID (uint16_t viewID) const
     return {};
 }
 
-inline void Patch::sendOutputEvent (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v) const
+inline void Patch::sendOutputEventToViews (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
 {
     handleOutputEvent (frame, endpointID, v);
 
     if (renderer != nullptr)
-        renderer->sendOutputEventToViews (endpointID, v);
+        renderer->endpointListeners.sendOutputEventToViews (*this, endpointID, v);
 }
 
 inline void Patch::sendEventOrValueToPatch (const EndpointID& endpointID, const choc::value::ValueView& value, int32_t rampFrames) const
