@@ -731,3 +731,16 @@ graph Test [[ main ]]
         p[1, 2] -> out;
     }
 }
+
+## testFunction()
+
+bool test()
+{
+    let v1 = float32[1,2] ((1,2));
+    let v2 = float32[1,1,2] (((1,2)));
+
+    return v1[0,0] == 1 && v2[0,0,1] == 2;
+}
+
+
+
