@@ -292,3 +292,57 @@ processor Test
         advance();
     }
 }
+
+
+## expectError ("11:24: error: Cannot determine the type of the value to be written to this endpoint")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    void main()
+    {
+        loop
+        {
+            float[2 + int(processor.frequency)] z;
+            console <- z;
+            advance();
+        }
+    }
+}
+
+## testConsole ("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    void main()
+    {
+        loop
+        {
+            float[2 + int(processor.frequency)] z;
+            float f = z[1];
+            console <- f;
+            advance();
+        }
+    }
+}
+
+
+## expectError ("11:26: error: Cannot determine the type of the value to be written to this endpoint")
+
+processor Test [[ main ]]
+{
+    output stream int out;
+
+    void main()
+    {
+        loop
+        {
+            float[2 + int(processor.frequency)] z;
+            console <- z[1];
+            advance();
+        }
+    }
+}
