@@ -32,16 +32,16 @@ export class ServerSession   extends EventListenerList
         this.activePatchConnections = new Set();
         this.status = { connected: false, loaded: false };
         this.lastServerMessageTime = Date.now();
-        this.pingTimer = setInterval (() => this.pingServer(), 1311);
+        this.checkForServerTimer = setInterval (() => this.checkServerStillExists(), 2000);
     }
 
     /// Call `dispose()` when this session is no longer needed and should be released.
     dispose()
     {
-        if (this.pingTimer)
+        if (this.checkForServerTimer)
         {
-            clearInterval (this.pingTimer);
-            this.pingTimer = undefined;
+            clearInterval (this.checkForServerTimer);
+            this.checkForServerTimer = undefined;
         }
 
         this.status = { connected: false, loaded: false };
@@ -271,22 +271,6 @@ export class ServerSession   extends EventListenerList
     }
 
     //==============================================================================
-    /// Sends a ping message to the server.
-    /// You shouldn't need to call this - the ServerSession class takes care of sending
-    /// a ping at regular intervals.
-    pingServer()
-    {
-        this.sendMessageToServer ({ type: "ping" });
-
-        if (Date.now() > this.lastServerMessageTime + 10000)
-            this.setNewStatus ({
-                connected: false,
-                loaded: false,
-                status: "Cannot connect to the Cmajor server"
-            });
-    }
-
-    //==============================================================================
     // Private methods from this point...
 
     // An implementation subclass must call this when the session first connects
@@ -331,6 +315,7 @@ export class ServerSession   extends EventListenerList
                 break;
 
             case "ping":
+                this.sendMessageToServer ({ type: "ping" });
                 break;
 
             default:
@@ -345,6 +330,16 @@ export class ServerSession   extends EventListenerList
 
                 break;
         }
+    }
+
+    checkServerStillExists()
+    {
+        if (Date.now() > this.lastServerMessageTime + 10000)
+            this.setNewStatus ({
+                connected: false,
+                loaded: false,
+                status: "Cannot connect to the Cmajor server"
+            });
     }
 
     setNewStatus (newStatus)
