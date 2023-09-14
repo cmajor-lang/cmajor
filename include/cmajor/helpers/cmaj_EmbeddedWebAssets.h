@@ -1302,24 +1302,24 @@ export class ServerSession   extends EventListenerList
         this.activePatchConnections = new Set();
         this.status = { connected: false, loaded: false };
         this.lastServerMessageTime = Date.now();
-        this.pingTimer = setInterval (() => this.pingServer(), 1311);
+        this.checkForServerTimer = setInterval (() => this.checkServerStillExists(), 2000);
     }
 
     /// Call `dispose()` when this session is no longer needed and should be released.
     dispose()
     {
-        if (this.pingTimer)
+        if (this.checkForServerTimer)
         {
-            clearInterval (this.pingTimer);
-            this.pingTimer = undefined;
+            clearInterval (this.checkForServerTimer);
+            this.checkForServerTimer = undefined;
         }
 
         this.status = { connected: false, loaded: false };
-    }
+    })"
+R"(
 
     //==============================================================================
-    // Session status methods:)"
-R"(
+    // Session status methods:
 
     /// Attaches a listener function which will be called when the session status changes.
     /// The function will be passed an argument object containing lots of properties describing the
@@ -1548,24 +1548,7 @@ R"(
     }
 
     //==============================================================================
-    /// Sends a ping message to the server.
-    /// You shouldn't need to call this - the ServerSession class takes care of sending
-    /// a ping at regular intervals.
-    pingServer()
-    {
-        this.sendMessageToServer ({ type: "ping" });
-
-        if (Date.now() > this.lastServerMessageTime + 10000)
-            this.setNewStatus ({
-                connected: false,
-                loaded: false,
-                status: "Cannot connect to the Cmajor server"
-            });
-    }
-
-    //==============================================================================
-    // Private methods from this point...)"
-R"(
+    // Private methods from this point...
 
     // An implementation subclass must call this when the session first connects
     handleSessionConnection()
@@ -1588,7 +1571,8 @@ R"(
     {
         this.lastServerMessageTime = Date.now();
         const type = msg.type;
-        const message = msg.message;
+        const message = msg.message;)"
+R"(
 
         switch (type)
         {
@@ -1609,6 +1593,7 @@ R"(
                 break;
 
             case "ping":
+                this.sendMessageToServer ({ type: "ping" });
                 break;
 
             default:
@@ -1625,13 +1610,22 @@ R"(
         }
     }
 
+    checkServerStillExists()
+    {
+        if (Date.now() > this.lastServerMessageTime + 10000)
+            this.setNewStatus ({
+                connected: false,
+                loaded: false,
+                status: "Cannot connect to the Cmajor server"
+            });
+    }
+
     setNewStatus (newStatus)
     {
         this.status = newStatus;
         this.dispatchEvent ("session_status", this.status);
         this.updateCPULevelUpdateRate();
-    })"
-R"(
+    }
 
     updateCPULevelUpdateRate()
     {
@@ -1642,7 +1636,8 @@ R"(
 
     handleFileReadRequest (request)
     {
-        const contentProvider = this.files?.get (request?.file);
+        const contentProvider = this.files?.get (request?.file);)"
+R"(
 
         if (contentProvider && request.offset !== null && request.size != 0)
         {
@@ -1981,7 +1976,7 @@ R"(
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 25555) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },
-        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 17264) },
+        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 17081) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4859) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 2217) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },
