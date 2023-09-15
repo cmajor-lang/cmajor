@@ -511,13 +511,11 @@ graph test [[ main ]]
     node t = T (std::notes::NoteOn, std::notes::NoteOn (1, 2, 3, 4));
 }
 
-## testFunction()
+## expectError ("6:13: error: Endpoints can only be read or written by code that is called from the main() function")
 
-bool test()
+graph g [[main]]
 {
-    let i = 1;
-    float f;
-    f = i;
-
-    return true;
+    output stream float x;
+    input value int y;
+    int z = y * 2;
 }

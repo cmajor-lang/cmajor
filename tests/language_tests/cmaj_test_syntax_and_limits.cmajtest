@@ -2115,7 +2115,6 @@ bool test()
 bool test()
 {
     for (int i = 0; 1; i++) {}
-
     return true;
 }
 
@@ -2124,66 +2123,30 @@ bool test()
 bool test()
 {
     loop (4.5) {}
-
     return true;
 }
 
+## expectError ("3:15: error: Can't find a function 't' with 2 argument(s)")
 
-## expectError ("8:5: error: Can't find a function 't' with 2 argument(s)")
+void t (float f) {}
+void test() { t (1.0f, 2.0f); }
 
-void t (float f)
-{
-}
+## expectError ("3:30: error: No member called 'b' found in struct 'tests::S'")
 
-void test()
-{
-    t (1.0f, 2.0f);
-}
+struct S { float a; }
+float test() { S s; return s.b; }
 
-## expectError ("11:14: error: No member called 'b' found in struct 'tests::S'")
+## expectError ("3:27: error: The enum 'tests::E' does not contain a member called 'b'")
 
-struct S
-{
-    float a;
-}
+enum E { a }
+void test() { E e; e = E::b; }
 
-float test()
-{
-    S s;
+## expectError ("3:27: error: The enum 'tests::E' does not contain a member called 'A'")
 
-    return s.b;
-}
+enum E { a }
+void test() { E e; e = E::A::b; }
 
-## expectError ("11:12: error: The enum 'tests::E' does not contain a member called 'b'")
-
-enum E
-{
-    a
-}
-
-void test()
-{
-    E e;
-
-    e = E::b;
-}
-
-## expectError ("11:12: error: The enum 'tests::E' does not contain a member called 'A'")
-
-enum E
-{
-    a
-}
-
-void test()
-{
-    E e;
-
-    e = E::A::b;
-}
-
-
-## expectError ("10:9: error: A module cannot write to it's own input endpoints")
+## expectError ("10:9: error: A module cannot write to its own input endpoints")
 
 processor Test [[ main ]]
 {
@@ -2197,7 +2160,6 @@ processor Test [[ main ]]
     }
 }
 
-
 ## expectError ("9:12: error: Cannot use graph input endpoint 'in2' as a connection destination")
 
 graph Test [[ main ]]
@@ -2209,7 +2171,6 @@ graph Test [[ main ]]
     connection
         in -> in2;
 }
-
 
 ## expectError ("8:13: error: Cannot use graph output endpoint 'out' as a connection source")
 
@@ -2240,11 +2201,8 @@ graph Test [[ main ]]
     input event float32 in[4];
     output event float32 out;
 
-    event in (float32 f)
-    {
-    }
+    event in (float32 f) {}
 }
-
 
 ## expectError ("6:17: error: functions that call advance() do not support parameters containing slices")
 
@@ -2346,7 +2304,6 @@ bool test3()
     return r == reserved::this;
 }
 
-
 ## expectError ("6:12: error: Top level endpoints cannot include slices")
 
 processor Test [[ main ]]
@@ -2363,8 +2320,6 @@ processor Test [[ main ]]
         advance();
     }
 }
-
-
 
 ## expectError ("7:12: error: Top level endpoints cannot include slices")
 

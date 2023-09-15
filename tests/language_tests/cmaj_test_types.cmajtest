@@ -422,6 +422,8 @@ bool testConstInit() { return N::i[1] == 3 && N::j[1] == 3; }
 bool testVectorCast1()  { let v = float<3> (int<3> (1, 2, 4)); return v[2] == 4.0f; }
 bool testVectorCast2()  { var x = int<3> (1, 2, 4); let v = float<3> (x); return allTrue (v == float<3> (1, 2, 4)); }
 
+bool testImplicitCast() { let i = 1; float f; f = i; return true; }
+
 ## testProcessor()
 
 processor test
