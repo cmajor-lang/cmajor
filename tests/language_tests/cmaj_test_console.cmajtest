@@ -346,3 +346,24 @@ processor Test [[ main ]]
         }
     }
 }
+
+
+## testConsole ("1,0,0,0,0,2,0,0,0,0,3,0")
+
+processor Test
+{
+    output stream float out;
+
+    void main()
+    {
+        float[3,4] v;
+
+        v[0,0] = 1;
+        v[1,1] = 2;
+        v[2,2] = 3;
+
+        console <- v;
+
+        advance();
+    }
+}
