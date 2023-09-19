@@ -8,7 +8,7 @@
 //                                           ,88
 //                                        888P"
 
-## testConsole ("Writing multiple types including structs 1 2.5 [object Object] [object Object]")
+## testConsole ("Writing multiple types including structs 1 2.5 {\"_objectName\":\"S\",\"i\":1,\"f\":2} {\"_objectName\":\"complex32\",\"real\":1,\"imag\":2}")
 
 processor test
 {
@@ -165,7 +165,7 @@ graph G [[ main ]]
         in -> console;
 }
 
-## testConsole ("1,0,4,01,4,0,0")
+## testConsole ("[[1,0],[4,0]][[1,4],[0,0]]")
 
 processor TranposeTest() [[main]]
 {
@@ -197,7 +197,7 @@ processor TranposeTest() [[main]]
     }
 }
 
-## testConsole ("1,2,3,4,5,6 -> 1,3,5,2,4,6")
+## testConsole ("[[1,2],[3,4],[5,6]] -> [[1,3,5],[2,4,6]]")
 
 processor Test
 {
@@ -348,7 +348,7 @@ processor Test [[ main ]]
 }
 
 
-## testConsole ("1,0,0,0,0,2,0,0,0,0,3,0")
+## testConsole ("[[1,0,0,0],[0,2,0,0],[0,0,3,0]]")
 
 processor Test
 {

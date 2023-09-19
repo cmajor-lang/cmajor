@@ -575,8 +575,15 @@ function testConsole (expectedConsoleMsg, options)
         let result = performer.getOutputEvents (consoleHandle);
 
         if (result)
+        {
             for (let i = 0; i < result.length; i++)
-                consoleMsg += result[i].event;
+            {
+                if (typeof result[i].event == "object")
+                    consoleMsg += JSON.stringify (result[i].event);
+                else
+                    consoleMsg += result[i].event;
+            }
+        }
 
         framesToRender -= framesPerBlock;
     }
