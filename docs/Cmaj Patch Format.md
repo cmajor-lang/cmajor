@@ -348,6 +348,38 @@ console.log (`Cmajor version: ${getCmajorVersion()}`);
 console.log ("MIDI message: " + midi.getMIDIDescription (0x924030));
 ```
 
+### Patch Workers
+
+A patch can specify a javascript program which is executed when the patch is loaded, and which can use timers and messaging to communicate with and control the running patch. It's obviously non-realtime, but can be used to do background housekeeping tasks when there is no GUI visible.
+
+The API it uses to talk to the patch is the same `PatchConnection` class as described above.
+
+To give your patch a worker, add a `worker` entry to the manifest file:
+
+```json
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.helloworld",
+    "version":          "1.0",
+    "name":             "Hello World",
+    "source":           "HelloWorld.cmajor",
+
+    "worker":           "my_worker.js"
+}
+```
+
+The value should be the path to a javascript file that will be executed. This script will be executed at startup (or when the patch is reset) has access to a restricted API, including:
+
+- Basic built-in javascript language features
+- `setTimeout()`, `setInterval()` and `clearInterval()` to manage timers
+- A function `createPatchConnection()` which the script should call just once to create a `PatchConnection` object which it can use to interact with the patch. Using this, it can attach listeners to receive callbacks when data is sent to or from the patch.
+- `readResource(path)` and `readResourceAsAudioData(path)` which will load a file contained within the patch bundle, given a path relative to the root of the bundle.
+- It can `import` other javascript modules, as long as these are built-in modules (e.g. `import * as midi from "/cmaj_api/cmaj-midi-helpers.js"``) or files within the patch bundle.
+
+-------
+
+# Exporting patches
+
 ### Building a native VST or AudioUnit from a patch
 
 The `cmaj` tool supports code-generation of a JUCE C++ project that can be used to natively compile a VST/AudioUnit/AAX plugin for a patch. The resulting code doesn't do any JIT compilation, it simply translates the Cmajor code to pure C++ so that it can be built statically.

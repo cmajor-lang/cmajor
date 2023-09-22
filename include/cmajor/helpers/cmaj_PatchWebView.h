@@ -22,7 +22,6 @@
 #pragma once
 
 #include "cmaj_Patch.h"
-#include "cmaj_EmbeddedWebAssets.h"
 #include "../../choc/gui/choc_WebView.h"
 
 #include <memory>
@@ -109,7 +108,7 @@ struct PatchWebView::Impl
     static constexpr bool allowWebviewDevMode = false;
    #endif
 
-    choc::ui::WebView webview { { allowWebviewDevMode, true, [this] (const auto& path) { return onRequest (path); } } };
+    choc::ui::WebView webview { { allowWebviewDevMode, true, {}, [this] (const auto& path) { return onRequest (path); } } };
 
     using ResourcePath = choc::ui::WebView::Options::Path;
     using OptionalResource = std::optional<choc::ui::WebView::Options::Resource>;
@@ -301,16 +300,8 @@ inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const
                            toMimeType (".html"));
     }
 
-    auto pathToFind = relativePath.generic_string();
-    auto mimeType = toMimeType (relativePath.extension().string());
-
-    if (auto manifest = patch.getManifest())
-        if (auto content = manifest->readFileContent (pathToFind); ! content.empty())
-            return toResource (content, mimeType);
-
-    if (choc::text::startsWith (pathToFind, "cmaj_api/"))
-        if (auto content = EmbeddedWebAssets::findResource (pathToFind.substr (std::string_view ("cmaj_api/").length())); ! content.empty())
-            return toResource (content, mimeType);
+    if (auto content = readJavascriptResource (path, patch.getManifest()); ! content.empty())
+        return toResource (content, relativePath.extension().string());
 
     return {};
 }

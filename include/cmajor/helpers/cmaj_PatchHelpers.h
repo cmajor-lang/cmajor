@@ -30,9 +30,13 @@
 #include "../../choc/audio/choc_AudioFileFormat_FLAC.h"
 #include "../../choc/audio/choc_AudioFileFormat_MP3.h"
 #include "../../choc/platform/choc_HighResolutionSteadyClock.h"
+#include "../../choc/javascript/choc_javascript_Timer.h"
+#include "../../choc/javascript/choc_javascript_Console.h"
 
 #include "../API/cmaj_Endpoints.h"
 #include "../API/cmaj_ExternalVariables.h"
+
+#include "cmaj_EmbeddedWebAssets.h"
 
 #include <algorithm>
 #include <optional>
@@ -68,6 +72,7 @@ struct PatchManifest
     std::string manifestFile, ID, name, description, category, manufacturer, version, mainProcessor;
     bool isInstrument = false;
     std::vector<std::string> sourceFiles;
+    std::string patchWorker;
     choc::value::Value externals;
     bool needsToBuildSource = true;
 
@@ -115,8 +120,8 @@ struct PatchManifest
 private:
     void addSource (const choc::value::ValueView&);
     void addView (const choc::value::ValueView&);
+    void addWorker (const choc::value::ValueView&);
 };
-
 
 //==============================================================================
 /// This helper class implements the logic for interpreting an EndpointDetails
@@ -200,9 +205,15 @@ private:
 };
 
 //==============================================================================
+choc::value::Value readManifestResourceAsAudioData (const PatchManifest& manifest,
+                                                    const std::string& path,
+                                                    const choc::value::ValueView& annotation);
+
 choc::value::Value replaceFilenameStringsWithAudioData (const PatchManifest& manifest,
                                                         const choc::value::ValueView& sourceObject,
                                                         const choc::value::ValueView& annotation);
+
+std::string readJavascriptResource (std::string_view resourcePath, const PatchManifest*);
 
 //==============================================================================
 struct PatchFileChangeChecker
@@ -411,6 +422,7 @@ inline bool PatchManifest::reload()
 
         addSource (manifest["source"]);
         addView (manifest["view"]);
+        addWorker (manifest["worker"]);
 
         return true;
     }
@@ -461,13 +473,18 @@ inline void PatchManifest::addView (const choc::value::ValueView& view)
     if (view.isArray())
     {
         for (auto e : view)
-            if (e.isObject())
-                addView (e);
+            addView (e);
     }
     else if (view.isObject())
     {
         views.push_back (View { choc::value::Value (view) });
     }
+}
+
+inline void PatchManifest::addWorker (const choc::value::ValueView& worker)
+{
+    if (worker.isString())
+        patchWorker = worker.toString();
 }
 
 inline const PatchManifest::View* PatchManifest::findDefaultView() const
@@ -541,6 +558,21 @@ inline std::function<choc::value::Value(const cmaj::ExternalVariable&)> PatchMan
 }
 
 //==============================================================================
+inline std::string readJavascriptResource (std::string_view path, const PatchManifest* manifest)
+{
+    auto pathToFind = std::filesystem::path (path).relative_path().generic_string();
+
+    if (manifest != nullptr)
+        if (auto content = manifest->readFileContent (pathToFind); ! content.empty())
+            return content;
+
+    if (choc::text::startsWith (pathToFind, "cmaj_api/"))
+        return std::string (EmbeddedWebAssets::findResource (pathToFind.substr (std::string_view ("cmaj_api/").length())));
+
+    return {};
+}
+
+//==============================================================================
 inline choc::value::Value& TimelineEventGenerator::getTimeSigEvent (int numerator, int denominator)
 {
     timeSigEvent.setMember ("numerator", numerator);
@@ -569,6 +601,29 @@ inline choc::value::Value& TimelineEventGenerator::getPositionEvent (int64_t cur
 }
 
 //==============================================================================
+inline choc::value::Value readManifestResourceAsAudioData (const PatchManifest& manifest,
+                                                           const std::string& path,
+                                                           const choc::value::ValueView& annotation)
+{
+    choc::value::Value audioFileContent;
+
+    if (auto reader = manifest.createFileReader (path))
+    {
+        choc::audio::AudioFileFormatList formats;
+        formats.addFormat<choc::audio::OggAudioFileFormat<false>>();
+        formats.addFormat<choc::audio::MP3AudioFileFormat>();
+        formats.addFormat<choc::audio::FLACAudioFileFormat<false>>();
+        formats.addFormat<choc::audio::WAVAudioFileFormat<true>>();
+
+        auto error = cmaj::readAudioFileAsValue (audioFileContent, formats, reader, annotation);
+
+        if (! error.empty())
+            return {};
+    }
+
+    return audioFileContent;
+}
+
 inline choc::value::Value replaceFilenameStringsWithAudioData (const PatchManifest& manifest,
                                                                const choc::value::ValueView& v,
                                                                const choc::value::ValueView& annotation)
@@ -580,23 +635,10 @@ inline choc::value::Value replaceFilenameStringsWithAudioData (const PatchManife
     {
         try
         {
-            auto s = v.get<std::string>();
+            auto audio = readManifestResourceAsAudioData (manifest, v.get<std::string>(), annotation);
 
-            if (auto reader = manifest.createFileReader (s))
-            {
-                choc::value::Value audioFileContent;
-
-                choc::audio::AudioFileFormatList formats;
-                formats.addFormat<choc::audio::OggAudioFileFormat<false>>();
-                formats.addFormat<choc::audio::MP3AudioFileFormat>();
-                formats.addFormat<choc::audio::FLACAudioFileFormat<false>>();
-                formats.addFormat<choc::audio::WAVAudioFileFormat<true>>();
-
-                auto error = cmaj::readAudioFileAsValue (audioFileContent, formats, reader, annotation);
-
-                if (error.empty())
-                    return audioFileContent;
-            }
+            if (! audio.isVoid())
+                return audio;
         }
         catch (...)
         {}
@@ -936,6 +978,9 @@ inline PatchFileChangeChecker::ChangeType PatchFileChangeChecker::checkAndReset(
 
     for (auto& v : manifest.views)
         newAssets.add (manifest, v.getSource());
+
+    if (! manifest.patchWorker.empty())
+        newSources.add (manifest, manifest.patchWorker);
 
     ChangeType changes;
 

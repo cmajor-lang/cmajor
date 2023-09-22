@@ -155,7 +155,7 @@ inline std::string readAudioFileAsValue (choc::value::Value& result,
         result = convertAudioDataToObject (data.frames, data.sampleRate);
 
         if (result.isVoid())
-            return "Failed to encode file";
+            return "Failed to decode file";
     }
     catch (const std::exception& e)
     {

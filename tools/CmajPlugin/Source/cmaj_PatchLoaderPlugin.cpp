@@ -14,6 +14,7 @@
 
 #define CHOC_ASSERT(x) assert(x)
 #include "../../../include/cmajor/helpers/cmaj_JUCEPlugin.h"
+#include "../../../include/choc/javascript/choc_javascript_QuickJS.h"
 
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

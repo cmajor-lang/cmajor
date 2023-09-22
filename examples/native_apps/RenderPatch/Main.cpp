@@ -1,5 +1,7 @@
+
 #include "../../../include/cmajor/API/cmaj_Engine.h"
 #include "../../../include/cmajor/helpers/cmaj_Patch.h"
+#include "../../../include/choc/javascript/choc_javascript_QuickJS.h"
 
 #include <iostream>
 #include <memory>

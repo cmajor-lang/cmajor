@@ -284,6 +284,7 @@ struct Patch
 private:
     //==============================================================================
     struct PatchRenderer;
+    struct PatchWorker;
     struct Build;
     struct BuildThread;
     friend struct PatchView;
@@ -678,6 +679,134 @@ struct Patch::ClientEventQueue
 };
 
 //==============================================================================
+/// This class manages a javascript patch worker thread
+struct Patch::PatchWorker  : public PatchView
+{
+    PatchWorker (Patch& p, PatchManifest& m) : PatchView (p), manifest (m)
+    {
+        if (! manifest.patchWorker.empty())
+        {
+            auto worker = manifest.readFileContent (manifest.patchWorker);
+
+            if (! worker.empty())
+            {
+                startupCallback = [this, worker] { runWorker (worker); };
+                choc::messageloop::postMessage ([f = startupCallback] { f(); });
+            }
+        }
+    }
+
+    ~PatchWorker() override
+    {
+        startupCallback.reset();
+        context = {};
+    }
+
+    void sendMessage (const choc::value::ValueView& msg) override
+    {
+        context.evaluate ("currentView?.deliverMessageFromServer(" + choc::json::toString (msg, true) + ");");
+    }
+
+    void runWorker (const std::string& script)
+    {
+        try
+        {
+            // NB: QuickJS needs the context to be created by the thread that uses it
+            context = choc::javascript::createQuickJSContext();
+            registerTimerFunctions (context);
+            registerConsoleFunctions (context);
+            registerLibraryFunctions();
+
+            choc::javascript::Context::ReadModuleContentFn resolveModule = [this] (std::string_view path) -> std::string
+            {
+                return readJavascriptResource (path, std::addressof (manifest));
+            };
+
+            context.registerFunction ("cmaj_sendMessageToServer", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
+            {
+                if (auto message = args[0])
+                    patch.handleClientMessage (*this, *message);
+
+                return {};
+            });
+
+            context.evaluate (getGlueCode(), std::addressof (resolveModule));
+            context.evaluate (script, std::addressof (resolveModule));
+        }
+        catch (const std::exception& e)
+        {
+            patch.setErrorStatus (std::string ("Error in patch worker script: ") + e.what(), manifest.patchWorker, {}, true);
+        }
+    }
+
+    void registerLibraryFunctions()
+    {
+        context.registerFunction ("readResource", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
+        {
+            try
+            {
+                if (auto path = args.get<std::string>(0); ! path.empty())
+                    return choc::value::Value (manifest.readFileContent (path));
+            }
+            catch (...)
+            {}
+
+            return {};
+        });
+
+        context.registerFunction ("readResourceAsAudioData", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
+        {
+            try
+            {
+                if (auto path = args.get<std::string>(0); ! path.empty())
+                    return readManifestResourceAsAudioData (manifest, path, args[1] != nullptr ? *args[1] : choc::value::Value());
+            }
+            catch (...)
+            {}
+
+            return {};
+        });
+    }
+
+    std::string getGlueCode() const
+    {
+        return choc::text::replace (R"(
+import { PatchConnection } from "/cmaj_api/cmaj-patch-connection.js"
+
+class WorkerPatchConnection  extends PatchConnection
+{
+    constructor()
+    {
+        super();
+        this.manifest = MANIFEST;
+        globalThis.currentView = this;
+    }
+
+    getResourceAddress (path)
+    {
+        return path.startsWith ("/") ? path : ("/" + path);
+    }
+
+    sendMessageToServer (message)
+    {
+        cmaj_sendMessageToServer (message);
+    }
+}
+
+globalThis.createPatchConnection = function()
+{
+    return new WorkerPatchConnection();
+}
+)",
+        "MANIFEST", choc::json::toString (manifest.manifest));
+    }
+
+    PatchManifest& manifest;
+    choc::javascript::Context context;
+    choc::threading::ThreadSafeFunctor<std::function<void()>> startupCallback;
+};
+
+//==============================================================================
 struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer>
 {
     PatchRenderer (Patch& p) : patch (p)
@@ -690,6 +819,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
     ~PatchRenderer()
     {
+        patchWorker.reset();
         infiniteLoopCheckTimer.clear();
         handleOutputEvent.reset();
     }
@@ -1336,6 +1466,11 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         endpointListeners.removeReferencesToView (v);
     }
 
+    void startPatchWorker()
+    {
+        patchWorker = std::make_unique<PatchWorker> (patch, manifest);
+    }
+
     void startInfiniteLoopCheck (std::function<void()> handleInfiniteLoopFn)
     {
         if (performer != nullptr)
@@ -1350,7 +1485,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         }
     }
 
-    const Patch& patch;
+    Patch& patch;
     PatchManifest manifest;
     cmaj::DiagnosticMessageList errors;
     std::string lastBuildLog;
@@ -1365,6 +1500,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     bool hasMIDIInputs = false;
     bool hasMIDIOutputs = false;
     bool hasTimecodeInputs = false;
+
+    std::unique_ptr<PatchWorker> patchWorker;
 
     //==============================================================================
     struct EndpointListeners
@@ -2201,6 +2338,7 @@ inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
         if (isPlayable())
         {
             clientEventQueue->prepare (renderer->sampleRate);
+            renderer->startPatchWorker();
 
             if (startPlayback)
                 startPlayback();

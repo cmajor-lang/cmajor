@@ -1,0 +1,38 @@
+/**
+    This demo shows how to write a javascript worker thread, which sends
+    events to and from the Cmajor code.
+
+    In this example, the cmajor processor below just waits for events to
+    be sent by the worker.js script to tell it what notes to play
+*/
+processor PlayNotesSentByJavascriptWorker
+{
+    output stream float audioOut;
+
+    // our javascript worker will send integers to this input to trigger notes
+    input event int noteToPlay;
+
+    // This event handler will receive events from the worker thread and
+    // in response will change the pitch being played
+    event noteToPlay (int pitch)
+    {
+        let frequency = pitch != 0 ? std::notes::noteToFrequency (pitch) : 0.0f;
+        phaseDelta = float (frequency * processor.period * twoPi);
+    }
+
+    void main()
+    {
+        loop
+        {
+            audioOut <- volume * sin (phase);
+            phase = addModulo2Pi (phase, phaseDelta);
+            advance();
+        }
+    }
+
+    float phase, phaseDelta;
+
+    // We'll define a couple of constants here to set the volume and tempo
+    let volume = 0.15f;
+    let framesPerQuarterNote = int (processor.frequency / 7);
+}
