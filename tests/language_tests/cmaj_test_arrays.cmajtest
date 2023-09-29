@@ -1335,3 +1335,31 @@ void blankSome (float[4]& frame)
 {
     frame = 0;
 }
+
+## testFunction()
+
+int[3] r (int[3] x) { x[0] *= 10; x[2] *= 10; return x; }
+
+bool test1()
+{
+    var v = int[2,3] ((1, 2, 3), (4, 5, 6));
+    v[0] = r(v[0]);
+    return allEqual (v[0], int[3] (10, 2, 30));
+}
+
+bool test2()
+{
+    var v = int[2,3] ((1, 2, 3), (4, 5, 6));
+    v[1] = r(v[1]);
+    return allEqual (v[1], int[3] (40, 5, 60));
+}
+
+int[3] get (int& n) { return int[3] (1, 2, 3 + n++); }
+
+bool test3()
+{
+    int n = 0;
+    int[6] f;
+    f[0:3] = get (n);
+    return allEqual (f, int[6] (1, 2, 3, 0, 0, 0));
+}
