@@ -690,6 +690,7 @@ struct Patch::PatchWorker  : public PatchView
 
             if (! worker.empty())
             {
+                running = true;
                 startupCallback = [this, worker] { runWorker (worker); };
                 choc::messageloop::postMessage ([f = startupCallback] { f(); });
             }
@@ -704,7 +705,8 @@ struct Patch::PatchWorker  : public PatchView
 
     void sendMessage (const choc::value::ValueView& msg) override
     {
-        context.evaluate ("currentView?.deliverMessageFromServer(" + choc::json::toString (msg, true) + ");");
+        if (running)
+            context.evaluate ("currentView?.deliverMessageFromServer(" + choc::json::toString (msg, true) + ");");
     }
 
     void runWorker (const std::string& script)
@@ -804,6 +806,9 @@ globalThis.createPatchConnection = function()
     PatchManifest& manifest;
     choc::javascript::Context context;
     choc::threading::ThreadSafeFunctor<std::function<void()>> startupCallback;
+
+private:
+    bool running = false;
 };
 
 //==============================================================================
