@@ -4,7 +4,7 @@
     "version":          "1.0",
     "name":             "Hello World (MIDI version)",
     "description":      "The classic audio Hello World",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "category":         "generator",
     "isInstrument":     false,
 

@@ -5,7 +5,7 @@
     "name":             "Value",
     "description":      "Simple test code which accepts an incoming value and outputs it for logging",
     "category":         "fx",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
     "source":           "ValueEcho.cmajor"

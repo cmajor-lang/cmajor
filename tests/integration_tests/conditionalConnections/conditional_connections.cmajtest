@@ -1,0 +1,156 @@
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2024 Cmajor Software Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //
+
+
+## expectError ("9:12: error: Language feature not yet implemented: Non-constant connection condition!")
+
+graph Test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+    {
+        if (in > 1.0f)
+            in -> out;
+    }
+}
+
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+    {
+        if (2.0f > 1.0f)
+        {
+            in -> out;
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"select" })
+
+graph Test [[ main ]]
+{
+    input stream float in1, in2;
+    output stream float out1, out2, out3;
+
+    node p1 = P (1);
+    node p2 = P (2);
+    node p3 = P (3);
+
+    connection
+    {
+        in1 -> p1.in1, p2.in1, p3.in1;
+        in2 -> p1.in2, p2.in2, p3.in2;
+
+        p1.out -> out1;
+        p2.out -> out2;
+        p3.out -> out3;
+    }
+}
+
+graph P (int mode)
+{
+    input stream float in1, in2;
+    output stream float out;
+
+    connection
+    {
+        if (mode == 1)
+        {
+            in1 -> out;
+        }
+        else if (mode == 2)
+        {
+            in2 -> out;
+        }
+        else if (mode == 3)
+        {
+            in1 * in2 -> out;
+        }
+    }
+}
+
+
+## expectError ("13:16: error: Feedback cycle in graph: p1 -> p2 -> p1")
+
+graph Test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node p1 = P;
+    node p2 = P;
+
+    connection
+    {
+        in -> p1.in;
+        p1.out -> p2.in;
+        p2.out -> out;
+
+        if (true)
+        {
+            in -> p2.in;
+            p2.out -> p1.in;
+            p1.out -> out;
+        }
+    }
+}
+
+graph P
+{
+    input stream float in;
+    output stream float out;
+}
+
+
+## disabled runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"inputSwitch" })
+
+graph Test [[ main ]]
+{
+    input stream float in1, in2, switchIn;
+    output stream float out;
+
+    connection
+    {
+        if (switchIn > 0)
+            in1 -> out;
+        else
+            in2 -> out;
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"inputSwitch" })
+
+processor Test [[ main ]]
+{
+    input stream float in1, in2, switchIn;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            if (switchIn > 0)
+                out <- in1;
+            else
+                out <- in2;
+
+            advance();
+        }
+    }
+}

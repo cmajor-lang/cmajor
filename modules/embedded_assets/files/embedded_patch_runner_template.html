@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>Cmajor Patch Controls</title></head>
+
+<script type="module">
+
+import "/panel_api/cmaj-patch-panel.js"
+
+window.addEventListener ("message", (event) =>
+{
+    const message = event.data;
+
+    if (message?.messageFromVScode)
+    {
+        const panel = document.getElementById ("cmaj-patch-panel");
+
+        if (! window.sendMessageToVSCode)
+        {
+            window.sendMessageToVSCode = (m) =>
+            {
+                event.source.postMessage ({ messageToVScode: m }, "*");
+            };
+        }
+
+        panel.handleMessageFromVSCode?.(message.messageFromVScode);
+    }
+});
+
+</script>
+
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  cmaj-patch-panel {
+    display: block;
+  }
+</style>
+
+<body>
+  <cmaj-patch-panel id="cmaj-patch-panel" fixed-patch="true" session-id="SESSION_ID"></cmaj-patch-panel>
+</body>
+</html>

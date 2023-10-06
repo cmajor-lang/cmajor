@@ -5,7 +5,7 @@
     "name":             "Piano",
     "description":      "The simplest possible piano example",
     "category":         "synth",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     true,
 
     "source":           "Piano.cmajor",

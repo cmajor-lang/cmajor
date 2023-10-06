@@ -1,0 +1,33 @@
+namespace patch
+{
+    external int channelCount;
+}
+
+graph Wrapper [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node p = GainPatch (patch::channelCount);
+
+    connection
+    {
+        in -> p.in;
+        p.out -> out;
+    }
+}
+
+processor GainPatch (int channelCount)
+{
+    input stream float<channelCount> in;
+    output stream float<channelCount> out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * 0.5f;
+            advance();
+        }
+    }
+}

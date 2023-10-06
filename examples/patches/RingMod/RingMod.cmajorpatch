@@ -6,7 +6,7 @@
     "name":             "Ring Mod Demo",
     "description":      "Ring Mod speech effect",
     "category":         "generator",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     true,
 
     "source":           "RingMod.cmajor",

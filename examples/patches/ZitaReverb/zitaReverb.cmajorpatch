@@ -5,7 +5,7 @@
     "name":             "Zita Reverb",
     "description":      "An implementation of the zita_rev1 reverb",
     "category":         "generator",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
     "source":           "zitaReverb.cmajor"

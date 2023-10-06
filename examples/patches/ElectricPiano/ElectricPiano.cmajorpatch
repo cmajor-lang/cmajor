@@ -5,7 +5,7 @@
     "name":             "Electric Piano",
     "description":      "An additive model of an electric piano",
     "category":         "generator",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     true,
 
     "source":           "ElectricPiano.cmajor"

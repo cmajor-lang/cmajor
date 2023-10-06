@@ -1,0 +1,35 @@
+OPTION (WARNINGS_AS_ERRORS "Enable warnings as errors" ON)
+
+if (WARNINGS_AS_ERRORS)
+    set(EXTRA_WARNINGS
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Werror>
+        $<$<CXX_COMPILER_ID:GNU>:-Werror>
+        $<$<CXX_COMPILER_ID:MSVC>:/WX>
+    )
+endif()
+
+set(CMAJ_TARGET_COMPILER
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:cxx_std_17>
+    $<$<CXX_COMPILER_ID:GNU>:cxx_std_17>
+    $<$<CXX_COMPILER_ID:MSVC>:cxx_std_17>
+)
+
+set(CMAJ_WARNING_FLAGS
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
+        ${EXTRA_WARNINGS} -Wall -Wbool-conversion -Wcast-align -Wconditional-uninitialized -Wconstant-conversion
+        -Wconversion -Wextra-semi -Winconsistent-missing-destructor-override -Wint-conversion
+        -Wno-ignored-qualifiers -Wno-missing-field-initializers -Wnullable-to-nonnull-conversion
+        -Woverloaded-virtual -Wpedantic -Wshadow-all -Wshift-sign-overflow -Wshorten-64-to-32
+        -Wsign-compare -Wsign-conversion -Wstrict-aliasing -Wswitch-enum -Wuninitialized -Wunreachable-code
+        -Wunused-parameter -Wunused-private-field -Wnon-virtual-dtor -fvisibility=hidden -fvisibility-inlines-hidden
+        $<$<COMPILE_LANGUAGE:CXX>:-Woverloaded-virtual -Wreorder -Wzero-as-null-pointer-constant>>
+    $<$<CXX_COMPILER_ID:GNU>:
+        ${EXTRA_WARNINGS} -Wall -Wcast-align -Wextra -Wno-ignored-qualifiers -Wno-implicit-fallthrough
+        -Wno-maybe-uninitialized -Wno-missing-field-initializers -Wno-strict-overflow
+        -Wredundant-decls -Wsign-compare
+        -Wsign-conversion -Wstrict-aliasing -Wswitch-enum -Wuninitialized
+        -Wunreachable-code -Wunused-parameter -Wno-free-nonheap-object
+        $<$<COMPILE_LANGUAGE:CXX>:-Woverloaded-virtual -Wreorder -Wzero-as-null-pointer-constant>>
+    $<$<CXX_COMPILER_ID:MSVC>:
+        /W4 /wd4702 /wd4200 /wd4244 /wd4706 /wd4701 /wd4722 /bigobj /D_WIN32_WINNT=0x0601 ${EXTRA_WARNINGS} /D_CRT_SECURE_NO_WARNINGS /MP>
+)

@@ -24,7 +24,7 @@ For example, the `HelloWorld.cmajorpatch` contains:
     "version":          "1.0",
     "name":             "Hello World",
     "description":      "The classic audio Hello World",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "category":         "generator",
     "isInstrument":     false,
     "source":           "HelloWorld.cmajor"

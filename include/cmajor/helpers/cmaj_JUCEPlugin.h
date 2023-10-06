@@ -3,21 +3,18 @@
 //    d8"'    "8b
 //   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
 //   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
 //     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
 //                                           ,88
 //                                        888P"
 //
-//  Cmajor may be used under the terms of the ISC license:
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
 //
-//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
-//  without fee is hereby granted, provided that the above copyright notice and this permission
-//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
-//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
-//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
-//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
 
 #pragma once
 
@@ -186,7 +183,7 @@ public:
             d.name                = "Cmajor Patch-loader";
             d.descriptiveName     = d.name;
             d.category            = {};
-            d.manufacturerName    = "Sound Stacks Ltd.";
+            d.manufacturerName    = "Cmajor Software Ltd.";
             d.version             = {};
             d.lastFileModTime     = {};
             d.isInstrument        = true;

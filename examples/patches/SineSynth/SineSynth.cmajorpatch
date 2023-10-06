@@ -4,7 +4,7 @@
     "version":          "1.0",
     "name":             "SineSynth",
     "description":      "A simple synth using the SineOscillator",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     true,
 
     "source":           "SineSynth.cmajor"

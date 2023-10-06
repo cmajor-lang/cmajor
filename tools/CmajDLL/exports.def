@@ -1,0 +1,3 @@
+LIBRARY   CmajorDLL
+EXPORTS
+   _cmajor_getEntryPointV2   @1

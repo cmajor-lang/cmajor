@@ -1,6 +1,6 @@
 This patch is a machine leaning inference implemented in Cmajor.
 
-The code to generate this patch can be found in https://github.com/SoundStacks/GuitarLSTM, which is a fork of the github project provided by https://guitarml.com/
+The code to generate this patch can be found in https://github.com/cmajor-lang/GuitarLSTM, which is a fork of the github project provided by https://guitarml.com/
 
 
 Recreating the patch
@@ -10,7 +10,7 @@ To recreate this patch, check out the above repo, and ensure the cmajor and RTNe
 
 To run the inference, and generate the Cmajor patch, run:
 
-> git clone git@github.com:SoundStacks/GuitarLSTM.git
+> git clone git@github.com:cmajor-lang/GuitarLSTM.git
 > cd GuitarLSTM
 > git submodule init
 > git submodule update

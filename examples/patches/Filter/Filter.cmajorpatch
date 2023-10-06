@@ -5,7 +5,7 @@
     "name":             "Filter",
     "description":      "Filter",
     "category":         "generator",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
     "source":           "Filter.cmajor"

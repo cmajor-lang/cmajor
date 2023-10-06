@@ -5,7 +5,7 @@
     "name":             "Freeverb (with custom GUI)",
     "description":      "A version of the Freeverb patch with a modified GUI",
     "category":         "effect",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
     "source":           "Freeverb_CustomGUI.cmajor",

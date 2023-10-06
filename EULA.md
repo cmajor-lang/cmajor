@@ -4,7 +4,7 @@
 
 Welcome to Cmajor!
 
-This Cmajor end-user licence agreement (Agreement) is a legal agreement between you (Licensee or you) and Sound Stacks Ltd. UK (Sound Stacks, Licensor, us or we) for the Cmajor Software, which includes both the Cmajor Code and the Cmajor binary tools and libraries. For the purposes of this Agreement, all Cmajor code shall be described as the “Code” and binary executable and library files shall be described as the “Program” and the Code and Program may be described as the “Software.”
+This Cmajor end-user licence agreement (Agreement) is a legal agreement between you (Licensee or you) and Cmajor Software Ltd. UK (Cmajor Software, Licensor, us or we) for the Cmajor Software, which includes both the Cmajor Code and the Cmajor binary tools and libraries. For the purposes of this Agreement, all Cmajor code shall be described as the “Code” and binary executable and library files shall be described as the “Program” and the Code and Program may be described as the “Software.”
 
 **IMPORTANT NOTICE TO ALL USERS:**
 
@@ -20,7 +20,7 @@ You should print a copy of this Licence for future reference.
 
     1.1. We do not sell the Software to you. The Software is licensed to you as described in this Agreement and subject to the limitations contained in this Agreement, and we remain the owners of the Software at all times. Provided you adhere to the terms of this Agreement, we grant you a non-exclusive, non-transferable licence to download, develop, and modify the Code to enable the development of new applications (Applications) on the terms of this Agreement, and to download the Program to be used in connection with the Code. For the avoidance of doubt, you are not permitted to develop or modify the Program.
 
-    1.2. All of the Code is governed by the permissive ISC License.
+    1.2. All of the Code is governed by the GPLv3 License.
 
     1.3. You may use Applications which use the Software (provided such use incorporates your Licensee Content), for commercial (including without limitation sale or distribution to end users) or non-commercial purposes (including without limitation providing demos and beta testing).
 
@@ -42,7 +42,7 @@ You should print a copy of this Licence for future reference.
 
     2.5. not to use the Software in connection with any Licensee Content, Application or otherwise that infringes or misappropriates any third party right, including any intellectual property, property, privacy, contract or other proprietary right or for any other illegal or immoral purpose;
 
-    2.6. not to delete or in any manner alter any of our copyright, trademark or other proprietary rights notices or markings appearing on or in the Software (including without limitation the ISC License copyright notice);
+    2.6. not to delete or in any manner alter any of our copyright, trademark or other proprietary rights notices or markings appearing on or in the Software (including without limitation the GPLv3 License copyright notice);
 
     2.7. not to otherwise use, copy, transfer or distribute the Software or part of it, except as expressly permitted by this Agreement, in any manner which is inconsistent with this Agreement.
 
@@ -66,7 +66,7 @@ You should print a copy of this Licence for future reference.
 
 6. LIMITATION OF LIABILITY AND INDEMNIFICATION
 
-    6.1. Neither Sound Stacks nor its parent company, subsidiaries, affiliates, employees, partners or contractors shall in any circumstances whatsoever be liable to you, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, arising under or in connection with this Agreement for any indirect, consequential or special loss or damage, including but not limited to, for:
+    6.1. Neither Cmajor Software nor its parent company, subsidiaries, affiliates, employees, partners or contractors shall in any circumstances whatsoever be liable to you, whether in contract, tort (including negligence), breach of statutory duty, or otherwise, arising under or in connection with this Agreement for any indirect, consequential or special loss or damage, including but not limited to, for:
 
     6.1.1. loss of profits, sales, business, or revenue; business interruption;
 
@@ -80,7 +80,7 @@ You should print a copy of this Licence for future reference.
 
     6.1.6. any computer failure or malfunction, corruption to or loss of data or files, or any and all other commercial damage or loss.
 
-    6.2 In no event shall Sound Stacks ’s total liability to you for use of the Software exceed the amount paid by you to Sound Stacks  for the Software or $10, whichever is greater.
+    6.2 In no event shall Cmajor Software’s total liability to you for use of the Software exceed the amount paid by you to Cmajor Software for the Software or $10, whichever is greater.
 
     6.3. Nothing in this Agreement shall limit or exclude our liability for:
 
@@ -108,9 +108,9 @@ You should print a copy of this Licence for future reference.
 
 8. Data, Privacy and Publicity
 
-    8.1. You may not use the Software in connection with any Application that may be “directed to children” unless you fully comply with the rules applicable in the relevant jurisdictions. You are fully liable for, and will defend, hold harmless and indemnify Sound Stacks  and its affiliates against any and all liability arising from or relating data protection breaches in connection with any Application directed to Children.
+    8.1. You may not use the Software in connection with any Application that may be “directed to children” unless you fully comply with the rules applicable in the relevant jurisdictions. You are fully liable for, and will defend, hold harmless and indemnify Cmajor Software and its affiliates against any and all liability arising from or relating data protection breaches in connection with any Application directed to Children.
 
-    8.2. You agree that Sound Stacks may use your name and / or logo to publicise that you are using the Cmajor Software in your Applications. You may opt-out of this publicity by messaging us via appropriate communication means available from time to time, and we will use reasonable efforts to remove  uses of your name or logo within a reasonable time.
+    8.2. You agree that Cmajor Software may use your name and / or logo to publicise that you are using the Cmajor Software in your Applications. You may opt-out of this publicity by messaging us via appropriate communication means available from time to time, and we will use reasonable efforts to remove  uses of your name or logo within a reasonable time.
 
     8.3. To ensure compliance with this Agreement, you agree that within thirty (30) days from the date of our request, you shall provide all pertinent records and information requested in order to verify that your installation and use of any and all Software is in compliance with this Agreement, along with a signed verification that all such information is complete and correct. You also agree we may audit applicable records concerning your use of Software during normal business hours upon notice to you, at our cost, except in the event the audit reveals an underpayment or breach of this Agreement, you shall be liable for the cost of the audit.
 
@@ -148,9 +148,9 @@ You should print a copy of this Licence for future reference.
 
     10.3. Children: means children under the age defined by applicable law.
 
-    10.4. Customizations: mean the enhancements, modifications, improvements, or any other changes made by Sound Stacks to either Cmajor or the Licensee code, as specified.
+    10.4. Customizations: mean the enhancements, modifications, improvements, or any other changes made by Cmajor Software to either Cmajor or the Licensee code, as specified.
 
-    10.5. ISC License: the permissive Internet Systems Consortium license, which relates to the Code, as defined herein. The license is defined at isc.org
+    10.5. GPLv3 License: The Gnu General Public License, as described here: https://www.gnu.org/licenses/gpl-3.0.en.html
 
     10.6. Intellectual Property Rights: patents, utility models, rights to inventions, copyright and related rights, trademarks and service marks, trade names and domain names, rights in get-up, goodwill and the right to sue for passing off or unfair competition, rights in designs, rights in computer software, database rights, rights to preserve the confidentiality of information (including know-how and trade secrets) and any other intellectual property rights, including all applications for (and rights to apply for and be granted), renewals or extensions of, and rights to claim priority from, such rights and all similar or equivalent rights or forms of protection which subsist or will subsist, now or in the future, in any part of the world.
 

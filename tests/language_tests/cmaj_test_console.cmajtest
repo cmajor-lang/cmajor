@@ -1,12 +1,16 @@
 //
 //     ,ad888ba,                              88
 //    d8"'    "8b
-//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     (C)2024 Cmajor Software Ltd
 //   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
-//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     https://cmajor.dev
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88
 //                                           ,88
 //                                        888P"
+//
+//  This code may be used under either a GPLv3 or commercial
+//  license: see LICENSE.md for more details.
+
 
 ## testConsole ("Writing multiple types including structs 1 2.5 {\"_objectName\":\"S\",\"i\":1,\"f\":2} {\"_objectName\":\"complex32\",\"real\":1,\"imag\":2}")
 

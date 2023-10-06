@@ -1,0 +1,17 @@
+
+{
+    "CmajorVersion":    1,
+    "ID":               "com.your_name.your_patch_ID",
+    "version":          "1.0",
+    "name":             "gainPatch",
+    "description":      "gainPatch",
+    "category":         "generator",
+    "manufacturer":     "Your Company Goes Here",
+    "isInstrument":     true,
+
+    "source":           "gainPatch.cmajor",
+    "externals":
+    {
+        "GainPatch::channelCount" : 1
+    }
+}

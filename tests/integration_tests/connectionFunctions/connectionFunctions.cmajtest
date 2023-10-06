@@ -1,0 +1,587 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+## expectError ("7:15: error: Event inputs must be handled in event callback functions, they cannot be read as expressions")
+
+graph test [[ main ]]
+{
+    input event float in;
+    output event float out;
+
+   connection in * 0.5f -> out;
+}
+
+## expectError ("8:19: error: Illegal types for binary operator '*' ('float32<2>' and 'float32<3>')")
+
+graph test [[ main ]]
+{
+    input stream float<2> in1;
+    input stream float<3> in2;
+    output stream float<3> out;
+
+   connection in1 * in2 -> out;
+}
+
+## expectError ("7:18: error: Cannot connect in (float32<2>) to out (float32<3>)")
+
+graph test [[ main ]]
+{
+    input stream float<2> in;
+    output stream float<3> out;
+
+   connection in -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    connection in * 0.5f -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+        in -> StreamToValue -> ValueScaler -> ValueToStream -> out;
+}
+
+graph ValueScaler
+{
+    input value float in;
+    output value float out;
+
+    connection in * 0.5f -> out;
+}
+
+processor StreamToValue
+{
+    input stream float in;
+    output value float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in;
+            advance();
+        }
+    }
+}
+
+processor ValueToStream
+{
+    input value float in;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+   connection in * std::levels::dBtoGain (-6.0205999f) -> out;
+}
+
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    float applyGain (float f, float g)
+    {
+        return f * g;
+    }
+
+   connection applyGain (in, 0.5f) -> out;
+}
+
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node applyGain = ApplyGain (0.5f);
+
+    connection in -> applyGain -> out;
+}
+
+graph ApplyGain (float gain)
+{
+    input stream float in;
+    output stream float out;
+
+    connection in * gain -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node applyGain = ApplyGain;
+
+    connection
+    {
+        0.5f -> applyGain.gain;
+        in -> applyGain.in;
+        applyGain.out -> out;
+    }
+}
+
+graph ApplyGain
+{
+    input stream float in, gain;
+    output stream float out;
+
+    connection in * gain -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node through = Through;
+
+    connection
+    {
+        in -> through.t_in;
+        through.t_out * 0.5f -> out;
+    }
+}
+
+graph Through
+{
+    input stream float t_in;
+    output stream float t_out;
+
+    connection t_in -> t_out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node toArray = ToArray (3);
+
+    connection
+    {
+        in * 0.5f -> toArray.in;
+        toArray.out[0] -> out;
+    }
+}
+
+graph ToArray (int arraySize)
+{
+    input stream float in[arraySize];
+    output stream float out[arraySize];
+
+   connection
+       in -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"product" })
+
+graph power
+{
+    input stream float in1, in2;
+    output stream float product;
+
+    connection in1 * in2 -> product;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"product" })
+
+processor power
+{
+    input stream float in1;
+    output stream float product;
+
+    void main()
+    {
+        loop
+        {
+            product <- in1 * (in1 * 0.5f);
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"product" })
+
+graph power
+{
+    input stream float in1;
+    output stream float product;
+
+    connection
+        in1 * (in1 * 0.5f) -> product;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"product" })
+
+graph power [[ main ]]
+{
+    input stream float in1;
+    output stream float product;
+
+    node p = Product;
+
+    connection
+    {
+        in1 -> p.in1;
+        in1 * 0.5f -> p.in2;
+
+        p.out -> product;
+    }
+}
+
+graph Product
+{
+    input stream float in1, in2;
+    output stream float out;
+
+    connection
+        in1 * in2 -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"product" })
+
+graph power [[ main ]]
+{
+    input stream float in1;
+    output stream float product;
+
+    node p = Product;
+
+    connection
+    {
+        float[2] (in1, in1 * 0.5f) -> p.in;
+
+        p.out -> product;
+    }
+}
+
+graph Product
+{
+    input stream float in[2];
+    output stream float out;
+
+    connection
+        in[0] * in[1] -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"product" })
+
+graph power [[ main ]]
+{
+    input stream float in1;
+    output stream float product;
+
+    node p = Product;
+
+    connection
+    {
+        in1 -> p.in[0];
+        in1 * 0.5f -> p.in[1];
+
+        p.out -> product;
+    }
+}
+
+graph Product
+{
+    input stream float in[2];
+    output stream float out;
+
+    connection
+        in[0] * in[1] -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"product" })
+
+graph power [[ main ]]
+{
+    input stream float in1;
+    output stream float product;
+
+    node
+        gain = Gain (0.5f);
+
+    connection
+    {
+        in1 -> gain.in;
+        gain.out * in1 -> product;
+    }
+}
+
+graph Gain (float f)
+{
+    input stream float in;
+    output stream float out;
+
+    connection in * f -> out;
+}
+
+## expectError ("12:26: error: Cannot pass a const value as a non-const reference")
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    float applyGain (float &f, float g)
+    {
+        return f * g;
+    }
+
+   connection applyGain (in, 0.5f) -> out;
+}
+
+## expectError ("10:12: error: Expected a vector or array to the left of the bracket operator")
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+    {
+        in -> sum.in;
+        sum.out[0] -> out;
+    }
+}
+
+graph sum
+{
+    input stream float in[3];
+    output stream float out;
+
+    connection in[0] + in[1] + in[2] -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"constant" })
+
+graph Constant
+{
+    output stream float out;
+
+    connection 0.5f -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"constant" })
+
+graph test [[ main ]]
+{
+    output stream float out;
+
+    node constants = Constant[4];
+
+    connection
+    {
+        constants[0].out[0] -> out;
+        constants[1].out[2] -> out;
+        constants[3].out[0] -> out;
+    }
+}
+
+graph Constant
+{
+    output stream float out[4];
+
+    connection float[4] (0.1f, 0.2f, 0.3f, 0.4f) -> out;
+}
+
+## expectError ("error: Cannot read an array endpoint from a processor array - you must specify a processor array instance")
+
+graph test [[ main ]]
+{
+    output stream float32 out;
+
+    node n = ArrayOut[10];
+
+    connection
+        n.out -> out;
+}
+
+graph ArrayOut
+{
+    output stream float32 out[100];
+}
+
+## testCompile()
+
+graph test [[main]]
+{
+    output stream float<2> out;
+
+    node left = Zero;
+    node right = Zero;
+
+    float<2> toStereo (float left, float right)
+    {
+        return float<2> (left, right);
+    }
+
+    connection toStereo (left.out, right.out) -> out;
+}
+
+graph Zero
+{
+    output stream float out;
+
+    connection 0.0f -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"event" })
+
+processor Helper
+{
+    input event float32 in;
+    output event float32 out;
+
+    event in (float32 f)
+    {
+        out <- f * 2.0f;
+    }
+}
+
+graph Multiply [[ main ]]
+{
+    input event float32 in;
+    output event float32 out;
+
+    connection
+        in -> Helper -> out;
+}
+
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"event" })
+
+graph Multiply [[ main ]]
+{
+    input event float32 in;
+    output event float32 out;
+
+    event in (float32 f)
+    {
+        out <- f * 2.0f;
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"event" })
+
+processor Forwarder
+{
+    input event float32 forwarderIn;
+    output event float32 forwarderOut;
+
+    event forwarderIn (float f)
+    {
+        forwarderOut <- f;
+    }
+}
+
+graph Multiply [[ main ]]
+{
+    input event float32 in;
+    output event float32 out;
+
+    node forwarder = Forwarder;
+
+    event in (float32 f)
+    {
+        forwarder.forwarderIn <- f * 2.0f;
+    }
+
+    connection
+        forwarder.forwarderOut -> out;
+}
+
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"event" })
+
+processor Forwarder
+{
+    input event float32 forwarderIn;
+    output event float32 forwarderOut;
+
+    event forwarderIn (float f)
+    {
+        forwarderOut <- f;
+    }
+}
+
+graph Multiply [[ main ]]
+{
+    input event float32 in;
+    output event float32 out;
+
+    event in (float32 f)
+    {
+        Forwarder.forwarderIn <- f * 2.0f;
+    }
+
+    connection
+        Forwarder.forwarderOut -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:50, subDir:"event" })
+
+graph G
+{
+    input event float in;
+    output value float scaledOutput;
+
+    event in (float f)
+    {
+        scaledOutput <- 100.0f + (f * 10.0f);
+    }
+}

@@ -5,7 +5,7 @@
     "name":             "TimelineTester",
     "description":      "A patch that catches incoming timeline events and displays them on its UI",
     "category":         "effect",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
     "source":           [ "TimelineTester.cmajor" ],

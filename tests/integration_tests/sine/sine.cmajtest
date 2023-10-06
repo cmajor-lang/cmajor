@@ -1,0 +1,141 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+## global
+
+processor Sine (using DataType, float freq) [[ main:false ]]
+{
+    output stream DataType out;
+
+    void main()
+    {
+        float phase = 0.0f;
+        float inc = freq / float (processor.frequency);
+
+        loop
+        {
+            out <- DataType (sin (twoPi * phase));
+
+            phase += inc;
+
+            if (phase > 1.0f)
+                phase -= 1.0f;
+
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test
+{
+    output stream float out;
+
+    node sine = Sine (float32, 440.0f);
+
+    connection sine -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"undersample" })
+
+graph test
+{
+    output stream float mono;
+    output stream float<2> stereo;
+
+    node sineMono = Sine (float32, 440.0f) / 8;
+    node sineStereo = Sine (float32<2>, 440.0f) / 8;
+
+    connection sineMono -> mono;
+    connection sineStereo -> stereo;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"interpolation" })
+
+graph test
+{
+    output stream float linear;
+    output stream float latch;
+    output stream float sinc;
+
+    node sine1 = Sine (float32, 440.0f) / 8;
+    node sine2 = Sine (float32, 440.0f) / 8;
+    node sine3 = Sine (float32, 440.0f) / 8;
+
+    connection [ linear ] sine1 -> linear;
+    connection [ latch ]  sine2 -> latch;
+    connection [ sinc ]   sine3 -> sinc;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono_oversample" })
+
+graph test
+{
+    output stream float out;
+    output stream float out2;
+    output stream float out4;
+    output stream float out8;
+    output stream float out16;
+
+    node sine = Sine (float32, 440.0f);
+    node sine2 = Sine (float32, 440.0f) * 2;
+    node sine4 = Sine (float32, 440.0f) * 4;
+    node sine8 = Sine (float32, 440.0f) * 8;
+    node sine16 = Sine (float32, 440.0f) * 16;
+
+    connection sine -> out;
+    connection sine2 -> out2;
+    connection sine4 -> out4;
+    connection sine8 -> out8;
+    connection sine16 -> out16;
+}
+
+
+## runScript ({ frequency:96000, blockSize:32, samplesToRender:256, subDir:"mono_96k" })
+
+graph test
+{
+    output stream float64 out;
+
+    node sine = Sine (float64, 440.0f);
+
+    connection sine -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"stereo" })
+
+graph test
+{
+    output stream float<2> out;
+
+    node sine = Sine (float<2>, 440.0f);
+
+    connection sine -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"tri" })
+
+graph test
+{
+    output stream float<3> out;
+
+    node sine = Sine (float<3>, 440.0f);
+
+    connection sine -> out;
+}

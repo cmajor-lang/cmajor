@@ -5,7 +5,7 @@
     "name":             "808",
     "description":      "A minimal implementation of a classic drum-machine",
     "category":         "synth",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     true,
 
     "source":           "808.cmajor",

@@ -1,0 +1,10 @@
+[
+    {
+        "frameOffset": 10,
+        "event": true
+    },
+    {
+        "frameOffset": 20,
+        "event": false
+    }
+]

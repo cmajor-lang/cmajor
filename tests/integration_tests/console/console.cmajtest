@@ -1,0 +1,113 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:30, subDir:"generated" })
+
+processor Generator [[ main ]]
+{
+    output event float32 out;
+
+    void main()
+    {
+        loop
+        {
+            console <- "test" <- 1 <- 2 <- 3;
+
+            loop (10)
+            {
+                advance();
+            }
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:30, subDir:"generated" })
+
+graph wrapper  [[ main ]]
+{
+    output event float32 out;
+
+    connection Generator.out -> out;
+}
+
+processor Generator
+{
+    output event float32 out;
+
+    void main()
+    {
+        loop
+        {
+            console <- "test" <- 1 <- 2 <- 3;
+
+            loop (10)
+            {
+                advance();
+            }
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:30, subDir:"trigger" })
+
+processor Trigger [[ main ]]
+{
+    input event bool in;
+    output event bool out;
+
+    event in (bool b)
+    {
+        console <- "Received " <- b;
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:30, subDir:"trigger" })
+
+graph Trigger [[ main ]]
+{
+    input event bool in;
+    output event bool out;
+
+    event in (bool b)
+    {
+        console <- "Received " <- b;
+    }
+}
+
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:30, subDir:"trigger" })
+
+processor Trigger
+{
+    input event bool in;
+    output event bool out;
+
+    event in (bool b)
+    {
+        console <- "Received " <- b;
+    }
+}
+
+graph wrapper [[ main ]]
+{
+    input event bool in;
+    output event bool out;
+
+    connection in -> Trigger.in;
+    connection Trigger.out -> out;
+}

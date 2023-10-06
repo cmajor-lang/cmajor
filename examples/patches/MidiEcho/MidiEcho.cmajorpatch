@@ -5,7 +5,7 @@
     "name":             "MidiEcho",
     "description":      "A processor that just receives and emits MIDI messages",
     "category":         "midi",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
     "source":           "MidiEcho.cmajor"

@@ -5,7 +5,7 @@
     "name":             "Freeverb",
     "description":      "Yet another re-implementation of the perennial Freeverb algorithm",
     "category":         "effect",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
     "source":           "Freeverb.cmajor"

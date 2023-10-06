@@ -63,7 +63,7 @@ To quickly disable a test, insert the token `disabled` in front of the test dire
 
 ## Built-in Test Functions
 
-There's a built-in library of standard test functions, and you can have a closer look at their implementations in [cmaj_test_functions.js](https://github.com/SoundStacks/cmajor/blob/main/tests/cmaj_test_functions.js).
+There's a built-in library of standard test functions, and you can have a closer look at their implementations in [cmaj_test_functions.js](https://github.com/cmajor-lang/cmajor/blob/main/tests/cmaj_test_functions.js).
 
 The main functions include:
 
@@ -282,7 +282,7 @@ void f (XX& x) {}
 
 You can write your own javascript test functions at the start of the test file, and invoke them on a `##` line.
 
-If writing your own tests, it's probably helpful to look at how the standard ones are implemented, in [cmaj_test_functions.js](https://github.com/SoundStacks/cmajor/blob/main/tests/cmaj_test_functions.js).
+If writing your own tests, it's probably helpful to look at how the standard ones are implemented, in [cmaj_test_functions.js](https://github.com/cmajor-lang/cmajor/blob/main/tests/cmaj_test_functions.js).
 
 The underlying javascript API used for managing the test status looks like this:
 

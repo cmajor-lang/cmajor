@@ -1,0 +1,15 @@
+
+processor GainPatch (int channelCount) [[ main ]]
+{
+    input stream float<channelCount> in;
+    output stream float<channelCount> out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * 0.5f;
+            advance();
+        }
+    }
+}

@@ -1,0 +1,22 @@
+[
+    {
+        "frameOffset": 40,
+        "value": 0.5,
+        "framesToReachValue": 20
+    },
+    {
+        "frameOffset": 125,
+        "value": 0.25,
+        "framesToReachValue": 0
+    },
+    {
+        "frameOffset": 140,
+        "value": 0.5,
+        "framesToReachValue": 1
+    },
+    {
+        "frameOffset": 177,
+        "value": 1.0,
+        "framesToReachValue": 20
+    }
+]

@@ -1,0 +1,18 @@
+[
+    {
+        "frameOffset": 0.0,
+        "value": 0.0
+    },
+    {
+        "frameOffset": 10,
+        "value": 110
+    },
+    {
+        "frameOffset": 20,
+        "value": 120
+    },
+    {
+        "frameOffset": 30,
+        "value": 130
+    }
+]

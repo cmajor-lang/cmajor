@@ -1,0 +1,524 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+## global
+
+processor Gain (using DataType, DataType gain) [[ main:false ]]
+{
+    input stream DataType in;
+    output stream DataType out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * gain;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono", mainProcessor:"test" })
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+   connection in * 0.5f -> out;
+}
+
+graph alternativeCandidate
+{
+    input stream float in;
+    output stream float out;
+
+   connection in * 0.9f -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    float applyGain (float f)
+    {
+        return f * 0.5f;
+    }
+
+   connection applyGain (in) -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+processor test
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        let gain = 0.5f;
+
+        loop
+        {
+            out <- in * gain;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+processor test
+{
+    input stream float64 in;
+    output stream float64 out;
+
+    void main()
+    {
+        let gain = 0.5f;
+
+        loop
+        {
+            out <- in * gain;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:1, samplesToRender:256, subDir:"mono" })
+
+processor test
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        let gain = 0.5f;
+
+        loop
+        {
+            out <- in * gain;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+processor test
+{
+    input stream float<1> in;
+    output stream float<1> out;
+
+    void main()
+    {
+        let gain = 0.5f;
+
+        loop
+        {
+            out <- in * gain;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = Gain (float32, 0.5);
+
+    connection in -> gain -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"undersampled" })
+
+graph test
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = Gain (float32, 0.5) / 4;
+
+    connection in -> gain -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"oversampled" })
+
+graph test
+{
+    input stream float in;
+    output stream float out2, out4, out8, out16;
+
+    node gain2 = Gain (float32, 0.5) * 2;
+    node gain4 = Gain (float32, 0.5) * 4;
+    node gain8 = Gain (float32, 0.5) * 8;
+    node gain16 = Gain (float32, 0.5) * 16;
+
+    connection in -> gain2 -> out2;
+    connection in -> gain4 -> out4;
+    connection in -> gain8 -> out8;
+    connection in -> gain16 -> out16;
+}
+
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"oversampled", optimisationLevel: 0 })
+
+graph test
+{
+    input stream float in;
+    output stream float out2, out4, out8, out16;
+
+    node gain2 = Gain (float32, 0.5) * 2;
+    node gain4 = Gain (float32, 0.5) * 4;
+    node gain8 = Gain (float32, 0.5) * 8;
+    node gain16 = Gain (float32, 0.5) * 16;
+
+    connection in -> gain2 -> out2;
+    connection in -> gain4 -> out4;
+    connection in -> gain8 -> out8;
+    connection in -> gain16 -> out16;
+}
+
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"oversampled", optimisationLevel: 1 })
+
+graph test
+{
+    input stream float in;
+    output stream float out2, out4, out8, out16;
+
+    node gain2 = Gain (float32, 0.5) * 2;
+    node gain4 = Gain (float32, 0.5) * 4;
+    node gain8 = Gain (float32, 0.5) * 8;
+    node gain16 = Gain (float32, 0.5) * 16;
+
+    connection in -> gain2 -> out2;
+    connection in -> gain4 -> out4;
+    connection in -> gain8 -> out8;
+    connection in -> gain16 -> out16;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"oversampled", optimisationLevel: 2 })
+
+graph test
+{
+    input stream float in;
+    output stream float out2, out4, out8, out16;
+
+    node gain2 = Gain (float32, 0.5) * 2;
+    node gain4 = Gain (float32, 0.5) * 4;
+    node gain8 = Gain (float32, 0.5) * 8;
+    node gain16 = Gain (float32, 0.5) * 16;
+
+    connection in -> gain2 -> out2;
+    connection in -> gain4 -> out4;
+    connection in -> gain8 -> out8;
+    connection in -> gain16 -> out16;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"oversampled", optimisationLevel: 3 })
+
+graph test
+{
+    input stream float in;
+    output stream float out2, out4, out8, out16;
+
+    node gain2 = Gain (float32, 0.5) * 2;
+    node gain4 = Gain (float32, 0.5) * 4;
+    node gain8 = Gain (float32, 0.5) * 8;
+    node gain16 = Gain (float32, 0.5) * 16;
+
+    connection in -> gain2 -> out2;
+    connection in -> gain4 -> out4;
+    connection in -> gain8 -> out8;
+    connection in -> gain16 -> out16;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"oversampled", optimisationLevel: 4 })
+
+graph test
+{
+    input stream float in;
+    output stream float out2, out4, out8, out16;
+
+    node gain2 = Gain (float32, 0.5) * 2;
+    node gain4 = Gain (float32, 0.5) * 4;
+    node gain8 = Gain (float32, 0.5) * 8;
+    node gain16 = Gain (float32, 0.5) * 16;
+
+    connection in -> gain2 -> out2;
+    connection in -> gain4 -> out4;
+    connection in -> gain8 -> out8;
+    connection in -> gain16 -> out16;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+processor MyGain
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * 0.25f;
+            advance();
+        }
+    }
+}
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = MyGain[2];
+
+    connection in -> gain -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node gain1 = Gain (float32, 0.25);
+    node gain2 = Gain (float32, 0.25);
+
+    connection in -> gain1 -> out;
+    connection in -> gain2 -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+processor ArrayGain
+{
+    input stream float in[2];
+    output stream float out[2];
+
+    void main()
+    {
+        loop
+        {
+            out[0] <- in[0] * 0.25f;
+            out[1] <- in[1] * 0.25f;
+            advance();
+        }
+    }
+}
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+    {
+        in -> ArrayGain.in;
+        ArrayGain.out -> out;
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node gain = Gain (float32, 0.25)[2];
+
+    connection in -> gain -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono" })
+
+processor gainProcessor
+{
+    input stream float in;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * 0.5f;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"stereo" })
+
+graph test
+{
+    input stream float<2> in;
+    output stream float<2> out;
+
+    node gain = Gain (float32<2>, float32<2> (0.25f, 0.5f));
+    connection in -> gain -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"tri" })
+
+graph test
+{
+    input stream float<3> in;
+    output stream float<3> out;
+
+    node gain = Gain (float32<3>, float32<3> (0.75f, 0.25f, 0.5f));
+    connection in -> gain -> out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"stereo" })
+
+graph test
+{
+    input gain.*;
+    output gain.*;
+
+    node gain = Gain (float32<2>, float32<2> (0.25f, 0.5f));
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"stereo" })
+
+graph test
+{
+    input gain.*;
+    output gain.*;
+
+    node gain = Gain (float32<2>, float32<2> (0.25f, 0.5f));
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"parameterised" })
+
+processor test
+{
+    input stream float32 in;
+    input event float32 gain;
+    output stream float32 out;
+
+    event gain (float32 g)
+    {
+        gainValue = g;
+    }
+
+    float32 gainValue = 1.0f;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * gainValue;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"value" })
+
+processor test
+{
+    input stream float32 in;
+    input value float32 gain;
+    output stream float32 out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * gain;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:1, samplesToRender:256, subDir:"value" })
+
+processor test
+{
+    input stream float32 in;
+    input value float32 gain;
+    output stream float32 out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * gain;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"value" })
+
+graph test [[ main ]]
+{
+    input stream float32 in;
+    input value float32 gain;
+    output stream float32 out;
+
+    connection
+    {
+        in -> Processor.in;
+        gain -> Processor.gain;
+        Processor.out -> out;
+    }
+}
+
+processor Processor
+{
+    input stream float32 in;
+    input value float32 gain;
+    output stream float32 out;
+
+    void main()
+    {
+        loop
+        {
+            out <- in * gain;
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono", engine: { type: "cpp", overrideSource: getCurrentTestSection().getAbsolutePath() + "gain.cpp" } })
+
+graph test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono", patch:"gainPatch/gainPatch.cmajorpatch" })
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"mono", patch:"parameterisedGainPatch/gainPatch.cmajorpatch" })

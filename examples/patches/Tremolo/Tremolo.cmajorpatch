@@ -6,7 +6,7 @@
     "name":             "Tremolo",
     "description":      "Tremolo",
     "category":         "effect",
-    "manufacturer":     "Sound Stacks Ltd",
+    "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
     "plugin":

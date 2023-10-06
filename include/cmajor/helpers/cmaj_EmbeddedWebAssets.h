@@ -3,7 +3,7 @@
 //    d8"'    "8b
 //   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
 //   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2022 Sound Stacks Ltd
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
 //     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
 //                                           ,88
 //                                        888P"
@@ -47,16 +47,26 @@ struct EmbeddedWebAssets
     struct File { std::string_view name, content; };
 
     static constexpr const char* cmajpatchconnection_js =
-        R"(//  //
-//  //     ,ad888ba,                                88
-//  //    d8"'    "8b
-//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
-//  //   88            88P'  "88"   "8a        '88  88
-//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
-//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
-//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
-//  //                                             ,88
-//  //                                           888P"
+        R"(//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  This file may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import { EventListenerList } from "./cmaj-event-listener-list.js"
 
@@ -77,7 +87,8 @@ export class PatchConnection  extends EventListenerList
     /** Calling this will trigger an asynchronous callback to any status listeners with the
      *  patch's current state. Use addStatusListener() to attach a listener to receive it.
      */
-    requestStatusUpdate()                             { this.sendMessageToServer ({ type: "req_status" }); }
+    requestStatusUpdate()                             { this.sendMessageToServer ({ type: "req_status" }); })"
+R"(
 
     /** Attaches a listener function that will be called whenever the patch's status changes.
      *  The function will be called with a parameter object containing many properties describing the status,
@@ -87,8 +98,7 @@ export class PatchConnection  extends EventListenerList
 
     /** Removes a listener that was previously added with addStatusListener()
      */
-    removeStatusListener (listener)                   { this.removeEventListener ("status", listener); })"
-R"(
+    removeStatusListener (listener)                   { this.removeEventListener ("status", listener); }
 
     /** Causes the patch to be reset to its "just loaded" state. */
     resetToInitialState()                             { this.sendMessageToServer ({ type: "req_reset" }); }
@@ -105,7 +115,8 @@ R"(
      *  examples, numbers will be converted to float or integer types, javascript objects and arrays
      *  will be converted into more complex types in as good a fashion is possible.
      */
-    sendEventOrValue (endpointID, value, rampFrames, timeoutMillisecs)  { this.sendMessageToServer ({ type: "send_value", id: endpointID, value, rampFrames, timeout: timeoutMillisecs }); }
+    sendEventOrValue (endpointID, value, rampFrames, timeoutMillisecs)  { this.sendMessageToServer ({ type: "send_value", id: endpointID, value, rampFrames, timeout: timeoutMillisecs }); })"
+R"(
 
     /** Sends a short MIDI message value to a MIDI endpoint.
      *  The value must be a number encoded with `(byte0 << 16) | (byte1 << 8) | byte2`.
@@ -119,8 +130,7 @@ R"(
 
     /** Tells the patch that a gesture started by sendParameterGestureStart() has finished.
      */
-    sendParameterGestureEnd (endpointID)              { this.sendMessageToServer ({ type: "send_gesture_end", id: endpointID }); })"
-R"(
+    sendParameterGestureEnd (endpointID)              { this.sendMessageToServer ({ type: "send_gesture_end", id: endpointID }); }
 
     //==============================================================================
     // Stored state control methods:
@@ -140,7 +150,8 @@ R"(
     /** Attaches a listener function that will be called when any key-value pair in the stored state is changed.
      *  The listener function will receive a message parameter with properties 'key' and 'value'.
      */
-    addStoredStateValueListener (listener)            { this.addEventListener    ("state_key_value", listener); }
+    addStoredStateValueListener (listener)            { this.addEventListener    ("state_key_value", listener); })"
+R"(
 
     /** Removes a listener that was previously added with addStoredStateValueListener().
      */
@@ -149,8 +160,7 @@ R"(
     /** Applies a complete stored state to the patch.
      *  To get the current complete state, use requestFullStoredState().
      */
-    sendFullStoredState (fullState)                   { this.sendMessageToServer ({ type: "send_full_state", value: fullState }); })"
-R"(
+    sendFullStoredState (fullState)                   { this.sendMessageToServer ({ type: "send_full_state", value: fullState }); }
 
     /** Asynchronously requests the full stored state of the patch.
      *  The listener function that is supplied will be called asynchronously with the state as its argument.
@@ -163,7 +173,8 @@ R"(
     }
 
     //==============================================================================
-    // Listener methods:
+    // Listener methods:)"
+R"(
 
     /** Attaches a listener function that will receive updates with the events or audio data
      *  that is being sent or received by an endpoint.
@@ -185,13 +196,13 @@ R"(
      *     array containing one array per channel of raw audio samples data.
      */
     addEndpointListener (endpointID, listener, granularity, sendFullAudioData)
-    {)"
-R"(
+    {
         listener.eventID = "event_" + endpointID + "_" + (Math.floor (Math.random() * 100000000)).toString();
         this.addEventListener (listener.eventID, listener);
         this.sendMessageToServer ({ type: "add_endpoint_listener", endpoint: endpointID, replyType:
                                     listener.eventID, granularity: granularity, fullAudioData: sendFullAudioData });
-    }
+    })"
+R"(
 
     /** Removes a listener that was previously added with addEndpointListener()
      *  @param {string} endpointID
@@ -218,8 +229,7 @@ R"(
     /** Removes a listener that was previously added with addParameterListener()
      *  @param {string} endpointID
     */
-    removeParameterListener (endpointID, listener)      { this.removeEventListener ("param_value_" + endpointID.toString(), listener); })"
-R"(
+    removeParameterListener (endpointID, listener)      { this.removeEventListener ("param_value_" + endpointID.toString(), listener); }
 
     /** Attaches a listener function which will be called whenever the value of any parameter changes in the patch.
      *  The listener function will be called with an argument object with the fields 'endpointID' and 'value'.
@@ -228,7 +238,8 @@ R"(
 
     /** Removes a listener that was previously added with addAllParameterListener()
      */
-    removeAllParameterListener (listener)               { this.removeEventListener ("param_value", listener); }
+    removeAllParameterListener (listener)               { this.removeEventListener ("param_value", listener); })"
+R"(
 
     /** This takes a relative path to an asset within the patch bundle, and converts it to a
      *  path relative to the root of the browser that is showing the view.
@@ -259,16 +270,26 @@ R"(
 }
 )";
     static constexpr const char* cmajparametercontrols_js =
-        R"(//  //
-//  //     ,ad888ba,                                88
-//  //    d8"'    "8b
-//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
-//  //   88            88P'  "88"   "8a        '88  88
-//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
-//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
-//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
-//  //                                             ,88
-//  //                                           888P"
+        R"(//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  This file may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import { PatchConnection } from "./cmaj-patch-connection.js";
 
@@ -285,7 +306,8 @@ export class ParameterControlBase  extends HTMLElement
 
         // prevent any clicks from focusing on this element
         this.onmousedown = e => e.stopPropagation();
-    }
+    })"
+R"(
 
     /** Attaches the control to a given PatchConnection and endpoint.
      *
@@ -309,8 +331,7 @@ export class ParameterControlBase  extends HTMLElement
     /** Override this method in a child class, and it will be called when the parameter value changes,
      *  so you can update the GUI appropriately.
      */
-    valueChanged (newValue) {})"
-R"(
+    valueChanged (newValue) {}
 
     /** Your GUI can call this when it wants to change the parameter value. */
     setValue (value)     { this.patchConnection?.sendEventOrValue (this.endpointInfo.endpointID, value); }
@@ -332,7 +353,8 @@ R"(
         this.beginGesture();
         this.setValue (value);
         this.endGesture();
-    }
+    })"
+R"(
 
     /** Resets the parameter to its default value */
     resetToDefault()
@@ -372,8 +394,7 @@ R"(
             this.detachListener();
 
             this.listener = newValue => this.valueChanged (newValue);
-            this.listener.endpointID = this.endpointInfo.endpointID;)"
-R"(
+            this.listener.endpointID = this.endpointInfo.endpointID;
 
             this.patchConnection.addParameterListener (this.endpointInfo.endpointID, this.listener);
             this.patchConnection.requestParameterValue (this.endpointInfo.endpointID);
@@ -403,7 +424,8 @@ export class Knob  extends ParameterControlBase
         const createSvgElement = tag => window.document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
         const svg = createSvgElement ("svg");
-        svg.setAttribute ("viewBox", "0 0 100 100");
+        svg.setAttribute ("viewBox", "0 0 100 100");)"
+R"(
 
         const trackBackground = createSvgElement ("path");
         trackBackground.setAttribute ("d", "M20,76 A 40 40 0 1 1 80 76");
@@ -422,8 +444,7 @@ export class Knob  extends ParameterControlBase
                                                      : "M20,76 A 40 40 0 1 1 80 76");
         this.trackValue.setAttribute ("stroke-dasharray", dashLength);
         this.trackValue.classList.add ("knob-path");
-        this.trackValue.classList.add ("knob-track-value");)"
-R"(
+        this.trackValue.classList.add ("knob-track-value");
 
         this.dial = document.createElement ("div");
         this.dial.className = "knob-dial";
@@ -449,7 +470,8 @@ R"(
 
         const onMouseMove = (event) =>
         {
-            event.preventDefault(); // avoid scrolling whilst dragging
+            event.preventDefault(); // avoid scrolling whilst dragging)"
+R"(
 
             const nextRotation = (rotation, delta) =>
             {
@@ -465,8 +487,7 @@ R"(
             const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
             this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
             this.setValue (toValue (this.accumulatedRotation));
-        };)"
-R"(
+        };
 
         const onMouseUp = (event) =>
         {
@@ -496,7 +517,8 @@ R"(
             window.addEventListener ("touchmove", onTouchMove);
             window.addEventListener ("touchend", onTouchEnd);
             event.preventDefault();
-        };
+        };)"
+R"(
 
         const onTouchMove = (event) =>
         {
@@ -511,8 +533,7 @@ R"(
                     };
 
                     const movementY = touch.clientY - this.previousClientY;
-                    this.previousClientY = touch.clientY;)"
-R"(
+                    this.previousClientY = touch.clientY;
 
                     const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
                     this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
@@ -545,7 +566,8 @@ R"(
     valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
 
     /** Returns a string version of the given value */
-    getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); }
+    getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); })"
+R"(
 
     /** @private */
     setRotation (degrees, force)
@@ -568,8 +590,7 @@ R"(
 
             --knob-dial-border-color: var(--foreground);
             --knob-dial-background-color: var(--background);
-            --knob-dial-tick-color: var(--foreground);)"
-R"(
+            --knob-dial-tick-color: var(--foreground);
 
             position: relative;
             display: inline-block;
@@ -616,7 +637,8 @@ R"(
             background-color: var(--knob-dial-tick-color);
         }`;
     }
-}
+})"
+R"(
 
 //==============================================================================
 /** A boolean switch control */
@@ -641,8 +663,7 @@ export class Switch  extends ParameterControlBase
         this.innerHTML = "";
         this.currentValue = this.defaultValue > 0.5;
         this.valueChanged (this.currentValue);
-        this.classList.add ("switch-container");)"
-R"(
+        this.classList.add ("switch-container");
 
         outer.appendChild (inner);
         this.appendChild (outer);
@@ -676,7 +697,8 @@ R"(
             --switch-outline-color: var(--foreground);
             --switch-thumb-color: var(--foreground);
             --switch-on-background-color: var(--background);
-            --switch-off-background-color: var(--background);
+            --switch-off-background-color: var(--background);)"
+R"(
 
             position: relative;
             display: flex;
@@ -696,8 +718,7 @@ R"(
             border-radius: 10rem;
             box-shadow: 0 0 0 0.15rem var(--switch-outline-color);
             transition: background-color 0.1s cubic-bezier(0.5, 0, 0.2, 1);
-        })"
-R"(
+        }
 
         .switch-thumb {
             position: absolute;
@@ -745,7 +766,8 @@ export class Options  extends ParameterControlBase
     {
         super();
         this.setEndpoint (patchConnection, endpointInfo);
-    }
+    })"
+R"(
 
     setEndpoint (patchConnection, endpointInfo)
     {
@@ -760,8 +782,7 @@ export class Options  extends ParameterControlBase
             {
                 const optionList = endpointInfo.annotation.text.split ("|");
                 const stepCount = toStepCount (optionList.length);
-                let min = 0, max = stepCount, step = 1;)"
-R"(
+                let min = 0, max = stepCount, step = 1;
 
                 if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
                 {
@@ -799,7 +820,8 @@ R"(
 
         const stepCount = toStepCount (this.options.length);
         const normalise = value => (value - min) / (max - min);
-        this.toIndex = value => Math.min (stepCount, normalise (value) * this.options.length) | 0;
+        this.toIndex = value => Math.min (stepCount, normalise (value) * this.options.length) | 0;)"
+R"(
 
         this.innerHTML = "";
 
@@ -816,8 +838,7 @@ R"(
 
         this.select.addEventListener ("change", (e) =>
         {
-            const newIndex = e.target.selectedIndex;)"
-R"(
+            const newIndex = e.target.selectedIndex;
 
             // prevent local state change. the caller will update us when the backend actually applies the update
             e.target.selectedIndex = this.selectedIndex;
@@ -863,7 +884,8 @@ R"(
     static isExplicitlyDiscrete (endpointInfo)
     {
         return endpointInfo.annotation?.discrete && endpointInfo.annotation?.step > 0;
-    }
+    })"
+R"(
 
     /** @private */
     static getCSS()
@@ -886,8 +908,7 @@ R"(
             appearance: none;
             -webkit-appearance: none;
             font-family: inherit;
-            font-size: 0.8rem;)"
-R"(
+            font-size: 0.8rem;
 
             overflow: hidden;
             text-overflow: ellipsis;
@@ -923,7 +944,8 @@ R"(
             -webkit-mask-repeat: no-repeat;
         }`;
     }
-}
+})"
+R"(
 
 //==============================================================================
 /** A control which wraps a child control, adding a label and value display box below it */
@@ -941,8 +963,7 @@ export class LabelledControlHolder  extends ParameterControlBase
         super.setEndpoint (patchConnection, endpointInfo);
 
         this.innerHTML = "";
-        this.className = "labelled-control";)"
-R"(
+        this.className = "labelled-control";
 
         const centeredControl = document.createElement ("div");
         centeredControl.className = "labelled-control-centered-control";
@@ -978,7 +999,8 @@ R"(
         return `
         .labelled-control {
             --labelled-control-font-color: var(--foreground);
-            --labelled-control-font-size: 0.8rem;
+            --labelled-control-font-size: 0.8rem;)"
+R"(
 
             position: relative;
             display: inline-block;
@@ -996,8 +1018,7 @@ R"(
 
             width: 5.5rem;
             height: 5rem;
-        })"
-R"(
+        }
 
         .labelled-control-label-container {
             position: relative;
@@ -1039,7 +1060,8 @@ R"(
 window.customElements.define ("cmaj-knob-control", Knob);
 window.customElements.define ("cmaj-switch-control", Switch);
 window.customElements.define ("cmaj-options-control", Options);
-window.customElements.define ("cmaj-labelled-control-holder", LabelledControlHolder);
+window.customElements.define ("cmaj-labelled-control-holder", LabelledControlHolder);)"
+R"(
 
 //==============================================================================
 /** Fetches all the CSS for the controls defined in this module */
@@ -1050,8 +1072,7 @@ export function getAllCSS()
         ${Knob.getCSS()}
         ${Switch.getCSS()}
         ${LabelledControlHolder.getCSS()}`;
-})"
-R"(
+}
 
 //==============================================================================
 /** Creates a suitable control for the given endpoint.
@@ -1110,16 +1131,26 @@ export function createLabelledControlForEndpointID (patchConnection, status, end
 }
 )";
     static constexpr const char* cmajmidihelpers_js =
-        R"(//  //
-//  //     ,ad888ba,                                88
-//  //    d8"'    "8b
-//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
-//  //   88            88P'  "88"   "8a        '88  88
-//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
-//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
-//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
-//  //                                             ,88
-//  //                                           888P"
+        R"(//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  This file may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 export function getByte0 (message)     { return (message >> 16) & 0xff; }
@@ -1135,7 +1166,8 @@ export function getChannel1to16 (message)   { return getChannel0to15 (message) +
 export function getMessageSize (message)
 {
     const mainGroupLengths = (3 << 0) | (3 << 2) | (3 << 4) | (3 << 6)
-                           | (2 << 8) | (2 << 10) | (3 << 12);
+                           | (2 << 8) | (2 << 10) | (3 << 12);)"
+R"(
 
     const lastGroupLengths = (1 <<  0) | (2 <<  2) | (3 <<  4) | (2 <<  6)
                            | (1 <<  8) | (1 << 10) | (1 << 12) | (1 << 14)
@@ -1147,8 +1179,7 @@ export function getMessageSize (message)
 
     return (group != 7 ? (mainGroupLengths >> (2 * group))
                        : (lastGroupLengths >> (2 * (firstByte & 15)))) & 3;
-})"
-R"(
+}
 
 export function isNoteOn  (message)                         { return isVoiceMessage (message, 0x90) && getVelocity (message) != 0; }
 export function isNoteOff (message)                         { return isVoiceMessage (message, 0x80) || (isVoiceMessage (message, 0x90) && getVelocity (message) == 0); }
@@ -1165,13 +1196,13 @@ export function getAfterTouchValue (message)                { return getByte2 (m
 export function isChannelPressure (message)                 { return isVoiceMessage (message, 0xd0); }
 export function getChannelPressureValue (message)           { return getByte1 (message); }
 export function isController (message)                      { return isVoiceMessage (message, 0xb0); }
-export function getControllerNumber (message)               { return getByte1 (message); }
+export function getControllerNumber (message)               { return getByte1 (message); })"
+R"(
 export function getControllerValue (message)                { return getByte2 (message); }
 export function isControllerNumber (message, number)        { return getByte1 (message) == number && isController (message); }
 export function isAllNotesOff (message)                     { return isControllerNumber (message, 123); }
 export function isAllSoundOff (message)                     { return isControllerNumber (message, 120); }
-export function isQuarterFrame (message)                    { return getByte0 (message) == 0xf1; })"
-R"(
+export function isQuarterFrame (message)                    { return getByte0 (message) == 0xf1; }
 export function isClock (message)                           { return getByte0 (message) == 0xf8; }
 export function isStart (message)                           { return getByte0 (message) == 0xfa; }
 export function isContinue (message)                        { return getByte0 (message) == 0xfb; }
@@ -1179,7 +1210,8 @@ export function isStop (message)                            { return getByte0 (m
 export function isActiveSense (message)                     { return getByte0 (message) == 0xfe; }
 export function isMetaEvent (message)                       { return getByte0 (message) == 0xff; }
 export function isSongPositionPointer (message)             { return getByte0 (message) == 0xf2; }
-export function getSongPositionPointerValue (message)       { return get14BitValue (message); }
+export function getSongPositionPointerValue (message)       { return get14BitValue (message); })"
+R"(
 
 export function getChromaticScaleIndex (note)               { return (note % 12) & 0xf; }
 export function getOctaveNumber (note, octaveForMiddleC)    { return ((Math.floor (note / 12) + (octaveForMiddleC ? octaveForMiddleC : 3)) & 0xff) - 5; }
@@ -1188,8 +1220,7 @@ export function getNoteNameWithSharps (note)                { const names = ["C"
 export function getNoteNameWithFlats (note)                 { const names = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]; return names[getChromaticScaleIndex (note)]; }
 export function getNoteNameWithOctaveNumber (note)          { return getNoteName (note) + getOctaveNumber (note); }
 export function isNatural (note)                            { const nats = [true, false, true, false, true, true, false, true, false, true, false, true]; return nats[getChromaticScaleIndex (note)]; }
-export function isAccidental (note)                         { return ! isNatural (note); })"
-R"(
+export function isAccidental (note)                         { return ! isNatural (note); }
 
 export function printHexMIDIData (message)
 {
@@ -1215,7 +1246,8 @@ export function printHexMIDIData (message)
 export function getMIDIDescription (message)
 {
     const channelText = " Channel " + getChannel1to16 (message);
-    function getNote (m)   { const s = getNoteNameWithOctaveNumber (getNoteNumber (message)); return s.length < 4 ? s + " " : s; };
+    function getNote (m)   { const s = getNoteNameWithOctaveNumber (getNoteNumber (message)); return s.length < 4 ? s + " " : s; };)"
+R"(
 
     if (isNoteOn (message))                return "Note-On:  "   + getNote (message) + channelText + "  Velocity " + getVelocity (message);
     if (isNoteOff (message))               return "Note-Off: "   + getNote (message) + channelText + "  Velocity " + getVelocity (message);
@@ -1229,14 +1261,14 @@ export function getMIDIDescription (message)
     if (isQuarterFrame (message))          return "Quarter-frame";
     if (isClock (message))                 return "Clock";
     if (isStart (message))                 return "Start";
-    if (isContinue (message))              return "Continue";)"
-R"TEXT(
+    if (isContinue (message))              return "Continue";
     if (isStop (message))                  return "Stop";
     if (isMetaEvent (message))             return "Meta-event: type " + getByte1 (message);
     if (isSongPositionPointer (message))   return "Song Position: " + getSongPositionPointerValue (message);
 
     return printHexMIDIData (message);
-}
+})"
+R"TEXT(
 
 export function getControllerName (controllerNumber)
 {
@@ -1254,10 +1286,10 @@ export function getControllerName (controllerNumber)
             "Bank Select (fine)",           "Modulation Wheel (fine)",        "Breath controller (fine)",         undefined,
             "Foot Pedal (fine)",            "Portamento Time (fine)",         "Data Entry (fine)",                "Volume (fine)",
             "Balance (fine)",               undefined,                        "Pan position (fine)",              "Expression (fine)",
-            "Effect Control 1 (fine)",      "Effect Control 2 (fine)",        undefined,                          undefined,)TEXT"
+            "Effect Control 1 (fine)",      "Effect Control 2 (fine)",        undefined,                          undefined,
+            undefined,                      undefined,                        undefined,                          undefined,
+            undefined,                      undefined,                        undefined,                          undefined,)TEXT"
 R"TEXT(
-            undefined,                      undefined,                        undefined,                          undefined,
-            undefined,                      undefined,                        undefined,                          undefined,
             undefined,                      undefined,                        undefined,                          undefined,
             undefined,                      undefined,                        undefined,                          undefined,
             "Hold Pedal",                   "Portamento",                     "Sustenuto Pedal",                  "Soft Pedal",
@@ -1270,10 +1302,10 @@ R"TEXT(
             "Tremolo Level",                "Chorus Level",                   "Celeste Level",                    "Phaser Level",
             "Data Button increment",        "Data Button decrement",          "Non-registered Parameter (fine)",  "Non-registered Parameter (coarse)",
             "Registered Parameter (fine)",  "Registered Parameter (coarse)",  undefined,                          undefined,
+            undefined,                      undefined,                        undefined,                          undefined,
+            undefined,                      undefined,                        undefined,                          undefined,
             undefined,                      undefined,                        undefined,                          undefined,)TEXT"
 R"(
-            undefined,                      undefined,                        undefined,                          undefined,
-            undefined,                      undefined,                        undefined,                          undefined,
             undefined,                      undefined,                        undefined,                          undefined,
             "All Sound Off",                "All Controllers Off",            "Local Keyboard",                   "All Notes Off",
             "Omni Mode Off",                "Omni Mode On",                   "Mono Operation",                   "Poly Operation"
@@ -1289,16 +1321,26 @@ R"(
 }
 )";
     static constexpr const char* cmajeventlistenerlist_js =
-        R"(//  //
-//  //     ,ad888ba,                                88
-//  //    d8"'    "8b
-//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
-//  //   88            88P'  "88"   "8a        '88  88
-//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
-//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
-//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
-//  //                                             ,88
-//  //                                           888P"
+        R"(//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  This file may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 /** This event listener management class allows listeners to be attached and
@@ -1329,7 +1371,8 @@ export class EventListenerList
             else
                 this.listenersPerType[type] = [listener];
         }
-    }
+    })"
+R"(
 
     /** Removes a listener that was previously added for the given event type.
      *  @param {string} type
@@ -1348,8 +1391,7 @@ export class EventListenerList
                     list.splice (i, 1);
             }
         }
-    })"
-R"(
+    }
 
     /** Attaches a callback function that will be automatically unregistered
      *  the first time it is invoked.
@@ -1394,20 +1436,31 @@ R"(
 }
 )";
     static constexpr const char* cmajserversession_js =
-        R"(//  //
-//  //     ,ad888ba,                                88
-//  //    d8"'    "8b
-//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
-//  //   88            88P'  "88"   "8a        '88  88
-//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
-//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
-//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
-//  //                                             ,88
-//  //                                           888P"
+        R"(//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  This file may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import { PatchConnection } from "./cmaj-patch-connection.js"
 import { EventListenerList } from "./cmaj-event-listener-list.js"
-
+)"
+R"(
 
 //==============================================================================
 /*
@@ -1434,8 +1487,7 @@ export class ServerSession   extends EventListenerList
         this.status = { connected: false, loaded: false };
         this.lastServerMessageTime = Date.now();
         this.checkForServerTimer = setInterval (() => this.checkServerStillExists(), 2000);
-    })"
-R"(
+    }
 
     /** Call `dispose()` when this session is no longer needed and should be released. */
     dispose()
@@ -1456,7 +1508,8 @@ R"(
      *  The listener will be called with an argument object containing lots of properties
      *  describing the state, including any errors, loaded patch manifest, etc.
      */
-    addStatusListener (listener)                        { this.addEventListener    ("session_status", listener); }
+    addStatusListener (listener)                        { this.addEventListener    ("session_status", listener); })"
+R"(
 
     /** Removes a listener that was previously added by `addStatusListener()`
      */
@@ -1478,8 +1531,7 @@ R"(
     {
         this.currentPatchLocation = patchFileToLoad;
         this.sendMessageToServer ({ type: "load_patch", file: patchFileToLoad });
-    })"
-R"(
+    }
 
     /** Tells the server to asynchronously generate a list of patches that it has access to.
      *  The function provided will be called back with an array of manifest objects describing
@@ -1506,7 +1558,8 @@ R"(
                 this.session = session;
                 this.manifest = session.status?.manifest;
                 this.session.activePatchConnections.add (this);
-            }
+            })"
+R"(
 
             dispose()
             {
@@ -1533,8 +1586,7 @@ R"(
     }
 
     //==============================================================================
-    // Audio input source handling:)"
-R"(
+    // Audio input source handling:
 
     /**
      *  Sets a custom audio input source for a particular endpoint.
@@ -1566,7 +1618,8 @@ R"(
         }
         else
         {
-            this.removeFile (loopFile);
+            this.removeFile (loopFile);)"
+R"(
 
             this.sendMessageToServer ({ type: "set_custom_audio_input",
                                         endpoint: endpointID,
@@ -1580,8 +1633,7 @@ R"(
     addAudioInputModeListener (endpointID, listener)    { this.addEventListener    ("audio_input_mode_" + endpointID, listener); }
 
     /** Removes a listener previously added with `addAudioInputModeListener()` */
-    removeAudioInputModeListener (endpointID, listener) { this.removeEventListener ("audio_input_mode_" + endpointID, listener); })"
-R"(
+    removeAudioInputModeListener (endpointID, listener) { this.removeEventListener ("audio_input_mode_" + endpointID, listener); }
 
     /** Asks the server to send an update with the latest status to any audio mode listeners that
      *  are attached to the given endpoint.
@@ -1602,7 +1654,8 @@ R"(
      *  The properties object uses the same format as the object that is passed to the listeners
      *  (see `addAudioDevicePropertiesListener()`).
      */
-    setAudioDeviceProperties (newProperties)            { this.sendMessageToServer ({ type: "set_audio_device_props", properties: newProperties }); }
+    setAudioDeviceProperties (newProperties)            { this.sendMessageToServer ({ type: "set_audio_device_props", properties: newProperties }); })"
+R"(
 
     /** Attaches a listener function which will be called when the audio device properties are
      *  changed.
@@ -1615,8 +1668,7 @@ R"(
     addAudioDevicePropertiesListener (listener)         { this.addEventListener    ("audio_device_properties", listener); }
 
     /** Removes a listener that was added with `addAudioDevicePropertiesListener()` */
-    removeAudioDevicePropertiesListener (listener)      { this.removeEventListener ("audio_device_properties", listener); })"
-R"(
+    removeAudioDevicePropertiesListener (listener)      { this.removeEventListener ("audio_device_properties", listener); }
 
     /** Causes an asynchronous callback to any audio device listeners that are registered. */
     requestAudioDeviceProperties()                      { this.sendMessageToServer ({ type: "req_audio_device_props" }); }
@@ -1636,15 +1688,15 @@ R"(
     {
         const replyType = this.createReplyID ("codegen_");
         this.addSingleUseListener (replyType, callbackFunction);
-        this.sendMessageToServer ({ type: "req_codegen",
+        this.sendMessageToServer ({ type: "req_codegen",)"
+R"(
                                     codeType: codeType,
                                     options: extraOptions,
                                     replyType: replyType });
     }
 
     //==============================================================================
-    // File change monitoring:)"
-R"(
+    // File change monitoring:
 
     /** Attaches a listener to be told when a file change is detected in the currently-loaded
      *  patch. The function will be called with an object that gives rough details about the
@@ -1847,16 +1899,26 @@ R"(
 }
 )";
     static constexpr const char* cmajgenericpatchview_js =
-        R"(//  //
-//  //     ,ad888ba,                                88
-//  //    d8"'    "8b
-//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
-//  //   88            88P'  "88"   "8a        '88  88
-//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
-//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
-//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
-//  //                                             ,88
-//  //                                           888P"
+        R"(//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  This file may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import * as Controls from "/cmaj_api/cmaj-parameter-controls.js"
 
@@ -1880,7 +1942,8 @@ class GenericPatchView extends HTMLElement
         };
 
         this.attachShadow ({ mode: "open" });
-        this.shadowRoot.innerHTML = this.getHTML();
+        this.shadowRoot.innerHTML = this.getHTML();)"
+R"(
 
         this.titleElement      = this.shadowRoot.getElementById ("patch-title");
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
@@ -1904,8 +1967,7 @@ class GenericPatchView extends HTMLElement
     createControlElements()
     {
         this.parametersElement.innerHTML = "";
-        this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";)"
-R"(
+        this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";
 
         for (const endpointInfo of this.status?.details?.inputs)
         {
@@ -1947,7 +2009,8 @@ R"(
             .main {
                 background: var(--background);
                 height: 100%;
-            }
+            })"
+R"(
 
             .header {
                 width: 100%;
@@ -1965,16 +2028,17 @@ R"(
                 overflow: hidden;
                 cursor: default;
                 font-size: 140%;
-            })"
-R"(
+            }
 
             .logo {
                 flex: 1;
-                height: 100%;
+                height: 80%;
+                margin-left: 0.3rem;
+                margin-right: 0.3rem;
                 background-color: var(--foreground);
-                mask: url(cmaj_api/assets/sound-stacks-logo.svg);
+                mask: url(cmaj_api/assets/cmajor-logo.svg);
                 mask-repeat: no-repeat;
-                -webkit-mask: url(cmaj_api/assets/sound-stacks-logo.svg);
+                -webkit-mask: url(cmaj_api/assets/cmajor-logo.svg);
                 -webkit-mask-repeat: no-repeat;
                 min-width: 6.25rem;
             }
@@ -2005,7 +2069,8 @@ R"(
     }
 }
 
-window.customElements.define ("cmaj-generic-patch-view", GenericPatchView);
+window.customElements.define ("cmaj-generic-patch-view", GenericPatchView);)"
+R"(
 
 //==============================================================================
 /** Creates a generic view element which can be used to control any patch.
@@ -2017,16 +2082,26 @@ export default function createPatchView (patchConnection)
 }
 )";
     static constexpr const char* cmajpatchview_js =
-        R"(//  //
-//  //     ,ad888ba,                                88
-//  //    d8"'    "8b
-//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
-//  //   88            88P'  "88"   "8a        '88  88
-//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
-//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
-//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
-//  //                                             ,88
-//  //                                           888P"
+        R"(//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  This file may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import { PatchConnection } from "./cmaj-patch-connection.js"
 
@@ -2041,7 +2116,8 @@ export function getAvailableViewTypes (patchConnection)
         return ["custom", "generic"];
 
     return ["generic"];
-}
+})"
+R"(
 
 /** Creates and returns a HTMLElement view which can be shown to control this patch.
  *
@@ -2062,8 +2138,7 @@ export async function createPatchView (patchConnection, preferredType)
 
         if (view && preferredType === "generic")
             if (view.src)
-                view = undefined;)"
-R"(
+                view = undefined;
 
         const viewModuleURL = view?.src ? view.src : "/cmaj_api/cmaj-generic-patch-view.js";
         const viewModule = await import (patchConnection.getResourceAddress (viewModuleURL));
@@ -2088,7 +2163,8 @@ R"(
     }
 
     return undefined;
-}
+})"
+R"(
 
 /** If a patch view declares itself to be scalable, this will attempt to scale it to fit
  *  into a given parent element.
@@ -2116,8 +2192,7 @@ export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo
     if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
     {
         const minScale = scaleLimits.minScale || 0.25;
-        const maxScale = scaleLimits.maxScale || 5.0;)"
-R"(
+        const maxScale = scaleLimits.maxScale || 5.0;
 
         const targetSize = getClientSize (parentContainerToFitTo);
         const clientSize = getClientSize (view);
@@ -2145,81 +2220,18 @@ R"(3.948a102.566,102.566,0,0,1,19.979,2V382.85A74.364,74.364,0,0,0,1657.854,381.
   </g>
 </svg>
 )";
-    static constexpr const char* assets_soundstackslogo_svg =
-        R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560">
-  <g>
-    <path d="M532.3,205.9c4.4,5.9,6.6,13.4,6.6,22.7c0,9.2-2.3,17.3-6.9,24.2c-4.6,6.9-11.2,12.3-19.7,16.2c-8.5,3.9-18.6,5.8-30.1,5.8
-        c-11.6,0-21.9-2.1-30.8-6.2c-8.9-4.1-15.9-10.2-21-18.1c-5.1-8-7.6-17.7-7.6-29.1v-5.5h23.5v5.5c0,10.9,3.3,19,9.8,24.4
-        c6.5,5.4,15.2,8.1,26.1,8.1c11,0,19.3-2.3,24.9-6.9c5.6-4.6,8.4-10.6,8.4-17.9c0-4.8-1.3-8.8-4-11.9c-2.6-3.1-6.4-5.5-11.2-7.4
-        c-4.8-1.8-10.6-3.6-17.4-5.2l-8.1-2c-9.8-2.3-18.4-5.2-25.6-8.7c-7.3-3.4-12.9-8-16.8-13.8s-5.9-13.1-5.9-22
-        c0-9.1,2.2-16.9,6.7-23.3c4.5-6.5,10.7-11.4,18.6-15s17.2-5.3,27.9-5.3c10.7,0,20.3,1.8,28.7,5.5c8.4,3.7,15.1,9.1,19.9,16.3
-        c4.8,7.2,7.3,16.2,7.3,27.1v7.9h-23.5v-7.9c0-6.6-1.4-12-4.1-16.1c-2.7-4.1-6.5-7.1-11.3-9c-4.8-1.9-10.5-2.9-16.9-2.9
-        c-9.4,0-16.7,1.9-21.9,5.8c-5.2,3.9-7.8,9.3-7.8,16.2c0,4.7,1.1,8.5,3.4,11.6c2.3,3,5.6,5.5,10,7.4c4.4,1.9,9.9,3.6,16.5,5.1l8.1,2
-        c10,2.2,18.8,5,26.4,8.5C521.9,195.4,527.9,200.1,532.3,205.9z M637.7,268.1c-8.5,4.5-18.2,6.7-29,6.7c-10.9,0-20.5-2.2-28.9-6.7
-        c-8.4-4.5-15.1-10.9-19.9-19.2c-4.8-8.4-7.3-18.3-7.3-29.7v-3.3c0-11.4,2.4-21.3,7.3-29.6c4.8-8.3,11.5-14.7,19.9-19.2
-        c8.4-4.5,18.1-6.8,28.9-6.8c10.9,0,20.5,2.3,29,6.8c8.5,4.5,15.2,11,20,19.2c4.8,8.3,7.3,18.2,7.3,29.6v3.3
-        c0,11.4-2.4,21.3-7.3,29.7C652.9,257.2,646.2,263.6,637.7,268.1z M642.3,216.5c0-11.3-3.1-20.1-9.2-26.5
-        c-6.2-6.4-14.3-9.6-24.4-9.6c-9.8,0-17.9,3.2-24.1,9.6c-6.2,6.4-9.4,15.2-9.4,26.5v2c0,11.3,3.1,20.1,9.4,26.5
-        c6.2,6.4,14.3,9.6,24.1,9.6c10,0,18.1-3.2,24.3-9.6c6.2-6.4,9.4-15.2,9.4-26.5V216.5z M699.5,268.2c6.5,3.7,13.8,5.5,22,5.5
-        c10.3,0,18-1.9,23.3-5.8s8.9-8,11-12.4h3.5v16.3h22.2V163.2h-22.7V218c0,11.7-2.8,20.7-8.5,27c-5.6,6.2-13.1,9.4-22.3,9.4
-        c-8.4,0-14.9-2.2-19.6-6.7c-4.7-4.5-7-11.4-7-20.8v-63.6h-22.7v65.1c0,9.4,1.8,17.5,5.5,24.2C688,259.3,693,264.5,699.5,268.2z)"
-R"(
-         M822.3,216.9c0-11.7,2.8-20.7,8.5-26.8c5.6-6.2,13.2-9.2,22.5-9.2c8.2,0,14.7,2.2,19.4,6.7c4.7,4.5,7,11.4,7,20.8v63.4h22.7v-65.1
-        c0-9.4-1.8-17.4-5.5-24.1c-3.7-6.7-8.7-11.8-15.1-15.5c-6.4-3.7-13.7-5.5-21.9-5.5c-10.4,0-18.3,1.9-23.5,5.7
-        c-5.3,3.8-8.9,7.9-11,12.3h-3.5v-16.3h-22.2v108.5h22.7V216.9z M923.3,249.2c-4.6-8.3-6.9-18.3-6.9-30v-3.3
-        c0-11.6,2.3-21.6,6.8-29.9c4.5-8.4,10.6-14.7,18.3-19.1c7.6-4.4,16-6.6,25.1-6.6c7,0,12.9,0.9,17.7,2.6c4.8,1.8,8.7,4,11.8,6.7
-        c3.1,2.7,5.4,5.5,7,8.5h3.5v-60.3h22.7v154H1007v-15.4h-3.5c-2.8,4.7-7,8.9-12.6,12.8c-5.6,3.8-13.8,5.7-24.3,5.7
-        c-8.9,0-17.2-2.2-24.9-6.6C934.1,263.8,928,257.4,923.3,249.2z M939.3,218.5c0,11.7,3.2,20.8,9.6,27.1c6.4,6.3,14.4,9.5,24.1,9.5
-        c9.8,0,17.9-3.2,24.3-9.5c6.4-6.3,9.6-15.3,9.6-27.1v-2c0-11.6-3.2-20.5-9.5-26.8c-6.3-6.3-14.4-9.5-24.4-9.5
-        c-9.7,0-17.7,3.2-24.1,9.5c-6.4,6.3-9.6,15.3-9.6,26.8V218.5z M514.3,366.9c-7.6-3.4-16.4-6.3-26.4-8.5l-8.1-2
-        c-6.6-1.5-12.1-3.2-16.5-5.1c-4.4-1.9-7.7-4.4-10-7.4c-2.3-3-3.4-6.9-3.4-11.6c0-6.9,2.6-12.3,7.8-16.2c5.2-3.9,12.5-5.8,21.9-5.8
-        c6.5,0,12.1,1,16.9,2.9c4.8,1.9,8.6,4.9,11.3,9c2.7,4.1,4.1,9.5,4.1,16.1v7.9h23.5v-7.9c0-10.9-2.4-19.9-7.3-27.1
-        c-4.8-7.2-11.5-12.6-19.9-16.3c-8.4-3.7-18-5.5-28.7-5.5c-10.7,0-20,1.8-27.9,5.3s-14.1,8.5-18.6,15c-4.5,6.5-6.7,14.2-6.7,23.3
-        c0,8.9,2,16.3,5.9,22c4,5.7,9.6,10.3,16.8,13.8c7.3,3.4,15.8,6.3,25.6,8.7l8.1,2c6.7,1.6,12.5,3.3,17.4,5.2
-        c4.8,1.8,8.6,4.3,11.2,7.4c2.6,3.1,4,7,4,11.9c0,7.3-2.8,13.3-8.4,17.9c-5.6,4.6-13.9,6.9-24.9,6.9c-10.9,0-19.5-2.7-26.1-8.1
-        c-6.5-5.4-9.8-13.6-9.8-24.4v-5.5h-23.5v5.5c0,11.4,2.5,21.2,7.6,29.1c5.1,8,12.1,14,21,18.2c8.9,4.1,19.2,6.2,30.8,6.2
-        c11.6,0,21.6-1.9,30.1-5.8c8.5-3.9,15.1-9.3,19.7-16.2c4.6-6.9,6.9-15,6.9-24.2s-2.2-16.8-6.6-22.7
-        C527.9,375.1,521.9,370.4,514.3,366.9z M597.4,302.4h-22.7v35.9h-29.9v19.1h29.9v67.5c0,6.6,1.9,11.9,5.8,15.8)"
-R"(
-        c3.9,4,9.1,5.9,15.7,5.9h29.9v-19.1h-22.7c-4.1,0-6.2-2.2-6.2-6.6v-63.6h32.3v-19.1h-32.3V302.4z M757.4,427.8h9.2v18.9h-19.1
-        c-5.1,0-9.3-1.5-12.5-4.4c-3.2-2.9-4.8-6.9-4.8-11.9v-1.5h-3.3c-2.8,5.7-7.1,10.6-13,14.7c-5.9,4.1-14.3,6.2-25.3,6.2
-        c-9.1,0-17.5-2.2-25.1-6.6c-7.6-4.4-13.7-10.7-18.3-19c-4.5-8.3-6.8-18.3-6.8-30v-3.3c0-11.7,2.3-21.7,6.9-30
-        c4.6-8.3,10.7-14.6,18.4-19c7.6-4.4,15.9-6.6,24.9-6.6c10.6,0,18.7,1.9,24.3,5.7c5.6,3.8,9.9,8.1,12.6,13h3.5v-15.6h22.2v82.9
-        C751.2,425.6,753.2,427.8,757.4,427.8z M728.8,391.5c0-11.6-3.2-20.5-9.6-26.8c-6.4-6.3-14.5-9.5-24.3-9.5
-        c-9.7,0-17.7,3.2-24.1,9.5c-6.4,6.3-9.6,15.3-9.6,26.8v2c0,11.7,3.2,20.8,9.6,27.1c6.4,6.3,14.4,9.5,24.1,9.5
-        c10,0,18.1-3.2,24.4-9.5c6.3-6.3,9.5-15.3,9.5-27.1V391.5z M848.4,422.2c-5,4.9-12.2,7.4-21.8,7.4c-6.3,0-12-1.4-17-4.2
-        c-5.1-2.8-9.1-6.9-12-12.3c-2.9-5.4-4.4-12-4.4-19.6v-2c0-7.6,1.5-14.1,4.4-19.5c2.9-5.4,6.9-9.5,12-12.3c5.1-2.9,10.7-4.3,17-4.3
-        c6.5,0,11.8,1.2,16.1,3.5c4.3,2.3,7.6,5.5,9.9,9.5c2.3,4,3.9,8.4,4.6,13.2l22-4.6c-1.3-7.6-4.2-14.6-8.7-20.9
-        c-4.5-6.3-10.4-11.4-17.7-15.2c-7.3-3.8-16.2-5.7-26.6-5.7c-10.4,0-19.8,2.2-28.3,6.7c-8.4,4.5-15.1,10.9-20,19.1
-        c-4.9,8.3-7.4,18.3-7.4,30v2.9c0,11.7,2.5,21.8,7.4,30.1c4.9,8.4,11.6,14.7,20,19.1c8.4,4.4,17.9,6.6,28.3,6.6
-        c10.4,0,19.3-1.9,26.6-5.6c7.3-3.7,13.2-8.8,17.7-15.1c4.5-6.3,7.6-13.2,9.3-20.7l-22-5.1C856.6,411,853.4,417.3,848.4,422.2z
-         M991.9,338.2h-30.1l-42.7,42.2h-3.5v-87.8h-22.7v154h22.7v-45.1h3.5l44.7,45.1h29.9l-56.5-55.9L991.9,338.2z M1081.5,397.9
-        c-3.7-4.4-8.8-7.8-15.3-10.1c-6.5-2.3-13.6-4.2-21.3-5.5l-7.7-1.3c-5.9-1-10.5-2.6-14-4.6c-3.4-2.1-5.2-5.3-5.2-9.7
-        c0-4.1,1.8-7.3,5.3-9.6c3.5-2.3,8.4-3.4,14.5-3.4c6.3,0,11.6,1.4,15.8,4.1c4.3,2.7,7,7.4,8.4,14l21.1-5.9
-        c-2.3-9.4-7.4-16.8-15.3-22.3c-7.8-5.5-17.9-8.2-30-8.2c-12.6,0-22.7,2.8-30.4,8.5c-7.6,5.6-11.4,13.6-11.4,23.9)"
-R"(
-        c0,6.9,1.8,12.5,5.3,16.9c3.5,4.4,8.3,7.8,14.3,10.3c6,2.5,12.7,4.4,20,5.7l7.5,1.3c7.2,1.3,12.6,3,16.3,5.1
-        c3.7,2.1,5.5,5.3,5.5,9.7c0,4.4-1.9,8-5.8,10.8c-3.9,2.8-9.4,4.2-16.6,4.2c-4.8,0-9.3-0.7-13.5-2.2c-4.2-1.5-7.7-4-10.5-7.5
-        c-2.8-3.5-4.8-8.3-5.9-14.3l-21.1,5.1c2.1,12.5,7.6,21.8,16.7,27.9c9.1,6.2,20.5,9.2,34.3,9.2c13.6,0,24.5-3,32.6-9
-        c8.1-6,12.1-14.4,12.1-25.3C1087.1,408.1,1085.3,402.3,1081.5,397.9z M112.4,151v37.9l82.2,39.7l151.2-73v-37.9l-151.2,73
-        L112.4,151z M112.4,369.1V407l82.2,39.7l151.2-73v-37.9l-151.2,73L112.4,369.1z M112.4,226.7v37.9l151.2,73l82.2-39.7v-37.9
-        l-82.2,39.7L112.4,226.7z"/>
-  </g>
-</svg>
-)";
 
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 11005) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 28671) },
-        File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
-        File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2808) },
-        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18178) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 5271) },
-        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4283) },
-        File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },
-        File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6471) }
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 11671) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 29337) },
+        File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
+        File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
+        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 5999) },
+        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4949) },
+        File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
     };
 
 };

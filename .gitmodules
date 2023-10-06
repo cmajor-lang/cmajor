@@ -1,3 +1,99 @@
 [submodule "3rdParty/choc"]
 	path = include/choc
 	url = git@github.com:Tracktion/choc.git
+[submodule "3rdParty/boost/static_assert"]
+	path = 3rdParty/boost/static_assert
+	url = git@github.com:boostorg/static_assert.git
+[submodule "3rdParty/boost/system"]
+	path = 3rdParty/boost/system
+	url = git@github.com:boostorg/system.git
+[submodule "3rdParty/boost/beast"]
+	path = 3rdParty/boost/beast
+	url = git@github.com:boostorg/beast.git
+[submodule "3rdParty/boost/asio"]
+	path = 3rdParty/boost/asio
+	url = git@github.com:boostorg/asio.git
+[submodule "3rdParty/boost/config"]
+	path = 3rdParty/boost/config
+	url = git@github.com:boostorg/config.git
+[submodule "3rdParty/boost/core"]
+	path = 3rdParty/boost/core
+	url = git@github.com:boostorg/core.git
+[submodule "3rdParty/boost/assert"]
+	path = 3rdParty/boost/assert
+	url = git@github.com:boostorg/assert.git
+[submodule "3rdParty/boost/mp11"]
+	path = 3rdParty/boost/mp11
+	url = git@github.com:boostorg/mp11.git
+[submodule "3rdParty/boost/type_traits"]
+	path = 3rdParty/boost/type_traits
+	url = git@github.com:boostorg/type_traits.git
+[submodule "3rdParty/boost/throw_exception"]
+	path = 3rdParty/boost/throw_exception
+	url = git@github.com:boostorg/throw_exception.git
+[submodule "3rdParty/boost/align"]
+	path = 3rdParty/boost/align
+	url = git@github.com:boostorg/align.git
+[submodule "3rdParty/boost/bind"]
+	path = 3rdParty/boost/bind
+	url = git@github.com:boostorg/bind.git
+[submodule "3rdParty/boost/optional"]
+	path = 3rdParty/boost/optional
+	url = git@github.com:boostorg/optional.git
+[submodule "3rdParty/boost/move"]
+	path = 3rdParty/boost/move
+	url = git@github.com:boostorg/move.git
+[submodule "3rdParty/boost/utility"]
+	path = 3rdParty/boost/utility
+	url = git@github.com:boostorg/utility.git
+[submodule "3rdParty/boost/date_time"]
+	path = 3rdParty/boost/date_time
+	url = git@github.com:boostorg/date_time.git
+[submodule "3rdParty/boost/smart_ptr"]
+	path = 3rdParty/boost/smart_ptr
+	url = git@github.com:boostorg/smart_ptr.git
+[submodule "3rdParty/boost/numeric_conversion"]
+	path = 3rdParty/boost/numeric_conversion
+	url = git@github.com:boostorg/numeric_conversion.git
+[submodule "3rdParty/boost/mpl"]
+	path = 3rdParty/boost/mpl
+	url = git@github.com:boostorg/mpl.git
+[submodule "3rdParty/boost/preprocessor"]
+	path = 3rdParty/boost/preprocessor
+	url = git@github.com:boostorg/preprocessor.git
+[submodule "3rdParty/boost/intrusive"]
+	path = 3rdParty/boost/intrusive
+	url = git@github.com:boostorg/intrusive.git
+[submodule "3rdParty/boost/logic"]
+	path = 3rdParty/boost/logic
+	url = git@github.com:boostorg/logic.git
+[submodule "3rdParty/boost/io"]
+	path = 3rdParty/boost/io
+	url = git@github.com:boostorg/io.git
+[submodule "3rdParty/boost/endian"]
+	path = 3rdParty/boost/endian
+	url = git@github.com:boostorg/endian.git
+[submodule "3rdParty/boost/regex"]
+	path = 3rdParty/boost/regex
+	url = git@github.com:boostorg/regex.git
+[submodule "3rdParty/boost/predef"]
+	path = 3rdParty/boost/predef
+	url = git@github.com:boostorg/predef.git
+[submodule "3rdParty/boost/winapi"]
+	path = 3rdParty/boost/winapi
+	url = git@github.com:boostorg/winapi.git
+[submodule "3rdParty/boost/static_string"]
+	path = 3rdParty/boost/static_string
+	url = git@github.com:boostorg/static_string.git
+[submodule "3rdParty/JUCE"]
+	path = 3rdParty/JUCE
+	url = git@github.com:juce-framework/JUCE.git
+[submodule "3rdParty/binaryen"]
+	path = 3rdParty/binaryen
+	url = git@github.com:cmajor-lang/binaryen.git
+[submodule "3rdParty/llvm"]
+	path = 3rdParty/llvm
+	url = git@github.com:cmajor-lang/llvm.git
+[submodule "3rdParty/clap"]
+	path = 3rdParty/clap
+	url = git@github.com:free-audio/clap.git
