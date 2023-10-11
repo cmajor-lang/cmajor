@@ -38,6 +38,7 @@ struct BuildSettings
     uint64_t     getMaxStateSize() const                   { return getWithRangeCheck (maxStateSizeMember, static_cast<uint64_t> (8192), static_cast<uint64_t> (1024 * 1024 * 1024 + 1), defaultMaxStateSize); }
     uint64_t     getMaxStackSize() const                   { return getWithRangeCheck (maxStackSizeMember, static_cast<uint64_t> (1024), static_cast<uint64_t> (1024 * 1024 * 1024 + 1), defaultMaxStackSize); }
     uint32_t     getEventBufferSize() const                { return getWithRangeCheck (eventBufferSizeMember, 1u, 8192u, defaultEventBufferSize); }
+    size_t       getMaxAllocPoolSize() const               { return static_cast<size_t> (getWithRangeCheck (maxPoolSizeMember, 0u, 1024 * 1024 * 1024u, defaultMaxPoolSize)); }
     int          getOptimisationLevel() const              { return getWithRangeCheck (optimisationLevelMember, -1, 5, -1); }
     int32_t      getSessionID() const                      { return getWithDefault (sessionIDMember, 0); }
     bool         shouldIgnoreWarnings() const              { return getWithDefault (ignoreWarningsMember, false); }
@@ -52,6 +53,7 @@ struct BuildSettings
     BuildSettings& setMaxStateSize (uint64_t size)         { setProperty (maxStateSizeMember, static_cast<int32_t> (size)); return *this; }
     BuildSettings& setMaxStackSize (uint64_t size)         { setProperty (maxStackSizeMember, static_cast<int32_t> (size)); return *this; }
     BuildSettings& setEventBufferSize (uint32_t size)      { setProperty (eventBufferSizeMember, static_cast<int32_t> (size)); return *this; }
+    BuildSettings& setMaxPoolSize (size_t size)            { setProperty (maxPoolSizeMember, static_cast<int64_t> (size)); return *this; }
     BuildSettings& setOptimisationLevel (int level)        { setProperty (optimisationLevelMember, level); return *this; }
     BuildSettings& setSessionID (int32_t id)               { setProperty (sessionIDMember, id); return *this; }
     BuildSettings& setDebugFlag (bool b)                   { setProperty (debugMember, b); return *this; }
@@ -111,6 +113,7 @@ struct BuildSettings
     static constexpr uint64_t defaultMaxStackSize    = 5 * 1024 * 1024;
     static constexpr uint32_t defaultEventBufferSize = 32;
     static constexpr uint32_t defaultMaxBlockSize    = 1024;
+    static constexpr uint32_t defaultMaxPoolSize     = 50 * 1024 * 1024;
 
 private:
     choc::value::Value settings;
@@ -121,6 +124,7 @@ private:
     static constexpr auto maxStateSizeMember       = "maxStateSize";
     static constexpr auto maxStackSizeMember       = "maxStackSize";
     static constexpr auto eventBufferSizeMember    = "eventBufferSize";
+    static constexpr auto maxPoolSizeMember        = "maxAllocPoolSize";
     static constexpr auto optimisationLevelMember  = "optimisationLevel";
     static constexpr auto sessionIDMember          = "sessionID";
     static constexpr auto ignoreWarningsMember     = "ignoreWarnings";
