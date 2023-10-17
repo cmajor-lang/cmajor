@@ -944,15 +944,15 @@ float32 pow (float32 x, float32 y)
         float32 p_l = v - (p_h - u);
         float32 z_h = cp_h * p_h;
 
-        const float32[] dp_h = (0.0, 5.84960938e-01f);
-        const float32[] dp_l = (0.0, 1.56322085e-06f);
+        let dp_h = k == 0 ? 0.0f : 5.84960938e-01f;
+        let dp_l = k == 0 ? 0.0f : 1.56322085e-06f;
 
-        let z_l = cp_l * p_h + p_l * cp + dp_l[k];
+        let z_l = cp_l * p_h + p_l * cp + dp_l;
         let t = float32 (n);
-        t1 = (((z_h + z_l) + dp_h[k]) + t);
+        t1 = (((z_h + z_l) + dp_h) + t);
         is = reinterpretFloatToInt (t1);
         t1 = reinterpretIntToFloat (is & int32 (0xfffff000_i64));
-        t2 = z_l - (((t1 - t) - dp_h[k]) - z_h);
+        t2 = z_l - (((t1 - t) - dp_h) - z_h);
     }
 
     int32 is = reinterpretFloatToInt (y);
@@ -1227,13 +1227,13 @@ float64 pow (float64 x, float64 y)
         let p_l = v - (p_h - u);
         let z_h = cp_h * p_h;
 
-        const float64[] dp_h = (0.0, 5.84962487220764160156e-01);
-        const float64[] dp_l = (0.0, 1.35003920212974897128e-08);
+        let dp_h = k == 0 ? 0.0 : 5.84962487220764160156e-01;
+        let dp_l = k == 0 ? 0.0 : 1.35003920212974897128e-08;
 
-        let z_l = cp_l * p_h + p_l * cp + dp_l[k];
+        let z_l = cp_l * p_h + p_l * cp + dp_l;
         let t = float64 (n);
-        t1 = helpers::clearLowWord (((z_h + z_l) + dp_h[k]) + t);
-        t2 = z_l - (((t1 - t) - dp_h[k]) - z_h);
+        t1 = helpers::clearLowWord (((z_h + z_l) + dp_h) + t);
+        t2 = z_l - (((t1 - t) - dp_h) - z_h);
     }
 
     let y1 = helpers::clearLowWord (y);
@@ -1412,15 +1412,15 @@ namespace helpers
 
     RemainderPiOver2Result remainderPiOver2Large (const float64[3] x, int32 e0, int32 nx, int32 prec)
     {
-        const int32[] ipio2 = (0xa2f983, 0x6e4e44, 0x1529fc, 0x2757d1, 0xf534dd, 0xc0db62, 0x95993c, 0x439041, 0xfe5163, 0xabdebb, 0xc561b7,
-                               0x246e3a, 0x424dd2, 0xe00649, 0x2eea09, 0xd1921c, 0xfe1deb, 0x1cb129, 0xa73ee8, 0x8235f5, 0x2ebb44, 0x84e99c,
-                               0x7026b4, 0x5f7e41, 0x3991d6, 0x398353, 0x39f49c, 0x845f8b, 0xbdf928, 0x3b1ff8, 0x97ffde, 0x05980f, 0xef2f11,
-                               0x8b5a0a, 0x6d1f6d, 0x367ecf, 0x27cb09, 0xb74f46, 0x3f669e, 0x5fea2d, 0x7527ba, 0xc7ebe5, 0xf17b3d, 0x0739f7,
-                               0x8a5292, 0xea6bfb, 0x5fb11f, 0x8d5d08, 0x560330, 0x46fc7b, 0x6babf0, 0xcfbc20, 0x9af436, 0x1da9e3, 0x91615e,
-                               0xe61b08, 0x659985, 0x5f14a0, 0x68408d, 0xffd880, 0x4d7327, 0x310606, 0x1556ca, 0x73a8c9, 0x60e27b, 0xc08c6b);
+        let ipio2 = int32[] (0xa2f983, 0x6e4e44, 0x1529fc, 0x2757d1, 0xf534dd, 0xc0db62, 0x95993c, 0x439041, 0xfe5163, 0xabdebb, 0xc561b7,
+                             0x246e3a, 0x424dd2, 0xe00649, 0x2eea09, 0xd1921c, 0xfe1deb, 0x1cb129, 0xa73ee8, 0x8235f5, 0x2ebb44, 0x84e99c,
+                             0x7026b4, 0x5f7e41, 0x3991d6, 0x398353, 0x39f49c, 0x845f8b, 0xbdf928, 0x3b1ff8, 0x97ffde, 0x05980f, 0xef2f11,
+                             0x8b5a0a, 0x6d1f6d, 0x367ecf, 0x27cb09, 0xb74f46, 0x3f669e, 0x5fea2d, 0x7527ba, 0xc7ebe5, 0xf17b3d, 0x0739f7,
+                             0x8a5292, 0xea6bfb, 0x5fb11f, 0x8d5d08, 0x560330, 0x46fc7b, 0x6babf0, 0xcfbc20, 0x9af436, 0x1da9e3, 0x91615e,
+                             0xe61b08, 0x659985, 0x5f14a0, 0x68408d, 0xffd880, 0x4d7327, 0x310606, 0x1556ca, 0x73a8c9, 0x60e27b, 0xc08c6b);
 
-        const float64[] PIo2 = (1.57079625129699707031e+00, 7.54978941586159635335e-08, 5.39030252995776476554e-15, 3.28200341580791294123e-22,
-                                1.27065575308067607349e-29, 1.22933308981111328932e-36, 2.73370053816464559624e-44, 2.16741683877804819444e-51);
+        let PIo2 = float64[] (1.57079625129699707031e+00, 7.54978941586159635335e-08, 5.39030252995776476554e-15, 3.28200341580791294123e-22,
+                              1.27065575308067607349e-29, 1.22933308981111328932e-36, 2.73370053816464559624e-44, 2.16741683877804819444e-51);
 
         float64[16] f, fq, q;
         let jk = 3 + prec;
@@ -1435,7 +1435,7 @@ namespace helpers
 
             for (int32 i = 0; i <= m; ++i)
             {
-                f.at(i) = j < 0 ? 0.0 : float64 (ipio2[j]);
+                f.at(i) = j < 0 ? 0.0 : float64 (ipio2.at(j));
                 ++j;
             }
         }
@@ -1546,7 +1546,7 @@ namespace helpers
 
                     for (int32 i = jz + 1; i <= jz + k; ++i)
                     {
-                        f.at(jx + i) = float64 (ipio2[jv + i]);
+                        f.at(jx + i) = float64 (ipio2.at(jv + i));
                         float64 fw = 0;
 
                         for (int32 m = 0; m < nx; ++m)
@@ -1604,7 +1604,7 @@ namespace helpers
             fw = 0.0;
 
             for (int32 k = 0; k <= jk && k <= jz - i; ++k)
-                fw += PIo2[k] * q.at(i + k);
+                fw += PIo2.at(k) * q.at(i + k);
 
             fq.at(jz - i) = fw;
         }
