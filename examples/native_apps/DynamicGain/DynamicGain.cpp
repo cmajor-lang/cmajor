@@ -20,7 +20,7 @@ processor StereoGain
     input stream float in;
     output stream float<2> out;
 
-    // Notice that the left multiplier is a value, whilst the right multipler is an event
+    // Notice that the left multiplier is a value, whilst the right multiplier is an event
     input value float leftMultiplier;
     input event float rightMultiplier;
 
