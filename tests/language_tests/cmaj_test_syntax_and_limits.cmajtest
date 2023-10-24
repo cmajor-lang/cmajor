@@ -2042,6 +2042,24 @@ graph std { output stream float32 out; }
 namespace std { graph intrinsics { output stream float32 out; } }
 graph G [[main]] { output stream int out; node n = std::intrinsics; }
 
+## expectError ("15:10: error: The name 'feedback' is already in use //// 13:17: note: See previous declaration")
+
+graph Main [[ main ]]
+{
+    output stream float out;
+    input event float in;
+
+    connection in -> test.feedback;
+}
+
+graph test
+{
+    output stream float out;
+    input event float feedback;
+
+    node feedback = std::levels::DynamicGain(float);
+}
+
 ## testFunction()
 } // NB: this brace is a hack to escape the test namespace that gets wrapped around this bit
 namespace std { int32 roundToInt (float32 value) { return 0; } }
