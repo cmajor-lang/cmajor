@@ -521,3 +521,24 @@ processor P
         advance();
     }
 }
+
+## testConsole ("11")
+
+graph Test [[ main ]]
+{
+    output stream float out;
+
+    node p1 = P;
+    node p2 = P * 2;
+}
+
+processor P
+{
+    output stream float out;
+
+    void main()
+    {
+        console <- int (processor.frequency * processor.period);
+        advance();
+    }
+}
