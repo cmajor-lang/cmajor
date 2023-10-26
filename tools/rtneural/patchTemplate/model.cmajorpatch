@@ -1,0 +1,13 @@
+
+{
+    "CmajorVersion":    1,
+    "ID":               "com.your_name.your_patch_ID",
+    "version":          "1.0",
+    "name":             "{NAME}",
+    "description":      "RTNeural Model",
+    "category":         "generator",
+    "manufacturer":     "Your Company Goes Here",
+    "isInstrument":     false,
+
+    "source":           [ "rtneural.cmajor", "model.cmajor" ]
+}

@@ -1,0 +1,614 @@
+
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+namespace rtneural (using floatType = float32)
+{
+    static_assert (floatType.isFloat && floatType.isPrimitive);
+
+    enum ActivationFunction
+    {
+        none,
+        tanh,
+        sigmoid,
+        relu,
+        softmax,
+        elu,
+        prelu
+    }
+
+    namespace activations
+    {
+        T fastTanh<T> (const T& v)
+        {
+            let x = max (min (v, T (7.90531110763549805f)), T(-7.99881172180175781f));
+            let mask = abs (v) < 0.0004f;
+
+            let x2 = x * x;
+
+            var p = x2 * -2.76076847742355e-16f + 2.00018790482477e-13f;
+            p = x2 * p + -8.60467152213735e-11f;
+            p = x2 * p + 5.12229709037114e-08f;
+            p = x2 * p + 1.48572235717979e-05f;
+            p = x2 * p + 6.37261928875436e-04f;
+            p = x2 * p + 4.89352455891786e-03f;
+            p = x * p;
+
+            var q = x2 * 1.19825839466702e-06f + 1.18534705686654e-04f;
+            q = x2 * q + 2.26843463243900e-03f;
+            q = x2 * q + 4.89352518554385e-03f;
+
+            return select (mask, x, p / q);
+        }
+
+        T tanh<T> (const T& v)
+        {
+            return fastTanh (v);
+        }
+
+        T sigmoid<T> (const T& v)
+        {
+            return 0.5f * fastTanh (0.5f * v) + 0.5f;
+        }
+
+        T relu<T> (const T& v)
+        {
+            return max (v, T(0));
+        }
+
+        T softmax<T> (const T& v)
+        {
+            let e = exp (v);
+            return e / sum (e);
+        }
+
+        T elu<T> (const T& v)
+        {
+            return select (v > 0, v, exp(v) - 1);
+        }
+
+        T prelu<T> (const T& v, const T& a)
+        {
+            return select (v > 0, v, v * a);
+        }
+    }
+
+    namespace activation (ActivationFunction fn)
+    {
+        T apply<T> (const T& v)
+        {
+            if const (fn == ActivationFunction::none)
+                return v;
+
+            if const (fn == ActivationFunction::tanh)
+                return activations::tanh (v);
+
+            if const (fn == ActivationFunction::sigmoid)
+                return activations::sigmoid (v);
+
+            if const (fn == ActivationFunction::relu)
+                return activations::relu (v);
+
+            if const (fn == ActivationFunction::softmax)
+                return activations::softmax (v);
+
+            if const (fn == ActivationFunction::elu)
+                return activations::elu (v);
+
+            if const (fn == ActivationFunction::prelu)
+                return activations::prelu (v, T (0));
+        }
+    }
+
+    namespace layer
+    {
+        processor Activation (int size, rtneural::ActivationFunction activationFunction)
+        {
+            input stream floatType<size> in;
+            output stream floatType<size> out;
+
+            void main()
+            {
+                loop
+                {
+                    out <- rtneural::activation (activationFunction)::apply (in);
+                    advance();
+                }
+            }
+        }
+
+        processor Prelu (int size, floatType[size] a)
+        {
+            input stream floatType<size> in;
+            output stream floatType<size> out;
+
+            floatType<size> factors;
+
+            void init()
+            {
+                for (wrap<size> i)
+                    factors[i] = a[i];
+            }
+
+            void main()
+            {
+                loop
+                {
+                    out <- rtneural::activations::prelu (in, factors);
+                    advance();
+                }
+            }
+        }
+
+        processor Dense (int inputSize, int outputSize, floatType[inputSize, outputSize] w, floatType[outputSize] b)
+        {
+            input stream floatType<inputSize> in;
+            output stream floatType<outputSize> out;
+
+            floatType<outputSize>[inputSize] weights;
+            floatType<outputSize> biases;
+
+            void init()
+            {
+                for (wrap<outputSize> o)
+                    biases[o] = b[o];
+
+                for (wrap<inputSize> i)
+                    for (wrap<outputSize> o)
+                        weights[i][o] = w[i, o];
+            }
+
+            void main()
+            {
+                loop
+                {
+                    floatType<outputSize> result = biases;
+
+                    for (wrap<inputSize> i)
+                        result += in[i] * weights[i];
+
+                    out <- result;
+
+                    advance();
+                }
+            }
+        }
+
+        processor Conv1d (int inputSize, int outputSize, int kernelSize, int dilationRate, floatType[kernelSize, inputSize, outputSize] weights, floatType[outputSize] b)
+        {
+            input stream floatType<inputSize> in;
+            output stream floatType<outputSize> out;
+
+            let stateSize = (kernelSize -1 ) * dilationRate + 1;
+
+            floatType<inputSize>[outputSize, kernelSize] outputWeights;
+            floatType<outputSize> biases;
+
+            wrap<stateSize>[stateSize, kernelSize] inputColumns;
+
+            floatType<inputSize>[stateSize] inputBuffer;
+            wrap<stateSize> statePos;
+
+            void init()
+            {
+                for (wrap<outputSize> o)
+                    biases[o] = b[o];
+
+                // Reverse the order of the kernel weights
+                for (wrap<inputSize> i)
+                    for (wrap<outputSize> o)
+                        for (wrap<kernelSize> k)
+                            outputWeights[o, k][i] = weights.at (kernelSize -1 -k)[i, o];
+
+                for (wrap<stateSize> s)
+                    for (wrap<kernelSize> k)
+                        inputColumns[s, k] = wrap<stateSize> (s + stateSize - k * dilationRate);
+            }
+
+            void main()
+            {
+                loop
+                {
+                    inputBuffer[statePos] = in;
+
+                    floatType<outputSize> result;
+
+                    for (wrap<outputSize> o)
+                    {
+                        floatType<inputSize> a;
+
+                        for (wrap<kernelSize> k)
+                        {
+                            a += inputBuffer[inputColumns[statePos, k]] * outputWeights[o, k];
+                        }
+
+                        result[o] = sum (a);
+                    }
+
+                    out <- result + biases;
+                    statePos++;
+
+                    advance();
+                }
+            }
+        }
+
+        processor Gru (int inputSize, int outputSize, rtneural::ActivationFunction activationFunction, floatType[inputSize, outputSize * 3] wVals, floatType[outputSize, outputSize * 3] uVals, floatType[2, outputSize * 3] bVals)
+        {
+            input stream floatType<inputSize> in;
+            output stream floatType<outputSize> out;
+
+            struct WeightSet
+            {
+                floatType<inputSize>[outputSize] w;
+                floatType<outputSize>[outputSize] u;
+                floatType<outputSize>[2] b;
+            }
+
+            WeightSet zWeights, rWeights, cWeights;
+
+            floatType<outputSize> ht1;
+
+            void init()
+            {
+                for (wrap<inputSize> i)
+                {
+                    for (wrap<outputSize> o)
+                    {
+                        zWeights.w[o][i] = wVals[i][o];
+                        rWeights.w[o][i] = wVals[i].at (o + outputSize);
+                        cWeights.w[o][i] = wVals[i].at (o + outputSize * 2);
+                    }
+                }
+
+                for (wrap<outputSize> o1)
+                {
+                    for (wrap<outputSize> o2)
+                    {
+                        zWeights.u[o2][o1] = uVals[o1][o2];
+                        rWeights.u[o2][o1] = uVals[o1].at (o2 + outputSize);
+                        cWeights.u[o2][o1] = uVals[o1].at (o2 + outputSize * 2);
+                    }
+                }
+
+                for (wrap<2> b)
+                {
+                    for (wrap<outputSize> o)
+                    {
+                        zWeights.b[0][o] += bVals[b][o];
+                        rWeights.b[0][o] += bVals[b].at (o + outputSize);
+                        cWeights.b[b][o] = bVals[b].at (o + outputSize * 2);
+                    }
+                }
+            }
+
+            void main()
+            {
+                loop
+                {
+                    floatType<outputSize> zVec, rVec, cVec, cVec2;
+
+                    for (wrap<outputSize> o)
+                        zVec[o] += sum (zWeights.w[o] * in) + sum (zWeights.u[o] * ht1);
+
+                    for (wrap<outputSize> o)
+                        rVec[o] += sum (rWeights.w[o] * in) + sum (rWeights.u[o] * ht1);
+
+                    zVec += zWeights.b[0];
+                    rVec += rWeights.b[0];
+
+                    zVec = rtneural::activations::sigmoid (zVec);
+                    rVec = rtneural::activations::sigmoid (rVec);
+
+                    for (wrap<outputSize> o)
+                        cVec2[o] = sum (cWeights.u[o] * ht1);
+
+                    cVec2 += cWeights.b[1];
+
+                    for (wrap<outputSize> o)
+                        cVec[o] = sum (cWeights.w[o] * in);
+
+                    cVec += rVec * cVec2;
+                    cVec += cWeights.b[0];
+                    cVec = rtneural::activation (activationFunction)::apply (cVec);
+
+                    ht1 = (1.0f - zVec) * cVec + zVec * ht1;
+                    out <- ht1;
+
+                    advance();
+                }
+            }
+        }
+
+        processor BatchNorm1d (int size, floatType epsilon, floatType[size] mean, floatType[size] variance, floatType[size] gamma = 1, floatType[size] beta = 0)
+        {
+            input stream floatType<size> in;
+            output stream floatType<size> out;
+
+            floatType<size> runningMean, b, multiplier;
+
+            void init()
+            {
+                for (wrap<size> i)
+                {
+                    runningMean[i]  = mean[i];
+                    b[i]            = beta[i];
+                    multiplier[i]   = gamma[i] / sqrt (variance[i] + epsilon);
+                }
+            }
+
+            void main()
+            {
+                loop
+                {
+                    out <- multiplier * (in - runningMean) + b;
+                    advance();
+                }
+            }
+        }
+
+        processor Lstm (int inputSize, int outputSize, rtneural::ActivationFunction activationFunction, floatType[inputSize, outputSize * 4] wVals, floatType[outputSize, outputSize * 4] uVals, floatType[outputSize * 4] bVals)
+        {
+            input stream floatType<inputSize> in;
+            output stream floatType<outputSize> out;
+
+            struct WeightSet
+            {
+                floatType<inputSize>[outputSize] w;
+                floatType<outputSize>[outputSize] u;
+                floatType<outputSize> b;
+            }
+
+            WeightSet fWeights, iWeights, oWeights, cWeights;
+
+            void init()
+            {
+                for (wrap<inputSize> i)
+                {
+                    for (wrap<outputSize> o)
+                    {
+                        iWeights.w[o][i] = wVals[i][o];
+                        fWeights.w[o][i] = wVals[i].at (o + outputSize);
+                        cWeights.w[o][i] = wVals[i].at (o + outputSize * 2);
+                        oWeights.w[o][i] = wVals[i].at (o + outputSize * 3);
+                    }
+                }
+
+                for (wrap<outputSize> o1)
+                {
+                    for (wrap<outputSize> o2)
+                    {
+                        iWeights.u[o2][o1] = uVals[o1][o2];
+                        fWeights.u[o2][o1] = uVals[o1].at (o2 + outputSize);
+                        cWeights.u[o2][o1] = uVals[o1].at (o2 + outputSize * 2);
+                        oWeights.u[o2][o1] = uVals[o1].at (o2 + outputSize * 3);
+                    }
+                }
+
+                for (wrap<outputSize> o)
+                {
+                    iWeights.b[o] = bVals[o];
+                    fWeights.b[o] = bVals.at (o + outputSize);
+                    cWeights.b[o] = bVals.at (o + outputSize * 2);
+                    oWeights.b[o] = bVals.at (o + outputSize * 3);
+                }
+            }
+
+            floatType<outputSize> ht1, ct1;
+            floatType<outputSize> fVec, iVec, oVec, cVec;
+
+            void main()
+            {
+                loop
+                {
+                    for (wrap<outputSize> o)
+                    {
+                        fVec[o] = sum (fWeights.w[o] * in) + sum (fWeights.u[o] * ht1);
+                        iVec[o] = sum (iWeights.w[o] * in) + sum (iWeights.u[o] * ht1);
+                        oVec[o] = sum (oWeights.w[o] * in) + sum (oWeights.u[o] * ht1);
+                        cVec[o] = sum (cWeights.w[o] * in) + sum (cWeights.u[o] * ht1);
+                    }
+
+                    fVec = rtneural::activations::sigmoid (fVec + fWeights.b);
+                    iVec = rtneural::activations::sigmoid (iVec + iWeights.b);
+                    oVec = rtneural::activations::sigmoid (oVec + oWeights.b);
+                    cVec = rtneural::activation (activationFunction)::apply (cVec + cWeights.b);
+
+                    ct1 = (fVec * ct1) + (iVec * cVec);
+                    ht1 = oVec * rtneural::activation (activationFunction)::apply (ct1);
+
+                    out <- ht1;
+
+                    advance();
+                }
+            }
+        }
+
+        processor BatchNorm2d (int size, floatType epsilon, int numFiltersIn, int numFeaturesIn, floatType[numFiltersIn] mean, floatType[numFiltersIn] variance, floatType[numFiltersIn] gamma = 1, floatType[numFiltersIn] beta = 0)
+        {
+            input stream floatType<size> in;
+            output stream floatType<size> out;
+
+            floatType<size> runningMean, b, multiplier;
+
+            static_assert (size == numFiltersIn * numFeaturesIn);
+
+            void init()
+            {
+                for (wrap<numFiltersIn> i)
+                {
+                    for (wrap<numFeaturesIn> j)
+                    {
+                        let p = wrap<size> (i + j * numFiltersIn);
+                        runningMean[p]  = mean[i];
+                        b[p]            = beta[i];
+                        multiplier[p]   = gamma[i] / sqrt (variance[i] + epsilon);
+                    }
+                }
+            }
+
+            void main()
+            {
+                loop
+                {
+                    out <- multiplier * (in - runningMean) + b;
+                    advance();
+                }
+            }
+        }
+
+        processor Conv2d (int inputSize, int outputSize, int numFiltersIn, int numFiltersOut, int numFeaturesIn, int numFeaturesOut, int kernelSizeTime, int kernelSizeFeature, int dilationRate, int stride, bool validPad, int padLeft, int padRight, floatType[kernelSizeTime, kernelSizeFeature, numFiltersIn, numFiltersOut] weightsIn, floatType[numFiltersOut] biases)
+        {
+            input stream floatType<inputSize> in;
+            output stream floatType<outputSize> out;
+
+            let receptiveField = 1 + ((kernelSizeTime - 1) * dilationRate);
+            let stateSize = numFiltersOut * numFeaturesOut;
+
+            struct Conv1dStateless
+            {
+                floatType<numFiltersIn>[numFiltersOut, kernelSizeFeature] kernelWeights;
+
+                void forward (floatType<inputSize> in, floatType<numFiltersOut>[numFeaturesOut]& out)
+                {
+                    if const (validPad)
+                    {
+                        for (wrap<numFeaturesOut> outColIndex)
+                        {
+                            for (wrap<numFiltersOut> outRowIndex)
+                            {
+                                floatType sum;
+
+                                var inColIndex = wrap<inputSize> (outColIndex * stride);
+
+                                for (wrap<kernelSizeFeature> kernelColIndex)
+                                {
+                                    var inIndex = wrap<inputSize> (inColIndex * numFiltersIn);
+
+                                    for (wrap<numFiltersIn> inRowIndex)
+                                        sum += this.kernelWeights[outRowIndex, kernelColIndex][inRowIndex] * in[inIndex++];
+
+                                    inColIndex ++;
+                                }
+
+                                out[outColIndex][outRowIndex] += sum;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (wrap<numFiltersOut> outRowIndex)
+                        {
+                            int outColIndex;
+
+                            while (outColIndex * stride < padLeft)
+                            {
+                                floatType sum;
+                                let effKernelSize = kernelSizeFeature - padLeft + outColIndex * stride;
+
+                                for(int inColIndex = 0; inColIndex < effKernelSize; ++inColIndex)
+                                {
+                                    let kernelColIndex = wrap<kernelSizeFeature> (inColIndex + (kernelSizeFeature - effKernelSize));
+                                    var inIndex = wrap<inputSize> (inColIndex * numFiltersIn);
+
+                                    for (wrap<numFiltersIn> inRowIndex)
+                                        sum += this.kernelWeights[outRowIndex, kernelColIndex][inRowIndex] * in[inIndex++];
+                                }
+
+                                out.at (outColIndex)[outRowIndex] += sum;
+                                outColIndex++;
+                            }
+
+                            while (outColIndex * stride - padLeft + kernelSizeFeature < numFeaturesIn)
+                            {
+                                floatType sum;
+
+                                for(int inColIndex = outColIndex * stride - padLeft; inColIndex < outColIndex * stride - padLeft + kernelSizeFeature; ++inColIndex)
+                                {
+                                    let kernelColIndex = wrap<kernelSizeFeature> (inColIndex - (outColIndex * stride - padLeft));
+                                    var inIndex = wrap<inputSize> (inColIndex * numFiltersIn);
+
+                                    for (wrap<numFiltersIn> inRowIndex)
+                                        sum += this.kernelWeights[outRowIndex, kernelColIndex][inRowIndex] * (in[inIndex++]);
+                                }
+
+                                out.at (outColIndex)[outRowIndex] += sum;
+                                outColIndex++;
+                            }
+
+                            while (outColIndex * stride - padLeft + kernelSizeFeature <= numFeaturesIn + padRight)
+                            {
+                                floatType sum;
+                                let effKernelSize = numFeaturesIn - (outColIndex * stride - padLeft);
+
+                                for(int inColIndex = (numFeaturesIn - effKernelSize); inColIndex < numFeaturesIn; ++inColIndex)
+                                {
+                                    let kernelColIndex = wrap<kernelSizeFeature> (inColIndex - (numFeaturesIn - effKernelSize));
+                                    var inIndex = wrap<inputSize> (inColIndex * numFiltersIn);
+
+                                    for (wrap<numFiltersIn> inRowIndex)
+                                        sum += this.kernelWeights[outRowIndex, kernelColIndex][inRowIndex] * in[inIndex++];
+                                }
+
+                                out.at (outColIndex)[outRowIndex] += sum;
+                                outColIndex++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Conv1dStateless[kernelSizeTime] conv1dLayers;
+
+            floatType<numFiltersOut> outputBias;
+
+            floatType<numFiltersOut>[receptiveField, numFeaturesOut] state;
+
+            void init()
+            {
+                for (wrap<kernelSizeTime> i)
+                    for (wrap<numFiltersOut> j)
+                        for (wrap<numFiltersIn> k)
+                            for (wrap<kernelSizeFeature> l)
+                                conv1dLayers[i].kernelWeights[j, l][k] = weightsIn[i, l, k, j];
+
+                for (wrap<numFiltersOut> i)
+                    outputBias[i] = biases[i];
+            }
+
+            void main()
+            {
+                wrap<receptiveField> stateIndex;
+
+                loop
+                {
+                    for (wrap<kernelSizeTime> i)
+                    {
+                        let stateIndexToUse = wrap<receptiveField> (stateIndex + receptiveField -1 - (i * dilationRate));
+                        conv1dLayers[i].forward (in, state[stateIndexToUse]);
+                    }
+
+                    floatType<outputSize> result;
+
+                    for (wrap<numFeaturesOut> i)
+                        for (wrap<numFiltersOut> j)
+                            result.at (i * numFiltersOut + j) += state[stateIndex, i][j] + outputBias[j];
+
+                    out <- result;
+                    state[stateIndex] = 0;
+                    stateIndex++;
+
+                    advance();
+                }
+            }
+        }
+    }
+}
