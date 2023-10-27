@@ -1,0 +1,702 @@
+
+//  //
+//  //     ,ad888ba,                                88
+//  //    d8"'    "8b
+//  //   d8            88,dPba,,adPba,   ,adPPYba,  88      The Cmajor Language
+//  //   88            88P'  "88"   "8a        '88  88
+//  //   Y8,           88     88     88  ,adPPPP88  88      (c)2022 Sound Stacks Ltd
+//  //    Y8a.   .a8P  88     88     88  88,   ,88  88      https://cmajor.dev
+//  //     '"Y888Y"'   88     88     88  '"8bbP"Y8  88
+//  //                                             ,88
+//  //                                           888P"
+
+namespace onnx
+{
+    namespace operation
+    {
+        // ---------------------------------------------------------
+        // ONNX Operators
+        // ---------------------------------------------------------
+
+        processor Tanh (using dataType)
+        {
+            input event dataType in;
+            output event dataType out;
+
+            void inplaceTanh<T> (T& t)
+            {
+                if const (t.isArray)
+                    for (wrap<t.size> i)
+                        inplaceTanh (t[i]);
+                else
+                    t = std::intrinsics::tanh (t);
+            }
+
+            event in (dataType i)
+            {
+                inplaceTanh (i);
+                out <- i;
+            }
+        }
+
+        processor Reshape (using inputType, using outputType)
+        {
+            input event inputType in;
+            output event outputType out;
+
+            event in (inputType i)
+            {
+                out <- outputType (i);
+            }
+        }
+
+        processor MatMul (using inputType, using outputType, using mulType)
+        {
+            input event inputType in;
+            input event mulType mul;
+            output event outputType out;
+
+            static_assert (inputType.numDimensions == outputType.numDimensions);
+            static_assert (inputType.numDimensions == 2 || inputType.numDimensions == 3);
+
+            event in (inputType i)  { inValue = i; }
+            event mul (mulType m)   { mulValue = m; }
+
+            inputType inValue;
+            mulType mulValue;
+
+            void main()
+            {
+                outputType result;
+
+                loop
+                {
+                    if const (inputType.numDimensions == 2)
+                    {
+                        result = std::matrix::multiply (inValue, mulValue);
+                    }
+
+                    if const (inputType.numDimensions == 3)
+                    {
+                        for (wrap<inputType.size> i)
+                            result[i] = std::matrix::multiply (inValue[i], mulValue);
+                    }
+
+                    out <- result;
+                    advance();
+                }
+            }
+        }
+
+        processor Gemm (using inputType, using outputType, using mulType)
+        {
+            input event inputType in;
+            input event mulType mul;
+            input event outputType add;
+            output event outputType out;
+
+            static_assert (inputType.numDimensions == outputType.numDimensions);
+            static_assert (inputType.numDimensions == 2 || inputType.numDimensions == 3);
+
+            event in (inputType i)      { inValue = i;  }
+            event mul (mulType m)       { mulValue = m; }
+            event add (outputType a)    { addValue = a; }
+
+            inputType inValue;
+            mulType mulValue;
+            outputType addValue;
+
+            void main()
+            {
+                outputType result;
+
+                loop
+                {
+                    if const (inputType.numDimensions == 2)
+                    {
+                        result = std::matrix::add (std::matrix::multiply (inValue, mulValue), addValue);
+                    }
+
+                    if const (inputType.numDimensions == 3)
+                    {
+                        for (wrap<inputType.size> i)
+                            result[i] = std::matrix::add (std::matrix::multiply (inValue[i], mulValue), addValue);
+                    }
+
+                    out <- result;
+                    advance();
+                }
+            }
+        }
+
+        processor Add (using dataType)
+        {
+            input event dataType inA, inB;
+            output event dataType out;
+
+            event inA (dataType i) { A = i; }
+            event inB (dataType i) { B = i; }
+
+            dataType A,B;
+
+            void inplaceAdd<T> (T& t, const T& rhs)
+            {
+                if const (t.isArray)
+                    for (wrap<t.size> i)
+                        inplaceAdd (t[i], rhs[i]);
+                else
+                    t = t + rhs;
+            }
+
+            void main()
+            {
+                loop
+                {
+                    var v = A;
+                    inplaceAdd (v, B);
+                    out <- v;
+                    advance();
+                }
+            }
+        }
+
+        processor Unsqueeze (using inputType, using outputType)
+        {
+            input event inputType in;
+            output event outputType out;
+
+            event in (inputType i)
+            {
+                out <- outputType (i);
+            }
+        }
+
+        processor Squeeze (using inputType, using outputType)
+        {
+            input event inputType in;
+            output event outputType out;
+
+            event in (inputType i)
+            {
+                out <- outputType (i);
+            }
+        }
+
+        processor Conv (using inputType, using outputType, int[numDimensions] ks, int[numDimensions] dr)
+        {
+            input event inputType in;
+            input event weightsType inWeights;
+            output event outputType out;
+
+            static_assert (inputType.numDimensions == 4 && outputType.numDimensions == 4);
+            static_assert (numDimensions == 2, "Only two dimensions supported");
+            static_assert (height == 1, "Only 1D Convolutions are supported");
+
+            event in (inputType i)
+            {
+                inValue = i;
+            }
+
+            event inWeights (weightsType weights)
+            {
+                for (wrap<outputGroups> group)
+                {
+                    for (wrap<channels> channel)
+                    {
+                        float<convSize> convolution;
+
+                        wrap<convSize> n;
+
+                        for (wrap<ks[1]> kernelElement)
+                        {
+                            convolution[n] = weights[group, channel, 0, kernelElement];
+                            n = wrap<convSize> (n + dr[1]);
+                        }
+
+                        for (wrap<convSteps> step)
+                        {
+                            convolutionWeights[group, channel, step] = convolution;
+                            convolution[1:] = convolution[:-1];
+                            convolution[0] = 0.0f;
+                        }
+                    }
+                }
+            }
+
+            let batchSize       = inputType.size;
+            let channels        = inputType.elementType.size;
+            let height          = inputType.elementType.elementType.size;
+            let width           = inputType.elementType.elementType.elementType.size;
+            let numDimensions   = inputType.numDimensions - 2;
+
+            let widthPadding   = 0;
+            let convSize       = 1 + (dr[1] * (ks[1] - 1));
+            let convSteps      = 1 + width + widthPadding - convSize;
+
+            let outputGroups   = outputType.elementType.size;
+
+            using elementType = inputType.elementType.elementType.elementType.elementType;
+            using weightsType = elementType[outputGroups, channels, ks[0], ks[1]];
+
+            inputType inValue;
+
+            float<convSize>[outputGroups, channels, convSteps] convolutionWeights;
+
+            void main()
+            {
+                loop
+                {
+                    outputType result;
+
+                    for (wrap<channels> channel)
+                    {
+                        float<convSize> v;
+
+                        for (wrap<width> i)
+                            v[i] = inValue[0, channel, 0, i];
+
+                        for (wrap<outputGroups> group)
+                        {
+                            for (wrap<convSteps> i)
+                                result[0, group, 0, 0] += sum (v * convolutionWeights[group, channel, i]);
+                        }
+                    }
+
+                    out <- result;
+
+                    advance();
+                }
+            }
+        }
+
+        processor GRU (using inputType, using outputType)
+        {
+            input event inputType in;
+            input event wType inWVals;
+            input event rType inRVals;
+            input event bType inBVals;
+            input event string seq;
+            input event initType inInitial;
+
+            output event outputType out;
+
+            static_assert (inputType.numDimensions == 3);
+            static_assert (outputType.numDimensions == 4);
+
+            event in        (inputType i)           { inValue = i; }
+            event inWVals   (wType i)               { wVals = i; updateWeights(); }
+            event inRVals   (rType i)               { rVals = i; updateWeights(); }
+            event inBVals   (bType i)               { bVals = i; updateWeights(); }
+            event inInitial (initType i)            { initial = i; updateWeights(); }
+
+            inputType inValue;
+            wType wVals;
+            rType rVals;
+            bType bVals;
+            initType initial;
+
+            using elementType = inputType.elementType.elementType.elementType;
+            using wType       = elementType[numDirections, hiddenSize * 3, inputSize];
+            using rType       = elementType[numDirections, hiddenSize * 3, hiddenSize];
+            using bType       = elementType[numDirections, hiddenSize * 6];
+            using initType    = elementType[numDirections, batchSize, hiddenSize];
+
+            let numDirections = 1;
+            let seqLength     = inputType.size;
+            let batchSize     = inputType.elementType.size;
+            let inputSize     = inputType.elementType.elementType.size;
+            let hiddenSize    = outputType.elementType.elementType.elementType.size;
+
+            float<hiddenSize> ht1;
+
+            void main()
+            {
+                updateWeights();
+                updateWeights();
+
+                loop
+                {
+                    float<inputSize> inVector;
+
+                    for (wrap<inputSize> i)
+                        inVector[i] = inValue[0,0,i];
+
+                    float<hiddenSize> zVec, rVec, cVec, cVec2;
+
+                    for (wrap<hiddenSize> o)
+                    {
+                        zVec[o] = sum (zWeights.w[o] * inVector) + sum (zWeights.u[o] * ht1);
+                        rVec[o] = sum (rWeights.w[o] * inVector) + sum (rWeights.u[o] * ht1);
+                    }
+
+                    zVec += zWeights.b[0];
+                    rVec += rWeights.b[0];
+
+                    zVec = sigmoid (zVec);
+                    rVec = sigmoid (rVec);
+
+                    for (wrap<hiddenSize> o)
+                        cVec2[o] = sum (cWeights.u[o] * ht1);
+
+                    cVec2 += cWeights.b[1];
+
+                    for (wrap<hiddenSize> o)
+                        cVec[o] = sum (cWeights.w[o] * inVector);
+
+                    cVec += rVec * cVec2;
+                    cVec += cWeights.b[0];
+                    cVec = fastTanh (cVec);
+
+                    ht1 = (1.0f - zVec) * cVec + zVec * ht1;
+
+                    outputType result;
+
+                    for (wrap<hiddenSize> i)
+                        result[0, 0, 0, i] = ht1[i];
+
+                    out <- result;
+
+                    advance();
+                }
+            }
+
+            struct WeightSet
+            {
+                float<inputSize>[hiddenSize] w;
+                float<hiddenSize>[hiddenSize] u;
+                float<hiddenSize>[2] b;
+            }
+
+            WeightSet zWeights, rWeights, cWeights;
+
+            void updateWeights()
+            {
+                zWeights = WeightSet();
+                rWeights = WeightSet();
+                cWeights = WeightSet();
+
+                for (wrap<hiddenSize> i)
+                    ht1[i] = initial[0, 0, i];
+
+                for (wrap<inputSize> i)
+                {
+                    for (wrap<hiddenSize> o)
+                    {
+                        zWeights.w[o][i] = wVals[0, o, i];
+                        rWeights.w[o][i] = wVals.at (0, o + hiddenSize, i);
+                        cWeights.w[o][i] = wVals.at (0, o + hiddenSize * 2, i);
+                    }
+                }
+
+                for (wrap<hiddenSize> o1)
+                {
+                    for (wrap<hiddenSize> o2)
+                    {
+                        zWeights.u[o2][o1] = rVals.at (0, o2, o1);
+                        rWeights.u[o2][o1] = rVals.at (0, o2 + hiddenSize, o1);
+                        cWeights.u[o2][o1] = rVals.at (0, o2 + hiddenSize * 2, o1);
+                    }
+                }
+
+                for (wrap<2> b)
+                {
+                    for (wrap<hiddenSize> o)
+                    {
+                        zWeights.b[0][o] += bVals.at (0, b * hiddenSize + o);
+                        rWeights.b[0][o] += bVals.at (0, b * hiddenSize + o + hiddenSize);
+                        cWeights.b[b][o]  = bVals.at (0, b * hiddenSize + o + hiddenSize * 2);
+                    }
+                }
+            }
+
+            T sigmoid<T> (const T& v)
+            {
+                return 0.5f * fastTanh (0.5f * v) + 0.5f;
+            }
+
+            T fastTanh<T> (const T& v)
+            {
+                let x = max (min (v, T (7.90531110763549805f)), T(-7.99881172180175781f));
+                let mask = abs (v) < 0.0004f;
+
+                let x2 = x * x;
+
+                var p = x2 * -2.76076847742355e-16f + 2.00018790482477e-13f;
+                p = x2 * p + -8.60467152213735e-11f;
+                p = x2 * p + 5.12229709037114e-08f;
+                p = x2 * p + 1.48572235717979e-05f;
+                p = x2 * p + 6.37261928875436e-04f;
+                p = x2 * p + 4.89352455891786e-03f;
+                p = x * p;
+
+                var q = x2 * 1.19825839466702e-06f + 1.18534705686654e-04f;
+                q = x2 * q + 2.26843463243900e-03f;
+                q = x2 * q + 4.89352518554385e-03f;
+
+                return select (mask, x, p / q);
+            }
+        }
+
+        processor LSTM (using inputType, using outputType, int hiddenSize)
+        {
+            input event inputType inX;
+            input event wType inW;
+            input event rType inR;
+            input event bType inB;
+            input event lengthType inSequenceLens;
+            input event initialHType initialH;
+            input event initialCType initialC;
+            input event pType inP;
+
+            output event outputType outY;
+            output event hType outY_h;
+            output event cType outY_c;
+
+            static_assert (false, "LSTM is not yet implemented");
+
+            let numDirections   = 1;
+            let sequenceLength  = inputType.size;
+            let batchSize       = inputType.elementType.size;
+            let inputSize       = inputType.elementType.elementType.size;
+
+            using elementType   = inputType.elementType.elementType.elementType;
+            using wType         = elementType[numDirections, 4 * hiddenSize, inputSize];
+            using rType         = elementType[numDirections, 4 * hiddenSize, hiddenSize];
+            using bType         = elementType[numDirections, 8 * hiddenSize];
+            using lengthType    = elementType[batchSize];
+            using initialHType  = elementType[numDirections, batchSize, hiddenSize];
+            using initialCType  = elementType[numDirections, batchSize, hiddenSize];
+            using pType         = elementType[numDirections, 3 * hiddenSize];
+            using hType         = elementType[numDirections, batchSize, hiddenSize];
+            using cType         = elementType[numDirections, batchSize, hiddenSize];
+        }
+
+        processor Slice (using inputType, using outputType, using axesType)
+        {
+            input event inputType data;
+            input event axesType starts;
+            input event axesType ends;
+            input event axesType axes;
+            input event axesType steps;
+            output event outputType out;
+
+            static_assert (false, "Slice is not yet implemented");
+        }
+
+        processor Concat (using inputType, using outputType, int inputs, int axis)
+        {
+            input event inputType in1;
+            input event inputType in2;
+            input event inputType in3;
+
+            output event outputType out;
+
+            static_assert (false, "Concat is not yet implemented");
+        }
+
+        processor Gather (using inputType, using outputType, using indicesType)
+        {
+            input event inputType in;
+            input event indicesType indices;
+            output event outputType out;
+
+            static_assert (false, "Gather is not yet implemented");
+        }
+
+
+        processor Pad (using inputType, using outputType)
+        {
+            input event inputType in;
+            input event padType pads;
+
+            output event outputType out;
+
+            using padType = int64[inputType.numDimensions * 2];
+
+            event pads (padType i) { padValue = i; }
+            event in (inputType i) { inValue = i; }
+
+            padType padValue;
+            inputType inValue;
+
+            void copyElements<targetArrayType, sourceArrayType, offsetsType> (targetArrayType& target, sourceArrayType source, offsetsType offsets)
+            {
+                if const (source.numDimensions == 1)
+                {
+                    var targetIndex = wrap<targetArrayType.size> (offsets[0]);
+
+                    for (wrap<sourceArrayType.size> i)
+                    {
+                        target[targetIndex] = source[i];
+                        targetIndex++;
+                    }
+                }
+                else
+                {
+                    var targetIndex = wrap<targetArrayType.size> (offsets[0]);
+                    let childOffsets = offsets[1:];
+
+                    for (wrap<sourceArrayType.size> i)
+                    {
+                        copyElements (target[targetIndex], source[i], childOffsets);
+                        targetIndex++;
+                    }
+                }
+
+            }
+
+            void main()
+            {
+                loop
+                {
+                    outputType result;
+                    copyElements (result, inValue, padValue);
+                    out <- result;
+                    advance();
+                }
+            }
+        }
+
+
+        processor Transpose (using inputType, using outputType, int totalElements, permType perm)
+        {
+            input event inputType in;
+            output event outputType out;
+
+            using permType = int[inputType.numDimensions];
+
+            using flatType = float[totalElements];
+            using indexType = wrap<totalElements>;
+
+            event in (inputType i)
+            {
+                outputType result;
+
+                flatType target;
+                indexType targetIndex;
+
+                transposeArray (target, i, targetSteps, targetIndex);
+                result = target;
+
+                out <- result;
+            }
+
+            void init()
+            {
+                let inputDimensions = getDimensions (inputType());
+                int currentStep = 1;
+
+                for (int i = inputType.numDimensions - 1; i >= 0; i--)
+                {
+                    let p = perm.at (i);
+                    targetSteps.at (p) = currentStep;
+                    currentStep *= inputDimensions.at (p);
+                }
+            }
+
+            int[inputType.numDimensions] targetSteps;
+
+            int[T.numDimensions] getDimensions<T> (T t)
+            {
+                if const (T.numDimensions == 1)
+                {
+                    return int[1] (T.size);
+                }
+                else
+                {
+                    int[T.numDimensions] v;
+
+                    v[0] = T.size;
+                    v[1:] = getDimensions (t[0]);
+
+                    return v;
+                }
+            }
+
+            void transposeArray<sourceArrayType, targetStepsType> (flatType& target, const sourceArrayType& source, targetStepsType targetSteps, indexType targetIndex)
+            {
+                static_assert (sourceArrayType.numDimensions == targetSteps.size);
+
+                if const (sourceArrayType.numDimensions == 1)
+                {
+                    for (wrap<sourceArrayType.size> i)
+                    {
+                        target[targetIndex] = source[i];
+                        targetIndex = indexType (targetIndex + targetSteps[0]);
+                    }
+                }
+                else
+                {
+                    let childTargetSteps = targetSteps[1:];
+
+                    for (wrap<sourceArrayType.size> i)
+                    {
+                        transposeArray (target, source[i], childTargetSteps, targetIndex);
+                        targetIndex = indexType (targetIndex + targetSteps[0]);
+                    }
+                }
+            }
+        }
+
+        processor Constant (using type, type v)
+        {
+            output event type out;
+
+            void main()
+            {
+                out <- v;
+                advance();
+            }
+        }
+    }
+
+    processor graphIn (using inputType, using outputType)
+    {
+        input stream inputType in;
+        output event outputType out;
+
+        using inputAsArrayType = inputType.elementType[inputType.size];
+
+        void main ()
+        {
+            loop
+            {
+                inputAsArrayType v;
+
+                for (wrap<inputType.size> i)
+                    v[i] = in[i];
+
+                out <- outputType (v);
+
+                advance();
+            }
+        }
+    }
+
+    processor graphOut (using inputType, using outputType)
+    {
+        input event inputType in;
+        output stream outputType out;
+
+        using outputAsArrayType = outputType.elementType[outputType.size];
+
+        event in (inputType in)
+        {
+            let v = outputAsArrayType (in);
+
+            for (wrap<outputType.size> i)
+                result[i] = v[i];
+        }
+
+        outputType result;
+
+        void main()
+        {
+            loop
+            {
+                out <- result;
+                advance();
+            }
+        }
+    }
+}
