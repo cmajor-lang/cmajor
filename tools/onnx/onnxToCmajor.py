@@ -5,7 +5,7 @@ from onnx import numpy_helper, shape_inference
 
 patchTemplateDir = os.path.dirname(os.path.abspath(sys.argv[0])) + "/patchTemplate"
 
-numFrames = 1
+dimParamFrames = 1
 endpointSuffix = "_Transformer"
 
 ioBlock = []
@@ -271,9 +271,9 @@ def parseTensorType (tensorType):
             if dim.dim_value:
                 dimensions.append (dim.dim_value)
                 totalElements *= dim.dim_value
-            elif dim.dim_param == "num_frames":
-                dimensions.append (numFrames)
-                totalElements *= numFrames
+            elif dim.dim_param:
+                dimensions.append (dimParamFrames)
+                totalElements *= dimParamFrames
 
         if len (dimensions) == 0:
             return dataType, 0, 1
@@ -289,8 +289,8 @@ def parseTensorTypeToStreamType (tensorType):
         for dim in tensorType.shape.dim:
             if dim.dim_value:
                 elements *= dim.dim_value
-            elif dim.dim_param == "num_frames":
-                elements *= numFrames
+            elif dim.dim_param:
+                elements *= dimParamFrames
 
         return dataType + "<" + str (elements) + ">"
 
@@ -411,7 +411,7 @@ def main(argv):
     if len(argv) == 0:
         usage()
         exit(1)
-        
+
     try:
         opts, args = getopt.getopt (argv, "h", ["patchDir=", "model="])
     except getopt.GetoptError as e:
@@ -451,9 +451,3 @@ def main(argv):
 if __name__== "__main__" :
     main (sys.argv[1:])
     exit()
-
-    # model_path = "tests/integration_tests/onnx/matMulPatch/matMul.onnx"
-    # model_path = "tests/integration_tests/onnx/DenseModel.onnx"
-    # model_path = "tests/integration_tests/onnx/RTNeuralPatch/RTNeuralModel.onnx"
-    # model_path = "tests/integration_tests/onnx/model.onnx"
-    # model_path = "tests/integration_tests/onnx/funk_drums.onnx"
