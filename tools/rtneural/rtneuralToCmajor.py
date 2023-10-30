@@ -302,18 +302,16 @@ def usage():
     print (
 """
 
-    rtneuralToCmajor.py
+  This script generates Cmajor code from an RTNeural model.
 
-    This script generates cmajor for the supplied RTNeural model
-    Options:
+  Options:
+    -h                   Display this help
+    --model <file>       Specifies the RTNeural model file to convert
+    --patchDir <folder>  Specifies a folder into which the generated patch will be written
+    --name <name>        Optional name for the model - defaults to "Model"
+    --useFloat64         By default we use float32, but this changes the generated model to float64
 
-    -h                  Show the help
-    --model [s]         Specifies the RTNeural model to convert
-    --outputDir [s]     Writes the output as a patch to the given directory
-    --name [s]          Name to call the model - defaults to Model
-    --useFloat64        By default we use float32, this changes the generated model to float64
-
-    If no patchDir is specified, a single cmajor file is output
+  If no patchDir argument is supplied, the output will be a single Cmajor file.
 
 """)
 

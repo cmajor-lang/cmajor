@@ -393,17 +393,14 @@ def usage():
     print (
 """
 
-    onnxToCmajor.py
+  This script generates Cmajor code from an ONNX model.
 
-    This script generates cmajor for the supplied ONNX model
-    Options:
+  Options:
+    -h                   Display this help
+    --model <file>       Specifies the ONNX model file to convert
+    --patchDir <folder>  Specifies a folder into which the generated patch will be written
 
-    -h                  Show the help
-    --model [s]         Specifies the ONNX model to convert
-    --patchDir [s]      Writes the output as a patch to the given directory
-
-    If no patchDir is specified, a single cmajor file is output which depends on
-    the Cmajor ml operators
+  If no patchDir argument is supplied, the output will be a single Cmajor file.
 
 """)
 
