@@ -12,11 +12,11 @@ Other ML frameworks such as Pytorch or Tensorflow provide conversion tools to/fr
 
 The [ONNX](https://onnx.ai/) Intermediate Representation (IR) is a common format used for exchanging ML models. An ONNX IR file includes not only the model's architecture but also its weights and other metadata.
 
-#### ONNX Operators
+### ONNX Operators
 
 ONNX operators provide a standardised way to represent these operations, regardless of the deep learning framework used to define or train the model. This means that if you have a neural network model built in one framework (e.g. PyTorch or TensorFlow) and you want to run it on a different platform or framework, you can use ONNX to convert and execute the model seamlessly with Cmajor.
 
-#### Using the ONNX to Cmajor Python script
+### Using the ONNX to Cmajor Python script
 
 You can run `cmajor/tools/onnx/onnxToCmajor.py` to do the conversion. Command-line options are:
 
@@ -41,7 +41,7 @@ This will generate the following files in the given directory:
 
 - `model.cmajorpatch` - As with all cmajor manifest files, this describes the patch's properties and contains links to the other files in the patch
 
-#### Currently supported ONNX Operators:
+### Currently supported ONNX Operators:
 
 The ONNX format contains a huge number of operators. Cmajor supports a subset of the more commonly used ones, which will grow over time:
 
@@ -70,7 +70,7 @@ e.g.
 rtneuralToCmajor.py --model "path/to/your/model.json" --patchDir "path/to/output/patch"
 ```
 
-#### Supported Operators
+### Supported Operators
 
 We currently support the following RTNeural features:
 
