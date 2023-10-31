@@ -17,6 +17,7 @@ namespace rtneural (using floatType = float32)
     enum ActivationFunction
     {
         none,
+        linear,
         tanh,
         sigmoid,
         relu,
@@ -86,6 +87,9 @@ namespace rtneural (using floatType = float32)
         T apply<T> (const T& v)
         {
             if const (fn == ActivationFunction::none)
+                return v;
+
+            if const (fn == ActivationFunction::linear)
                 return v;
 
             if const (fn == ActivationFunction::tanh)

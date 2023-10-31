@@ -89,6 +89,12 @@ def createCmajArray (data, elementSuffix):
 
     return "(" + ", ".join (items) + ")"
 
+def parseActivationFn (layer):
+    if layer["activation"] == "":
+        return "none"
+
+    return layer["activation"]
+
 def parseInitialiser (name, data):
     cmajType = createCmajArrayType (data, elementType)
     dataString = createCmajArray (data, elementSuffix)
@@ -162,7 +168,7 @@ def parseLayer (inputSize, layer):
             parseInitialiser (f"{layerName}W", layer["weights"][0])
             parseInitialiser (f"{layerName}U", layer["weights"][1])
             parseInitialiser (f"{layerName}B", layer["weights"][2])
-            activationFn = layer["activation"]
+            activationFn = parseActivationFn (layer)
 
             nodes.append (f"        {layerName} = {nodeName} ({inputSize}, {outputSize}, rt::ActivationFunction::{activationFn}, {layerName}W, {layerName}U, {layerName}B);")
 
@@ -195,7 +201,7 @@ def parseLayer (inputSize, layer):
             parseInitialiser (f"{layerName}W", layer["weights"][0])
             parseInitialiser (f"{layerName}U", layer["weights"][1])
             parseInitialiser (f"{layerName}B", layer["weights"][2])
-            activationFn = layer["activation"]
+            activationFn = parseActivationFn (layer)
             nodes.append (f"        {layerName} = {nodeName} ({inputSize}, {outputSize}, rt::ActivationFunction::{activationFn}, {layerName}W, {layerName}U, {layerName}B);")
 
         case "conv2d":
@@ -307,7 +313,7 @@ def usage():
   Options:
     -h                   Display this help
     --model <file>       Specifies the RTNeural model file to convert
-    --patchDir <folder>  Specifies a folder into which the generated patch will be written
+    --outputDir <folder> Specifies a folder into which the generated patch will be written
     --name <name>        Optional name for the model - defaults to "Model"
     --useFloat64         By default we use float32, but this changes the generated model to float64
 
