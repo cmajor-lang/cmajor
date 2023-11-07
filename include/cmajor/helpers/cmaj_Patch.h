@@ -1040,6 +1040,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             AudioMIDIPerformer::Builder performerBuilder (engine);
             scanEndpointList (engine);
             checkForStopSignal();
+            sampleRate = playbackParams.sampleRate;
             connectPerformerEndpoints (playbackParams, performerBuilder);
             checkForStopSignal();
 
@@ -1049,7 +1050,6 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             if (! engine.link (errors, c.get()))
                 return;
 
-            sampleRate = playbackParams.sampleRate;
             lastBuildLog = engine.getLastBuildLog();
 
             if (performerBuilder.setEventOutputHandler ([this] { outputEventsReady(); }))
