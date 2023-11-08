@@ -136,7 +136,107 @@ void f (XX& x) {}
 
 ## `## runScript()`
 
-TODO
+This method compiles and runs a block of code, and checks that the processor outputs match stored 'golden data' files. The result of the test is succesful if the outputs match the golden data files. Output events and values are stored in json files, whilst output streams are stored as .wav files.
+
+Additional files contain input data for the processor, again, json files for events and values, and .wav files for input streams.
+
+### runScript options
+
+| Options | mandatory? | Description |
+| - | - | - |
+| frequency | Y | The sample rate for the session |
+| samplesToRender | Y | How many frames to render |
+| blockSize | Y | Specifies the maximum block size for the render |
+| subDir | N | Specifies a relative subdirectory where the golden data is located |
+| patch | N | Specifies a relative path to a patch to use for the test. This allows testing to be performed on a patch rather on a processor specified within the test file |
+| mainProcessor | N | When specifying a patch, this allows the main processor to be overridden, allowing testing of components within the patch |
+
+### input event file format
+
+For each processor event input endpoint, a corresponding file named after the endpoint with a .json extension is expected to be found in the golden data directory. For example, if the processor is:
+
+```C++
+processor Test [[ main ]]
+{
+    input event float in;
+    input value float valueIn;
+    output event float out;
+}
+```
+
+The golden data directory is expected to contain a file `in.json` which will contain the input events to be supplied to the input endpoint.
+
+The json file will contain an array of objects, and each object will contain a `frameOffset` and `event` attribute. The `frameOffset` specifies which frame number the event should be sent, whilst the `event` attribute contains the value to be sent. For example, the above `in.json` could contain:
+
+```
+[
+    {
+        "frameOffset" : 10,
+        "event" : 1.0
+    },
+    {
+        "frameOffset" : 100,
+        "event" : 5.0
+    }
+]
+```
+
+Indicating that at frame 10, the processor will receive an input float of `1.0` and at frame 100, it will receive `5.0`
+
+The array of frameOffsets must be monotonically increasing
+
+### input value file format
+
+Similar to input events, input value endpoints will appear in a similarly named `.json` file. The format is similar, containing an array of objects, which have a `frameOffset` field indicating when the value is to be submitted. For values, the object has a `value` attribute specifying the value to be sent, but in addition, a `framesToReachValue` attribute which specifies the number of frames the value is smoothed over.
+
+In the above example, we could have a `valueIn.json` file containing:
+
+```
+[
+    {
+        "frameOffset": 100,
+        "value": 0.4,
+        "framesToReachValue": 100
+    },
+    {
+        "frameOffset": 150,
+        "value": 1.0,
+        "framesToReachValue": 10
+    }
+]
+```
+
+This example specifies that at frame 100, the value starts ramping towards 0.4, with a ramp time of 100 frames. The value will smoothly increase linearly between frame 100 and 200 towards 0.4.
+
+### input stream file format
+
+For input streams, a `.wav` file is used, with the total length corresponding to the test frame count, and with the channel count corresponding to the vector size.
+
+### output file formats
+
+Output golden data files will be created automatically on first run - if the files do not exist, the outputs are assumed to be correct and are persisted in the output directory for future comparisons. The output files are prefixed with `expectedOutput-`
+
+If we consider the test below:
+
+```C++
+
+## runScript ({ frequency:1000, blockSize:32, samplesToRender:1000, subDir:"gain"})
+
+processor Gain [[ main ]]
+{
+    input stream float<2> in;
+    input value float gain;
+    output stream float<2> out;
+}
+```
+
+We would expect there to be:
+
+1) A stereo wav file `gain/in.wav` containing 1000 samples of data
+2) A `gain/gain.json` file containing an array of value objects specifying the values for the gain endpoint.
+3) A stereo wav file `gain/expectedOutput-out.wav` which will contain 1000 samples.
+
+The output
 
 ## `## testPatch()`
 
