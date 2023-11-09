@@ -150,6 +150,7 @@ Additional files contain input data for the processor, again, json files for eve
 | subDir | N | Specifies a relative subdirectory where the golden data is located |
 | patch | N | Specifies a relative path to a patch to use for the test. This allows testing to be performed on a patch rather on a processor specified within the test file |
 | mainProcessor | N | When specifying a patch, this allows the main processor to be overridden, allowing testing of components within the patch |
+| maxDiffDb | N | Specifies the maximum difference in stream value which is acceptable. Defaults to -100db |
 
 ### input event file format
 
@@ -183,7 +184,7 @@ The json file will contain an array of objects, and each object will contain a `
 
 Indicating that at frame 10, the processor will receive an input float of `1.0` and at frame 100, it will receive `5.0`
 
-The array of frameOffsets must be monotonically increasing
+The array of frameOffsets must be monotonically increasing.
 
 ### input value file format
 
@@ -233,10 +234,20 @@ processor Gain [[ main ]]
 We would expect there to be:
 
 1) A stereo wav file `gain/in.wav` containing 1000 samples of data
+
 2) A `gain/gain.json` file containing an array of value objects specifying the values for the gain endpoint.
+
 3) A stereo wav file `gain/expectedOutput-out.wav` which will contain 1000 samples.
 
-The output
+
+### stream output comparison
+
+It is expected that on different architectures, and with different optimisation levels, that the output streams may not match exactly across runs. This is due to differences is code generation (such as fused multiply add) used by the runtime on different processor and optimisation combinations. Because of this, we do not expect output streams to exactly match the golden data.
+
+To solve this, the comparison with output stream values and the golden data uses the following algorithm. The maximum frame difference is calculcated across the output frames, and the largest absolute expected frame value is calculated.
+
+The db of the max difference relative to the largest absolute value is calculated, and this value is used to define how accurate the output is compared to the expected output. By default, the maximum accepted error is -100db, and this can be overridden by specifying the `maxDiffDb` value
+
 
 ## `## testPatch()`
 
