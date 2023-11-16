@@ -457,13 +457,14 @@ struct Patch::ClientEventQueue
         auto eventNameChars = eventName.data();
         auto eventNameLen = static_cast<uint32_t> (eventName.length());
 
-        fifo.push (4 + numChannels * sizeof (float) * 2 + eventNameLen, [&] (void* dest)
+        fifo.push (5 + numChannels * sizeof (float) * 2 + eventNameLen, [&] (void* dest)
         {
             auto d = static_cast<char*> (dest);
             *d++ = static_cast<char> (EventType::audioMinMaxLevels);
             choc::memory::writeNativeEndian<uint16_t> (d, view.viewID);
             d += sizeof (uint16_t);
-            *d++ = static_cast<char> (numChannels);
+            choc::memory::writeNativeEndian<uint16_t> (d, static_cast<uint16_t> (numChannels));
+            d += sizeof (uint16_t);
 
             for (uint32_t chan = 0; chan < numChannels; ++chan)
             {
@@ -486,7 +487,9 @@ struct Patch::ClientEventQueue
         if (auto view = patch.findViewForID (viewID))
         {
             d += sizeof (uint16_t);
-            auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
+            auto numChannels = choc::memory::readNativeEndian<uint16_t> (d);
+            d += sizeof (uint16_t);
+
             choc::SmallVector<float, 8> mins, maxs;
 
             for (uint32_t chan = 0; chan < numChannels; ++chan)
