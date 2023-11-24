@@ -380,14 +380,29 @@ The value should be the path to a javascript file that will be executed. This sc
 
 # Exporting patches
 
-### Building a native VST or AudioUnit from a patch
+### Building a native CLAP from a patch
+
+The `cmaj` tool supports code-generation of a [CLAP](https://github.com/free-audio/clap) C++ project from a Cmajor patch. The project created is a pure static C++ project that doesn't perform any JIT compilation when it runs.
+
+To use this feature, run the command line app in `generate` mode, e.g.
+
+```
+% cmaj generate --target=clap
+                --output=[path to a target folder for the project]
+                --clapIncludePath=[path to your CLAP include folder]
+                MyAmazingPatch.cmajorpatch
+```
+
+It will create a folder containing some source files and a cmake project.
+
+### Building a native JUCE VST or AudioUnit from a patch
 
 The `cmaj` tool supports code-generation of a JUCE C++ project that can be used to natively compile a VST/AudioUnit/AAX plugin for a patch. The resulting code doesn't do any JIT compilation, it simply translates the Cmajor code to pure C++ so that it can be built statically.
 
 To use this feature, run the command line app in `generate` mode, e.g.
 
 ```
-% cmaj generate --target=plugin
+% cmaj generate --target=juce
                 --output=[path to a target folder for the project]
                 --jucePath=[path to your JUCE folder]
                 MyAmazingPatch.cmajorpatch
