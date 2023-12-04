@@ -424,6 +424,18 @@ bool testVectorCast2()  { var x = int<3> (1, 2, 4); let v = float<3> (x); return
 
 bool testImplicitCast() { let i = 1; float f; f = i; return true; }
 
+bool testImplicitCastToRef2 (float<2>[8]& b)
+{
+    b = ();
+    return true;
+}
+
+bool testImplicitCastToRef()
+{
+    float<2>[8] b;
+    return testImplicitCastToRef2 (b);
+}
+
 ## testProcessor()
 
 processor test
