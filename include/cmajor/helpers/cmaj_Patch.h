@@ -693,23 +693,28 @@ struct Patch::PatchWorker  : public PatchView
 
             if (! worker.empty())
             {
+                runWorkerCallback = [this] (const std::string& code) { runWorker (code); };
+                runCodeCallback   = [this] (const std::string& code) { runCode (code); };
                 running = true;
-                startupCallback = [this, worker] { runWorker (worker); };
-                choc::messageloop::postMessage ([f = startupCallback] { f(); });
+                choc::messageloop::postMessage ([f = runWorkerCallback, worker = std::move (worker)] { f (worker); });
             }
         }
     }
 
     ~PatchWorker() override
     {
-        startupCallback.reset();
+        runWorkerCallback.reset();
+        runCodeCallback.reset();
         context = {};
     }
 
     void sendMessage (const choc::value::ValueView& msg) override
     {
         if (running)
-            context.evaluate ("currentView?.deliverMessageFromServer(" + choc::json::toString (msg, true) + ");");
+        {
+            auto code = "currentView?.deliverMessageFromServer(" + choc::json::toString (msg, true) + ");";
+            choc::messageloop::postMessage ([f = runCodeCallback, code = std::move (code)] { f (code); });
+        }
     }
 
     void runWorker (const std::string& script)
@@ -737,6 +742,18 @@ struct Patch::PatchWorker  : public PatchView
 
             context.evaluate (getGlueCode(), std::addressof (resolveModule));
             context.evaluate (script, std::addressof (resolveModule));
+        }
+        catch (const std::exception& e)
+        {
+            patch.setErrorStatus (std::string ("Error in patch worker script: ") + e.what(), manifest.patchWorker, {}, true);
+        }
+    }
+
+    void runCode (const std::string& code)
+    {
+        try
+        {
+            context.evaluate (code);
         }
         catch (const std::exception& e)
         {
@@ -808,7 +825,7 @@ globalThis.createPatchConnection = function()
 
     PatchManifest& manifest;
     choc::javascript::Context context;
-    choc::threading::ThreadSafeFunctor<std::function<void()>> startupCallback;
+    choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> runWorkerCallback, runCodeCallback;
 
 private:
     bool running = false;
