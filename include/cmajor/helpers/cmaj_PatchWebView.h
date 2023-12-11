@@ -300,8 +300,9 @@ inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const
                            toMimeType (".html"));
     }
 
-    if (auto content = readJavascriptResource (path, patch.getManifest()); ! content.empty())
-        return toResource (content, toMimeType (relativePath.extension().string()));
+    if (auto content = readJavascriptResource (path, patch.getManifest()))
+        if (! content->empty())
+            return toResource (*content, toMimeType (relativePath.extension().string()));
 
     return {};
 }

@@ -517,7 +517,7 @@ private:
             {
                 juce::ValueTree value (ids.VALUE);
                 value.setProperty (ids.key,   juce::String (v.first.data(),  v.first.length()), nullptr);
-                value.setProperty (ids.value, juce::String (v.second.data(), v.second.length()), nullptr);
+                value.setProperty (ids.value, juce::String (choc::json::toString (v.second)), nullptr);
                 stateValues.appendChild (value, nullptr);
             }
 
@@ -616,8 +616,8 @@ private:
                     {
                         if (auto value = v.getPropertyPointer (ids.value))
                         {
-                            if (key->isString() && value->isString() && key->toString().isNotEmpty())
-                                patch->setStoredStateValue (key->toString().toStdString(), value->toString().toStdString());
+                            if (key->isString() && key->toString().isNotEmpty() && ! value->isVoid())
+                                patch->setStoredStateValue (key->toString().toStdString(), choc::json::parse (value->toString().toStdString()));
                         }
                     }
                 }

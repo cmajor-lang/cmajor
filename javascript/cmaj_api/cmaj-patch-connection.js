@@ -68,7 +68,7 @@ export class PatchConnection  extends EventListenerList
     /// To attach a listener to receive these events, use addStoredStateValueListener().
     requestStoredStateValue (key)                     { this.sendMessageToServer ({ type: "req_state_value", key: key }); }
     /// Modifies a key-value pair in the patch's stored state.
-    sendStoredStateValue (key, newValue)              { this.sendMessageToServer ({ type: "send_state_value", key : key, value: newValue }); }
+    sendStoredStateValue (key, newValue)              { this.sendMessageToServer ({ type: "send_state_value", key: key, value: newValue }); }
 
     /// Attaches a listener function that will be called when any key-value pair in the stored state is changed.
     /// The listener function will receive a message parameter with properties 'key' and 'value'.

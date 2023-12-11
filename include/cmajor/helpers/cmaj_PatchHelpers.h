@@ -82,7 +82,7 @@ struct PatchManifest
     std::function<std::string(const std::string&)> getFullPathForFile;
     std::function<std::filesystem::file_time_type(const std::string&)> getFileModificationTime;
     std::function<bool(const std::string&)> fileExists;
-    std::string readFileContent (const std::string& name) const;
+    std::optional<std::string> readFileContent (const std::string& name) const;
 
     /// Represents one of the GUI views in the patch
     struct View
@@ -213,7 +213,7 @@ choc::value::Value replaceFilenameStringsWithAudioData (const PatchManifest& man
                                                         const choc::value::ValueView& sourceObject,
                                                         const choc::value::ValueView& annotation);
 
-std::string readJavascriptResource (std::string_view resourcePath, const PatchManifest*);
+std::optional<std::string> readJavascriptResource (std::string_view resourcePath, const PatchManifest*);
 
 //==============================================================================
 struct PatchFileChangeChecker
@@ -378,59 +378,62 @@ inline bool PatchManifest::reload()
     if (createFileReader == nullptr || manifestFile.empty())
         return false;
 
-    manifest = choc::json::parse (readFileContent (manifestFile));
-
-    ID = {};
-    name = {};
-    description = {};
-    category = {};
-    manufacturer = {};
-    version = {};
-    mainProcessor = {};
-    isInstrument = false;
-    sourceFiles.clear();
-    externals = choc::value::Value();
-    views.clear();
-
-    if (manifest.isObject())
+    if (auto content = readFileContent (manifestFile))
     {
-        if (! manifest.hasObjectMember ("CmajorVersion"))
-            throw std::runtime_error ("The manifest must contain a property \"CmajorVersion\"");
+        manifest = choc::json::parse (*content);
 
-        if (auto cmajVersion = manifest["CmajorVersion"].getWithDefault<int64_t> (0);
-            cmajVersion < 1 || cmajVersion > currentPatchCompatibilityVersion)
-            throw std::runtime_error ("Incompatible value for CmajorVersion");
+        ID = {};
+        name = {};
+        description = {};
+        category = {};
+        manufacturer = {};
+        version = {};
+        mainProcessor = {};
+        isInstrument = false;
+        sourceFiles.clear();
+        externals = choc::value::Value();
+        views.clear();
 
-        ID             = manifest["ID"].toString();
-        name           = manifest["name"].toString();
-        description    = manifest["description"].toString();
-        category       = manifest["category"].toString();
-        manufacturer   = manifest["manufacturer"].toString();
-        mainProcessor  = manifest["mainProcessor"].toString();
-        version        = manifest["version"].toString();
-        isInstrument   = manifest["isInstrument"].getWithDefault<bool> (false);
-        externals      = manifest["externals"];
+        if (manifest.isObject())
+        {
+            if (! manifest.hasObjectMember ("CmajorVersion"))
+                throw std::runtime_error ("The manifest must contain a property \"CmajorVersion\"");
 
-        if (ID.length() < 4)
-            throw std::runtime_error ("The manifest must contain a valid and globally unique \"ID\" property");
+            if (auto cmajVersion = manifest["CmajorVersion"].getWithDefault<int64_t> (0);
+                cmajVersion < 1 || cmajVersion > currentPatchCompatibilityVersion)
+                throw std::runtime_error ("Incompatible value for CmajorVersion");
 
-        if (name.length() > 128 || name.empty())
-            throw std::runtime_error ("The manifest must contain a valid \"name\" property");
+            ID             = manifest["ID"].toString();
+            name           = manifest["name"].toString();
+            description    = manifest["description"].toString();
+            category       = manifest["category"].toString();
+            manufacturer   = manifest["manufacturer"].toString();
+            mainProcessor  = manifest["mainProcessor"].toString();
+            version        = manifest["version"].toString();
+            isInstrument   = manifest["isInstrument"].getWithDefault<bool> (false);
+            externals      = manifest["externals"];
 
-        if (version.length() > 24 || version.empty())
-            throw std::runtime_error ("The manifest must contain a valid \"version\" property");
+            if (ID.length() < 4)
+                throw std::runtime_error ("The manifest must contain a valid and globally unique \"ID\" property");
 
-        addSource (manifest["source"]);
-        addView (manifest["view"]);
-        addWorker (manifest["worker"]);
+            if (name.length() > 128 || name.empty())
+                throw std::runtime_error ("The manifest must contain a valid \"name\" property");
 
-        return true;
+            if (version.length() > 24 || version.empty())
+                throw std::runtime_error ("The manifest must contain a valid \"version\" property");
+
+            addSource (manifest["source"]);
+            addView (manifest["view"]);
+            addWorker (manifest["worker"]);
+
+            return true;
+        }
     }
 
     throw std::runtime_error ("The patch file did not contain a valid JSON object");
 }
 
-inline std::string PatchManifest::readFileContent (const std::string& file) const
+inline std::optional<std::string> PatchManifest::readFileContent (const std::string& file) const
 {
     if (auto stream = createFileReader (file))
     {
@@ -558,16 +561,17 @@ inline std::function<choc::value::Value(const cmaj::ExternalVariable&)> PatchMan
 }
 
 //==============================================================================
-inline std::string readJavascriptResource (std::string_view path, const PatchManifest* manifest)
+inline std::optional<std::string> readJavascriptResource (std::string_view path, const PatchManifest* manifest)
 {
     auto pathToFind = std::filesystem::path (path).relative_path().generic_string();
 
     if (manifest != nullptr)
-        if (auto content = manifest->readFileContent (pathToFind); ! content.empty())
+        if (auto content = manifest->readFileContent (pathToFind))
             return content;
 
     if (choc::text::startsWith (pathToFind, "cmaj_api/"))
-        return std::string (EmbeddedWebAssets::findResource (pathToFind.substr (std::string_view ("cmaj_api/").length())));
+        if (auto content = EmbeddedWebAssets::findResource (pathToFind.substr (std::string_view ("cmaj_api/").length())); ! content.empty())
+            return std::string (content);
 
     return {};
 }

@@ -120,7 +120,7 @@ R"(
     /// To attach a listener to receive these events, use addStoredStateValueListener().
     requestStoredStateValue (key)                     { this.sendMessageToServer ({ type: "req_state_value", key: key }); }
     /// Modifies a key-value pair in the patch's stored state.
-    sendStoredStateValue (key, newValue)              { this.sendMessageToServer ({ type: "send_state_value", key : key, value: newValue }); }
+    sendStoredStateValue (key, newValue)              { this.sendMessageToServer ({ type: "send_state_value", key: key, value: newValue }); }
 
     /// Attaches a listener function that will be called when any key-value pair in the stored state is changed.
     /// The listener function will receive a message parameter with properties 'key' and 'value'.
@@ -1972,7 +1972,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 10409) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 10408) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 25555) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2585) },

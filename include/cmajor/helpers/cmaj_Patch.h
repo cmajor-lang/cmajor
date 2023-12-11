@@ -177,12 +177,12 @@ struct Patch
     /// Can be called before process() to update the playhead time
     void sendPosition (int64_t currentFrame, double ppq, double ppqBar);
 
-    /// Sets a persistent string that should be saved and restored for this
+    /// Sets a persistent value that should be saved and restored for this
     /// patch by the host.
-    void setStoredStateValue (const std::string& key, std::string newValue);
+    void setStoredStateValue (const std::string& key, const choc::value::ValueView& newValue);
 
     /// Iterates any persistent state values that have been stored
-    const std::unordered_map<std::string, std::string>& getStoredStateValues() const;
+    const std::unordered_map<std::string, choc::value::Value>& getStoredStateValues() const;
 
     /// Returns an object containing the full state representing this patch,
     /// which includes both parameter values and custom stored values
@@ -297,7 +297,7 @@ private:
     std::unordered_map<std::string, CustomAudioSourcePtr> customAudioInputSources;
     std::unique_ptr<PatchFileChangeChecker> fileChangeChecker;
     std::vector<PatchView*> activeViews;
-    std::unordered_map<std::string, std::string> storedState;
+    std::unordered_map<std::string, choc::value::Value> storedState;
 
     struct ClientEventQueue;
     std::unique_ptr<ClientEventQueue> clientEventQueue;
@@ -689,14 +689,15 @@ struct Patch::PatchWorker  : public PatchView
     {
         if (! manifest.patchWorker.empty())
         {
-            auto worker = manifest.readFileContent (manifest.patchWorker);
-
-            if (! worker.empty())
+            if (auto worker = manifest.readFileContent (manifest.patchWorker))
             {
-                runWorkerCallback = [this] (const std::string& code) { runWorker (code); };
-                runCodeCallback   = [this] (const std::string& code) { runCode (code); };
-                running = true;
-                choc::messageloop::postMessage ([f = runWorkerCallback, worker = std::move (worker)] { f (worker); });
+                if (! worker->empty())
+                {
+                    runWorkerCallback = [this] (const std::string& code) { runWorker (code); };
+                    runCodeCallback   = [this] (const std::string& code) { runCode (code); };
+                    running = true;
+                    choc::messageloop::postMessage ([f = runWorkerCallback, worker = std::move (*worker)] { f (worker); });
+                }
             }
         }
     }
@@ -727,7 +728,7 @@ struct Patch::PatchWorker  : public PatchView
             registerConsoleFunctions (context);
             registerLibraryFunctions();
 
-            choc::javascript::Context::ReadModuleContentFn resolveModule = [this] (std::string_view path) -> std::string
+            choc::javascript::Context::ReadModuleContentFn resolveModule = [this] (std::string_view path) -> std::optional<std::string>
             {
                 return readJavascriptResource (path, std::addressof (manifest));
             };
@@ -768,7 +769,8 @@ struct Patch::PatchWorker  : public PatchView
             try
             {
                 if (auto path = args.get<std::string>(0); ! path.empty())
-                    return choc::value::Value (manifest.readFileContent (path));
+                    if (auto content = manifest.readFileContent (path))
+                        return choc::value::Value (*content);
             }
             catch (...)
             {}
@@ -1101,17 +1103,16 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             {
                 checkForStopSignal();
 
-                auto content = manifest.readFileContent (file);
-
-                if (content.empty()
-                    && manifest.getFileModificationTime (file) == std::filesystem::file_time_type())
+                if (auto content = manifest.readFileContent (file))
+                {
+                    if (! program.parse (errors, manifest.getFullPathForFile (file), std::move (*content)))
+                        return false;
+                }
+                else
                 {
                     errors.add (cmaj::DiagnosticMessage::createError ("Could not open source file: " + file, {}));
                     return false;
                 }
-
-                if (! program.parse (errors, manifest.getFullPathForFile (file), std::move (content)))
-                    return false;
             }
         }
 
@@ -2214,18 +2215,18 @@ inline void Patch::sendPatchStatusChangeToViews() const
     }
 }
 
-inline const std::unordered_map<std::string, std::string>& Patch::getStoredStateValues() const
+inline const std::unordered_map<std::string, choc::value::Value>& Patch::getStoredStateValues() const
 {
     return storedState;
 }
 
-inline void Patch::setStoredStateValue (const std::string& key, std::string newValue)
+inline void Patch::setStoredStateValue (const std::string& key, const choc::value::ValueView& newValue)
 {
     auto& v = storedState[key];
 
     if (v != newValue)
     {
-        if (newValue.empty())
+        if (newValue.isVoid())
             storedState.erase (key);
         else
             v = std::move (newValue);
@@ -2300,7 +2301,7 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
         for (uint32_t i = 0; i < values.size(); ++i)
         {
             auto member = values.getObjectMemberAt (i);
-            setStoredStateValue (member.name, member.value.toString());
+            setStoredStateValue (member.name, member.value);
             storedValuesToRemove.erase (member.name);
         }
     }
@@ -2541,7 +2542,7 @@ inline bool Patch::handleClientMessage (PatchView& sourceView, const choc::value
 
         if (type == "send_state_value")
         {
-            setStoredStateValue (msg["key"].toString(), msg["value"].toString());
+            setStoredStateValue (msg["key"].toString(), msg["value"]);
             return true;
         }
 
