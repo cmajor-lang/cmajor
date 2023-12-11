@@ -2329,10 +2329,14 @@ inline void Patch::sendCPUInfoToViews (float level) const
 inline void Patch::sendStoredStateValueToViews (const std::string& key) const
 {
     if (! key.empty())
-        if (auto found = storedState.find (key); found != storedState.end())
-            broadcastMessageToViews ("state_key_value",
-                                     choc::json::create ("key", key,
-                                                         "value", found->second));
+    {
+        auto found = storedState.find (key);
+        auto value = found != storedState.end() ? found->second : choc::value::Value();
+
+        broadcastMessageToViews ("state_key_value",
+                                 choc::json::create ("key", key,
+                                                     "value", value));
+    }
 }
 
 inline void Patch::sendPatchChange()
