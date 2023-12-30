@@ -269,10 +269,12 @@ private:
 
         CoercedData getCoercedArray (const choc::value::ValueView& source)
         {
-            if (source.getType().getElementType() == type)
-                return { source.getRawData(), static_cast<uint32_t> (source.getType().getValueDataSize()) };
+            const auto& sourceType = source.getType();
 
-            auto sourceSize = source.getType().getNumElements();
+            if (sourceType.isUniformArray() && sourceType.getElementType() == type)
+                return { source.getRawData(), static_cast<uint32_t> (sourceType.getValueDataSize()) };
+
+            auto sourceSize = sourceType.getNumElements();
 
             if (sourceSize <= maxArraySize)
                 if (coerceChocValue (scratchView, source))
