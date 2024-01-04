@@ -21,7 +21,7 @@ While a patch is running, re-saving any of the patch source files should automat
 
 This command will prompt you to select the name of a new `.cmajorpatch` file. It will then create a template patch and some simple placeholder code as a way of getting started. You can run it with the `Cmajor: Run patch` command, and use it as a starting point to build upon.
 
-#### `Cmajor: Find example patches`
+#### `Cmajor: View some example patches`
 
 This command will take you to the Cmajor repository where you can find our example patches. You can either clone the [whole repository](https://github.com/SoundStacks/cmajor) from github, or just download specific examples from the [examples](https://github.com/SoundStacks/cmajor/tree/main/examples/patches) folder.
 
