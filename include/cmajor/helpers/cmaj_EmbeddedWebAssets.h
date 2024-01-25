@@ -44,7 +44,6 @@ struct EmbeddedWebAssets
         return {};
     }
 
-private:
     struct File { std::string_view name, content; };
 
     static constexpr const char* cmajpatchconnection_js =
