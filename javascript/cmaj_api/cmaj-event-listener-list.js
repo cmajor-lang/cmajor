@@ -10,8 +10,9 @@
 //  //                                           888P"
 
 
-/// This event listener management class allows listeners to be attached and
-/// removed from named event types.
+/** This event listener management class allows listeners to be attached and
+ *  removed from named event types.
+ */
 export class EventListenerList
 {
     constructor()
@@ -19,10 +20,13 @@ export class EventListenerList
         this.listenersPerType = {};
     }
 
-    /// Adds a listener for a specifc event type.
-    /// If the listener is already registered, this will simply add it again.
-    /// Each call to addEventListener() must be paired with a removeventListener()
-    /// call to remove it.
+    /** Adds a listener for a specifc event type.
+     *  If the listener is already registered, this will simply add it again.
+     *  Each call to addEventListener() must be paired with a removeventListener()
+     *  call to remove it.
+     *
+     *  @param {string} type
+     */
     addEventListener (type, listener)
     {
         if (type && listener)
@@ -36,7 +40,9 @@ export class EventListenerList
         }
     }
 
-    /// Removes a listener that was previously added to the given event.
+    /** Removes a listener that was previously added for the given event type.
+     *  @param {string} type
+     */
     removeEventListener (type, listener)
     {
         if (type && listener)
@@ -53,8 +59,11 @@ export class EventListenerList
         }
     }
 
-    /// Attaches a callback function that will be automatically unregistered
-    /// the first time it is invoked.
+    /** Attaches a callback function that will be automatically unregistered
+     *  the first time it is invoked.
+     *
+     *  @param {string} type
+     */
     addSingleUseListener (type, listener)
     {
         const l = message =>
@@ -66,8 +75,11 @@ export class EventListenerList
         this.addEventListener (type, l);
     }
 
-    /// Synchronously dispatches an event object to all listeners
-    /// that are registered for the given type.
+    /** Synchronously dispatches an event object to all listeners
+     *  that are registered for the given type.
+     *
+     *  @param {string} type
+     */
     dispatchEvent (type, event)
     {
         const list = this.listenersPerType[type];
@@ -77,8 +89,11 @@ export class EventListenerList
                 listener?.(event);
     }
 
-    /// Returns the number of listeners that are currently registered
-    /// for the given type of event.
+    /** Returns the number of listeners that are currently registered
+     *  for the given type of event.
+     *
+     *  @param {string} type
+     */
     getNumListenersForType (type)
     {
         const list = this.listenersPerType[type];

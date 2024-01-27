@@ -10,7 +10,8 @@
 //  //                                           888P"
 
 
-/// Returns a list of types of view that can be created for this patch
+/** Returns a list of types of view that can be created for this patch.
+ */
 export function getAvailableViewTypes (patchConnection)
 {
     if (! patchConnection)
@@ -22,11 +23,17 @@ export function getAvailableViewTypes (patchConnection)
     return ["generic"];
 }
 
-/// Creates and returns a HTMLElement view which can be shown to control this patch.
-///
-/// If no preferredType argument is supplied, this will return either a custom patch-specific
-/// view (if the manifest specifies one), or a generic view if not. The preferredType argument
-/// can be used to choose one of the types of view returned by getAvailableViewTypes().
+/** Creates and returns a HTMLElement view which can be shown to control this patch.
+ *
+ *  If no preferredType argument is supplied, this will return either a custom patch-specific
+ *  view (if the manifest specifies one), or a generic view if not. The preferredType argument
+ *  can be used to choose one of the types of view returned by getAvailableViewTypes().
+ *
+ *  @param {PatchConnection} patchConnection - the connection to use
+ *  @param {string} preferredType - the name of the type of view to open, e.g. "generic"
+ *                                  or the name of one of the views in the manifest
+ *  @returns {HTMLElement} a HTMLElement that can be displayed as the patch GUI
+ */
 export async function createPatchView (patchConnection, preferredType)
 {
     if (patchConnection?.manifest)
@@ -60,4 +67,48 @@ export async function createPatchView (patchConnection, preferredType)
     }
 
     return undefined;
+}
+
+/** If a patch view declares itself to be scalable, this will attempt to scale it to fit
+ *  into a given parent element.
+ *
+ *  @param {HTMLElement} view - the patch view
+ *  @param {HTMLElement} parentToScale - the patch view's direct parent element, to which
+ *                                       the scale factor will be applied
+ *  @param {HTMLElement} parentContainerToFitTo - an outer parent of the view, whose bounds
+ *                                                the view will be made to fit
+ */
+export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo)
+{
+    function getClientSize (view)
+    {
+        const clientStyle = getComputedStyle (view);
+
+        return {
+            width:  view.clientHeight - parseFloat (clientStyle.paddingTop)  - parseFloat (clientStyle.paddingBottom),
+            height: view.clientWidth  - parseFloat (clientStyle.paddingLeft) - parseFloat (clientStyle.paddingRight)
+        };
+    }
+
+    const scaleLimits = view.getScaleFactorLimits?.();
+
+    if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
+    {
+        const minScale = scaleLimits.minScale || 0.25;
+        const maxScale = scaleLimits.maxScale || 5.0;
+
+        const targetSize = getClientSize (parentContainerToFitTo);
+        const clientSize = getClientSize (view);
+
+        const scaleW = targetSize.width / clientSize.width;
+        const scaleH = targetSize.height / clientSize.height;
+
+        const scale = Math.min (maxScale, Math.max (minScale, Math.min (scaleW, scaleH)));
+
+        parentToScale.style.transform = `scale(${scale})`;
+    }
+    else
+    {
+        parentToScale.style.transform = "none";
+    }
 }

@@ -171,7 +171,12 @@ static constexpr auto cmajor_patch_gui_html = R"(
 <script type="module">
 
 import { PatchConnection } from "/cmaj_api/cmaj-patch-connection.js"
-import { createPatchView } from "/cmaj_api/cmaj-patch-view.js"
+import { createPatchView, scalePatchViewToFit } from "/cmaj_api/cmaj-patch-view.js"
+
+//==============================================================================
+const patchManifest = $MANIFEST$;
+
+const viewInfo = $VIEW_TO_USE$;
 
 //==============================================================================
 class EmbeddedPatchConnection  extends PatchConnection
@@ -179,7 +184,7 @@ class EmbeddedPatchConnection  extends PatchConnection
     constructor()
     {
         super();
-        this.manifest = MANIFEST;
+        this.manifest = patchManifest;
         window.cmaj_deliverMessageFromServer = msg => this.deliverMessageFromServer (msg);
     }
 
@@ -198,63 +203,18 @@ class EmbeddedPatchConnection  extends PatchConnection
 const outer = document.getElementById ("cmaj-outer-container");
 const inner = document.getElementById ("cmaj-inner-container");
 
-let currentView = null;
-let defaultViewWidth = 0, defaultViewHeight = 0;
+const patchConnection = new EmbeddedPatchConnection();
+const currentView = await createPatchView (patchConnection, viewInfo);
 
-async function createView()
+if (currentView)
 {
-    const view = VIEW_TYPE;
-    defaultViewWidth = view?.width || 600;
-    defaultViewHeight = view?.height || 400;
+    inner.appendChild (currentView);
 
-    const patchConnection = new EmbeddedPatchConnection();
-    currentView = await createPatchView (patchConnection, view);
+    const resizeObserver = new ResizeObserver (() => scalePatchViewToFit (currentView, inner, outer));
+    resizeObserver.observe (document.body);
 
-    if (currentView)
-        inner.appendChild (currentView);
+    scalePatchViewToFit (currentView, inner, outer);
 }
-
-function getScaleToApplyToView (view, originalViewW, originalViewH, parentToFitTo)
-{
-    if (view && parentToFitTo)
-    {
-        const scaleLimits = view.getScaleFactorLimits?.();
-
-        if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
-        {
-            const minScale = scaleLimits.minScale || 0.25;
-            const maxScale = scaleLimits.maxScale || 5.0;
-
-            const parentStyle = getComputedStyle (parentToFitTo);
-            const parentW = parentToFitTo.clientWidth - parseFloat (parentStyle.paddingLeft) - parseFloat (parentStyle.paddingRight);
-            const parentH = parentToFitTo.clientHeight - parseFloat (parentStyle.paddingTop) - parseFloat (parentStyle.paddingBottom);
-
-            const scaleW = parentW / originalViewW;
-            const scaleH = parentH / originalViewH;
-
-            return Math.min (maxScale, Math.max (minScale, Math.min (scaleW, scaleH)));
-        }
-    }
-
-    return undefined;
-}
-
-function updateViewScale()
-{
-    const scale = getScaleToApplyToView (currentView, defaultViewWidth, defaultViewHeight, document.body);
-
-    if (scale)
-        inner.style.transform = `scale(${scale})`;
-    else
-        inner.style.transform = "none";
-}
-
-createView();
-
-const resizeObserver = new ResizeObserver (() => updateViewScale());
-resizeObserver.observe (document.body);
-
-updateViewScale();
 
 </script>
 </html>
@@ -295,8 +255,8 @@ inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const
         }
 
         return toResource (choc::text::replace (cmajor_patch_gui_html,
-                                                "MANIFEST", choc::json::toString (manifestObject),
-                                                "VIEW_TYPE", choc::json::toString (viewToUse.view)),
+                                                "$MANIFEST$", choc::json::toString (manifestObject, true),
+                                                "$VIEW_TO_USE$", choc::json::toString (viewToUse.view, true)),
                            toMimeType (".html"));
     }
 
