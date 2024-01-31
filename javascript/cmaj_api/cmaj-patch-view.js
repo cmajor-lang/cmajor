@@ -9,6 +9,7 @@
 //  //                                             ,88
 //  //                                           888P"
 
+import { PatchConnection } from "./cmaj-patch-connection.js"
 
 /** Returns a list of types of view that can be created for this patch.
  */

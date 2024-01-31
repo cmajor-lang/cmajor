@@ -270,8 +270,13 @@ R"(
 //  //                                             ,88
 //  //                                           888P"
 
+import { PatchConnection } from "./cmaj-patch-connection.js";
+
 
 //==============================================================================
+/** A base class for parameter controls, which automatically connects to a
+ *  PatchConnection to monitor a parameter and provides methods to modify it.
+ */
 export class ParameterControlBase  extends HTMLElement
 {
     constructor()
@@ -282,8 +287,13 @@ export class ParameterControlBase  extends HTMLElement
         this.onmousedown = e => e.stopPropagation();
     }
 
-    /// This can be used to connect the parameter to a given connection and endpoint, or
-    /// to disconnect it if called with undefined arguments
+    /** Attaches the control to a given PatchConnection and endpoint.
+     *
+     * @param {PatchConnection} patchConnection - the connection to connect to, or pass
+     *                                            undefined to disconnect the control.
+     * @param {Object} endpointInfo - the endpoint details, as provided by a PatchConnection
+     *                                in its status callback.
+     */
     setEndpoint (patchConnection, endpointInfo)
     {
         this.detachListener();
@@ -296,24 +306,27 @@ export class ParameterControlBase  extends HTMLElement
             this.attachListener();
     }
 
-    connectedCallback()
-    {
-        this.attachListener();
-    }
-
-    disconnectedCallback()
-    {
-        this.detachListener();
-    }
-
-    /// Implement this in a child class to be called when the value needs refreshing
-    valueChanged (newValue) {}
-
-    setValue (value)     { this.patchConnection?.sendEventOrValue (this.endpointInfo.endpointID, value); }
-    beginGesture()       { this.patchConnection?.sendParameterGestureStart (this.endpointInfo.endpointID); }
-    endGesture()         { this.patchConnection?.sendParameterGestureEnd (this.endpointInfo.endpointID); })"
+    /** Override this method in a child class, and it will be called when the parameter value changes,
+     *  so you can update the GUI appropriately.
+     */
+    valueChanged (newValue) {})"
 R"(
 
+    /** Your GUI can call this when it wants to change the parameter value. */
+    setValue (value)     { this.patchConnection?.sendEventOrValue (this.endpointInfo.endpointID, value); }
+
+    /** Call this before your GUI begins a modification gesture.
+     *  You might for example call this if the user begins a mouse-drag operation.
+     */
+    beginGesture()       { this.patchConnection?.sendParameterGestureStart (this.endpointInfo.endpointID); }
+
+    /** Call this after your GUI finishes a modification gesture */
+    endGesture()         { this.patchConnection?.sendParameterGestureEnd (this.endpointInfo.endpointID); }
+
+    /** This calls setValue(), but sandwiches it between some start/end gesture calls.
+     *  You should use this to make sure a DAW correctly records automatiion for individual value changes
+     *  that are not part of a gesture.
+     */
     setValueAsGesture (value)
     {
         this.beginGesture();
@@ -321,6 +334,7 @@ R"(
         this.endGesture();
     }
 
+    /** Resets the parameter to its default value */
     resetToDefault()
     {
         if (this.defaultValue !== null)
@@ -328,7 +342,19 @@ R"(
     }
 
     //==============================================================================
-    // private methods..
+    /** @private */
+    connectedCallback()
+    {
+        this.attachListener();
+    }
+
+    /** @protected */
+    disconnectedCallback()
+    {
+        this.detachListener();
+    }
+
+    /** @private */
     detachListener()
     {
         if (this.listener)
@@ -338,6 +364,7 @@ R"(
         }
     }
 
+    /** @private */
     attachListener()
     {
         if (this.patchConnection && this.endpointInfo)
@@ -345,7 +372,8 @@ R"(
             this.detachListener();
 
             this.listener = newValue => this.valueChanged (newValue);
-            this.listener.endpointID = this.endpointInfo.endpointID;
+            this.listener.endpointID = this.endpointInfo.endpointID;)"
+R"(
 
             this.patchConnection.addParameterListener (this.endpointInfo.endpointID, this.listener);
             this.patchConnection.requestParameterValue (this.endpointInfo.endpointID);
@@ -354,6 +382,7 @@ R"(
 }
 
 //==============================================================================
+/** A simple rotary parameter knob control. */
 export class Knob  extends ParameterControlBase
 {
     constructor (patchConnection, endpointInfo)
@@ -374,8 +403,7 @@ export class Knob  extends ParameterControlBase
         const createSvgElement = tag => window.document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
         const svg = createSvgElement ("svg");
-        svg.setAttribute ("viewBox", "0 0 100 100");)"
-R"(
+        svg.setAttribute ("viewBox", "0 0 100 100");
 
         const trackBackground = createSvgElement ("path");
         trackBackground.setAttribute ("d", "M20,76 A 40 40 0 1 1 80 76");
@@ -394,7 +422,8 @@ R"(
                                                      : "M20,76 A 40 40 0 1 1 80 76");
         this.trackValue.setAttribute ("stroke-dasharray", dashLength);
         this.trackValue.classList.add ("knob-path");
-        this.trackValue.classList.add ("knob-track-value");
+        this.trackValue.classList.add ("knob-track-value");)"
+R"(
 
         this.dial = document.createElement ("div");
         this.dial.className = "knob-dial";
@@ -420,8 +449,7 @@ R"(
 
         const onMouseMove = (event) =>
         {
-            event.preventDefault(); // avoid scrolling whilst dragging)"
-R"(
+            event.preventDefault(); // avoid scrolling whilst dragging
 
             const nextRotation = (rotation, delta) =>
             {
@@ -437,7 +465,8 @@ R"(
             const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
             this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
             this.setValue (toValue (this.accumulatedRotation));
-        };
+        };)"
+R"(
 
         const onMouseUp = (event) =>
         {
@@ -467,8 +496,7 @@ R"(
             window.addEventListener ("touchmove", onTouchMove);
             window.addEventListener ("touchend", onTouchEnd);
             event.preventDefault();
-        };)"
-R"(
+        };
 
         const onTouchMove = (event) =>
         {
@@ -483,7 +511,8 @@ R"(
                     };
 
                     const movementY = touch.clientY - this.previousClientY;
-                    this.previousClientY = touch.clientY;
+                    this.previousClientY = touch.clientY;)"
+R"(
 
                     const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
                     this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
@@ -506,11 +535,19 @@ R"(
         this.addEventListener ('touchstart', onTouchStart);
     }
 
+    /** Returns true if this type of control is suitable for the given endpoint info */
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter";
     }
 
+    /** @override */
+    valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
+
+    /** Returns a string version of the given value */
+    getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); }
+
+    /** @private */
     setRotation (degrees, force)
     {
         if (force || this.rotation !== degrees)
@@ -519,12 +556,9 @@ R"(
             this.trackValue.setAttribute ("stroke-dashoffset", this.getDashOffset (this.rotation));
             this.dial.style.transform = `translate(-50%,-50%) rotate(${degrees}deg)`;
         }
-    })"
-R"(
+    }
 
-    valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
-    getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); }
-
+    /** @private */
     static getCSS()
     {
         return `
@@ -534,7 +568,8 @@ R"(
 
             --knob-dial-border-color: var(--foreground);
             --knob-dial-background-color: var(--background);
-            --knob-dial-tick-color: var(--foreground);
+            --knob-dial-tick-color: var(--foreground);)"
+R"(
 
             position: relative;
             display: inline-block;
@@ -584,14 +619,14 @@ R"(
 }
 
 //==============================================================================
+/** A boolean switch control */
 export class Switch  extends ParameterControlBase
 {
     constructor (patchConnection, endpointInfo)
     {
         super();
         this.setEndpoint (patchConnection, endpointInfo);
-    })"
-R"(
+    }
 
     setEndpoint (patchConnection, endpointInfo)
     {
@@ -606,19 +641,22 @@ R"(
         this.innerHTML = "";
         this.currentValue = this.defaultValue > 0.5;
         this.valueChanged (this.currentValue);
-        this.classList.add ("switch-container");
+        this.classList.add ("switch-container");)"
+R"(
 
         outer.appendChild (inner);
         this.appendChild (outer);
         this.addEventListener ("click", () => this.setValueAsGesture (this.currentValue ? 0 : 1.0));
     }
 
+    /** Returns true if this type of control is suitable for the given endpoint info */
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter"
                 && endpointInfo.annotation?.boolean;
     }
 
+    /** @override */
     valueChanged (newValue)
     {
         const b = newValue > 0.5;
@@ -627,8 +665,10 @@ R"(
         this.classList.add (b ? "switch-on" : "switch-off");
     }
 
+    /** Returns a string version of the given value */
     getDisplayValue (v)   { return `${v > 0.5 ? "On" : "Off"}`; }
 
+    /** @private */
     static getCSS()
     {
         return `
@@ -691,12 +731,14 @@ R"(
     }
 }
 
+//==============================================================================
 function toFloatDisplayValueWithUnit (v, endpointInfo)
 {
     return `${v.toFixed (2)} ${endpointInfo.annotation?.unit ?? ""}`;
 }
 
 //==============================================================================
+/** A control that allows an item to be selected from a drop-down list of options */
 export class Options  extends ParameterControlBase
 {
     constructor (patchConnection, endpointInfo)
@@ -714,7 +756,7 @@ export class Options  extends ParameterControlBase
 
         const { min, max, options } = (() =>
         {
-            if (hasTextOptions (endpointInfo))
+            if (this.hasTextOptions (endpointInfo))
             {
                 const optionList = endpointInfo.annotation.text.split ("|");
                 const stepCount = toStepCount (optionList.length);
@@ -733,7 +775,7 @@ R"(
                 return { min, max, options };
             }
 
-            if (isExplicitlyDiscrete (endpointInfo))
+            if (this.isExplicitlyDiscrete (endpointInfo))
             {
                 const step = endpointInfo.annotation.step;
 
@@ -793,12 +835,14 @@ R"(
         this.appendChild (icon);
     }
 
+    /** Returns true if this type of control is suitable for the given endpoint info */
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter"
-                && (hasTextOptions (endpointInfo) || isExplicitlyDiscrete (endpointInfo));
+                && (this.hasTextOptions (endpointInfo) || this.isExplicitlyDiscrete (endpointInfo));
     }
 
+    /** @override */
     valueChanged (newValue)
     {
         const index = this.toIndex (newValue);
@@ -806,8 +850,22 @@ R"(
         this.select.selectedIndex = index;
     }
 
+    /** Returns a string version of the given value */
     getDisplayValue (v)    { return this.options[this.toIndex(v)].text; }
 
+    /** @private */
+    static hasTextOptions (endpointInfo)
+    {
+        return endpointInfo.annotation?.text?.split?.("|").length > 1
+    }
+
+    /** @private */
+    static isExplicitlyDiscrete (endpointInfo)
+    {
+        return endpointInfo.annotation?.discrete && endpointInfo.annotation?.step > 0;
+    }
+
+    /** @private */
     static getCSS()
     {
         return `
@@ -828,7 +886,8 @@ R"(
             appearance: none;
             -webkit-appearance: none;
             font-family: inherit;
-            font-size: 0.8rem;
+            font-size: 0.8rem;)"
+R"(
 
             overflow: hidden;
             text-overflow: ellipsis;
@@ -848,8 +907,7 @@ R"(
         select option {
             background: var(--background);
             color: var(--foreground);
-        })"
-R"(
+        }
 
         .select-icon {
             position: absolute;
@@ -867,17 +925,8 @@ R"(
     }
 }
 
-function hasTextOptions (endpointInfo)
-{
-    return endpointInfo.annotation?.text?.split?.("|").length > 1
-}
-
-function isExplicitlyDiscrete (endpointInfo)
-{
-    return endpointInfo.annotation?.discrete && endpointInfo.annotation?.step > 0;
-}
-
 //==============================================================================
+/** A control which wraps a child control, adding a label and value display box below it */
 export class LabelledControlHolder  extends ParameterControlBase
 {
     constructor (patchConnection, endpointInfo, childControl)
@@ -892,7 +941,8 @@ export class LabelledControlHolder  extends ParameterControlBase
         super.setEndpoint (patchConnection, endpointInfo);
 
         this.innerHTML = "";
-        this.className = "labelled-control";
+        this.className = "labelled-control";)"
+R"(
 
         const centeredControl = document.createElement ("div");
         centeredControl.className = "labelled-control-centered-control";
@@ -900,8 +950,7 @@ export class LabelledControlHolder  extends ParameterControlBase
         centeredControl.appendChild (this.childControl);
 
         const titleValueHoverContainer = document.createElement ("div");
-        titleValueHoverContainer.className = "labelled-control-label-container";)"
-R"(
+        titleValueHoverContainer.className = "labelled-control-label-container";
 
         const nameText = document.createElement ("div");
         nameText.classList.add ("labelled-control-name");
@@ -917,11 +966,13 @@ R"(
         this.appendChild (titleValueHoverContainer);
     }
 
+    /** @override */
     valueChanged (newValue)
     {
         this.valueText.innerText = this.childControl?.getDisplayValue (newValue);
     }
 
+    /** @private */
     static getCSS()
     {
         return `
@@ -945,7 +996,8 @@ R"(
 
             width: 5.5rem;
             height: 5rem;
-        }
+        })"
+R"(
 
         .labelled-control-label-container {
             position: relative;
@@ -971,8 +1023,7 @@ R"(
             overflow: hidden;
             text-overflow: ellipsis;
             opacity: 0;
-        })"
-R"(
+        }
 
         .labelled-control:hover .labelled-control-name,
         .labelled-control:active .labelled-control-name {
@@ -991,6 +1042,7 @@ window.customElements.define ("cmaj-options-control", Options);
 window.customElements.define ("cmaj-labelled-control-holder", LabelledControlHolder);
 
 //==============================================================================
+/** Fetches all the CSS for the controls defined in this module */
 export function getAllCSS()
 {
     return `
@@ -998,9 +1050,16 @@ export function getAllCSS()
         ${Knob.getCSS()}
         ${Switch.getCSS()}
         ${LabelledControlHolder.getCSS()}`;
-}
+})"
+R"(
 
 //==============================================================================
+/** Creates a suitable control for the given endpoint.
+ *
+ *  @param {PatchConnection} patchConnection - the connection to connect to
+ *  @param {Object} endpointInfo - the endpoint details, as provided by a PatchConnection
+ *                                 in its status callback.
+*/
 export function createControl (patchConnection, endpointInfo)
 {
     if (Switch.canBeUsedFor (endpointInfo))
@@ -1016,6 +1075,12 @@ export function createControl (patchConnection, endpointInfo)
 }
 
 //==============================================================================
+/** Creates a suitable labelled control for the given endpoint.
+ *
+ *  @param {PatchConnection} patchConnection - the connection to connect to
+ *  @param {Object} endpointInfo - the endpoint details, as provided by a PatchConnection
+ *                                 in its status callback.
+*/
 export function createLabelledControl (patchConnection, endpointInfo)
 {
     const control = createControl (patchConnection, endpointInfo);
@@ -1028,8 +1093,13 @@ export function createLabelledControl (patchConnection, endpointInfo)
 R"(
 
 //==============================================================================
-/// Takes a patch connection and its current status object, and tries to create
-/// a control for the given endpoint ID.
+/** Takes a patch connection and its current status object, and tries to create
+ *  a control for the given endpoint ID.
+ *
+ *  @param {PatchConnection} patchConnection - the connection to connect to
+ *  @param {Object} status - the connection's current status
+ *  @param {string} endpointID - the endpoint you'd like to control
+ */
 export function createLabelledControlForEndpointID (patchConnection, status, endpointID)
 {
     for (const endpointInfo of status?.details?.inputs)
@@ -1335,21 +1405,26 @@ R"(
 //  //                                             ,88
 //  //                                           888P"
 
-import { PatchConnection } from "/cmaj_api/cmaj-patch-connection.js"
-import { EventListenerList } from "/cmaj_api/cmaj-event-listener-list.js"
+import { PatchConnection } from "./cmaj-patch-connection.js"
+import { EventListenerList } from "./cmaj-event-listener-list.js"
 
 
 //==============================================================================
-/// This class provides the API and manages the communication protocol between
-/// a javascript application and a Cmajor session running on some kind of server
-/// (which may be local or remote).
-///
-/// This is an abstract base class: some kind of transport layer will create a
-/// subclass of ServerSession which a client application can then use to control
-/// and interact with the server.
+/*
+ *  This class provides the API and manages the communication protocol between
+ *  a javascript application and a Cmajor session running on some kind of server
+ *  (which may be local or remote).
+ *
+ *  This is an abstract base class: some kind of transport layer will create a
+ *  subclass of ServerSession which a client application can then use to control
+ *  and interact with the server.
+ */
 export class ServerSession   extends EventListenerList
 {
-    /// A server session must be given a unique string sessionID.
+    /** A server session must be given a unique sessionID.
+     * @param {string} sessionID - this must be a unique string which is safe for
+     *                             use as an identifier or filename
+    */
     constructor (sessionID)
     {
         super();
@@ -1359,9 +1434,10 @@ export class ServerSession   extends EventListenerList
         this.status = { connected: false, loaded: false };
         this.lastServerMessageTime = Date.now();
         this.checkForServerTimer = setInterval (() => this.checkServerStillExists(), 2000);
-    }
+    })"
+R"(
 
-    /// Call `dispose()` when this session is no longer needed and should be released.
+    /** Call `dispose()` when this session is no longer needed and should be released. */
     dispose()
     {
         if (this.checkForServerTimer)
@@ -1371,50 +1447,55 @@ export class ServerSession   extends EventListenerList
         }
 
         this.status = { connected: false, loaded: false };
-    })"
-R"(
+    }
 
     //==============================================================================
     // Session status methods:
 
-    /// Attaches a listener function which will be called when the session status changes.
-    /// The function will be passed an argument object containing lots of properties describing the
-    /// state, including any errors, loaded patch manifest, etc.
+    /** Attaches a listener function which will be called when the session status changes.
+     *  The listener will be called with an argument object containing lots of properties
+     *  describing the state, including any errors, loaded patch manifest, etc.
+     */
     addStatusListener (listener)                        { this.addEventListener    ("session_status", listener); }
 
-    /// Removes a listener that was previously added by `addStatusListener()`
+    /** Removes a listener that was previously added by `addStatusListener()`
+     */
     removeStatusListener (listener)                     { this.removeEventListener ("session_status", listener); }
 
-    /// Asks the server to asynchronously send a status update message with the latest status.
+    /** Asks the server to asynchronously send a status update message with the latest status.
+     */
     requestSessionStatus()                              { this.sendMessageToServer ({ type: "req_session_status" }); }
 
-    /// Returns the session's last known status object.
+    /** Returns the session's last known status object. */
     getCurrentStatus()                                  { return this.status; }
 
     //==============================================================================
     // Patch loading:
 
-    /// Asks the server to load the specified patch into our session.
+    /** Asks the server to load the specified patch into our session.
+     */
     loadPatch (patchFileToLoad)
     {
         this.currentPatchLocation = patchFileToLoad;
         this.sendMessageToServer ({ type: "load_patch", file: patchFileToLoad });
-    }
+    })"
+R"(
 
-    /// Tells the server to asynchronously generate a list of patches that it knows about.
-    /// The function provided will be called back with an array of manifest objects describing
-    /// each of the patches.
+    /** Tells the server to asynchronously generate a list of patches that it has access to.
+     *  The function provided will be called back with an array of manifest objects describing
+     *  each of the patches.
+     */
     requestAvailablePatchList (callbackFunction)
     {
         const replyType = this.createReplyID ("patchlist_");
         this.addSingleUseListener (replyType, callbackFunction);
         this.sendMessageToServer ({ type: "req_patchlist",
                                     replyType: replyType });
-    })"
-R"(
+    }
 
-    /// Creates and returns a new PatchConnection object which can be used to control the
-    /// patch that this session has loaded.
+    /** Creates and returns a new PatchConnection object which can be used to control the
+     *  patch that this session has loaded.
+     */
     createPatchConnection()
     {
         class ServerPatchConnection  extends PatchConnection
@@ -1452,18 +1533,24 @@ R"(
     }
 
     //==============================================================================
-    // Audio input source handling:
+    // Audio input source handling:)"
+R"(
 
-    /// Sets a custom audio input source for a particular endpoint.
-    /// If shouldMute is true, it will be muted. If fileDataToPlay is an array buffer that
-    /// can be parsed as an audio file, then it will be sent across for the server to play
-    /// as a loop.
-    /// When a source is changed, a callback is sent to any audio input mode listeners (see
-    /// `addAudioInputModeListener()`)
+    /**
+     *  Sets a custom audio input source for a particular endpoint.
+     *
+     *  When a source is changed, a callback is sent to any audio input mode listeners (see
+     *  `addAudioInputModeListener()`)
+     *
+     *  @param {Object} endpointID
+     *  @param {boolean} shouldMute - if true, the endpoint will be muted
+     *  @param {Uint8Array | Array} fileDataToPlay - if this is some kind of array containing
+     *  binary data that can be parsed as an audio file, then it will be sent across for the
+     *  server to play as a looped input sample.
+     */
     setAudioInputSource (endpointID, shouldMute, fileDataToPlay)
     {
-        const loopFile = "_audio_source_" + endpointID;)"
-R"(
+        const loopFile = "_audio_source_" + endpointID;
 
         if (fileDataToPlay)
         {
@@ -1487,50 +1574,64 @@ R"(
         }
     }
 
-    /// Attaches a listener function to be told when the input source for a particular
-    /// endpoint is changed by a call to `setAudioInputSource()`.
+    /** Attaches a listener function to be told when the input source for a particular
+     *  endpoint is changed by a call to `setAudioInputSource()`.
+     */
     addAudioInputModeListener (endpointID, listener)    { this.addEventListener    ("audio_input_mode_" + endpointID, listener); }
-    /// Removes a listener previously added with `addAudioInputModeListener()`
-    removeAudioInputModeListener (endpointID, listener) { this.removeEventListener ("audio_input_mode_" + endpointID, listener); }
 
-    /// Asks the server to send an update with the latest status to any audio mode listeners that
-    /// are attached to the given endpoint.
+    /** Removes a listener previously added with `addAudioInputModeListener()` */
+    removeAudioInputModeListener (endpointID, listener) { this.removeEventListener ("audio_input_mode_" + endpointID, listener); })"
+R"(
+
+    /** Asks the server to send an update with the latest status to any audio mode listeners that
+     *  are attached to the given endpoint.
+     *  @param {string} endpointID
+     */
     requestAudioInputMode (endpointID)                  { this.sendMessageToServer ({ type: "req_audio_input_mode", endpoint: endpointID }); }
 
     //==============================================================================
     // Audio device methods:
 
-    /// Enables or disables audio playback.
-    /// When playback state changes, a status update is sent to any status listeners.
-    setAudioPlaybackActive (shouldBeActive)             { this.sendMessageToServer ({ type: "set_audio_playback_active", active: shouldBeActive }); })"
-R"(
+    /** Enables or disables audio playback.
+     *  When playback state changes, a status update is sent to any status listeners.
+     * @param {boolean} shouldBeActive
+     */
+    setAudioPlaybackActive (shouldBeActive)             { this.sendMessageToServer ({ type: "set_audio_playback_active", active: shouldBeActive }); }
 
-    /// Asks the server to apply a new set of audio device properties.
-    /// The properties object uses the same format as the object that is passed to the listeners
-    /// (see `addAudioDevicePropertiesListener()`).
+    /** Asks the server to apply a new set of audio device properties.
+     *  The properties object uses the same format as the object that is passed to the listeners
+     *  (see `addAudioDevicePropertiesListener()`).
+     */
     setAudioDeviceProperties (newProperties)            { this.sendMessageToServer ({ type: "set_audio_device_props", properties: newProperties }); }
 
-    /// Attaches a listener function which will be called when the audio device properties are
-    /// changed. The listener function will be passed an argument object containing all the
-    /// details about the device.
-    /// Remove the listener when it's no longer needed with `removeAudioDevicePropertiesListener()`.
+    /** Attaches a listener function which will be called when the audio device properties are
+     *  changed.
+     *
+     *  You can remove the listener when it's no longer needed with `removeAudioDevicePropertiesListener()`.
+     *
+     *  @param listener - this callback will receive an argument object containing all the
+     *                    details about the device.
+     */
     addAudioDevicePropertiesListener (listener)         { this.addEventListener    ("audio_device_properties", listener); }
 
-    /// Removes a listener that was added with `addAudioDevicePropertiesListener()`
-    removeAudioDevicePropertiesListener (listener)      { this.removeEventListener ("audio_device_properties", listener); }
-
-    /// Causes an asynchronous callback to any audio device listeners that are registered.
-    requestAudioDeviceProperties()                      { this.sendMessageToServer ({ type: "req_audio_device_props" }); })"
+    /** Removes a listener that was added with `addAudioDevicePropertiesListener()` */
+    removeAudioDevicePropertiesListener (listener)      { this.removeEventListener ("audio_device_properties", listener); })"
 R"(
 
+    /** Causes an asynchronous callback to any audio device listeners that are registered. */
+    requestAudioDeviceProperties()                      { this.sendMessageToServer ({ type: "req_audio_device_props" }); }
+
     //==============================================================================
-    /// Asks the server to asynchronously generate some code from the currently loaded patch.
-    /// The `codeType` must be one of the strings that are listed in the status's `codeGenTargets`
-    /// property.
-    /// `extraOptions` is an object containing any target-specific properties, and may be undefined.
-    /// The `callbackFunction` is a function that will be called with the result when it has
-    /// been generated. The results object will contain properties for any code, errors and other
-    /// metadata about the generated data.
+    /** Asks the server to asynchronously generate some code from the currently loaded patch.
+     *
+     *  @param {string} codeType - this must be one of the strings that are listed in the
+     *                             status's `codeGenTargets` property. For example, "cpp"
+     *                             would request a C++ version of the patch.
+     *  @param {Object} [extraOptions] - this optionally provides target-specific properties.
+     *  @param callbackFunction - this function will be called with the result when it has
+     *                            been generated. Its argument will be an object containing the
+     *                            code, errors and other metadata about the patch.
+     */
     requestGeneratedCode (codeType, extraOptions, callbackFunction)
     {
         const replyType = this.createReplyID ("codegen_");
@@ -1542,47 +1643,56 @@ R"(
     }
 
     //==============================================================================
-    // File change monitoring:
+    // File change monitoring:)"
+R"(
 
-    /// Attaches a listener to be told when a file change is detected in the currently-loaded
-    /// patch. The function will be called with an object that gives rough details about the
-    /// type of change, i.e. whether it's a manifest or asset file, or a cmajor file, but it
-    /// won't provide any information about exactly which files are involved.
+    /** Attaches a listener to be told when a file change is detected in the currently-loaded
+     *  patch. The function will be called with an object that gives rough details about the
+     *  type of change, i.e. whether it's a manifest or asset file, or a cmajor file, but it
+     *  won't provide any information about exactly which files are involved.
+     */
     addFileChangeListener (listener)                    { this.addEventListener    ("patch_source_changed", listener); }
-    /// Removes a listener that was previously added with `addFileChangeListener()`.
+
+    /** Removes a listener that was previously added with `addFileChangeListener()`.
+     */
     removeFileChangeListener (listener)                 { this.removeEventListener ("patch_source_changed", listener); }
 
     //==============================================================================
-    // CPU level monitoring methods:)"
-R"(
+    // CPU level monitoring methods:
 
-    /// Attaches a listener function which will be sent messages containing CPU info.
-    /// To remove the listener, call `removeCPUListener()`. To change the rate of these
-    /// messages, use `setCPULevelUpdateRate()`.
+    /** Attaches a listener function which will be sent messages containing CPU info.
+     *  To remove the listener, call `removeCPUListener()`. To change the rate of these
+     *  messages, use `setCPULevelUpdateRate()`.
+     */
     addCPUListener (listener)                       { this.addEventListener    ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
-    /// Removes a listener that was previously attached with `addCPUListener()`.
+    /** Removes a listener that was previously attached with `addCPUListener()`. */
     removeCPUListener (listener)                    { this.removeEventListener ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
-    /// Changes the frequency at which CPU level update messages are sent to listeners.
-    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); }
-
-    /// Attaches a listener to be told when a file change is detected in the currently-loaded
-    /// patch. The function will be called with an object that gives rough details about the
-    /// type of change, i.e. whether it's a manifest or asset file, or a cmajor file, but it
-    /// won't provide any information about exactly which files are involved.
-    addInfiniteLoopListener (listener)              { this.addEventListener    ("infinite_loop_detected", listener); }
-    /// Removes a listener that was previously added with `addFileChangeListener()`.
-    removeInfiniteLoopListener (listener)           { this.removeEventListener ("infinite_loop_detected", listener); })"
+    /** Changes the frequency at which CPU level update messages are sent to listeners. */
+    setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); })"
 R"(
 
+    /** Attaches a listener to be told when a file change is detected in the currently-loaded
+     *  patch. The function will be called with an object that gives rough details about the
+     *  type of change, i.e. whether it's a manifest or asset file, or a cmajor file, but it
+     *  won't provide any information about exactly which files are involved.
+     */
+    addInfiniteLoopListener (listener)              { this.addEventListener    ("infinite_loop_detected", listener); }
+
+    /** Removes a listener that was previously added with `addFileChangeListener()`. */
+    removeInfiniteLoopListener (listener)           { this.removeEventListener ("infinite_loop_detected", listener); }
+
     //==============================================================================
-    /// Registers a virtual file with the server, under the given name.
-    /// The contentProvider object must have a property called `size` which is a
-    /// constant size in bytes for the file, and a method `read (offset, size)` which
-    /// returns an array (or UInt8Array) of bytes for the data in a given chunk of the file.
-    /// The server may repeatedly call this method at any time until `removeFile()` is
-    /// called to deregister the file.
+    /** Registers a virtual file with the server, under the given name.
+     *
+     *  @param {string} filename - the full path name of the file
+     *  @param {Object} contentProvider - this object must have a property called `size` which is a
+     *            constant size in bytes for the file, and a method `read (offset, size)` which
+     *            returns an array (or UInt8Array) of bytes for the data in a given chunk of the file.
+     *            The server may repeatedly call this method at any time until `removeFile()` is
+     *            called to deregister the file.
+     */
     registerFile (filename, contentProvider)
     {
         if (! this.files)
@@ -1595,18 +1705,21 @@ R"(
                                     size: contentProvider.size });
     }
 
-    /// Removes a file that was previously registered with `registerFile()`.
+    /** Removes a file that was previously registered with `registerFile()`. */
     removeFile (filename)
     {
         this.sendMessageToServer ({ type: "remove_file",
                                     filename: filename });
         this.files?.delete (filename);
-    }
+    })"
+R"(
 
     //==============================================================================
     // Private methods from this point...
 
-    // An implementation subclass must call this when the session first connects
+    /** An implementation subclass must call this when the session first connects
+     *  @private
+     */
     handleSessionConnection()
     {
         if (! this.status.connected)
@@ -1622,13 +1735,14 @@ R"(
         }
     }
 
-    // An implementation subclass must call this when a message arrives
+    /** An implementation subclass must call this when a message arrives
+     *  @private
+     */
     handleMessageFromServer (msg)
     {
         this.lastServerMessageTime = Date.now();
         const type = msg.type;
-        const message = msg.message;)"
-R"(
+        const message = msg.message;
 
         switch (type)
         {
@@ -1664,8 +1778,10 @@ R"(
 
                 break;
         }
-    }
+    })"
+R"(
 
+    /** @private */
     checkServerStillExists()
     {
         if (Date.now() > this.lastServerMessageTime + 10000)
@@ -1676,6 +1792,7 @@ R"(
             });
     }
 
+    /** @private */
     setNewStatus (newStatus)
     {
         this.status = newStatus;
@@ -1683,6 +1800,7 @@ R"(
         this.updateCPULevelUpdateRate();
     }
 
+    /** @private */
     updateCPULevelUpdateRate()
     {
         const rate = this.getNumListenersForType ("cpu_info") > 0 ? (this.cpuFramesPerUpdate || 15000) : 0;
@@ -1690,10 +1808,10 @@ R"(
                                     framesPerCallback: rate });
     }
 
+    /** @private */
     handleFileReadRequest (request)
     {
-        const contentProvider = this.files?.get (request?.file);)"
-R"(
+        const contentProvider = this.files?.get (request?.file);
 
         if (contentProvider && request.offset !== null && request.size != 0)
         {
@@ -1715,11 +1833,13 @@ R"(
         }
     }
 
+    /** @private */
     createReplyID (stem)
     {
         return "reply_" + stem + this.createRandomID();
     }
 
+    /** @private */
     createRandomID()
     {
         return (Math.floor (Math.random() * 100000000)).toString();
@@ -1741,8 +1861,12 @@ R"(
 import * as Controls from "/cmaj_api/cmaj-parameter-controls.js"
 
 //==============================================================================
+/** A simple, generic view which can control any type of patch */
 class GenericPatchView extends HTMLElement
 {
+    /** Creates a view for a patch.
+     *  @param {PatchConnection} patchConnection - the connection to the target patch
+     */
     constructor (patchConnection)
     {
         super();
@@ -1762,19 +1886,21 @@ class GenericPatchView extends HTMLElement
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
     }
 
+    //==============================================================================
+    /** @private */
     connectedCallback()
     {
         this.patchConnection.addStatusListener (this.statusListener);
         this.patchConnection.requestStatusUpdate();
     }
 
+    /** @private */
     disconnectedCallback()
     {
         this.patchConnection.removeStatusListener (this.statusListener);
     }
 
-    //==============================================================================
-    // private methods..
+    /** @private */
     createControlElements()
     {
         this.parametersElement.innerHTML = "";
@@ -1793,6 +1919,7 @@ R"(
         }
     }
 
+    /** @private */
     getHTML()
     {
         return `
@@ -1881,6 +2008,9 @@ R"(
 window.customElements.define ("cmaj-generic-patch-view", GenericPatchView);
 
 //==============================================================================
+/** Creates a generic view element which can be used to control any patch.
+ *  @param {PatchConnection} patchConnection - the connection to the target patch
+ */
 export default function createPatchView (patchConnection)
 {
     return new GenericPatchView (patchConnection);
@@ -1898,6 +2028,7 @@ export default function createPatchView (patchConnection)
 //  //                                             ,88
 //  //                                           888P"
 
+import { PatchConnection } from "./cmaj-patch-connection.js"
 
 /** Returns a list of types of view that can be created for this patch.
  */
@@ -2081,12 +2212,12 @@ R"(
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 10979) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 25555) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 28671) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2808) },
-        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 17081) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 4859) },
-        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4222) },
+        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18178) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 5271) },
+        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4283) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) },
         File { "assets/sound-stacks-logo.svg", std::string_view (assets_soundstackslogo_svg, 6471) }
     };

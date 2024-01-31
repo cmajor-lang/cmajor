@@ -9,8 +9,13 @@
 //  //                                             ,88
 //  //                                           888P"
 
+import { PatchConnection } from "./cmaj-patch-connection.js";
+
 
 //==============================================================================
+/** A base class for parameter controls, which automatically connects to a
+ *  PatchConnection to monitor a parameter and provides methods to modify it.
+ */
 export class ParameterControlBase  extends HTMLElement
 {
     constructor()
@@ -21,8 +26,13 @@ export class ParameterControlBase  extends HTMLElement
         this.onmousedown = e => e.stopPropagation();
     }
 
-    /// This can be used to connect the parameter to a given connection and endpoint, or
-    /// to disconnect it if called with undefined arguments
+    /** Attaches the control to a given PatchConnection and endpoint.
+     *
+     * @param {PatchConnection} patchConnection - the connection to connect to, or pass
+     *                                            undefined to disconnect the control.
+     * @param {Object} endpointInfo - the endpoint details, as provided by a PatchConnection
+     *                                in its status callback.
+     */
     setEndpoint (patchConnection, endpointInfo)
     {
         this.detachListener();
@@ -35,23 +45,26 @@ export class ParameterControlBase  extends HTMLElement
             this.attachListener();
     }
 
-    connectedCallback()
-    {
-        this.attachListener();
-    }
-
-    disconnectedCallback()
-    {
-        this.detachListener();
-    }
-
-    /// Implement this in a child class to be called when the value needs refreshing
+    /** Override this method in a child class, and it will be called when the parameter value changes,
+     *  so you can update the GUI appropriately.
+     */
     valueChanged (newValue) {}
 
+    /** Your GUI can call this when it wants to change the parameter value. */
     setValue (value)     { this.patchConnection?.sendEventOrValue (this.endpointInfo.endpointID, value); }
+
+    /** Call this before your GUI begins a modification gesture.
+     *  You might for example call this if the user begins a mouse-drag operation.
+     */
     beginGesture()       { this.patchConnection?.sendParameterGestureStart (this.endpointInfo.endpointID); }
+
+    /** Call this after your GUI finishes a modification gesture */
     endGesture()         { this.patchConnection?.sendParameterGestureEnd (this.endpointInfo.endpointID); }
 
+    /** This calls setValue(), but sandwiches it between some start/end gesture calls.
+     *  You should use this to make sure a DAW correctly records automatiion for individual value changes
+     *  that are not part of a gesture.
+     */
     setValueAsGesture (value)
     {
         this.beginGesture();
@@ -59,6 +72,7 @@ export class ParameterControlBase  extends HTMLElement
         this.endGesture();
     }
 
+    /** Resets the parameter to its default value */
     resetToDefault()
     {
         if (this.defaultValue !== null)
@@ -66,7 +80,19 @@ export class ParameterControlBase  extends HTMLElement
     }
 
     //==============================================================================
-    // private methods..
+    /** @private */
+    connectedCallback()
+    {
+        this.attachListener();
+    }
+
+    /** @protected */
+    disconnectedCallback()
+    {
+        this.detachListener();
+    }
+
+    /** @private */
     detachListener()
     {
         if (this.listener)
@@ -76,6 +102,7 @@ export class ParameterControlBase  extends HTMLElement
         }
     }
 
+    /** @private */
     attachListener()
     {
         if (this.patchConnection && this.endpointInfo)
@@ -92,6 +119,7 @@ export class ParameterControlBase  extends HTMLElement
 }
 
 //==============================================================================
+/** A simple rotary parameter knob control. */
 export class Knob  extends ParameterControlBase
 {
     constructor (patchConnection, endpointInfo)
@@ -241,11 +269,19 @@ export class Knob  extends ParameterControlBase
         this.addEventListener ('touchstart', onTouchStart);
     }
 
+    /** Returns true if this type of control is suitable for the given endpoint info */
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter";
     }
 
+    /** @override */
+    valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
+
+    /** Returns a string version of the given value */
+    getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); }
+
+    /** @private */
     setRotation (degrees, force)
     {
         if (force || this.rotation !== degrees)
@@ -256,9 +292,7 @@ export class Knob  extends ParameterControlBase
         }
     }
 
-    valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
-    getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); }
-
+    /** @private */
     static getCSS()
     {
         return `
@@ -318,6 +352,7 @@ export class Knob  extends ParameterControlBase
 }
 
 //==============================================================================
+/** A boolean switch control */
 export class Switch  extends ParameterControlBase
 {
     constructor (patchConnection, endpointInfo)
@@ -346,12 +381,14 @@ export class Switch  extends ParameterControlBase
         this.addEventListener ("click", () => this.setValueAsGesture (this.currentValue ? 0 : 1.0));
     }
 
+    /** Returns true if this type of control is suitable for the given endpoint info */
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter"
                 && endpointInfo.annotation?.boolean;
     }
 
+    /** @override */
     valueChanged (newValue)
     {
         const b = newValue > 0.5;
@@ -360,8 +397,10 @@ export class Switch  extends ParameterControlBase
         this.classList.add (b ? "switch-on" : "switch-off");
     }
 
+    /** Returns a string version of the given value */
     getDisplayValue (v)   { return `${v > 0.5 ? "On" : "Off"}`; }
 
+    /** @private */
     static getCSS()
     {
         return `
@@ -423,12 +462,14 @@ export class Switch  extends ParameterControlBase
     }
 }
 
+//==============================================================================
 function toFloatDisplayValueWithUnit (v, endpointInfo)
 {
     return `${v.toFixed (2)} ${endpointInfo.annotation?.unit ?? ""}`;
 }
 
 //==============================================================================
+/** A control that allows an item to be selected from a drop-down list of options */
 export class Options  extends ParameterControlBase
 {
     constructor (patchConnection, endpointInfo)
@@ -446,7 +487,7 @@ export class Options  extends ParameterControlBase
 
         const { min, max, options } = (() =>
         {
-            if (hasTextOptions (endpointInfo))
+            if (this.hasTextOptions (endpointInfo))
             {
                 const optionList = endpointInfo.annotation.text.split ("|");
                 const stepCount = toStepCount (optionList.length);
@@ -464,7 +505,7 @@ export class Options  extends ParameterControlBase
                 return { min, max, options };
             }
 
-            if (isExplicitlyDiscrete (endpointInfo))
+            if (this.isExplicitlyDiscrete (endpointInfo))
             {
                 const step = endpointInfo.annotation.step;
 
@@ -523,12 +564,14 @@ export class Options  extends ParameterControlBase
         this.appendChild (icon);
     }
 
+    /** Returns true if this type of control is suitable for the given endpoint info */
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter"
-                && (hasTextOptions (endpointInfo) || isExplicitlyDiscrete (endpointInfo));
+                && (this.hasTextOptions (endpointInfo) || this.isExplicitlyDiscrete (endpointInfo));
     }
 
+    /** @override */
     valueChanged (newValue)
     {
         const index = this.toIndex (newValue);
@@ -536,8 +579,22 @@ export class Options  extends ParameterControlBase
         this.select.selectedIndex = index;
     }
 
+    /** Returns a string version of the given value */
     getDisplayValue (v)    { return this.options[this.toIndex(v)].text; }
 
+    /** @private */
+    static hasTextOptions (endpointInfo)
+    {
+        return endpointInfo.annotation?.text?.split?.("|").length > 1
+    }
+
+    /** @private */
+    static isExplicitlyDiscrete (endpointInfo)
+    {
+        return endpointInfo.annotation?.discrete && endpointInfo.annotation?.step > 0;
+    }
+
+    /** @private */
     static getCSS()
     {
         return `
@@ -596,17 +653,8 @@ export class Options  extends ParameterControlBase
     }
 }
 
-function hasTextOptions (endpointInfo)
-{
-    return endpointInfo.annotation?.text?.split?.("|").length > 1
-}
-
-function isExplicitlyDiscrete (endpointInfo)
-{
-    return endpointInfo.annotation?.discrete && endpointInfo.annotation?.step > 0;
-}
-
 //==============================================================================
+/** A control which wraps a child control, adding a label and value display box below it */
 export class LabelledControlHolder  extends ParameterControlBase
 {
     constructor (patchConnection, endpointInfo, childControl)
@@ -645,11 +693,13 @@ export class LabelledControlHolder  extends ParameterControlBase
         this.appendChild (titleValueHoverContainer);
     }
 
+    /** @override */
     valueChanged (newValue)
     {
         this.valueText.innerText = this.childControl?.getDisplayValue (newValue);
     }
 
+    /** @private */
     static getCSS()
     {
         return `
@@ -718,6 +768,7 @@ window.customElements.define ("cmaj-options-control", Options);
 window.customElements.define ("cmaj-labelled-control-holder", LabelledControlHolder);
 
 //==============================================================================
+/** Fetches all the CSS for the controls defined in this module */
 export function getAllCSS()
 {
     return `
@@ -728,6 +779,12 @@ export function getAllCSS()
 }
 
 //==============================================================================
+/** Creates a suitable control for the given endpoint.
+ *
+ *  @param {PatchConnection} patchConnection - the connection to connect to
+ *  @param {Object} endpointInfo - the endpoint details, as provided by a PatchConnection
+ *                                 in its status callback.
+*/
 export function createControl (patchConnection, endpointInfo)
 {
     if (Switch.canBeUsedFor (endpointInfo))
@@ -743,6 +800,12 @@ export function createControl (patchConnection, endpointInfo)
 }
 
 //==============================================================================
+/** Creates a suitable labelled control for the given endpoint.
+ *
+ *  @param {PatchConnection} patchConnection - the connection to connect to
+ *  @param {Object} endpointInfo - the endpoint details, as provided by a PatchConnection
+ *                                 in its status callback.
+*/
 export function createLabelledControl (patchConnection, endpointInfo)
 {
     const control = createControl (patchConnection, endpointInfo);
@@ -754,8 +817,13 @@ export function createLabelledControl (patchConnection, endpointInfo)
 }
 
 //==============================================================================
-/// Takes a patch connection and its current status object, and tries to create
-/// a control for the given endpoint ID.
+/** Takes a patch connection and its current status object, and tries to create
+ *  a control for the given endpoint ID.
+ *
+ *  @param {PatchConnection} patchConnection - the connection to connect to
+ *  @param {Object} status - the connection's current status
+ *  @param {string} endpointID - the endpoint you'd like to control
+ */
 export function createLabelledControlForEndpointID (patchConnection, status, endpointID)
 {
     for (const endpointInfo of status?.details?.inputs)

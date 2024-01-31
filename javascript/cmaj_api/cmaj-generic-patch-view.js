@@ -12,8 +12,12 @@
 import * as Controls from "/cmaj_api/cmaj-parameter-controls.js"
 
 //==============================================================================
+/** A simple, generic view which can control any type of patch */
 class GenericPatchView extends HTMLElement
 {
+    /** Creates a view for a patch.
+     *  @param {PatchConnection} patchConnection - the connection to the target patch
+     */
     constructor (patchConnection)
     {
         super();
@@ -33,19 +37,21 @@ class GenericPatchView extends HTMLElement
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
     }
 
+    //==============================================================================
+    /** @private */
     connectedCallback()
     {
         this.patchConnection.addStatusListener (this.statusListener);
         this.patchConnection.requestStatusUpdate();
     }
 
+    /** @private */
     disconnectedCallback()
     {
         this.patchConnection.removeStatusListener (this.statusListener);
     }
 
-    //==============================================================================
-    // private methods..
+    /** @private */
     createControlElements()
     {
         this.parametersElement.innerHTML = "";
@@ -63,6 +69,7 @@ class GenericPatchView extends HTMLElement
         }
     }
 
+    /** @private */
     getHTML()
     {
         return `
@@ -150,6 +157,9 @@ class GenericPatchView extends HTMLElement
 window.customElements.define ("cmaj-generic-patch-view", GenericPatchView);
 
 //==============================================================================
+/** Creates a generic view element which can be used to control any patch.
+ *  @param {PatchConnection} patchConnection - the connection to the target patch
+ */
 export default function createPatchView (patchConnection)
 {
     return new GenericPatchView (patchConnection);
