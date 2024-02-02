@@ -150,6 +150,11 @@ namespace std::filters (using FrameType = float32,
                         }
                     }
                 }
+
+                void reset()
+                {
+                    filter.reset();
+                }
             }
         }
 
@@ -263,6 +268,11 @@ namespace std::filters (using FrameType = float32,
                         }
                     }
                 }
+
+                void reset()
+                {
+                    filter.reset();
+                }
             }
 
             processor MultimodeProcessor (float initialFrequency = defaultFrequency,
@@ -307,6 +317,11 @@ namespace std::filters (using FrameType = float32,
                             advance();
                         }
                     }
+                }
+
+                void reset()
+                {
+                    filter.reset();
                 }
             }
         }
@@ -364,6 +379,11 @@ namespace std::filters (using FrameType = float32,
                     out <- filter.process (in);
                     advance();
                 }
+            }
+
+            void reset()
+            {
+                filter.reset();
             }
         }
     }
@@ -491,6 +511,11 @@ namespace std::filters (using FrameType = float32,
                     }
                 }
             }
+
+            void reset()
+            {
+                filter.reset();
+            }
         }
     }
 
@@ -578,6 +603,11 @@ namespace std::filters (using FrameType = float32,
                         advance();
                     }
                 }
+            }
+
+            void reset()
+            {
+                filter.reset();
             }
         }
     }
@@ -772,6 +802,11 @@ namespace std::filters (using FrameType = float32,
                         advance();
                     }
                 }
+            }
+
+            void reset()
+            {
+                filter.reset();
             }
         }
     }
