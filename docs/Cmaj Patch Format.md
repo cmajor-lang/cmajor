@@ -410,53 +410,33 @@ To use this feature, run the command line app in `generate` mode, e.g.
 
 It will create a folder containing some source files and a JUCE cmake project. This can be built as you would any other C++ cmake project, to produce VST/AU/AAX/standalone binaries.
 
-### Building a Web Audio `AudioWorkletNode` from a patch
+### Exporting a patch as Javascript/WebAssembly/Web Audio
 
-The `cmaj` tool supports code-generation of a Javascript module which contains code for instantiating a node for use in a Web Audio API graph. This is enabled via our WebAssembly (WASM) backend. As with the `plugin` target, the resulting code doesn't do any JIT compilation, it is self-contained Javascript with some embedded WASM code. Any external data declared in the `externals` property of the manifest is also embedded, including decoded audio sample data from audio files.
+The `cmaj` tool supports translation of a patch to a self-contained Javascript class (using WebAssembly for the DSP), and provides javascript helper classes to integrate with Web Audio and MIDI.
 
-The module has a default exported function which can be used to jointly construct a Web Audio node and a `PatchConnection` instance. The `PatchConnection` instance can be used when constructing a custom Patch GUI.
-
-To use this feature, run the command line app in `generate` mode, e.g.
-
+e.g.
 ```
-% cmaj generate --target=wasm-worklet
-                --output=/path/to/MyAmazingSynthPatchWorklet.js
+% cmaj generate --target=webaudio-html
+                --output=/path/to/MyAmazingSynthPatchFolder
                 MyAmazingSynthPatch.cmajorpatch
 ```
 
-The generated Javascript module can be used like this:
+There are several levels of javascript generation:
 
-```js
+#### `--target=javascript`
 
-import createAudioWorkletNodePatchConnection from "./MyAmazingSynthPatchWorklet.js";
+This creates a single file containing a Javascript module which captures the patch's DSP behind an API similiar to the `cmaj::Performer` class.
+Internally, the generated class uses WebAssembly for its DSP, but this is hidden inside a javascript wrapper that provides a synchronous API to render the frames, handle endpoint i/o etc.
+The `--target=javascript` option exports only the patch's core DSP code, it doesn't provide any help with GUIs or playback.
 
-async function setupExample()
-{
-    const audioContext = new AudioContext();
+#### `--target=webaudio`
 
-    const { node, connection } = await createAudioWorkletNodePatchConnection ({
-        audioContext,
-        workletName: "my-amazing-synth-patch-id",
-    });
+This exports a folder containing both the javascript class for this patch (as created by `--target=javascript`) but also creates a set of helper modules for connecting it to web audio and MIDI.
 
-    node.connect (audioContext.destination);
+This gives you a simple function `createAudioWorkletNodePatchConnection()` that returns both a Web Audio `AudioWorklet` object, and a `PatchConnection` object that can be used to control it remotely.
 
-    // The `connection` instance can be used with an existing patch gui.
-    // The `wasm-worklet` target doesn't embed the view from the manifest, but
-    // if the view module is shipped alongside the worklet module, the following
-    // code can be used to setup the view.
-    const viewModule = await import ("./gui/index.js");
-    const patchView = await viewModule.default (connection);
+The helpers also include a function to automatically connect this node to the browser's default audio and MIDI devices.
 
-    document.body.appendChild (patchView);
-}
+#### `--target=webaudio-html`
 
-setupExample();
-```
-
-#### Known limitations
-
-- It is the responsibility of the consuming code to supply a `workletName` on construction. This is to ensure the names are globally unique when using multiple nodes from various generated patches in the same web app
-- Due to various security restrictions in browsers, any app consuming the generated module must be served from a web server (i.e. a local server is needed for development, loading from a `file://` URL will likely not work)
-- For patches that have more than one input or output stream, only the first is mapped to Web Audio inputs / outputs
-- The WebAssembly backend is a work in progress, and some of our examples (for example the `ElectricPiano`) run slow enough to produce underruns
+This option creates a folder which contains everything needed to run the patch and its GUI as a ready-to-go HTML/Javascript application. Just run a local webserver to server the generated folder, and open it in your browser. This is the easiest way to get started with javascript generation and to explore the generated classes.

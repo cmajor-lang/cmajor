@@ -337,7 +337,7 @@ bool test()
     return true;
 }
 
-## if (getEngineName() != "wasm") { testFunction (); } else { getCurrentTestSection().reportUnsupported ("Forward branch is not supported by the wasm engine"); }
+## if (getEngineName() != "webview-binaryen") { testFunction (); } else { getCurrentTestSection().reportUnsupported ("Forward branch is not supported by the binaryen engine"); }
 
 bool testDefault1()
 {

@@ -621,7 +621,7 @@ function performanceTest (options)
 {
     let testSection = getCurrentTestSection();
 
-    if (getEngineName() == "wasm")
+    if (getEngineName() == "webview" || getEngineName() == "webview-binaryen")
     {
         testSection.reportUnsupported ("engine type " + getEngineName() + " not supported");
         return;
