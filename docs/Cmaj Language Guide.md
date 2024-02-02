@@ -1227,8 +1227,8 @@ graph G
     event paramIn (float f)
     {
         // Only send some param values through
-        if (paramIn > 0.5)
-            filteredOut <- paramIn;
+        if (f > 0.5)
+            filteredOut <- f;
 
         // Scale the normalised parameter to the range 10 .. 100
         scaledOutput <- 10.0f + (90.0f * f);
