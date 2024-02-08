@@ -77,12 +77,13 @@ struct PatchWebView::Impl
 
     void sendMessage (const choc::value::ValueView& msg)
     {
-        webview.evaluateJavascript ("window.cmaj_deliverMessageFromServer?.(" + choc::json::toString (msg, true) + ");");
+        if (! webview.evaluateJavascript ("window.cmaj_deliverMessageFromServer?.(" + choc::json::toString (msg, true) + ");"))
+            CMAJ_ASSERT_FALSE;
     }
 
     void createBindings()
     {
-        webview.bind ("cmaj_sendMessageToServer", [this] (const choc::value::ValueView& args) -> choc::value::Value
+        bool boundOK = webview.bind ("cmaj_sendMessageToServer", [this] (const choc::value::ValueView& args) -> choc::value::Value
         {
             try
             {
@@ -96,6 +97,9 @@ struct PatchWebView::Impl
 
             return {};
         });
+
+        (void) boundOK;
+        CMAJ_ASSERT (boundOK);
     }
 
     PatchWebView* ownerView = nullptr;
