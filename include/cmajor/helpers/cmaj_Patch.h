@@ -689,22 +689,16 @@ struct Patch::PatchWorker  : public PatchView
     {
         if (! manifest.patchWorker.empty())
         {
-            if (auto worker = manifest.readFileContent (manifest.patchWorker))
-            {
-                if (! worker->empty())
-                {
-                    runWorkerCallback = [this] (const std::string& code) { runWorker (code); };
-                    runCodeCallback   = [this] (const std::string& code) { runCode (code); };
-                    running = true;
-                    choc::messageloop::postMessage ([f = runWorkerCallback, worker = std::move (*worker)] { f (worker); });
-                }
-            }
+            initCallback = [this] { initialiseWorker(); };
+            runCodeCallback = [this] (const std::string& code) { runCode (code); };
+            running = true;
+            choc::messageloop::postMessage ([f = initCallback] { f(); });
         }
     }
 
     ~PatchWorker() override
     {
-        runWorkerCallback.reset();
+        initCallback.reset();
         runCodeCallback.reset();
         context = {};
     }
@@ -718,7 +712,7 @@ struct Patch::PatchWorker  : public PatchView
         }
     }
 
-    void runWorker (const std::string& script)
+    void initialiseWorker()
     {
         try
         {
@@ -742,7 +736,6 @@ struct Patch::PatchWorker  : public PatchView
             });
 
             context.evaluate (getGlueCode(), std::addressof (resolveModule));
-            context.evaluate (script, std::addressof (resolveModule));
         }
         catch (const std::exception& e)
         {
@@ -796,6 +789,7 @@ struct Patch::PatchWorker  : public PatchView
     {
         return choc::text::replace (R"(
 import { PatchConnection } from "/cmaj_api/cmaj-patch-connection.js"
+import runWorker from WORKER_MODULE
 
 class WorkerPatchConnection  extends PatchConnection
 {
@@ -817,17 +811,20 @@ class WorkerPatchConnection  extends PatchConnection
     }
 }
 
-globalThis.createPatchConnection = function()
-{
-    return new WorkerPatchConnection();
-}
+const connection = new WorkerPatchConnection();
+connection.readResource = readResource;
+connection.readResourceAsAudioData = readResourceAsAudioData;
+
+runWorker (connection);
 )",
-        "MANIFEST", choc::json::toString (manifest.manifest));
+        "MANIFEST", choc::json::toString (manifest.manifest),
+        "WORKER_MODULE", choc::json::getEscapedQuotedString (manifest.patchWorker));
     }
 
     PatchManifest& manifest;
     choc::javascript::Context context;
-    choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> runWorkerCallback, runCodeCallback;
+    choc::threading::ThreadSafeFunctor<std::function<void()>> initCallback;
+    choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> runCodeCallback;
 
 private:
     bool running = false;

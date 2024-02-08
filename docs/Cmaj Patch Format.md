@@ -364,17 +364,34 @@ To give your patch a worker, add a `worker` entry to the manifest file:
     "name":             "Hello World",
     "source":           "HelloWorld.cmajor",
 
-    "worker":           "my_worker.js"
+    "worker":           "./my_worker.js"
 }
 ```
 
-The value should be the path to a javascript file that will be executed. This script will be executed at startup (or when the patch is reset) has access to a restricted API, including:
+The value should be the path to a javascript module that will be executed. This module will be loaded at startup (or when the patch is reset),
+
+The module must export a default function which will be called to do the work. This function will be passed a `PatchConnection` object which it can use to communicate with the patch, just like GUI code might do.
+
+e.g.
+
+```javascript
+export default function myWorker (patchConnection)
+{
+    patchConnection.addStatusListener ((status) => console.log (status));
+    patchConnection.requestStatusUpdate();
+
+    setTimeout (() => { patchConnection.sendEventOrValue ("myevent", 1234); }, 1000);
+}
+```
+
+Depending on the VM that it's running in, this code may only have access to a restricted API, but a worker can expect to have at least:
 
 - Basic built-in javascript language features
 - `setTimeout()`, `setInterval()` and `clearInterval()` to manage timers
-- A function `createPatchConnection()` which the script should call just once to create a `PatchConnection` object which it can use to interact with the patch. Using this, it can attach listeners to receive callbacks when data is sent to or from the patch.
-- `readResource(path)` and `readResourceAsAudioData(path)` which will load a file contained within the patch bundle, given a path relative to the root of the bundle.
-- It can `import` other javascript modules, as long as these are built-in modules (e.g. `import * as midi from "/cmaj_api/cmaj-midi-helpers.js"``) or files within the patch bundle.
+
+The `PatchConnection` object will have methods `readResource(path)` and `readResourceAsAudioData(path)` to load files contained within the patch bundle. These take a path relative to the root of the bundle.
+
+The module can `import` other javascript modules, as long as these are built-in modules (e.g. `import * as midi from "/cmaj_api/cmaj-midi-helpers.js"``) or files within the patch bundle.
 
 -------
 
