@@ -389,7 +389,7 @@ Depending on the VM that it's running in, this code may only have access to a re
 - Basic built-in javascript language features
 - `setTimeout()`, `setInterval()` and `clearInterval()` to manage timers
 
-The `PatchConnection` object will have methods `readResource(path)` and `readResourceAsAudioData(path)` to load files contained within the patch bundle. These take a path relative to the root of the bundle.
+The `PatchConnection` object will have methods `async readResource(path)` and `async readResourceAsAudioData(path)` for reading data from files in the patch bundle. These take a path relative to the root of the bundle, and return a `Thenable` object which will deliver the data asynchronously.
 
 The module can `import` other javascript modules, as long as these are built-in modules (e.g. `import * as midi from "/cmaj_api/cmaj-midi-helpers.js"``) or files within the patch bundle.
 

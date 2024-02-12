@@ -301,6 +301,9 @@ private:
 
     struct ClientEventQueue;
     std::unique_ptr<ClientEventQueue> clientEventQueue;
+    static constexpr uint32_t clientEventQueueSize = 65536;
+
+    static constexpr uint32_t performerEventQueueSize = 65536;
 
     std::vector<choc::midi::ShortMessage> midiMessages;
     std::vector<int> midiMessageTimes;
@@ -400,7 +403,7 @@ struct Patch::ClientEventQueue
     void prepare (double sampleRate)
     {
         cpu.reset (sampleRate);
-        fifo.reset (32768);
+        fifo.reset (patch.clientEventQueueSize);
         dispatchClientEventsCallback = [this] { dispatchClientEvents(); };
         clientEventHandlerThread.start (0, [this]
         {
@@ -757,13 +760,21 @@ struct Patch::PatchWorker  : public PatchView
 
     void registerLibraryFunctions()
     {
-        context.registerFunction ("readResource", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
+        context.registerFunction ("_internalReadResource", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
         {
             try
             {
                 if (auto path = args.get<std::string>(0); ! path.empty())
+                {
                     if (auto content = manifest.readFileContent (path))
-                        return choc::value::Value (*content);
+                    {
+                        if (choc::text::findInvalidUTF8Data (content->data(), content->length()) == nullptr)
+                            return choc::value::Value (*content);
+
+                        return choc::value::createArray (static_cast<uint32_t> (content->length()),
+                                                         [&] (uint32_t i) { return static_cast<int32_t> ((*content)[i]); });
+                    }
+                }
             }
             catch (...)
             {}
@@ -771,7 +782,7 @@ struct Patch::PatchWorker  : public PatchView
             return {};
         });
 
-        context.registerFunction ("readResourceAsAudioData", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
+        context.registerFunction ("_internalReadResourceAsAudioData", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
         {
             try
             {
@@ -812,8 +823,44 @@ class WorkerPatchConnection  extends PatchConnection
 }
 
 const connection = new WorkerPatchConnection();
-connection.readResource = readResource;
-connection.readResourceAsAudioData = readResourceAsAudioData;
+
+connection.readResource = (path) =>
+{
+    return {
+        then (resolve, reject)
+        {
+            const data = _internalReadResource (path);
+
+            if (data)
+                resolve (data);
+            else
+                reject ("Failed to load resource");
+
+            return this;
+        },
+        catch() {},
+        finally() {}
+    };
+}
+
+connection.readResourceAsAudioData = (path) =>
+{
+    return {
+        then (resolve, reject)
+        {
+            const data = _internalReadResourceAsAudioData (path);
+
+            if (data)
+                resolve (data);
+            else
+                reject ("Failed to load resource");
+
+            return this;
+        },
+        catch() {},
+        finally() {}
+    };
+}
 
 runWorker (connection);
 )",
@@ -1043,7 +1090,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 bool shouldResolveExternals,
                 bool shouldLink,
                 const cmaj::CacheDatabaseInterface::Ptr& c,
-                const std::function<void()>& checkForStopSignal)
+                const std::function<void()>& checkForStopSignal,
+                uint32_t eventFIFOSize)
     {
         try
         {
@@ -1056,7 +1104,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 return;
 
             checkForStopSignal();
-            AudioMIDIPerformer::Builder performerBuilder (engine);
+            AudioMIDIPerformer::Builder performerBuilder (engine, eventFIFOSize);
             scanEndpointList (engine);
             checkForStopSignal();
             sampleRate = playbackParams.sampleRate;
@@ -1669,7 +1717,8 @@ struct Patch::Build
 
         renderer = std::make_shared<PatchRenderer> (patch);
         renderer->build (engine, loadParams, patch.currentPlaybackParams,
-                         resolveExternals, performLink, patch.cache, checkForStopSignal);
+                         resolveExternals, performLink, patch.cache,
+                         checkForStopSignal, patch.performerEventQueueSize);
         return engine;
     }
 

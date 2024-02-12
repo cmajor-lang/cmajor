@@ -63,7 +63,7 @@ struct AudioMIDIPerformer
     // and then call Builder::createPerformer() to get the performer object.
     struct Builder
     {
-        Builder (cmaj::Engine, uint32_t eventFIFOSize = 8192);
+        Builder (cmaj::Engine, uint32_t eventFIFOSize);
 
         bool connectAudioInputTo (const std::vector<uint32_t>& inputChannels,
                                   const cmaj::EndpointDetails& endpoint,
@@ -595,8 +595,6 @@ inline bool AudioMIDIPerformer::postEvent (cmaj::EndpointHandle handle, const ch
             d += sizeof (typeIndex);
             std::memcpy (d, coercedData.data.data, coercedData.data.size);
         });
-
-        return true;
     }
 
     return false;
@@ -627,8 +625,6 @@ inline bool AudioMIDIPerformer::postValue (const EndpointHandle handle, const ch
             d += sizeof (framesToReachValue);
             std::memcpy (d, coercedData.data, coercedData.size);
         });
-
-        return true;
     }
 
     return false;
