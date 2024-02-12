@@ -153,7 +153,7 @@ private:
     std::vector<cmaj::EndpointHandle> midiInputEndpoints, midiOutputEndpoints;
     std::vector<std::pair<cmaj::EndpointHandle, std::string>> eventOutputHandles;
     std::unordered_map<std::string, EndpointHandle> inputEndpointHandles;
-    choc::fifo::VariableSizeFIFO eventQueue, valueQueue, outputEventQueue;
+    choc::fifo::VariableSizeFIFO inputQueue, outputQueue;
     OutputEventsReadyFn outputEventsReadyHandler;
     std::vector<std::pair<choc::midi::ShortMessage, uint32_t>> midiOutputMessages;
     choc::buffer::InterleavingScratchBuffer<float> audioInputScratchBuffer;
@@ -546,9 +546,8 @@ inline std::unique_ptr<AudioMIDIPerformer> AudioMIDIPerformer::Builder::createPe
 inline AudioMIDIPerformer::AudioMIDIPerformer (cmaj::Engine e, uint32_t eventFIFOSize)
     : engine (std::move (e))
 {
-    eventQueue.reset (eventFIFOSize);
-    valueQueue.reset (eventFIFOSize);
-    outputEventQueue.reset (eventFIFOSize);
+    inputQueue.reset (eventFIFOSize);
+    outputQueue.reset (eventFIFOSize);
 
     endpointTypeCoercionHelpers.initialise (engine, maxFramesPerBlock, true, true);
 
@@ -586,7 +585,7 @@ inline bool AudioMIDIPerformer::postEvent (cmaj::EndpointHandle handle, const ch
         auto typeIndex = static_cast<uint32_t> (coercedData.typeIndex);
         auto totalSize = static_cast<uint32_t> (sizeof (handle) + sizeof (typeIndex) + coercedData.data.size);
 
-        return eventQueue.push (totalSize, [&] (void* dest)
+        return inputQueue.push (totalSize, [&] (void* dest)
         {
             auto d = static_cast<uint8_t*> (dest);
             choc::memory::writeNativeEndian (d, handle);
@@ -616,12 +615,13 @@ inline bool AudioMIDIPerformer::postValue (const EndpointHandle handle, const ch
     {
         auto totalSize = static_cast<uint32_t> (sizeof (handle) + sizeof (framesToReachValue) + coercedData.size);
 
-        return valueQueue.push (totalSize, [&] (void* dest)
+        return inputQueue.push (totalSize, [&] (void* dest)
         {
             auto d = static_cast<uint8_t*> (dest);
             choc::memory::writeNativeEndian (d, handle);
             d += sizeof (handle);
-            choc::memory::writeNativeEndian (d, framesToReachValue);
+            // upper bit is used to indicate this is a value rather than event
+            choc::memory::writeNativeEndian (d, framesToReachValue | 0x10000000u);
             d += sizeof (framesToReachValue);
             std::memcpy (d, coercedData.data, coercedData.size);
         });
@@ -693,28 +693,20 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
         for (auto& f : preRenderFunctions)
             f (block);
 
-        eventQueue.popAllAvailable ([&] (const void* data, [[maybe_unused]] uint32_t size)
+        inputQueue.popAllAvailable ([&] (const void* data, [[maybe_unused]] uint32_t size)
         {
             CMAJ_ASSERT (size > 4);
             auto d = static_cast<const char*> (data);
             auto handle = choc::memory::readNativeEndian<cmaj::EndpointHandle> (d);
             d += sizeof (handle);
-            auto typeIndex = choc::memory::readNativeEndian<uint32_t> (d);
-            d += sizeof (typeIndex);
+            // upper bit is used to indicate this is a value rather than event
+            auto typeIndexOrFrameCount = choc::memory::readNativeEndian<uint32_t> (d);
+            d += sizeof (typeIndexOrFrameCount);
 
-            performer.addInputEvent (handle, typeIndex, d);
-        });
-
-        valueQueue.popAllAvailable ([&] (const void* data, [[maybe_unused]] uint32_t size)
-        {
-            CMAJ_ASSERT (size > 4);
-            auto d = static_cast<const char*> (data);
-            auto handle = choc::memory::readNativeEndian<cmaj::EndpointHandle> (d);
-            d += sizeof (handle);
-            auto frameCount = choc::memory::readNativeEndian<uint32_t> (d);
-            d += sizeof (frameCount);
-
-            performer.setInputValue (handle, d, frameCount);
+            if (typeIndexOrFrameCount >> 31)
+                performer.setInputValue (handle, d, typeIndexOrFrameCount & 0x7fffffffu);
+            else
+                performer.addInputEvent (handle, typeIndexOrFrameCount, d);
         });
 
         if (! midiInputEndpoints.empty())
@@ -845,7 +837,7 @@ inline void AudioMIDIPerformer::dispatchMIDIOutputEvents (const choc::audio::Aud
 
 inline void AudioMIDIPerformer::handlePendingOutputEvents (OutputEventHandlerFn&& handler)
 {
-    outputEventQueue.popAllAvailable ([&] (const void* data, uint32_t size)
+    outputQueue.popAllAvailable ([&] (const void* data, uint32_t size)
     {
         CMAJ_ASSERT (size > 12);
         auto d = static_cast<const uint8_t*> (data);
@@ -880,7 +872,7 @@ inline void AudioMIDIPerformer::moveOutputEventsToQueue()
                 auto frame = numFramesProcessed + frameOffset;
                 auto totalSize = static_cast<uint32_t> (sizeof (h) + sizeof (dataTypeIndex) + sizeof (frame) + valueDataSize);
 
-                bool ok = outputEventQueue.push (totalSize, [=] (void* dest)
+                bool ok = outputQueue.push (totalSize, [=] (void* dest)
                 {
                     auto d = static_cast<uint8_t*> (dest);
                     choc::memory::writeNativeEndian (d, h);
