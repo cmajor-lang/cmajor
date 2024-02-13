@@ -621,7 +621,7 @@ inline bool AudioMIDIPerformer::postValue (const EndpointHandle handle, const ch
             choc::memory::writeNativeEndian (d, handle);
             d += sizeof (handle);
             // upper bit is used to indicate this is a value rather than event
-            choc::memory::writeNativeEndian (d, framesToReachValue | 0x10000000u);
+            choc::memory::writeNativeEndian (d, framesToReachValue | 0x80000000u);
             d += sizeof (framesToReachValue);
             std::memcpy (d, coercedData.data, coercedData.size);
         });
