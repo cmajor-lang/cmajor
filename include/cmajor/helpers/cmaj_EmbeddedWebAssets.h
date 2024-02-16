@@ -105,7 +105,7 @@ R"(
      *  examples, numbers will be converted to float or integer types, javascript objects and arrays
      *  will be converted into more complex types in as good a fashion is possible.
      */
-    sendEventOrValue (endpointID, value, rampFrames)  { this.sendMessageToServer ({ type: "send_value", id: endpointID, value: value, rampFrames: rampFrames }); }
+    sendEventOrValue (endpointID, value, rampFrames, timeoutMillisecs)  { this.sendMessageToServer ({ type: "send_value", id: endpointID, value, rampFrames, timeout: timeoutMillisecs }); }
 
     /** Sends a short MIDI message value to a MIDI endpoint.
      *  The value must be a number encoded with `(byte0 << 16) | (byte1 << 8) | byte2`.
@@ -2211,7 +2211,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 10979) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 11005) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 28671) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 12587) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 2808) },

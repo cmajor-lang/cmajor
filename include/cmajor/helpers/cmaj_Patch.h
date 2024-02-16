@@ -169,13 +169,13 @@ struct Patch
     void addMIDIMessage (int frameIndex, const void* data, uint32_t length);
 
     /// Can be called before process() to update the time sig details
-    void sendTimeSig (int numerator, int denominator);
+    void sendTimeSig (int numerator, int denominator, uint32_t timeoutMilliseconds);
     /// Can be called before process() to update the BPM
-    void sendBPM (float bpm);
+    void sendBPM (float bpm, uint32_t timeoutMilliseconds);
     /// Can be called before process() to update the transport status
-    void sendTransportState (bool isRecording, bool isPlaying, bool isLooping);
+    void sendTransportState (bool isRecording, bool isPlaying, bool isLooping, uint32_t timeoutMilliseconds);
     /// Can be called before process() to update the playhead time
-    void sendPosition (int64_t currentFrame, double ppq, double ppqBar);
+    void sendPosition (int64_t currentFrame, double ppq, double ppqBar, uint32_t timeoutMilliseconds);
 
     /// Sets a persistent value that should be saved and restored for this
     /// patch by the host.
@@ -230,13 +230,20 @@ struct Patch
     void sendStoredStateValueToViews (const std::string& key) const;
 
     // These can be called by things like the GUI to control the patch
+    bool sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&,
+                                  int32_t rampFrames, uint32_t timeoutMilliseconds);
+
+    bool sendMIDIInputEvent (const EndpointID&, choc::midi::ShortMessage,
+                             uint32_t timeoutMilliseconds);
+
+    void sendGestureStart (const EndpointID&);
+    void sendGestureEnd (const EndpointID&);
+
+    /// A client that is receiving messages over a websocket or other connection
+    /// can call this to apply a message to the patch
     bool handleClientMessage (PatchView&, const choc::value::ValueView&);
-    void sendEventOrValueToPatch (const EndpointID&, const choc::value::ValueView&, int32_t rampFrames = -1) const;
-    void sendMIDIInputEvent (const EndpointID&, choc::midi::ShortMessage) const;
 
-    void sendGestureStart (const EndpointID&) const;
-    void sendGestureEnd (const EndpointID&) const;
-
+    /// Sets the number of frames processed per CPU usage message
     void setCPUInfoMonitorChunkSize (uint32_t);
 
     /// Starts sending data messages to clients for a particular endpoint.
@@ -269,6 +276,8 @@ struct Patch
 
     CustomAudioSourcePtr getCustomAudioSourceForInput (const EndpointID&) const;
 
+    /// A client can provide this callback to get a callback when something modifies
+    /// one of the patches in the bundle
     std::function<void(PatchFileChangeChecker::ChangeType)> patchFilesChanged;
 
     /// A caller can supply a callback here to be told when an overrun or underrun
@@ -317,6 +326,7 @@ private:
     PatchView* findViewForID (uint16_t) const;
     void startCheckingForChanges();
     void handleFileChange (PatchFileChangeChecker::ChangeType);
+    void failedToPushToPatch();
     void setStatus (std::string);
     void setErrorStatus (const std::string& error, const std::string& file, choc::text::LineAndColumn, bool unloadFirst);
     void addActiveView (PatchView&);
@@ -330,9 +340,12 @@ struct PatchParameter  : public std::enable_shared_from_this<PatchParameter>
 {
     PatchParameter (std::shared_ptr<Patch::PatchRenderer>, const EndpointDetails&, EndpointHandle);
 
-    void setValue (float newValue, bool forceSend, int32_t explicitRampFrames = -1);
-    void setValue (const choc::value::ValueView&, bool forceSend, int32_t explicitRampFrames = -1);
-    void resetToDefaultValue (bool forceSend);
+    /// Changes the parameter's value. For a default number of ramp frames, pass -1
+    bool setValue (float newValue, bool forceSend, int32_t rampFrames, uint32_t timeoutMilliseconds);
+    /// Changes the parameter's value. For a default number of ramp frames, pass -1
+    bool setValue (const choc::value::ValueView&, bool forceSend, int32_t numRampFrames, uint32_t timeoutMilliseconds);
+    /// Resets the parameter's value. For a default number of ramp frames, pass -1
+    bool resetToDefaultValue (bool forceSend, int32_t numRampFrames, uint32_t timeoutMilliseconds);
 
     //==============================================================================
     const PatchParameterProperties properties;
@@ -1123,7 +1136,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 startOutputEventThread();
 
             if (createPerformer (performerBuilder))
-                applyParameterValues (loadParams.parameterValues);
+                applyParameterValues (loadParams.parameterValues, 0, 0);
         }
         catch (const choc::json::ParseError& e)
         {
@@ -1371,28 +1384,32 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     }
 
     //==============================================================================
-    void sendTimeSig (int numerator, int denominator)
+    void sendTimeSig (int numerator, int denominator, uint32_t timeoutMilliseconds)
     {
         if (timeSigEventID)
-            performer->postEvent (timeSigEventID, timelineEvents.getTimeSigEvent (numerator, denominator));
+            performer->postEvent (timeSigEventID, timelineEvents.getTimeSigEvent (numerator, denominator),
+                                  timeoutMilliseconds);
     }
 
-    void sendBPM (float bpm)
+    void sendBPM (float bpm, uint32_t timeoutMilliseconds)
     {
         if (tempoEventID)
-            performer->postEvent (tempoEventID, timelineEvents.getBPMEvent (bpm));
+            performer->postEvent (tempoEventID, timelineEvents.getBPMEvent (bpm),
+                                  timeoutMilliseconds);
     }
 
-    void sendTransportState (bool isRecording, bool isPlaying, bool isLooping)
+    void sendTransportState (bool isRecording, bool isPlaying, bool isLooping, uint32_t timeoutMilliseconds)
     {
         if (transportStateEventID)
-            performer->postEvent (transportStateEventID, timelineEvents.getTransportStateEvent (isRecording, isPlaying, isLooping));
+            performer->postEvent (transportStateEventID, timelineEvents.getTransportStateEvent (isRecording, isPlaying, isLooping),
+                                  timeoutMilliseconds);
     }
 
-    void sendPosition (int64_t currentFrame, double quarterNote, double barStartQuarterNote)
+    void sendPosition (int64_t currentFrame, double quarterNote, double barStartQuarterNote, uint32_t timeoutMilliseconds)
     {
         if (positionEventID)
-            performer->postEvent (positionEventID, timelineEvents.getPositionEvent (currentFrame, quarterNote, barStartQuarterNote));
+            performer->postEvent (positionEventID, timelineEvents.getPositionEvent (currentFrame, quarterNote, barStartQuarterNote),
+                                  timeoutMilliseconds);
     }
 
     //==============================================================================
@@ -1409,33 +1426,50 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         return {};
     }
 
-    void applyParameterValues (const std::unordered_map<std::string, float>& values) const
+    void applyParameterValues (const std::unordered_map<std::string, float>& values, int32_t rampFrames, uint32_t timeoutMilliseconds) const
     {
         for (auto& p : parameterIDMap)
         {
             auto oldValue = values.find (p.first);
 
             if (oldValue != values.end())
-                p.second->setValue (oldValue->second, true);
+                p.second->setValue (oldValue->second, true, rampFrames, timeoutMilliseconds);
             else
-                p.second->resetToDefaultValue (true);
+                p.second->resetToDefaultValue (true, rampFrames, timeoutMilliseconds);
         }
     }
 
-    void sendEventOrValueToPatch (ClientEventQueue& queue, const EndpointID& endpointID,
-                                  const choc::value::ValueView& value, int32_t rampFrames = -1)
+    bool sendEventOrValueToPatch (ClientEventQueue& queue, const EndpointID& endpointID, const choc::value::ValueView& value,
+                                  int32_t rampFrames, uint32_t timeoutMilliseconds)
     {
         if (performer == nullptr)
-            return;
+            return false;
 
         if (auto param = findParameter (endpointID))
-            return param->setValue (value, false, rampFrames);
+            return param->setValue (value, false, rampFrames, timeoutMilliseconds);
 
-        if (! performer->postEvent (endpointID, value))
-            performer->postValue (endpointID, value, rampFrames > 0 ? (uint32_t) rampFrames : 0);
+        if (! performer->postEventOrValue (endpointID, value, rampFrames > 0 ? (uint32_t) rampFrames : 0,
+                                           timeoutMilliseconds))
+            return false;
 
         for (auto& m : endpointListeners.eventMonitors)
             m->process (queue, endpointID.toString(), value);
+
+        return true;
+    }
+
+    bool sendMIDIInputEvent (ClientEventQueue& queue, const EndpointID& endpointID,
+                             choc::midi::ShortMessage message, uint32_t timeoutMilliseconds)
+    {
+        auto value = cmaj::MIDIEvents::createMIDIMessageObject (message);
+
+        if (! performer->postEvent (endpointID, value, timeoutMilliseconds))
+            return false;
+
+        for (auto& m : endpointListeners.eventMonitors)
+            m->process (queue, endpointID.toString(), value);
+
+        return true;
     }
 
     void sendGestureStart (const EndpointID& endpointID)
@@ -1466,27 +1500,32 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         }
 
         for (auto& param : parameterList)
-            param->resetToDefaultValue (true);
+            param->resetToDefaultValue (true, -1, 0);
     }
 
     void beginProcessBlock()    { processLock.lock(); }
     void endProcessBlock()      { processLock.unlock(); }
 
     //==============================================================================
-    void postParameterChange (const PatchParameterProperties& properties, EndpointHandle endpointHandle,
-                              float newValue, int32_t explicitRampFrames)
+    bool postParameterChange (const PatchParameterProperties& properties, EndpointHandle endpointHandle,
+                              float newValue, int32_t numRampFrames, uint32_t timeoutMilliseconds)
     {
         if (performer)
         {
-            if (properties.isEvent)
-                performer->postEvent (endpointHandle, choc::value::createFloat32 (newValue));
-            else
-                performer->postValue (endpointHandle, choc::value::createFloat32 (newValue),
-                                      explicitRampFrames >= 0 ? static_cast<uint32_t> (explicitRampFrames)
-                                                              : properties.rampFrames);
+            bool ok = properties.isEvent
+                        ? performer->postEvent (endpointHandle, choc::value::createFloat32 (newValue),
+                                                timeoutMilliseconds)
+                        : performer->postValue (endpointHandle, choc::value::createFloat32 (newValue),
+                                                numRampFrames >= 0 ? static_cast<uint32_t> (numRampFrames)
+                                                                   : properties.rampFrames,
+                                                timeoutMilliseconds);
+
+            if (! ok)
+                return false;
         }
 
         patch.clientEventQueue->postParameterChange (properties.endpointID, newValue);
+        return true;
     }
 
     //==============================================================================
@@ -2212,24 +2251,30 @@ inline void Patch::endChunkedProcess()
     renderer->endProcessBlock();
 }
 
-inline void Patch::sendTimeSig (int numerator, int denominator)
+inline void Patch::failedToPushToPatch()
 {
-    renderer->sendTimeSig (numerator, denominator);
+    if (handleXrun)
+        handleXrun();
 }
 
-inline void Patch::sendBPM (float bpm)
+inline void Patch::sendTimeSig (int numerator, int denominator, uint32_t timeoutMilliseconds)
 {
-    renderer->sendBPM (bpm);
+    renderer->sendTimeSig (numerator, denominator, timeoutMilliseconds);
 }
 
-inline void Patch::sendTransportState (bool isRecording, bool isPlaying, bool isLooping)
+inline void Patch::sendBPM (float bpm, uint32_t timeoutMilliseconds)
 {
-    renderer->sendTransportState (isRecording, isPlaying, isLooping);
+    renderer->sendBPM (bpm, timeoutMilliseconds);
 }
 
-inline void Patch::sendPosition (int64_t currentFrame, double ppq, double ppqBar)
+inline void Patch::sendTransportState (bool isRecording, bool isPlaying, bool isLooping, uint32_t timeoutMilliseconds)
 {
-    renderer->sendPosition (currentFrame, ppq, ppqBar);
+    renderer->sendTransportState (isRecording, isPlaying, isLooping, timeoutMilliseconds);
+}
+
+inline void Patch::sendPosition (int64_t currentFrame, double ppq, double ppqBar, uint32_t timeoutMilliseconds)
+{
+    renderer->sendPosition (currentFrame, ppq, ppqBar, timeoutMilliseconds);
 }
 
 inline void Patch::sendMessageToView (PatchView& view, std::string_view type, const choc::value::ValueView& message) const
@@ -2311,6 +2356,8 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
     if (! newState.isObject())
         return false;
 
+    uint32_t sendParamTimeoutMillisecs = 10;
+
     if (auto params = newState["parameters"]; params.isArray() && params.size() != 0)
     {
         std::unordered_map<std::string, float> explicitParamValues;
@@ -2326,15 +2373,15 @@ inline bool Patch::setFullStoredState (const choc::value::ValueView& newState)
             auto newValue = explicitParamValues.find (param->properties.endpointID);
 
             if (newValue != explicitParamValues.end())
-                param->setValue (newValue->second, true);
+                param->setValue (newValue->second, true, -1, sendParamTimeoutMillisecs);
             else
-                param->resetToDefaultValue (true);
+                param->resetToDefaultValue (true, -1, sendParamTimeoutMillisecs);
         }
     }
     else
     {
         for (auto& param : getParameterList())
-            param->resetToDefaultValue (true);
+            param->resetToDefaultValue (true, -1, sendParamTimeoutMillisecs);
     }
 
     std::unordered_set<std::string> storedValuesToRemove;
@@ -2475,24 +2522,38 @@ inline void Patch::sendOutputEventToViews (uint64_t frame, std::string_view endp
         renderer->endpointListeners.sendOutputEventToViews (*this, endpointID, v);
 }
 
-inline void Patch::sendEventOrValueToPatch (const EndpointID& endpointID, const choc::value::ValueView& value, int32_t rampFrames) const
+inline bool Patch::sendEventOrValueToPatch (const EndpointID& endpointID, const choc::value::ValueView& value,
+                                            int32_t rampFrames, uint32_t timeoutMilliseconds)
 {
-    if (renderer != nullptr)
-        renderer->sendEventOrValueToPatch (*clientEventQueue, endpointID, value, rampFrames);
+    if (renderer == nullptr)
+        return false;
+
+    if (renderer->sendEventOrValueToPatch (*clientEventQueue, endpointID, value, rampFrames, timeoutMilliseconds))
+        return true;
+
+    failedToPushToPatch();
+    return false;
 }
 
-inline void Patch::sendMIDIInputEvent (const EndpointID& endpointID, choc::midi::ShortMessage message) const
+inline bool Patch::sendMIDIInputEvent (const EndpointID& endpointID, choc::midi::ShortMessage message, uint32_t timeoutMilliseconds)
 {
-    sendEventOrValueToPatch (endpointID, cmaj::MIDIEvents::createMIDIMessageObject (message));
+    if (renderer == nullptr)
+        return false;
+
+    if (renderer->sendMIDIInputEvent (*clientEventQueue, endpointID, message, timeoutMilliseconds))
+        return true;
+
+    failedToPushToPatch();
+    return false;
 }
 
-inline void Patch::sendGestureStart (const EndpointID& endpointID) const
+inline void Patch::sendGestureStart (const EndpointID& endpointID)
 {
     if (renderer != nullptr)
         renderer->sendGestureStart (endpointID);
 }
 
-inline void Patch::sendGestureEnd (const EndpointID& endpointID) const
+inline void Patch::sendGestureEnd (const EndpointID& endpointID)
 {
     if (renderer != nullptr)
         renderer->sendGestureEnd (endpointID);
@@ -2549,8 +2610,12 @@ inline bool Patch::handleClientMessage (PatchView& sourceView, const choc::value
 
         if (type == "send_value")
         {
-            auto endpointID = cmaj::EndpointID::create (msg["id"].toString());
-            sendEventOrValueToPatch (endpointID, msg["value"], msg["rampFrames"].getWithDefault<int32_t> (-1));
+            if (! sendEventOrValueToPatch (cmaj::EndpointID::create (msg["id"].toString()),
+                                           msg["value"],
+                                           msg["rampFrames"].getWithDefault<int32_t> (-1),
+                                           static_cast<uint32_t> (std::max (0, msg["timeout"].getWithDefault<int32_t> (0)))))
+                failedToPushToPatch();
+
             return true;
         }
 
@@ -2661,7 +2726,7 @@ inline PatchParameter::PatchParameter (std::shared_ptr<Patch::PatchRenderer> r, 
 {
 }
 
-inline void PatchParameter::setValue (float newValue, bool forceSend, int32_t explicitRampFrames)
+inline bool PatchParameter::setValue (float newValue, bool forceSend, int32_t numRampFrames, uint32_t timeoutMilliseconds)
 {
     newValue = properties.snapAndConstrainValue (newValue);
 
@@ -2670,21 +2735,24 @@ inline void PatchParameter::setValue (float newValue, bool forceSend, int32_t ex
         currentValue = newValue;
 
         if (auto r = renderer.lock())
-            r->postParameterChange (properties, endpointHandle, newValue, explicitRampFrames);
+            if (! r->postParameterChange (properties, endpointHandle, newValue, numRampFrames, timeoutMilliseconds))
+                return false;
 
         if (valueChanged)
             valueChanged (newValue);
     }
+
+    return true;
 }
 
-inline void PatchParameter::setValue (const choc::value::ValueView& v, bool forceSend, int32_t explicitRampFrames)
+inline bool PatchParameter::setValue (const choc::value::ValueView& v, bool forceSend, int32_t numRampFrames, uint32_t timeoutMilliseconds)
 {
-    setValue (properties.parseValue (v), forceSend, explicitRampFrames);
+    return setValue (properties.parseValue (v), forceSend, numRampFrames, timeoutMilliseconds);
 }
 
-inline void PatchParameter::resetToDefaultValue (bool forceSend)
+inline bool PatchParameter::resetToDefaultValue (bool forceSend, int32_t numRampFrames, uint32_t timeoutMilliseconds)
 {
-    setValue (properties.defaultValue, forceSend);
+    return setValue (properties.defaultValue, forceSend, numRampFrames, timeoutMilliseconds);
 }
 
 //==============================================================================

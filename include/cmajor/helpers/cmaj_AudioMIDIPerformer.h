@@ -104,10 +104,11 @@ struct AudioMIDIPerformer
     //==============================================================================
     // These can be called from any thread - it adds these incoming events and value changes
     // to a FIFO that will be read during the next call to process()
-    bool postEvent (const cmaj::EndpointID& endpointID, const choc::value::ValueView& value);
-    bool postEvent (cmaj::EndpointHandle endpointHandle, const choc::value::ValueView& value);
-    bool postValue (const cmaj::EndpointID& endpointID, const choc::value::ValueView& value, uint32_t framesToReachValue);
-    bool postValue (cmaj::EndpointHandle endpointHandle, const choc::value::ValueView& value, uint32_t framesToReachValue);
+    bool postEvent (const cmaj::EndpointID&, const choc::value::ValueView& value, uint32_t timeoutMilliseconds);
+    bool postEvent (cmaj::EndpointHandle,    const choc::value::ValueView& value, uint32_t timeoutMilliseconds);
+    bool postValue (const cmaj::EndpointID&, const choc::value::ValueView& value, uint32_t framesToReachValue, uint32_t timeoutMilliseconds);
+    bool postValue (cmaj::EndpointHandle,    const choc::value::ValueView& value, uint32_t framesToReachValue, uint32_t timeoutMilliseconds);
+    bool postEventOrValue (const cmaj::EndpointID&, const choc::value::ValueView& value, uint32_t framesToReachValue, uint32_t timeoutMilliseconds);
 
     //==============================================================================
     /// This should be called after calling the connect functions to set up the routing,
@@ -578,14 +579,38 @@ inline void AudioMIDIPerformer::allocateScratch()
         audioOutputScratchSpace.resize (scratchNeeded);
 }
 
-inline bool AudioMIDIPerformer::postEvent (cmaj::EndpointHandle handle, const choc::value::ValueView& value)
+template <typename Fifo, typename Fn>
+static bool pushWithTimeout (Fifo& fifo, uint32_t totalSize, uint32_t timeoutMilliseconds, Fn&& f)
+{
+    if (fifo.push (totalSize, f))
+        return true;
+
+    if (timeoutMilliseconds == 0)
+        return false;
+
+    for (auto startTime = std::chrono::steady_clock::now();;)
+    {
+        std::this_thread::sleep_for (std::chrono::milliseconds (1));
+
+        if (fifo.push (totalSize, f))
+            return true;
+
+        auto elapsed = std::chrono::steady_clock::now() - startTime;
+
+        if (elapsed > std::chrono::milliseconds (timeoutMilliseconds))
+            return false;
+    }
+}
+
+inline bool AudioMIDIPerformer::postEvent (cmaj::EndpointHandle handle, const choc::value::ValueView& value,
+                                           uint32_t timeoutMilliseconds)
 {
     if (auto coercedData = endpointTypeCoercionHelpers.coerceValueToMatchingType (handle, value, EndpointType::event))
     {
         auto typeIndex = static_cast<uint32_t> (coercedData.typeIndex);
         auto totalSize = static_cast<uint32_t> (sizeof (handle) + sizeof (typeIndex) + coercedData.data.size);
 
-        return inputQueue.push (totalSize, [&] (void* dest)
+        return pushWithTimeout (inputQueue, totalSize, timeoutMilliseconds, [&] (void* dest)
         {
             auto d = static_cast<uint8_t*> (dest);
             choc::memory::writeNativeEndian (d, handle);
@@ -599,23 +624,23 @@ inline bool AudioMIDIPerformer::postEvent (cmaj::EndpointHandle handle, const ch
     return false;
 }
 
-inline bool AudioMIDIPerformer::postEvent (const cmaj::EndpointID& endpointID, const choc::value::ValueView& value)
+inline bool AudioMIDIPerformer::postEvent (const cmaj::EndpointID& endpointID, const choc::value::ValueView& value,
+                                           uint32_t timeoutMilliseconds)
 {
-    auto activeHandle = inputEndpointHandles.find (endpointID.toString());
-
-    if (activeHandle != inputEndpointHandles.end())
-        return postEvent (activeHandle->second, value);
+    if (auto h = inputEndpointHandles.find (endpointID.toString()); h != inputEndpointHandles.end())
+        return postEvent (h->second, value, timeoutMilliseconds);
 
     return false;
 }
 
-inline bool AudioMIDIPerformer::postValue (const EndpointHandle handle, const choc::value::ValueView& value, uint32_t framesToReachValue)
+inline bool AudioMIDIPerformer::postValue (const EndpointHandle handle, const choc::value::ValueView& value,
+                                           uint32_t framesToReachValue, uint32_t timeoutMilliseconds)
 {
     if (auto coercedData = endpointTypeCoercionHelpers.coerceValue (handle, value))
     {
         auto totalSize = static_cast<uint32_t> (sizeof (handle) + sizeof (framesToReachValue) + coercedData.size);
 
-        return inputQueue.push (totalSize, [&] (void* dest)
+        return pushWithTimeout (inputQueue, totalSize, timeoutMilliseconds, [&] (void* dest)
         {
             auto d = static_cast<uint8_t*> (dest);
             choc::memory::writeNativeEndian (d, handle);
@@ -630,12 +655,25 @@ inline bool AudioMIDIPerformer::postValue (const EndpointHandle handle, const ch
     return false;
 }
 
-inline bool AudioMIDIPerformer::postValue (const cmaj::EndpointID& endpointID, const choc::value::ValueView& value, uint32_t framesToReachValue)
+inline bool AudioMIDIPerformer::postValue (const cmaj::EndpointID& endpointID, const choc::value::ValueView& value,
+                                           uint32_t framesToReachValue, uint32_t timeoutMilliseconds)
 {
-    auto activeHandle = inputEndpointHandles.find (endpointID.toString());
+    if (auto h = inputEndpointHandles.find (endpointID.toString()); h != inputEndpointHandles.end())
+        return postValue (h->second, value, framesToReachValue, timeoutMilliseconds);
 
-    if (activeHandle != inputEndpointHandles.end())
-        return postValue (activeHandle->second, value, framesToReachValue);
+    return false;
+}
+
+inline bool AudioMIDIPerformer::postEventOrValue (const cmaj::EndpointID& endpointID, const choc::value::ValueView& value,
+                                                  uint32_t framesToReachValue, uint32_t timeoutMilliseconds)
+{
+    if (auto h = inputEndpointHandles.find (endpointID.toString()); h != inputEndpointHandles.end())
+    {
+        if (endpointTypeCoercionHelpers.getInputEndpointType (h->second) == EndpointType::event)
+            return postEvent (h->second, value, timeoutMilliseconds);
+
+        return postValue (h->second, value, framesToReachValue, timeoutMilliseconds);
+    }
 
     return false;
 }

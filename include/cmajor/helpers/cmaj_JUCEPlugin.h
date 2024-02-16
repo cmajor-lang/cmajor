@@ -668,15 +668,18 @@ private:
         {
             if (auto pos = ph.getPosition())
             {
+                uint32_t timeout = 0;
+
                 if (auto timeSig = pos->getTimeSignature())
-                    patch->sendTimeSig (timeSig->numerator, timeSig->denominator);
+                    patch->sendTimeSig (timeSig->numerator, timeSig->denominator, timeout);
 
                 if (auto bpm = pos->getBpm())
-                    patch->sendBPM (static_cast<float> (*bpm));
+                    patch->sendBPM (static_cast<float> (*bpm), timeout);
 
                 patch->sendTransportState (pos->getIsRecording(),
                                            pos->getIsPlaying(),
-                                           pos->getIsLooping());
+                                           pos->getIsLooping(),
+                                           timeout);
 
                 if (auto timeSamps = pos->getTimeInSamples())
                 {
@@ -688,7 +691,7 @@ private:
                     if (auto p = pos->getPpqPositionOfLastBarStart())
                         ppqBar = *p;
 
-                    patch->sendPosition (static_cast<int64_t> (*timeSamps), ppq, ppqBar);
+                    patch->sendPosition (static_cast<int64_t> (*timeSamps), ppq, ppqBar, timeout);
                 }
             }
         }
@@ -764,7 +767,7 @@ private:
 
         float getDefaultValue() const override       { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->properties.defaultValue) : 0.0f; }
         float getValue() const override              { return patchParam != nullptr ? patchParam->properties.convertTo0to1 (patchParam->currentValue) : 0.0f; }
-        void setValue (float newValue) override      { if (patchParam != nullptr) patchParam->setValue (patchParam->properties.convertFrom0to1 (newValue), false); }
+        void setValue (float newValue) override      { if (patchParam != nullptr) patchParam->setValue (patchParam->properties.convertFrom0to1 (newValue), false, -1, 0); }
 
         juce::String getText (float v, int length) const override
         {

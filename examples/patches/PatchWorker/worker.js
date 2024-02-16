@@ -43,7 +43,9 @@ function sendAudioSampleDataToPatch (patchConnection, audioData)
             sourceRoot: 72
         };
 
-        patchConnection.sendEventOrValue ("sampleData", chunk);
+        // send the event with a timeout of 1000ms so that it'll retry for
+        // a while if the patch's FIFO is busy
+        patchConnection.sendEventOrValue ("sampleData", chunk, -1, 1000);
     }
 }
 

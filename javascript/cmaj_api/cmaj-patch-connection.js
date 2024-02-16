@@ -55,7 +55,7 @@ export class PatchConnection  extends EventListenerList
      *  examples, numbers will be converted to float or integer types, javascript objects and arrays
      *  will be converted into more complex types in as good a fashion is possible.
      */
-    sendEventOrValue (endpointID, value, rampFrames)  { this.sendMessageToServer ({ type: "send_value", id: endpointID, value: value, rampFrames: rampFrames }); }
+    sendEventOrValue (endpointID, value, rampFrames, timeoutMillisecs)  { this.sendMessageToServer ({ type: "send_value", id: endpointID, value, rampFrames, timeout: timeoutMillisecs }); }
 
     /** Sends a short MIDI message value to a MIDI endpoint.
      *  The value must be a number encoded with `(byte0 << 16) | (byte1 << 8) | byte2`.
