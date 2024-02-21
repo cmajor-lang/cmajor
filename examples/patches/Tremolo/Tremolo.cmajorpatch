@@ -1,0 +1,26 @@
+
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.adc23",
+    "version":          "1.0",
+    "name":             "Tremolo",
+    "description":      "Tremolo",
+    "category":         "effect",
+    "manufacturer":     "Sound Stacks Ltd",
+    "isInstrument":     false,
+
+    "plugin":
+    {
+        "manufacturerCode":  "Cmaj",
+        "pluginCode":        "adc8"
+    },
+
+    "source":           "Tremolo.cmajor",
+    "view":
+    {
+        "src": "ui/index.js",
+        "width": 250,
+        "height": 423,
+        "resizable": false
+    }
+}

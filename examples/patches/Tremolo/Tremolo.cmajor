@@ -1,0 +1,51 @@
+graph Tremolo [[ main ]]
+{
+    input lfo.*;
+    input value bool bypass [[ name: "Bypass", boolean ]];
+
+    input stream float in;
+    output stream float out;
+
+    node lfo = TremoloLFO;
+
+    float gain (bool bypassValue, float lfoValue)
+    {
+        if (bypassValue)
+            return 1.0f;
+        else
+            return 0.5f + (lfoValue * 0.5f);
+    }
+
+    connection
+    {
+        gain (bypass, lfo.out) * in -> out;
+    }
+}
+
+graph TremoloLFO
+{
+    output stream float out;
+
+    input value float shape [[ name: "Shape", min: 0, max: 100, init:0, rampFrames: 1000 ]];
+    input event float rate  [[ name: "Rate", min: 0.1, max: 20, init:8, unit: "Hz" ]];
+    input event float depth [[ name: "Depth", min: 0, max: 100, init:100, unit: "%" ]];
+
+    event depth (float v)
+    {
+        triangleLFO.amplitudeIn <- v * 0.01f;
+        squareLFO.amplitudeIn <- v * 0.01f;
+    }
+
+    node triangleLFO = std::oscillators::LFO (std::oscillators::Shape::triangle);
+    node squareLFO   = std::oscillators::LFO (std::oscillators::Shape::square);
+    node lowPass     = std::filters::butterworth::Processor (std::filters::butterworth::Mode::lowPass, 50.0f);
+
+    connection
+    {
+        rate -> triangleLFO.rateHzIn, squareLFO.rateHzIn;
+
+        triangleLFO.out * (1.0f - shape * 0.01f) -> out;
+        squareLFO.out * shape * 0.01f -> lowPass.in;
+        lowPass.out -> out;
+    }
+}
