@@ -208,9 +208,7 @@ const outer = document.getElementById ("cmaj-outer-container");
 const inner = document.getElementById ("cmaj-inner-container");
 
 const patchConnection = new EmbeddedPatchConnection();
-const currentView = await createPatchView (patchConnection, viewInfo);
-
-if (currentView)
+createPatchView (patchConnection, viewInfo).then ((currentView) =>
 {
     inner.appendChild (currentView);
 
@@ -218,7 +216,7 @@ if (currentView)
     resizeObserver.observe (document.body);
 
     scalePatchViewToFit (currentView, inner, outer);
-}
+});
 
 </script>
 </html>
