@@ -16,7 +16,7 @@ We're aiming to improve on the current status-quo for audio development in quite
 
 Our main documentation site is at [cmajor.dev](https://cmajor.dev).
 
-The [Cmajor VScode extension](https://marketplace.visualstudio.com/items?itemName=SoundStacks.cmajor) offers a one-click install process to get you up-and-running, or see the [Quick Start Guide](https://cmajor.dev/docs/GettingStarted) for other options, like how to use the command-line tools.
+The [Cmajor VScode extension](https://marketplace.visualstudio.com/items?itemName=CmajorSoftware.cmajor-tools) offers a one-click install process to get you up-and-running, or see the [Quick Start Guide](https://cmajor.dev/docs/GettingStarted) for other options, like how to use the command-line tools.
 
 If you want to learn about the nitty-gritty of the Cmajor language, the [language guide](https://cmajor.dev/docs/LanguageReference) offers a deep dive. To see some examples of the code, try the [examples](./examples/patches) folder.
 
