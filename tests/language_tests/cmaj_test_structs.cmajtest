@@ -291,3 +291,20 @@ namespace params
         none, frequency
     }
 }
+
+## testCompile()
+
+processor Untitled  [[ main ]]
+{
+    output stream float out;
+    struct NoteStruct
+    {
+        std::notes::NoteOn note;
+    }
+
+    void main()
+    {
+        let s = NoteStruct();
+        advance();
+    }
+}

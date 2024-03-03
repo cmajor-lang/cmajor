@@ -185,10 +185,13 @@ struct Cast  : public ValueBase
     {
         if (auto destType = castToTypeBase (targetType))
         {
-            if (destType->containsSlice())
-                return {};
-
-            return castConstantList (context.allocator, *destType, arguments.iterateAs<const Object>(), onlySilentCastsAllowed);
+            if (destType->isResolved())
+            {
+                if (destType->containsSlice())
+                    return {};
+                
+                return castConstantList (context.allocator, *destType, arguments.iterateAs<const Object>(), onlySilentCastsAllowed);
+            }
         }
 
         return {};
