@@ -497,7 +497,7 @@ export class Options  extends ParameterControlBase
 
         const { min, max, options } = (() =>
         {
-            if (this.hasTextOptions (endpointInfo))
+            if (Options.hasTextOptions (endpointInfo))
             {
                 const optionList = endpointInfo.annotation.text.split ("|");
                 const stepCount = toStepCount (optionList.length);
@@ -515,7 +515,7 @@ export class Options  extends ParameterControlBase
                 return { min, max, options };
             }
 
-            if (this.isExplicitlyDiscrete (endpointInfo))
+            if (Options.isExplicitlyDiscrete (endpointInfo))
             {
                 const step = endpointInfo.annotation.step;
 
