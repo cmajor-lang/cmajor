@@ -619,7 +619,7 @@ async function connectToMIDI (connection)
         if (! navigator.requestMIDIAccess)
             throw new Error ("Web MIDI API not supported.");
 
-        const midiAccess = await navigator.requestMIDIAccess();
+        const midiAccess = await navigator.requestMIDIAccess ({ sysex: true, software: true });
 
         for (const input of midiAccess.inputs.values())
         {

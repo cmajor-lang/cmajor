@@ -71,20 +71,39 @@ export async function createAudioWorkletNodePatchConnection (audioContext, workl
 
   if (manifest.worker?.length > 0)
   {
-    import (manifest.worker).then (module =>
+    connection.readResource = async (path) =>
+    {
+      return fetch (path);
+    };
+
+    connection.readResourceAsAudioData = async (path) =>
+    {
+      const response = await connection.readResource (path);
+      const buffer = await audioContext.decodeAudioData (await response.arrayBuffer());
+
+      let frames = [];
+
+      for (let i = 0; i < buffer.length; ++i)
+        frames.push ([]);
+
+      for (let chan = 0; chan < buffer.numberOfChannels; ++chan)
+      {
+        const src = buffer.getChannelData (chan);
+
+        for (let i = 0; i < buffer.length; ++i)
+          frames[i].push (src[i]);
+      }
+
+      return {
+        frames,
+        sampleRate: buffer.sampleRate
+      }
+    };
+
+    import (connection.getResourceAddress (manifest.worker)).then (module =>
     {
       module.default (connection);
     });
-
-    connection.readResource = (path) =>
-    {
-        throw new Error ("TODO");
-    };
-
-    connection.readResourceAsAudioData = (path) =>
-    {
-        throw new Error ("TODO");
-    };
   }
 
   return { node, connection };
@@ -115,46 +134,6 @@ CMAJOR_WRAPPER_CLASS
                                                   "CMAJOR_WRAPPER_CLASS", wrapper.generatedCode,
                                                   "MAIN_CLASS_NAME", wrapper.mainClassName,
                                                   "MANIFEST_JSON", manifest)) + "\n";
-}
-
-//==============================================================================
-static void addModuleAndDependencies (GeneratedFiles& files, std::filesystem::path root, std::filesystem::path modulePath)
-{
-    try
-    {
-        files.readAndAddFile (modulePath, root);
-
-        auto content = choc::file::loadFileAsString (modulePath.string());
-        auto lines = choc::text::splitIntoLines (content, true);
-
-        for (auto& line : lines)
-        {
-            if (choc::text::startsWith (choc::text::trimStart (line), "import "))
-            {
-                if (auto quote = line.find ('\"'); quote != std::string::npos)
-                {
-                    auto path = choc::text::trim (line.substr (quote + 1));
-
-                    if (path.empty() || path.back() != '\"')
-                        throw std::runtime_error ("Illegal import syntax");
-
-                    path = choc::text::trim (path.substr (0, path.length() - 1));
-
-                    auto importedModule = choc::text::startsWith (path, "/")
-                                            ? root / path.substr (2)
-                                            : (choc::text::startsWith (path, "./")
-                                                 ? modulePath.parent_path() / path.substr (2)
-                                                 : modulePath.parent_path() / path);
-
-                    addModuleAndDependencies (files, root, importedModule);
-                }
-            }
-        }
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << e.what() << std::endl;
-    }
 }
 
 //==============================================================================
@@ -277,8 +256,11 @@ document.getElementById ("cmaj-start-button").onclick = async function()
         generatedFiles.findAndAddFiles (viewFolder, manifestFolder);
     }
 
+    for (auto& resource : manifest.resources)
+        generatedFiles.findAndAddFiles (manifestFolder, manifestFolder, choc::text::WildcardPattern (resource, false));
+
     if (! loadParams.manifest.patchWorker.empty())
-        addModuleAndDependencies (generatedFiles, manifestFolder, manifestFolder / loadParams.manifest.patchWorker);
+        generatedFiles.readAndAddFile (manifestFolder / GeneratedFiles::trimLeadingSlash (loadParams.manifest.patchWorker), manifestFolder);
 
     return generatedFiles;
 }

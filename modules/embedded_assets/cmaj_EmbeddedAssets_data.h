@@ -656,7 +656,7 @@ async function connectToMIDI (connection)
         if (! navigator.requestMIDIAccess)
             throw new Error ("Web MIDI API not supported.");
 
-        const midiAccess = await navigator.requestMIDIAccess();
+        const midiAccess = await navigator.requestMIDIAccess ({ sysex: true, software: true });
 
         for (const input of midiAccess.inputs.values())
         {
@@ -668,7 +668,8 @@ async function connectToMIDI (connection)
     {
         console.warn (`Could not open MIDI devices: ${e}`);
     }
-}
+})"
+R"(
 
 /**  Takes an audio node and connection that were returned by `createAudioWorkletNodePatchConnection()`
  *   and attempts to hook them up to the default audio and MIDI channels.
@@ -687,8 +688,7 @@ export async function connectDefaultAudioAndMIDI ({ node, connection, audioConte
                 return true;
 
         return false;
-    })"
-R"(
+    }
 
     if (hasInputWithPurpose ("midi in"))
         connectToMIDI (connection);
@@ -4147,7 +4147,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24384) },
+        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24416) },
         File { "embedded_patch_runner_template.html", std::string_view (embedded_patch_runner_template_html, 904) },
         File { "embedded_patch_chooser_template.html", std::string_view (embedded_patch_chooser_template_html, 300) },
         File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2050) },

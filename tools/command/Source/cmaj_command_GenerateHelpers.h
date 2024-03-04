@@ -22,6 +22,7 @@
 
 #include "choc/text/choc_TextTable.h"
 #include "choc/text/choc_CodePrinter.h"
+#include "choc/text/choc_Wildcard.h"
 
 //==============================================================================
 struct GeneratedFiles
@@ -29,6 +30,17 @@ struct GeneratedFiles
     void addFile (std::string name, std::string content)
     {
         files.push_back ({ std::move (name), std::move (content) });
+    }
+
+    static std::string trimLeadingSlash (std::string path)
+    {
+        if (choc::text::startsWith (path, "./"))
+            return path.substr (2);
+
+        if (choc::text::startsWith (path, "/"))
+            return path.substr (1);
+
+        return path;
     }
 
     void readAndAddFile (std::filesystem::path file, std::filesystem::path relativeTo)
@@ -41,6 +53,17 @@ struct GeneratedFiles
     {
         for (auto& file : std::filesystem::recursive_directory_iterator (folder))
             if (! is_directory (file) && file.path().filename() != ".DS_Store")
+                readAndAddFile (file, relativeTo);
+    }
+
+    void findAndAddFiles (std::filesystem::path folder, std::filesystem::path relativeTo, choc::text::WildcardPattern wildcard)
+    {
+        for (auto& wc : wildcard)
+            wc = trimLeadingSlash (wc);
+
+        for (auto& file : std::filesystem::recursive_directory_iterator (folder))
+            if (! is_directory (file) && file.path().filename() != ".DS_Store"
+                 && wildcard.matches (relative (file.path(), relativeTo).generic_string()))
                 readAndAddFile (file, relativeTo);
     }
 

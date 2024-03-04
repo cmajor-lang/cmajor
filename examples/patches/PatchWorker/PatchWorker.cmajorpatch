@@ -9,5 +9,6 @@
     "isInstrument":     false,
 
     "source":           "PatchWorker.cmajor",
-    "worker":           "./worker.js"
+    "worker":           "/worker.js",
+    "resources":        "/resources/*"
 }

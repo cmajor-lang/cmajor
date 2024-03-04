@@ -29,7 +29,7 @@ processor PlayNotesSentByJavascriptWorker
 
         for (int i = 0; i < data.numFrames; ++i)
             if (data.startPos + i < audioData.size)
-                audioData[data.startPos + i] = data.frames[i];
+                audioData.at (data.startPos + i) = data.frames.at(i);
     }
 
     // This event handler will receive events from the worker thread and

@@ -714,19 +714,20 @@ catch (error)
         {
             auto indent = out.createIndentWithBraces();
 
-            out << "return new Uint8Array([";
-
-            size_t itemsOnLine = 0;
+            std::string currentLine = "return new Uint8Array([";
+            out << currentLine;
 
             for (auto byte : module.binaryWASMData)
             {
-                if (++itemsOnLine > 200)
+                if (currentLine.length() > 200)
                 {
-                    itemsOnLine = 0;
+                    currentLine = {};
                     out << newLine << "  ";
                 }
 
-                out << static_cast<uint8_t> (byte) << ",";
+                auto s = std::to_string (static_cast<uint8_t> (byte)) + ",";
+                currentLine += s;
+                out << s;
             }
 
             out << "]);" << newLine;
