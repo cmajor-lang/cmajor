@@ -2,7 +2,7 @@
 
 Cmajor makes a great platform for high-performance execution (inference) of real-time machine learning tasks. ML inference involves a lot of matrix operators, and the Cmajor JIT engine can do a great job of vectorising that kind of code. In most cases it equals or outperforms equivalent C++ code by taking advantage of processor-specific SIMD extensions where available, and is real-time safe by design.
 
-Two commonly used ML engines for audio tasks are [ONNX](https://onnx.ai/) and [RTNeural](https://github.com/jatinchowdhury18/RTNeural), and we provide tools to convert these models directly into pure Cmajor code.
+Two commonly used ML model formats for audio tasks are [ONNX](https://onnx.ai/) and [RTNeural](https://github.com/jatinchowdhury18/RTNeural), and we provide tools to convert these models directly into pure Cmajor code.
 
 Other ML frameworks such as Pytorch or Tensorflow provide conversion tools to/from ONNX, so ONNX can be used as an intermediate format when converting other models to Cmajor.
 
