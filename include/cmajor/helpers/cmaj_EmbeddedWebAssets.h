@@ -778,7 +778,7 @@ R"(
 
         const { min, max, options } = (() =>
         {
-            if (this.hasTextOptions (endpointInfo))
+            if (Options.hasTextOptions (endpointInfo))
             {
                 const optionList = endpointInfo.annotation.text.split ("|");
                 const stepCount = toStepCount (optionList.length);
@@ -796,7 +796,7 @@ R"(
                 return { min, max, options };
             }
 
-            if (this.isExplicitlyDiscrete (endpointInfo))
+            if (Options.isExplicitlyDiscrete (endpointInfo))
             {
                 const step = endpointInfo.annotation.step;
 
@@ -2225,7 +2225,7 @@ R"(3.948a102.566,102.566,0,0,1,19.979,2V382.85A74.364,74.364,0,0,0,1657.854,381.
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 11671) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 29337) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 29343) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
