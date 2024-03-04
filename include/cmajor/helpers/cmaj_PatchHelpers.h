@@ -65,21 +65,72 @@ struct PatchManifest
     /// Refreshes the content by re-reading from the original source
     bool reload();
 
+    /// This is a copy of the whole manifest as a JSON object. Most of the values
+    /// from this are parsed by this helper class to populate its other members, but
+    /// if you have custom items in the manifest, this is where you can find them.
     choc::value::Value manifest;
-    std::string manifestFile, ID, name, description, category, manufacturer, version, mainProcessor;
+
+    /// This is the patch's unique ID string.
+    std::string ID;
+
+    /// The patch's version number
+    std::string version;
+
+    /// The display name for the patch.
+    std::string name;
+
+    /// An optional longer description for the patch.
+    std::string description;
+
+    /// An optional free-form category to describe this patch.
+    std::string category;
+
+    /// This is the file path of the .cmajorpatch file from which this manifest was
+    /// loaded (or blank if it didn't come from a file).
+    std::string manifestFile;
+
+    /// An optional manufacturer name
+    std::string manufacturer;
+
+    /// Optionally, this overrides the Cmajor processor that is chosen to be the
+    /// main processor for the patch.
+    std::string mainProcessor;
+
+    /// True if the isInstrument flag was set
     bool isInstrument = false;
+
+    /// This array is a list of the .cmajor source files that the manifest specifies.
     std::vector<std::string> sourceFiles;
+
+    /// An optional path to a patch worker .js file
     std::string patchWorker;
-    choc::value::Value externals;
+
+    /// The "resources" field can be a string (or array of strings) which provides
+    /// wildcards at which to find resource files in the patch bundle - this is used
+    /// by exporters to know which resource files a patch is going to need
+    std::vector<std::string> resources;
+
+    /// This flag is set to false in special cases where a patch has a fixed, pre-built
+    /// program, e.g in an exported C++ version of a patch.
     bool needsToBuildSource = true;
 
     // These functors are used for all file access, as the patch may be loaded from
     // all sorts of virtual filesystems
-    std::function<std::shared_ptr<std::istream>(const std::string&)> createFileReader;
-    std::function<std::string(const std::string&)> getFullPathForFile;
-    std::function<std::filesystem::file_time_type(const std::string&)> getFileModificationTime;
+
+    /// Checks whether a resource file within the patch exists.
     std::function<bool(const std::string&)> fileExists;
+    /// This function will attempt to create a stream to read the given patch file.
+    /// Returns nullptr if the file can't be opened.
+    std::function<std::shared_ptr<std::istream>(const std::string&)> createFileReader;
+    /// Attempts to open a stream to the given patch resource file and load the
+    /// whole thing. Returns an empty optional on failure.
     std::optional<std::string> readFileContent (const std::string& name) const;
+    /// This takes a relative path to a resource within the patch and converts it to
+    /// an absolute path (if applicable).
+    std::function<std::string(const std::string&)> getFullPathForFile;
+    /// This attempts to find the last modification time of a file within the patch
+    /// If that's not possible, it returns an empty time object.
+    std::function<std::filesystem::file_time_type(const std::string&)> getFileModificationTime;
 
     /// Represents one of the GUI views in the patch
     struct View
@@ -93,9 +144,15 @@ struct PatchManifest
         choc::value::Value view = choc::value::createObject ({});
     };
 
+    /// A list of all the View objects that were specified in the manifest.
     std::vector<View> views;
 
+    /// Returns a pointer to the first View object in the patch which seems
+    /// to exist, or nullptr if the manifest has no working views.
     const View* findDefaultView() const;
+
+    /// If the manifest has a generic view entry, this returns it, so that you
+    /// can find out more about its preferred size etc.
     const View* findGenericView() const;
 
     /// Returns a copy of the manifest object that has large items like
@@ -115,7 +172,7 @@ struct PatchManifest
     std::function<choc::value::Value(const cmaj::ExternalVariable&)> createExternalResolverFunction() const;
 
 private:
-    void addSource (const choc::value::ValueView&);
+    static void addStrings (std::vector<std::string>&, const choc::value::ValueView&);
     void addView (const choc::value::ValueView&);
     void addWorker (const choc::value::ValueView&);
 };
@@ -388,8 +445,8 @@ inline bool PatchManifest::reload()
         mainProcessor = {};
         isInstrument = false;
         sourceFiles.clear();
-        externals = choc::value::Value();
         views.clear();
+        resources.clear();
 
         if (manifest.isObject())
         {
@@ -408,7 +465,6 @@ inline bool PatchManifest::reload()
             mainProcessor  = manifest["mainProcessor"].toString();
             version        = manifest["version"].toString();
             isInstrument   = manifest["isInstrument"].getWithDefault<bool> (false);
-            externals      = manifest["externals"];
 
             if (ID.length() < 4)
                 throw std::runtime_error ("The manifest must contain a valid and globally unique \"ID\" property");
@@ -419,9 +475,10 @@ inline bool PatchManifest::reload()
             if (version.length() > 24 || version.empty())
                 throw std::runtime_error ("The manifest must contain a valid \"version\" property");
 
-            addSource (manifest["source"]);
+            addStrings (sourceFiles, manifest["source"]);
             addView (manifest["view"]);
             addWorker (manifest["worker"]);
+            addStrings (resources, manifest["resources"]);
 
             return true;
         }
@@ -455,16 +512,16 @@ inline std::optional<std::string> PatchManifest::readFileContent (const std::str
     return {};
 }
 
-inline void PatchManifest::addSource (const choc::value::ValueView& source)
+inline void PatchManifest::addStrings (std::vector<std::string>& strings, const choc::value::ValueView& source)
 {
     if (source.isString())
     {
-        sourceFiles.push_back (source.get<std::string>());
+        strings.push_back (source.get<std::string>());
     }
     else if (source.isArray())
     {
         for (auto f : source)
-            addSource (f);
+            addStrings (strings, f);
     }
 }
 
@@ -532,7 +589,7 @@ inline std::unordered_map<std::string, choc::value::ValueView> PatchManifest::ge
 {
     std::unordered_map<std::string, choc::value::ValueView> result;
 
-    if (externals.isObject())
+    if (auto externals = manifest["externals"]; externals.isObject())
     {
         for (uint32_t i = 0; i < externals.size(); i++)
         {
