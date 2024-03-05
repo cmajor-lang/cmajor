@@ -560,15 +560,13 @@ export class AudioWorkletPatchConnection extends PatchConnection
     sendMessageToServer (msg)
     {
         this.audioNode.port.postMessage ({ type: "patch", payload: msg });
-    })"
-R"(
+    }
 
     requestStoredStateValue (key)
     {
-        const maybeValue = this.cachedState[key];
-        if (maybeValue != null)
-            this.dispatchEvent ("state_key_value", { key, value: maybeValue });
-    }
+        this.dispatchEvent ("state_key_value", { key, value: this.cachedState[key] });
+    })"
+R"(
 
     sendStoredStateValue (key, newValue)
     {
@@ -618,8 +616,7 @@ R"(
         return path.startsWith ("/") ? path : ("/" + path);
     }
 }
-)"
-R"(
+
 
 //==============================================================================
 async function connectToAudioIn (audioContext, node)
@@ -636,7 +633,8 @@ async function connectToAudioIn (audioContext, node)
         if (! input)
             throw new Error();
 
-        const source = audioContext.createMediaStreamSource (input);
+        const source = audioContext.createMediaStreamSource (input);)"
+R"(
 
         if (! source)
             throw new Error();
@@ -668,8 +666,7 @@ async function connectToMIDI (connection)
     {
         console.warn (`Could not open MIDI devices: ${e}`);
     }
-})"
-R"(
+}
 
 /**  Takes an audio node and connection that were returned by `createAudioWorkletNodePatchConnection()`
  *   and attempts to hook them up to the default audio and MIDI channels.
@@ -4147,7 +4144,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24416) },
+        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24341) },
         File { "embedded_patch_runner_template.html", std::string_view (embedded_patch_runner_template_html, 904) },
         File { "embedded_patch_chooser_template.html", std::string_view (embedded_patch_chooser_template_html, 300) },
         File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2050) },

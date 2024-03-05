@@ -529,9 +529,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
 
     requestStoredStateValue (key)
     {
-        const maybeValue = this.cachedState[key];
-        if (maybeValue != null)
-            this.dispatchEvent ("state_key_value", { key, value: maybeValue });
+        this.dispatchEvent ("state_key_value", { key, value: this.cachedState[key] });
     }
 
     sendStoredStateValue (key, newValue)
