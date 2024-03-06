@@ -22,7 +22,7 @@
 
 #if CMAJ_ENABLE_CODEGEN_BINARYEN || CMAJ_ENABLE_CODEGEN_LLVM_WASM
 
-#include "../../../../../../cmajor/include/cmajor/COM/cmaj_EngineFactoryInterface.h"
+#include "../../../../../include/cmajor/COM/cmaj_EngineFactoryInterface.h"
 #include "../../codegen/cmaj_CodeGenerator.h"
 
 namespace cmaj::webassembly

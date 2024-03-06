@@ -40,12 +40,12 @@
 
 #include "../diagnostics/cmaj_ErrorList.h"
 
-#include "../../../../cmajor/include/cmajor/API/cmaj_Program.h"
-#include "../../../../cmajor/include/cmajor/API/cmaj_Endpoints.h"
-#include "../../../../cmajor/include/cmajor/API/cmaj_ExternalVariables.h"
-#include "../../../../cmajor/include/cmajor/API/cmaj_SourceFiles.h"
-#include "../../../../cmajor/include/cmajor/API/cmaj_DiagnosticMessages.h"
-#include "../../../../cmajor/include/cmajor/API/cmaj_BuildSettings.h"
+#include "../../../include/cmajor/API/cmaj_Program.h"
+#include "../../../include/cmajor/API/cmaj_Endpoints.h"
+#include "../../../include/cmajor/API/cmaj_ExternalVariables.h"
+#include "../../../include/cmajor/API/cmaj_SourceFiles.h"
+#include "../../../include/cmajor/API/cmaj_DiagnosticMessages.h"
+#include "../../../include/cmajor/API/cmaj_BuildSettings.h"
 
 #include "cmaj_EnumList.h"
 #include "cmaj_IdentifierPath.h"

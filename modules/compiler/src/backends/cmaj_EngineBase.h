@@ -19,7 +19,7 @@
 #pragma once
 
 #include "../../include/cmaj_ErrorHandling.h"
-#include "../../../../cmajor/include/cmajor/COM/cmaj_EngineFactoryInterface.h"
+#include "../../../include/cmajor/COM/cmaj_EngineFactoryInterface.h"
 #include <iostream>
 #include "../AST/cmaj_AST.h"
 #include "../codegen/cmaj_GraphGenerator.h"
