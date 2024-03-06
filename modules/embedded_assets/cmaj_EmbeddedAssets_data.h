@@ -24,7 +24,7 @@ struct Files
 
     static constexpr const char* cmaj_audio_worklet_helper_js =
         R"(
-import { PatchConnection } from "/cmaj_api/cmaj-patch-connection.js"
+import { PatchConnection } from "./cmaj-patch-connection.js"
 
 //==============================================================================
 // N.B. code will be serialised to a string, so all `registerWorkletProcessor`s
@@ -613,7 +613,7 @@ R"(
 
     getResourceAddress (path)
     {
-        return path.startsWith ("/") ? path : ("/" + path);
+        return window.location.href + path;
     }
 }
 
@@ -4144,7 +4144,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24341) },
+        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24317) },
         File { "embedded_patch_runner_template.html", std::string_view (embedded_patch_runner_template_html, 904) },
         File { "embedded_patch_chooser_template.html", std::string_view (embedded_patch_chooser_template_html, 300) },
         File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2050) },

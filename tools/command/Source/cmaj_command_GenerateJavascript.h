@@ -40,7 +40,7 @@ inline std::string generateJavascriptWorklet (cmaj::Patch& patch, const cmaj::Pa
 //
 //==============================================================================
 
-import * as helpers from "/cmaj_api/cmaj_audio_worklet_helper.js"
+import * as helpers from "./cmaj_api/cmaj_audio_worklet_helper.js"
 
 
 //==============================================================================
@@ -199,7 +199,7 @@ To learn more about Cmajor, visit [cmajor.dev](cmajor.dev)
 <script type="module">
 
 import * as patch from "./PATCH_MODULE_FILE"
-import { createPatchView, scalePatchViewToFit } from "/cmaj_api/cmaj-patch-view.js"
+import { createPatchView, scalePatchViewToFit } from "./cmaj_api/cmaj-patch-view.js"
 
 //==============================================================================
 document.getElementById ("cmaj-start-button").onclick = async function()

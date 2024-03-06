@@ -1920,7 +1920,7 @@ R"(
 //  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 //  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import * as Controls from "/cmaj_api/cmaj-parameter-controls.js"
+import * as Controls from "./cmaj-parameter-controls.js"
 
 //==============================================================================
 /** A simple, generic view which can control any type of patch */
@@ -2140,8 +2140,8 @@ export async function createPatchView (patchConnection, preferredType)
             if (view.src)
                 view = undefined;
 
-        const viewModuleURL = view?.src ? view.src : "/cmaj_api/cmaj-generic-patch-view.js";
-        const viewModule = await import (patchConnection.getResourceAddress (viewModuleURL));
+        const viewModuleURL = view?.src ? patchConnection.getResourceAddress (view.src) : "./cmaj-generic-patch-view.js";
+        const viewModule = await import (viewModuleURL);
         const patchView = await viewModule?.default (patchConnection);
 
         if (patchView)
@@ -2229,8 +2229,8 @@ R"(3.948a102.566,102.566,0,0,1,19.979,2V382.85A74.364,74.364,0,0,0,1657.854,381.
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 5999) },
-        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4949) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 5991) },
+        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4941) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
     };
 

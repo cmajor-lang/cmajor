@@ -1,5 +1,5 @@
 
-import { PatchConnection } from "/cmaj_api/cmaj-patch-connection.js"
+import { PatchConnection } from "./cmaj-patch-connection.js"
 
 //==============================================================================
 // N.B. code will be serialised to a string, so all `registerWorkletProcessor`s
@@ -577,7 +577,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
 
     getResourceAddress (path)
     {
-        return path.startsWith ("/") ? path : ("/" + path);
+        return window.location.href + path;
     }
 }
 

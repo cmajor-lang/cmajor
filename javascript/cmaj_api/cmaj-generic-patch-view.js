@@ -19,7 +19,7 @@
 //  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 //  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import * as Controls from "/cmaj_api/cmaj-parameter-controls.js"
+import * as Controls from "./cmaj-parameter-controls.js"
 
 //==============================================================================
 /** A simple, generic view which can control any type of patch */
