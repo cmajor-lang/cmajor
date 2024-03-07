@@ -1949,6 +1949,14 @@ R"(
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
     }
 
+    /** This is picked up by some of our wrapper code to know whether it makes
+     *  sense to put a title bar/logo above the GUI.
+     */
+    hasOwnTitleBar()
+    {
+        return true;
+    }
+
     //==============================================================================
     /** @private */
     connectedCallback()
@@ -1999,7 +2007,8 @@ R"(
             :host {
                 --header-height: 2.5rem;
                 --foreground: #ffffff;
-                --background: #1a1a1a;
+                --background: #1a1a1a;)"
+R"(
 
                 display: block;
                 height: 100%;
@@ -2009,8 +2018,7 @@ R"(
             .main {
                 background: var(--background);
                 height: 100%;
-            })"
-R"(
+            }
 
             .header {
                 width: 100%;
@@ -2229,7 +2237,7 @@ R"(3.948a102.566,102.566,0,0,1,19.979,2V382.85A74.364,74.364,0,0,0,1657.854,381.
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 5991) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6186) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4941) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
     };

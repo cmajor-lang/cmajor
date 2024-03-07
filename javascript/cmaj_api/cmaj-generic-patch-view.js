@@ -47,6 +47,14 @@ class GenericPatchView extends HTMLElement
         this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
     }
 
+    /** This is picked up by some of our wrapper code to know whether it makes
+     *  sense to put a title bar/logo above the GUI.
+     */
+    hasOwnTitleBar()
+    {
+        return true;
+    }
+
     //==============================================================================
     /** @private */
     connectedCallback()
