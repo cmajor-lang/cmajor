@@ -613,7 +613,10 @@ R"(
 
     getResourceAddress (path)
     {
-        return window.location.href + path;
+        if (window.location.href.endsWith ("/"))
+            return window.location.href + path;
+
+        return window.location.href + "/../" + path;
     }
 }
 
@@ -628,13 +631,13 @@ async function connectToAudioIn (audioContext, node)
                 echoCancellation: false,
                 noiseSuppression: false,
                 autoGainControl:  false,
-        }});
+        }});)"
+R"(
 
         if (! input)
             throw new Error();
 
-        const source = audioContext.createMediaStreamSource (input);)"
-R"(
+        const source = audioContext.createMediaStreamSource (input);
 
         if (! source)
             throw new Error();
@@ -4144,7 +4147,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24317) },
+        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24424) },
         File { "embedded_patch_runner_template.html", std::string_view (embedded_patch_runner_template_html, 904) },
         File { "embedded_patch_chooser_template.html", std::string_view (embedded_patch_chooser_template_html, 300) },
         File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2050) },

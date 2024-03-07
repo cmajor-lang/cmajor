@@ -577,7 +577,10 @@ export class AudioWorkletPatchConnection extends PatchConnection
 
     getResourceAddress (path)
     {
-        return window.location.href + path;
+        if (window.location.href.endsWith ("/"))
+            return window.location.href + path;
+
+        return window.location.href + "/../" + path;
     }
 }
 
