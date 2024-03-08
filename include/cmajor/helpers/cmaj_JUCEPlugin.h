@@ -614,7 +614,7 @@ private:
                         if (auto value = v.getPropertyPointer (ids.value))
                         {
                             if (key->isString() && key->toString().isNotEmpty() && ! value->isVoid())
-                                patch->setStoredStateValue (key->toString().toStdString(), choc::json::parse (value->toString().toStdString()));
+                                patch->setStoredStateValue (key->toString().toStdString(), convertVarToValue (*value));
                         }
                     }
                 }
@@ -622,6 +622,32 @@ private:
         }
 
         patch->loadPatch (loadParams);
+    }
+
+    static choc::value::Value convertVarToValue (const juce::var& v)
+    {
+        if (v.isVoid() || v.isUndefined())  return {};
+        if (v.isString())                   return choc::value::createString (v.toString().toStdString());
+        if (v.isBool())                     return choc::value::createBool (static_cast<bool> (v));
+        if (v.isInt() || v.isInt64())       return choc::value::createInt64 (static_cast<int64_t> (v));
+        if (v.isDouble())                   return choc::value::createFloat64 (static_cast<double> (v));
+
+        if (v.isArray())
+        {
+            auto a = choc::value::createEmptyArray();
+
+            for (auto& i : *v.getArray())
+                a.addArrayElement (convertVarToValue (i));
+        }
+
+        if (v.isObject())
+        {
+            auto json = juce::JSON::toString (v, juce::JSON::FormatOptions().withSpacing (juce::JSON::Spacing::none));
+            return choc::json::parse (json.toStdString());
+        }
+
+        jassertfalse;
+        return {};
     }
 
     bool isViewResizable() const
