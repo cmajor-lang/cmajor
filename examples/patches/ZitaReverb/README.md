@@ -1,4 +1,4 @@
-# Zita Reverb
+## Zita Reverb
 
 This example patch is a Cmajor recreation of the Zita-rev1 reverb effect.
 
