@@ -263,6 +263,7 @@ To learn more about Cmajor, visit [cmajor.dev](cmajor.dev)
                        flex-direction: column;
                        justify-content: center;
                        align-items: center;
+                       cursor: pointer;
     }
 
     #cmaj-start-area * { padding: 0.5rem; }

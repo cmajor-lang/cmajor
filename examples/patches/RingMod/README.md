@@ -1,4 +1,4 @@
-# Ring-Modulation Demo
+## Ring-Modulation Demo
 
 This simple demo implements a classic ring-mod effect, famously used for scaring small children in the 1970s with Dalek voices.
 
