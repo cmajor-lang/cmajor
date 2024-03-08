@@ -86,6 +86,34 @@ struct GeneratedFiles
             f.write (outputFile);
     }
 
+    void addPatchResources (const cmaj::PatchManifest& manifest)
+    {
+        for (auto& f : cmaj::EmbeddedWebAssets::files)
+            addFile ("cmaj_api/" + std::string (f.name), std::string (f.content));
+
+        auto manifestFilePath = std::filesystem::path (manifest.manifestFile);
+        auto manifestFilename = manifestFilePath.filename();
+        auto fullPathToManifest = std::filesystem::path (manifest.getFullPathForFile (manifestFilename.string()));
+        auto manifestFolder = fullPathToManifest.parent_path();
+
+        for (auto& view : manifest.views)
+        {
+            auto viewFile = std::filesystem::path (manifest.getFullPathForFile (view.getSource()));
+            auto viewFolder = viewFile.parent_path();
+
+            if (viewFolder != manifestFolder)
+                findAndAddFiles (viewFolder, manifestFolder);
+            else
+                readAndAddFile (viewFile, manifestFolder);
+        }
+
+        for (auto& resource : manifest.resources)
+            findAndAddFiles (manifestFolder, manifestFolder, choc::text::WildcardPattern (resource, false));
+
+        if (! manifest.patchWorker.empty())
+            readAndAddFile (manifestFolder / trimLeadingSlash (manifest.patchWorker), manifestFolder);
+    }
+
     //==============================================================================
     struct File
     {

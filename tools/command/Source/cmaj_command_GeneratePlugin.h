@@ -116,20 +116,12 @@ inline GeneratedMainClass generateMainClass (cmaj::Patch& patch,
     const auto& manifest = loadParams.manifest;
 
     auto manifestFilePath = std::filesystem::path (manifest.manifestFile);
-    auto manifestFilename = manifestFilePath.filename();
+    auto manifestFilename = manifestFilePath.filename().generic_string();
 
     GeneratedFiles embeddedFiles;
 
-    embeddedFiles.addFile (manifestFilename.string(),
-                           choc::json::toString (manifest.getStrippedManifest(), true));
-
-    for (auto& view : manifest.views)
-    {
-        auto viewFolder = std::filesystem::path (manifest.getFullPathForFile (view.getSource())).parent_path();
-        auto fullPathToManifest = std::filesystem::path (manifest.getFullPathForFile (manifestFilename.string()));
-        embeddedFiles.findAndAddFiles (viewFolder, fullPathToManifest.parent_path());
-    }
-
+    embeddedFiles.addPatchResources (manifest);
+    embeddedFiles.addFile (manifestFilename, choc::json::toString (manifest.getStrippedManifest(), true));
     embeddedFiles.sort();
 
     auto mainCpp = choc::text::replace (R"(
@@ -147,7 +139,7 @@ ${fileData}
 
 )",
     "${performerClass}", cpp.generatedCode,
-    "${manifestFilename}", manifestFilename.string(),
+    "${manifestFilename}", manifestFilename,
     "${mainClassName}", cpp.mainClassName,
     "${performerNamespace}", performerNamespace,
     "${fileData}", createFileData (embeddedFiles)
