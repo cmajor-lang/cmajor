@@ -809,7 +809,7 @@ struct Patch::PatchWorker  : public PatchView
     std::string getGlueCode() const
     {
         return choc::text::replace (R"(
-import { PatchConnection } from "/cmaj_api/cmaj-patch-connection.js"
+import { PatchConnection } from "./cmaj_api/cmaj-patch-connection.js"
 import runWorker from WORKER_MODULE
 
 class WorkerPatchConnection  extends PatchConnection

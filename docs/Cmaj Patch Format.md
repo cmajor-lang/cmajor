@@ -338,11 +338,11 @@ The Cmajor runtime provides some built-in helper classes that your module can lo
 
 To see the files that are available, have a look through the files in the `cmajor/javascript/cmaj_api` folder.
 
-To import one of these modules, use a path starting with `/cmaj_api/`, e.g.
+To import one of these modules, use a path starting with `./cmaj_api/`, e.g.
 
 ```js
-import { getCmajorVersion } from "/cmaj_api/cmaj-version.js"
-import * as midi from "/cmaj_api/cmaj-midi-helpers.js"
+import { getCmajorVersion } from "./cmaj_api/cmaj-version.js"
+import * as midi from "./cmaj_api/cmaj-midi-helpers.js"
 
 console.log (`Cmajor version: ${getCmajorVersion()}`);
 console.log ("MIDI message: " + midi.getMIDIDescription (0x924030));
@@ -391,7 +391,7 @@ Depending on the VM that it's running in, this code may only have access to a re
 
 The `PatchConnection` object will have methods `async readResource(path)` and `async readResourceAsAudioData(path)` for reading data from files in the patch bundle. These take a path relative to the root of the bundle, and return a `Thenable` object which will deliver the data asynchronously.
 
-The module can `import` other javascript modules, as long as these are built-in modules (e.g. `import * as midi from "/cmaj_api/cmaj-midi-helpers.js"``) or files within the patch bundle.
+The module can `import` other javascript modules, as long as these are built-in modules (e.g. `import * as midi from "./cmaj_api/cmaj-midi-helpers.js"``) or files within the patch bundle.
 
 -------
 

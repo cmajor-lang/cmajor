@@ -1,6 +1,6 @@
 
 // this imports the built-in Cmajor parameter library
-import * as Controls from "../cmaj_api/cmaj-parameter-controls.js"
+import * as Controls from "./cmaj_api/cmaj-parameter-controls.js"
 
 // This is the web-component that we'll return for our patch's view
 class DalekView extends HTMLElement
