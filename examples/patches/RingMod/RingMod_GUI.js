@@ -1,6 +1,6 @@
 
 // this imports the built-in Cmajor parameter library
-import * as Controls from "/cmaj_api/cmaj-parameter-controls.js"
+import * as Controls from "../cmaj_api/cmaj-parameter-controls.js"
 
 // This is the web-component that we'll return for our patch's view
 class DalekView extends HTMLElement
@@ -55,17 +55,17 @@ class DalekView extends HTMLElement
             .ringmod-main * {
                 --knob-dial-background-color: transparent;
                 --knob-dial-border-color: white;
+                --knob-dial-tick-color: white;
+                font-family: Arial, Helvetica, sans-serif;
             }
 
             .ringmod-controls input {
-                font-family: Arial, Helvetica, sans-serif;
                 font-size: 1rem;
                 display: inline;
-                margin: 0.5rem;
+                padding: 0.5rem;
             }
 
             .ringmod-controls p {
-                font-family: Arial, Helvetica, sans-serif;
                 text-align: center;
                 font-size: 1.5rem;
                 margin: 2rem;

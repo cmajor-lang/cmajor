@@ -3,7 +3,7 @@
     "ID":               "dev.cmajor.examples.Piano",
     "version":          "1.0",
     "name":             "Piano",
-    "description":      "The simplest possible piano example",
+    "description":      "The world's worst piano emulator.. but it fits into a few kilobytes!",
     "category":         "synth",
     "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     true,
