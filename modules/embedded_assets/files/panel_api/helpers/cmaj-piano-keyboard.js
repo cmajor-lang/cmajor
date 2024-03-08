@@ -16,7 +16,7 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-import * as midi from "/cmaj_api/cmaj-midi-helpers.js"
+import * as midi from "../../cmaj_api/cmaj-midi-helpers.js"
 
 
 export default class PianoKeyboard extends HTMLElement

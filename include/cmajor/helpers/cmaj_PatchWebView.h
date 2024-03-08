@@ -171,7 +171,7 @@ static constexpr auto cmajor_patch_gui_html = R"(
 
 <script type="module">
 
-import { PatchConnection } from "/cmaj_api/cmaj-patch-connection.js"
+import { PatchConnection } from "../cmaj_api/cmaj-patch-connection.js"
 import { createPatchView, scalePatchViewToFit } from "./cmaj_api/cmaj-patch-view.js"
 
 //==============================================================================

@@ -21,11 +21,11 @@ import PianoKeyboard from "./helpers/cmaj-piano-keyboard.js"
 import LevelMeter from "./helpers/cmaj-level-meter.js"
 import PatchViewHolder from "./cmaj-patch-view-holder.js"
 import WaveformDisplay from "./helpers/cmaj-waveform-display.js";
-import { getAvailableViewTypes } from "/cmaj_api/cmaj-patch-view.js"
-import * as midi from "/cmaj_api/cmaj-midi-helpers.js"
+import { getAvailableViewTypes } from "../cmaj_api/cmaj-patch-view.js"
+import * as midi from "../cmaj_api/cmaj-midi-helpers.js"
 import "./cmaj-cpu-meter.js"
 import "./cmaj-graph.js"
-import { getCmajorVersion } from "/cmaj_api/cmaj-version.js"
+import { getCmajorVersion } from "../cmaj_api/cmaj-version.js"
 
 const maxUploadFileSize = 1024 * 1024 * 50;
 

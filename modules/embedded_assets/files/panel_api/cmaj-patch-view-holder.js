@@ -16,7 +16,7 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-import { createPatchView } from "/cmaj_api/cmaj-patch-view.js"
+import { createPatchView } from "../cmaj_api/cmaj-patch-view.js"
 
 
 export default class PatchViewHolder extends HTMLElement

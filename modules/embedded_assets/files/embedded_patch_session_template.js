@@ -21,7 +21,7 @@
     connection to a cmajor server
 */
 
-import { ServerSession } from "/cmaj_api/cmaj-server-session.js"
+import { ServerSession } from "../cmaj_api/cmaj-server-session.js"
 
 
 //==============================================================================

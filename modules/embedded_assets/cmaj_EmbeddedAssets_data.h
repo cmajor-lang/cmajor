@@ -787,7 +787,7 @@ import "/panel_api/cmaj-patch-panel.js"
     connection to a cmajor server
 */
 
-import { ServerSession } from "/cmaj_api/cmaj-server-session.js"
+import { ServerSession } from "../cmaj_api/cmaj-server-session.js"
 
 
 //==============================================================================
@@ -973,7 +973,7 @@ customElements.define ("cmaj-patch-graph", PatchGraph);
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-import { createPatchView } from "/cmaj_api/cmaj-patch-view.js"
+import { createPatchView } from "../cmaj_api/cmaj-patch-view.js"
 
 
 export default class PatchViewHolder extends HTMLElement
@@ -1128,11 +1128,11 @@ import PianoKeyboard from "./helpers/cmaj-piano-keyboard.js"
 import LevelMeter from "./helpers/cmaj-level-meter.js"
 import PatchViewHolder from "./cmaj-patch-view-holder.js"
 import WaveformDisplay from "./helpers/cmaj-waveform-display.js";
-import { getAvailableViewTypes } from "/cmaj_api/cmaj-patch-view.js"
-import * as midi from "/cmaj_api/cmaj-midi-helpers.js"
+import { getAvailableViewTypes } from "../cmaj_api/cmaj-patch-view.js"
+import * as midi from "../cmaj_api/cmaj-midi-helpers.js"
 import "./cmaj-cpu-meter.js"
 import "./cmaj-graph.js"
-import { getCmajorVersion } from "/cmaj_api/cmaj-version.js"
+import { getCmajorVersion } from "../cmaj_api/cmaj-version.js"
 
 const maxUploadFileSize = 1024 * 1024 * 50;
 
@@ -3365,7 +3365,7 @@ R"(
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-import * as midi from "/cmaj_api/cmaj-midi-helpers.js"
+import * as midi from "../../cmaj_api/cmaj-midi-helpers.js"
 
 
 export default class PianoKeyboard extends HTMLElement
@@ -4150,13 +4150,13 @@ R"(
         File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24424) },
         File { "embedded_patch_runner_template.html", std::string_view (embedded_patch_runner_template_html, 904) },
         File { "embedded_patch_chooser_template.html", std::string_view (embedded_patch_chooser_template_html, 300) },
-        File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2050) },
+        File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2052) },
         File { "panel_api/cmaj-graph.js", std::string_view (panel_api_cmajgraph_js, 2940) },
-        File { "panel_api/cmaj-patch-view-holder.js", std::string_view (panel_api_cmajpatchviewholder_js, 4459) },
-        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 57152) },
+        File { "panel_api/cmaj-patch-view-holder.js", std::string_view (panel_api_cmajpatchviewholder_js, 4461) },
+        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 57158) },
         File { "panel_api/cmaj-cpu-meter.js", std::string_view (panel_api_cmajcpumeter_js, 3617) },
         File { "panel_api/helpers/cmaj-image-strip-control.js", std::string_view (panel_api_helpers_cmajimagestripcontrol_js, 5648) },
-        File { "panel_api/helpers/cmaj-piano-keyboard.js", std::string_view (panel_api_helpers_cmajpianokeyboard_js, 11517) },
+        File { "panel_api/helpers/cmaj-piano-keyboard.js", std::string_view (panel_api_helpers_cmajpianokeyboard_js, 11522) },
         File { "panel_api/helpers/cmaj-level-meter.js", std::string_view (panel_api_helpers_cmajlevelmeter_js, 6758) },
         File { "panel_api/helpers/cmaj-waveform-display.js", std::string_view (panel_api_helpers_cmajwaveformdisplay_js, 5020) }
     };
