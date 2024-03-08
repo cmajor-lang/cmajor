@@ -22,13 +22,27 @@ While a patch is running, re-saving any of the patch source files should automat
 
 This command will prompt you to select the name of a new `.cmajorpatch` file. It will then create a template patch and some simple placeholder code as a way of getting started. You can run it with the `Cmajor: Run patch` command, and use it as a starting point to build upon.
 
-#### `Cmajor: Find example patches`
+#### `Cmajor: View some example patches`
 
 This command will take you to the Cmajor repository where you can find our example patches. You can either clone the [whole repository](https://github.com/cmajor-lang/cmajor) from github, or just download specific examples from the [examples](https://github.com/cmajor-lang/cmajor/tree/main/examples/patches) folder.
+
+#### `Cmajor: Export patch as HTML/Javascript/WebAssembly`
+
+This will prompt you for a folder, into which it will export a bundle of HTML and Javascript that will run the currently focused patch.
+
+The command-line tool equivalent of this operation is `cmaj generate --target=webaudio-html`
 
 #### `Cmajor: Export patch as JUCE plugin`
 
 This will prompt you for a folder in which to create a new JUCE project containing a complete C++ version of the patch that has focus. This allows you to build a native VST/AU/AAX plugin of your patch.
+
+The command-line tool equivalent of this operation is `cmaj generate --target=juce`
+
+#### `Cmajor: Export patch as a CLAP plugin`
+
+This will prompt you for a folder in which to create a new CLAP plugin project. It will export a self-contained C++ version of the focused patch.
+
+The command-line tool equivalent of this operation is `cmaj generate --target=clap`
 
 -------------------------------------------------------------------------------
 
