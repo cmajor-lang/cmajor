@@ -142,7 +142,10 @@ inline GeneratedFiles generateWebAudioHTML (cmaj::Patch& patch, const cmaj::Patc
     GeneratedFiles generatedFiles;
 
     auto& manifest = loadParams.manifest;
-    auto patchModuleFile = choc::javascript::makeSafeIdentifier (loadParams.manifest.name) + ".js";
+
+    // NB: had weird problems in some cases serving files that began with an underscore.
+    auto cleanedName = choc::javascript::makeSafeIdentifier (loadParams.manifest.name);
+    auto patchModuleFile = "cmaj_" + std::string (choc::text::trimCharacterAtStart (cleanedName, '_')) + ".js";
 
     std::string patchLink, patchDesc;
 
