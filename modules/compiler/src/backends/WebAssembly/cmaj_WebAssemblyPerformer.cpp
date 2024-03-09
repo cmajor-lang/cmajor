@@ -617,7 +617,13 @@ struct Factory : public choc::com::ObjectWithAtomicRefCount<EngineFactoryInterfa
 
     EngineInterface* createEngine (const char* engineCreationOptions) override
     {
-        return choc::com::create<EngineBase<WebAssemblyEngine<useBinaryen>>> (engineCreationOptions).getWithIncrementedRefCount();
+        try
+        {
+            return choc::com::create<EngineBase<WebAssemblyEngine<useBinaryen>>> (engineCreationOptions).getWithIncrementedRefCount();
+        }
+        catch (...) {}
+
+        return {};
     }
 };
 

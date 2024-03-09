@@ -69,7 +69,11 @@ namespace cmaj::api_tests
     {
         CHOC_TEST (checkInvalidEngine);
 
-        auto engine = cmaj::Engine::create ({"unkown"});
+        auto factory = cmaj::EngineFactoryPtr (cmaj::Library::createEngineFactory (nullptr));
+        CHOC_EXPECT_TRUE (factory != nullptr);
+        CHOC_EXPECT_TRUE (EnginePtr (factory->createEngine ("invalid^^json")) == nullptr);
+
+        auto engine = cmaj::Engine::create ("unknown");
         CHOC_EXPECT_TRUE (engine.engine == nullptr);
         CHOC_EXPECT_FALSE (engine.isLoaded());
         CHOC_EXPECT_FALSE (engine.isLinked());

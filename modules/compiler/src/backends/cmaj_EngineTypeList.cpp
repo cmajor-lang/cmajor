@@ -110,7 +110,13 @@ struct DummyEngineFactory  : public choc::com::ObjectWithAtomicRefCount<EngineFa
 
     EngineInterface* createEngine (const char* engineCreationOptions) override
     {
-        return choc::com::create<EngineBase<DummyEngine>> (engineCreationOptions).getWithIncrementedRefCount();
+        try
+        {
+            return choc::com::create<EngineBase<DummyEngine>> (engineCreationOptions).getWithIncrementedRefCount();
+        }
+        catch (...) {}
+
+        return {};
     }
 };
 

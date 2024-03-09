@@ -700,7 +700,13 @@ struct Factory : public choc::com::ObjectWithAtomicRefCount<EngineFactoryInterfa
 
     EngineInterface* createEngine (const char* engineCreationOptions) override
     {
-        return choc::com::create<EngineBase<LLVMEngine>> (engineCreationOptions).getWithIncrementedRefCount();
+        try
+        {
+            return choc::com::create<EngineBase<LLVMEngine>> (engineCreationOptions).getWithIncrementedRefCount();
+        }
+        catch (...) {}
+
+        return {};
     }
 };
 
