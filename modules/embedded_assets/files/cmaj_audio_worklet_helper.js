@@ -424,74 +424,54 @@ function registerWorkletProcessor (workletName, WrapperClass)
 }
 
 //==============================================================================
-/**  Creates an AudioWorkletNode that contains the
- *
- *   @param {Object} WrapperClass - the generated Cmajor class
- *   @param {AudioContext} audioContext - a web audio AudioContext object
- *   @param {string} workletName - the name to give the new worklet that is created
- *   @param {number} sessionID - an integer to use for the session ID
- *   @param {Array} patchInputList - a list of the input endpoints that the patch provides
- *   @param {Object} initialValueOverrides - optional initial values for parameter endpoints
- */
-export async function createAudioWorkletNode (WrapperClass,
-                                              audioContext,
-                                              workletName,
-                                              sessionID,
-                                              initialValueOverrides)
+async function connectToAudioIn (audioContext, node)
 {
-    const dataURI = await serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName);
-    await audioContext.audioWorklet.addModule (dataURI);
-
-    const audioInputEndpoints  = WrapperClass.prototype.getInputEndpoints().filter (({ purpose }) => purpose === "audio in");
-    const audioOutputEndpoints = WrapperClass.prototype.getOutputEndpoints().filter (({ purpose }) => purpose === "audio out");
-
-    // N.B. we just take the first for now (and do the same in the processor too).
-    // we can do better, and should probably align with something similar to what the patch player does
-    const pickFirstEndpointChannelCount = (endpoints) => endpoints.length ? endpoints[0].numAudioChannels : 0;
-
-    const inputChannelCount = pickFirstEndpointChannelCount (audioInputEndpoints);
-    const outputChannelCount = pickFirstEndpointChannelCount (audioOutputEndpoints);
-
-    const hasInput = inputChannelCount > 0;
-    const hasOutput = outputChannelCount > 0;
-
-    const node = new AudioWorkletNode (audioContext, workletName, {
-        numberOfInputs: +hasInput,
-        numberOfOutputs: +hasOutput,
-        channelCountMode: "explicit",
-        channelCount: hasInput ? inputChannelCount : undefined,
-        outputChannelCount: hasOutput ? [outputChannelCount] : [],
-
-        processorOptions:
-        {
-            sessionID,
-            initialValueOverrides
-        }
-    });
-
-    const waitUntilWorkletInitialised = async () =>
+    try
     {
-        return new Promise ((resolve) =>
-        {
-            const filterForInitialised = (e) =>
-            {
-                if (e.data.type === "initialised")
-                {
-                    node.port.removeEventListener ("message", filterForInitialised);
-                    resolve();
-                }
-            };
+        const input = await navigator.mediaDevices.getUserMedia ({
+            audio: {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl:  false,
+        }});
 
-            node.port.addEventListener ("message", filterForInitialised);
-        });
-    };
+        if (! input)
+            throw new Error();
 
-    node.port.start();
+        const source = audioContext.createMediaStreamSource (input);
 
-    await waitUntilWorkletInitialised();
+        if (! source)
+            throw new Error();
 
-    return node;
+        source.connect (node);
+    }
+    catch (e)
+    {
+        console.warn (`Could not open audio input`);
+    }
 }
+
+async function connectToMIDI (connection)
+{
+    try
+    {
+        if (! navigator.requestMIDIAccess)
+            throw new Error ("Web MIDI API not supported.");
+
+        const midiAccess = await navigator.requestMIDIAccess ({ sysex: true, software: true });
+
+        for (const input of midiAccess.inputs.values())
+        {
+            input.onmidimessage = ({ data }) =>
+                connection.sendMIDIInputEvent ("midiIn", data[2] | (data[1] << 8) | (data[0] << 16));
+        }
+    }
+    catch (e)
+    {
+        console.warn (`Could not open MIDI devices: ${e}`);
+    }
+}
+
 
 //==============================================================================
 /**  This class provides a PatchConnection that controls a Cmajor audio worklet
@@ -499,29 +479,134 @@ export async function createAudioWorkletNode (WrapperClass,
  */
 export class AudioWorkletPatchConnection extends PatchConnection
 {
-    constructor (audioNode, manifest)
+    constructor (manifest)
     {
         super();
 
         this.manifest = manifest;
-        this.audioNode = audioNode;
+        this.cachedState = {};
+    }
 
-        audioNode.port.addEventListener ("message", e =>
+    //==============================================================================
+    /**  Initialises this connection to load and control the given Cmajor class.
+     *
+     *   @param {Object} WrapperClass - the generated Cmajor class
+     *   @param {AudioContext} audioContext - a web audio AudioContext object
+     *   @param {string} workletName - the name to give the new worklet that is created
+     *   @param {number} sessionID - an integer to use for the session ID
+     *   @param {Array} patchInputList - a list of the input endpoints that the patch provides
+     *   @param {Object} initialValueOverrides - optional initial values for parameter endpoints
+     */
+    async initialise (WrapperClass,
+                      audioContext,
+                      workletName,
+                      sessionID,
+                      initialValueOverrides)
+    {
+        this.audioContext = audioContext;
+
+        const dataURI = await serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName);
+        await audioContext.audioWorklet.addModule (dataURI);
+
+        this.inputEndpoints = WrapperClass.prototype.getInputEndpoints();
+        this.outputEndpoints = WrapperClass.prototype.getOutputEndpoints();
+
+        const audioInputEndpoints  = this.inputEndpoints.filter (({ purpose }) => purpose === "audio in");
+        const audioOutputEndpoints = this.outputEndpoints.filter (({ purpose }) => purpose === "audio out");
+
+        // N.B. we just take the first for now (and do the same in the processor too).
+        // we can do better, and should probably align with something similar to what the patch player does
+        const pickFirstEndpointChannelCount = (endpoints) => endpoints.length ? endpoints[0].numAudioChannels : 0;
+
+        const inputChannelCount = pickFirstEndpointChannelCount (audioInputEndpoints);
+        const outputChannelCount = pickFirstEndpointChannelCount (audioOutputEndpoints);
+
+        const hasInput = inputChannelCount > 0;
+        const hasOutput = outputChannelCount > 0;
+
+        const node = new AudioWorkletNode (audioContext, workletName, {
+            numberOfInputs: +hasInput,
+            numberOfOutputs: +hasOutput,
+            channelCountMode: "explicit",
+            channelCount: hasInput ? inputChannelCount : undefined,
+            outputChannelCount: hasOutput ? [outputChannelCount] : [],
+
+            processorOptions:
+            {
+                sessionID,
+                initialValueOverrides
+            }
+        });
+
+        const waitUntilWorkletInitialised = async () =>
+        {
+            return new Promise ((resolve) =>
+            {
+                const filterForInitialised = (e) =>
+                {
+                    if (e.data.type === "initialised")
+                    {
+                        node.port.removeEventListener ("message", filterForInitialised);
+                        resolve();
+                    }
+                };
+
+                node.port.addEventListener ("message", filterForInitialised);
+            });
+        };
+
+        node.port.start();
+
+        await waitUntilWorkletInitialised();
+
+        this.audioNode = node;
+
+        node.port.addEventListener ("message", e =>
         {
             if (e.data.type === "patch")
             {
                 const msg = e.data.payload;
 
                 if (msg?.type === "status")
-                    msg.message = { manifest, ...msg.message };
+                    msg.message = { manifest: this.manifest, ...msg.message };
 
                 this.deliverMessageFromServer (msg)
             }
         });
 
-        this.cachedState = {};
+        this.startPatchWorker();
     }
 
+    //==============================================================================
+    /**  Attempts to connect this connection to the default audio and MIDI channels.
+     *   This must only be called once initialise() has completed successfully.
+     *
+     *   @param {AudioContext} audioContext - a web audio AudioContext object
+     */
+    async connectDefaultAudioAndMIDI (audioContext)
+    {
+        if (! this.audioNode)
+            throw new Error ("AudioWorkletPatchConnection.initialise() must have been successfully completed before calling connectDefaultAudioAndMIDI()");
+
+        const hasInputWithPurpose = (purpose) =>
+        {
+            for (const i of this.inputEndpoints)
+                if (i.purpose === purpose)
+                    return true;
+
+            return false;
+        }
+
+        if (hasInputWithPurpose ("midi in"))
+            connectToMIDI (this);
+
+        if (hasInputWithPurpose ("audio in"))
+            connectToAudioIn (audioContext, this.audioNode);
+
+        this.audioNode.connect (audioContext.destination);
+    }
+
+    //==============================================================================
     sendMessageToServer (msg)
     {
         this.audioNode.port.postMessage ({ type: "patch", payload: msg });
@@ -582,82 +667,41 @@ export class AudioWorkletPatchConnection extends PatchConnection
 
         return window.location.href + "/../" + path;
     }
-}
 
-
-//==============================================================================
-async function connectToAudioIn (audioContext, node)
-{
-    try
+    async readResource (path)
     {
-        const input = await navigator.mediaDevices.getUserMedia ({
-            audio: {
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl:  false,
-        }});
-
-        if (! input)
-            throw new Error();
-
-        const source = audioContext.createMediaStreamSource (input);
-
-        if (! source)
-            throw new Error();
-
-        source.connect (node);
+        return fetch (path);
     }
-    catch (e)
+
+    async readResourceAsAudioData (path)
     {
-        console.warn (`Could not open audio input`);
-    }
-}
+        const response = await this.readResource (path);
+        const buffer = await this.audioContext.decodeAudioData (await response.arrayBuffer());
 
-async function connectToMIDI (connection)
-{
-    try
-    {
-        if (! navigator.requestMIDIAccess)
-            throw new Error ("Web MIDI API not supported.");
+        let frames = [];
 
-        const midiAccess = await navigator.requestMIDIAccess ({ sysex: true, software: true });
+        for (let i = 0; i < buffer.length; ++i)
+            frames.push ([]);
 
-        for (const input of midiAccess.inputs.values())
+        for (let chan = 0; chan < buffer.numberOfChannels; ++chan)
         {
-            input.onmidimessage = ({ data }) =>
-                connection.sendMIDIInputEvent ("midiIn", data[2] | (data[1] << 8) | (data[0] << 16));
+            const src = buffer.getChannelData (chan);
+
+            for (let i = 0; i < buffer.length; ++i)
+                frames[i].push (src[i]);
+        }
+
+        return { frames, sampleRate: buffer.sampleRate };
+    }
+
+    //==============================================================================
+    /** @private */
+    async startPatchWorker()
+    {
+        if (this.manifest.worker?.length > 0)
+        {
+            const module = await import (this.getResourceAddress (this.manifest.worker));
+            module.default (this);
         }
     }
-    catch (e)
-    {
-        console.warn (`Could not open MIDI devices: ${e}`);
-    }
-}
-
-/**  Takes an audio node and connection that were returned by `createAudioWorkletNodePatchConnection()`
- *   and attempts to hook them up to the default audio and MIDI channels.
- *
- *   @param {AudioWorkletNode} node - the audio node
- *   @param {PatchConnection} connection - the PatchConnection object created by `createAudioWorkletNodePatchConnection()`
- *   @param {AudioContext} audioContext - a web audio AudioContext object
- *   @param {Array} patchInputList - a list of the input endpoints that the patch provides
- */
-export async function connectDefaultAudioAndMIDI ({ node, connection, audioContext, patchInputList })
-{
-    function hasInputWithPurpose (purpose)
-    {
-        for (const i of patchInputList)
-            if (i.purpose === purpose)
-                return true;
-
-        return false;
-    }
-
-    if (hasInputWithPurpose ("midi in"))
-        connectToMIDI (connection);
-
-    if (hasInputWithPurpose ("audio in"))
-        connectToAudioIn (audioContext, node);
-
-    node.connect (audioContext.destination);
 }

@@ -454,172 +454,7 @@ R"(
     }
 
     registerProcessor (workletName, WorkletProcessor);
-})"
-R"(
-
-//==============================================================================
-/**  Creates an AudioWorkletNode that contains the
- *
- *   @param {Object} WrapperClass - the generated Cmajor class
- *   @param {AudioContext} audioContext - a web audio AudioContext object
- *   @param {string} workletName - the name to give the new worklet that is created
- *   @param {number} sessionID - an integer to use for the session ID
- *   @param {Array} patchInputList - a list of the input endpoints that the patch provides
- *   @param {Object} initialValueOverrides - optional initial values for parameter endpoints
- */
-export async function createAudioWorkletNode (WrapperClass,
-                                              audioContext,
-                                              workletName,
-                                              sessionID,
-                                              initialValueOverrides)
-{
-    const dataURI = await serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName);
-    await audioContext.audioWorklet.addModule (dataURI);
-
-    const audioInputEndpoints  = WrapperClass.prototype.getInputEndpoints().filter (({ purpose }) => purpose === "audio in");
-    const audioOutputEndpoints = WrapperClass.prototype.getOutputEndpoints().filter (({ purpose }) => purpose === "audio out");
-
-    // N.B. we just take the first for now (and do the same in the processor too).
-    // we can do better, and should probably align with something similar to what the patch player does
-    const pickFirstEndpointChannelCount = (endpoints) => endpoints.length ? endpoints[0].numAudioChannels : 0;
-
-    const inputChannelCount = pickFirstEndpointChannelCount (audioInputEndpoints);
-    const outputChannelCount = pickFirstEndpointChannelCount (audioOutputEndpoints);
-
-    const hasInput = inputChannelCount > 0;
-    const hasOutput = outputChannelCount > 0;)"
-R"(
-
-    const node = new AudioWorkletNode (audioContext, workletName, {
-        numberOfInputs: +hasInput,
-        numberOfOutputs: +hasOutput,
-        channelCountMode: "explicit",
-        channelCount: hasInput ? inputChannelCount : undefined,
-        outputChannelCount: hasOutput ? [outputChannelCount] : [],
-
-        processorOptions:
-        {
-            sessionID,
-            initialValueOverrides
-        }
-    });
-
-    const waitUntilWorkletInitialised = async () =>
-    {
-        return new Promise ((resolve) =>
-        {
-            const filterForInitialised = (e) =>
-            {
-                if (e.data.type === "initialised")
-                {
-                    node.port.removeEventListener ("message", filterForInitialised);
-                    resolve();
-                }
-            };
-
-            node.port.addEventListener ("message", filterForInitialised);
-        });
-    };
-
-    node.port.start();
-
-    await waitUntilWorkletInitialised();
-
-    return node;
 }
-
-//==============================================================================
-/**  This class provides a PatchConnection that controls a Cmajor audio worklet
- *   node.
- */
-export class AudioWorkletPatchConnection extends PatchConnection
-{
-    constructor (audioNode, manifest)
-    {
-        super();
-
-        this.manifest = manifest;
-        this.audioNode = audioNode;
-
-        audioNode.port.addEventListener ("message", e =>
-        {
-            if (e.data.type === "patch")
-            {
-                const msg = e.data.payload;
-
-                if (msg?.type === "status")
-                    msg.message = { manifest, ...msg.message };
-
-                this.deliverMessageFromServer (msg)
-            }
-        });
-
-        this.cachedState = {};
-    }
-
-    sendMessageToServer (msg)
-    {
-        this.audioNode.port.postMessage ({ type: "patch", payload: msg });
-    }
-
-    requestStoredStateValue (key)
-    {
-        this.dispatchEvent ("state_key_value", { key, value: this.cachedState[key] });
-    })"
-R"(
-
-    sendStoredStateValue (key, newValue)
-    {
-        const changed = this.cachedState[key] != newValue;
-
-        if (changed)
-        {
-            const shouldRemove = newValue == null;
-            if (shouldRemove)
-            {
-                delete this.cachedState[key];
-                return;
-            }
-
-            this.cachedState[key] = newValue;
-            // N.B. notifying the client only when updating matches behaviour of the patch player
-            this.dispatchEvent ("state_key_value", { key, value: newValue });
-        }
-    }
-
-    sendFullStoredState (fullState)
-    {
-        const currentStateCleared = (() =>
-        {
-            const out = {};
-            Object.keys (this.cachedState).forEach (k => out[k] = undefined);
-            return out;
-        })();
-
-        const incomingStateValues = fullState.values ?? {};
-        const nextStateValues = { ...currentStateCleared, ...incomingStateValues };
-
-        Object.entries (nextStateValues).forEach (([key, value]) => this.sendStoredStateValue (key, value));
-
-        // N.B. worklet will handle the `parameters` part
-        super.sendFullStoredState (fullState);
-    }
-
-    requestFullStoredState (callback)
-    {
-        // N.B. the worklet only handles the `parameters` part, so we patch the key-value state in here
-        super.requestFullStoredState (msg => callback ({ values: { ...this.cachedState }, ...msg }));
-    }
-
-    getResourceAddress (path)
-    {
-        if (window.location.href.endsWith ("/"))
-            return window.location.href + path;
-
-        return window.location.href + "/../" + path;
-    }
-}
-
 
 //==============================================================================
 async function connectToAudioIn (audioContext, node)
@@ -631,11 +466,11 @@ async function connectToAudioIn (audioContext, node)
                 echoCancellation: false,
                 noiseSuppression: false,
                 autoGainControl:  false,
-        }});)"
-R"(
+        }});
 
         if (! input)
-            throw new Error();
+            throw new Error();)"
+R"(
 
         const source = audioContext.createMediaStreamSource (input);
 
@@ -671,32 +506,243 @@ async function connectToMIDI (connection)
     }
 }
 
-/**  Takes an audio node and connection that were returned by `createAudioWorkletNodePatchConnection()`
- *   and attempts to hook them up to the default audio and MIDI channels.
- *
- *   @param {AudioWorkletNode} node - the audio node
- *   @param {PatchConnection} connection - the PatchConnection object created by `createAudioWorkletNodePatchConnection()`
- *   @param {AudioContext} audioContext - a web audio AudioContext object
- *   @param {Array} patchInputList - a list of the input endpoints that the patch provides
- */
-export async function connectDefaultAudioAndMIDI ({ node, connection, audioContext, patchInputList })
-{
-    function hasInputWithPurpose (purpose)
-    {
-        for (const i of patchInputList)
-            if (i.purpose === purpose)
-                return true;
 
-        return false;
+//==============================================================================
+/**  This class provides a PatchConnection that controls a Cmajor audio worklet
+ *   node.
+ */
+export class AudioWorkletPatchConnection extends PatchConnection
+{
+    constructor (manifest)
+    {
+        super();
+
+        this.manifest = manifest;
+        this.cachedState = {};
+    })"
+R"(
+
+    //==============================================================================
+    /**  Initialises this connection to load and control the given Cmajor class.
+     *
+     *   @param {Object} WrapperClass - the generated Cmajor class
+     *   @param {AudioContext} audioContext - a web audio AudioContext object
+     *   @param {string} workletName - the name to give the new worklet that is created
+     *   @param {number} sessionID - an integer to use for the session ID
+     *   @param {Array} patchInputList - a list of the input endpoints that the patch provides
+     *   @param {Object} initialValueOverrides - optional initial values for parameter endpoints
+     */
+    async initialise (WrapperClass,
+                      audioContext,
+                      workletName,
+                      sessionID,
+                      initialValueOverrides)
+    {
+        this.audioContext = audioContext;
+
+        const dataURI = await serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName);
+        await audioContext.audioWorklet.addModule (dataURI);
+
+        this.inputEndpoints = WrapperClass.prototype.getInputEndpoints();
+        this.outputEndpoints = WrapperClass.prototype.getOutputEndpoints();
+
+        const audioInputEndpoints  = this.inputEndpoints.filter (({ purpose }) => purpose === "audio in");
+        const audioOutputEndpoints = this.outputEndpoints.filter (({ purpose }) => purpose === "audio out");
+
+        // N.B. we just take the first for now (and do the same in the processor too).
+        // we can do better, and should probably align with something similar to what the patch player does
+        const pickFirstEndpointChannelCount = (endpoints) => endpoints.length ? endpoints[0].numAudioChannels : 0;
+
+        const inputChannelCount = pickFirstEndpointChannelCount (audioInputEndpoints);
+        const outputChannelCount = pickFirstEndpointChannelCount (audioOutputEndpoints);
+
+        const hasInput = inputChannelCount > 0;
+        const hasOutput = outputChannelCount > 0;)"
+R"(
+
+        const node = new AudioWorkletNode (audioContext, workletName, {
+            numberOfInputs: +hasInput,
+            numberOfOutputs: +hasOutput,
+            channelCountMode: "explicit",
+            channelCount: hasInput ? inputChannelCount : undefined,
+            outputChannelCount: hasOutput ? [outputChannelCount] : [],
+
+            processorOptions:
+            {
+                sessionID,
+                initialValueOverrides
+            }
+        });
+
+        const waitUntilWorkletInitialised = async () =>
+        {
+            return new Promise ((resolve) =>
+            {
+                const filterForInitialised = (e) =>
+                {
+                    if (e.data.type === "initialised")
+                    {
+                        node.port.removeEventListener ("message", filterForInitialised);
+                        resolve();
+                    }
+                };
+
+                node.port.addEventListener ("message", filterForInitialised);
+            });
+        };
+
+        node.port.start();
+
+        await waitUntilWorkletInitialised();
+
+        this.audioNode = node;
+
+        node.port.addEventListener ("message", e =>
+        {
+            if (e.data.type === "patch")
+            {
+                const msg = e.data.payload;
+
+                if (msg?.type === "status")
+                    msg.message = { manifest: this.manifest, ...msg.message };
+
+                this.deliverMessageFromServer (msg)
+            }
+        });
+
+        this.startPatchWorker();
+    })"
+R"TEXT(
+
+    //==============================================================================
+    /**  Attempts to connect this connection to the default audio and MIDI channels.
+     *   This must only be called once initialise() has completed successfully.
+     *
+     *   @param {AudioContext} audioContext - a web audio AudioContext object
+     */
+    async connectDefaultAudioAndMIDI (audioContext)
+    {
+        if (! this.audioNode)
+            throw new Error ("AudioWorkletPatchConnection.initialise() must have been successfully completed before calling connectDefaultAudioAndMIDI()");
+
+        const hasInputWithPurpose = (purpose) =>
+        {
+            for (const i of this.inputEndpoints)
+                if (i.purpose === purpose)
+                    return true;
+
+            return false;
+        }
+
+        if (hasInputWithPurpose ("midi in"))
+            connectToMIDI (this);
+
+        if (hasInputWithPurpose ("audio in"))
+            connectToAudioIn (audioContext, this.audioNode);
+
+        this.audioNode.connect (audioContext.destination);
     }
 
-    if (hasInputWithPurpose ("midi in"))
-        connectToMIDI (connection);
+    //==============================================================================
+    sendMessageToServer (msg)
+    {
+        this.audioNode.port.postMessage ({ type: "patch", payload: msg });
+    }
 
-    if (hasInputWithPurpose ("audio in"))
-        connectToAudioIn (audioContext, node);
+    requestStoredStateValue (key)
+    {
+        this.dispatchEvent ("state_key_value", { key, value: this.cachedState[key] });
+    }
 
-    node.connect (audioContext.destination);
+    sendStoredStateValue (key, newValue)
+    {
+        const changed = this.cachedState[key] != newValue;
+
+        if (changed)
+        {
+            const shouldRemove = newValue == null;
+            if (shouldRemove)
+            {
+                delete this.cachedState[key];
+                return;
+            }
+
+            this.cachedState[key] = newValue;
+            // N.B. notifying the client only when updating matches behaviour of the patch player
+            this.dispatchEvent ("state_key_value", { key, value: newValue });
+        }
+    })TEXT"
+R"(
+
+    sendFullStoredState (fullState)
+    {
+        const currentStateCleared = (() =>
+        {
+            const out = {};
+            Object.keys (this.cachedState).forEach (k => out[k] = undefined);
+            return out;
+        })();
+
+        const incomingStateValues = fullState.values ?? {};
+        const nextStateValues = { ...currentStateCleared, ...incomingStateValues };
+
+        Object.entries (nextStateValues).forEach (([key, value]) => this.sendStoredStateValue (key, value));
+
+        // N.B. worklet will handle the `parameters` part
+        super.sendFullStoredState (fullState);
+    }
+
+    requestFullStoredState (callback)
+    {
+        // N.B. the worklet only handles the `parameters` part, so we patch the key-value state in here
+        super.requestFullStoredState (msg => callback ({ values: { ...this.cachedState }, ...msg }));
+    }
+
+    getResourceAddress (path)
+    {
+        if (window.location.href.endsWith ("/"))
+            return window.location.href + path;
+
+        return window.location.href + "/../" + path;
+    }
+
+    async readResource (path)
+    {
+        return fetch (path);
+    }
+
+    async readResourceAsAudioData (path)
+    {
+        const response = await this.readResource (path);
+        const buffer = await this.audioContext.decodeAudioData (await response.arrayBuffer());
+
+        let frames = [];
+
+        for (let i = 0; i < buffer.length; ++i)
+            frames.push ([]);
+
+        for (let chan = 0; chan < buffer.numberOfChannels; ++chan)
+        {
+            const src = buffer.getChannelData (chan);
+
+            for (let i = 0; i < buffer.length; ++i)
+                frames[i].push (src[i]);
+        }
+
+        return { frames, sampleRate: buffer.sampleRate };
+    })"
+R"(
+
+    //==============================================================================
+    /** @private */
+    async startPatchWorker()
+    {
+        if (this.manifest.worker?.length > 0)
+        {
+            const module = await import (this.getResourceAddress (this.manifest.worker));
+            module.default (this);
+        }
+    }
 }
 )";
     static constexpr const char* embedded_patch_runner_template_html =
@@ -4147,7 +4193,7 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 24424) },
+        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 25828) },
         File { "embedded_patch_runner_template.html", std::string_view (embedded_patch_runner_template_html, 904) },
         File { "embedded_patch_chooser_template.html", std::string_view (embedded_patch_chooser_template_html, 300) },
         File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2052) },
