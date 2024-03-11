@@ -579,59 +579,30 @@ getOutputFrame_ENDPOINT (frameIndex)
             << textWithEndpointReplacement (info.endpointID, R"(
 /** Copies frames from the output stream "ENDPOINT" into a destination array.
  *
- * @param {Array} destChannelArrays - An array of arrays (one per channel) into
- *                                    which the samples will be copied
+ * @param {Array} destChannelArrays   - An array of arrays (one per channel) into
+ *                                      which the samples will be copied
  * @param {number} maxNumFramesToRead - The maximum number of frames to copy
+ * @param {number} destChannel        - The channel to start writing from
  */
-getOutputFrames_ENDPOINT (destChannelArrays, maxNumFramesToRead)
+getOutputFrames_ENDPOINT (destChannelArrays, maxNumFramesToRead, destChannel)
 )");
         {
             auto indent = out.createIndentWithBraces();
 
             write (R"(
 let source = $ADDRESS$;
-let numDestChans = destChannelArrays.length;
 
 if (maxNumFramesToRead > $MAX_NUM_FRAMES$)
   maxNumFramesToRead = $MAX_NUM_FRAMES$;
 
-if (numDestChans < $SRC_CHANS$)
+const channelsToCopy = Math.min ($SRC_CHANS$, destChannelArrays.length - destChannel);
+
+for (let frame = 0; frame < maxNumFramesToRead; ++frame)
 {
-  for (let frame = 0; frame < maxNumFramesToRead; ++frame)
-  {
-    for (let channel = 0; channel < numDestChans; ++channel)
-      destChannelArrays[channel][frame] = $UNPACK_SAMPLE$;
+  for (let channel = 0; channel < channelsToCopy; ++channel)
+    destChannelArrays[destChannel + channel][frame] = $UNPACK_SAMPLE$;
 
-    source += $FRAME_STRIDE$;
-  }
-}
-else if (numDestChans > $SRC_CHANS$)
-{
-  for (let frame = 0; frame < maxNumFramesToRead; ++frame)
-  {
-    let lastSample;
-
-    for (let channel = 0; channel < $SRC_CHANS$; ++channel)
-    {
-      lastSample = $UNPACK_SAMPLE$;
-      destChannelArrays[channel][frame] = lastSample;
-    }
-
-    for (let channel = $SRC_CHANS$; channel < numDestChans; ++channel)
-      destChannelArrays[channel][frame] = lastSample;
-
-    source += $FRAME_STRIDE$;
-  }
-}
-else
-{
-  for (let frame = 0; frame < maxNumFramesToRead; ++frame)
-  {
-    for (let channel = 0; channel < $SRC_CHANS$; ++channel)
-      destChannelArrays[channel][frame] = $UNPACK_SAMPLE$;
-
-    source += $FRAME_STRIDE$;
-  }
+  source += $FRAME_STRIDE$;
 }
 )");
         }
@@ -645,9 +616,10 @@ else
 /** Stores frames for the input to endpoint "ENDPOINT"
  *
  * @param {Array} sourceChannelArrays - An array of channel arrays to read
- * @param {number} numFramesToWrite - The number of frames to copy
+ * @param {number} numFramesToWrite   - The number of frames to copy
+ * @param {number} sourceChannel      - The source channel to copy from
  */
-setInputStreamFrames_ENDPOINT (sourceChannelArrays, numFramesToWrite)
+setInputStreamFrames_ENDPOINT (sourceChannelArrays, numFramesToWrite, sourceChannel)
 )");
         {
             auto indent = out.createIndentWithBraces();
@@ -660,32 +632,14 @@ try
 
   let dest = $ADDRESS$;
 
-  if (sourceChannelArrays[0].length === undefined)  // If the input is a single channel
+  const channelsToCopy = Math.min ($DST_CHANS$, sourceChannelArrays.length - sourceChannel);
+
+  for (let frame = 0; frame < numFramesToWrite; ++frame)
   {
-    for (let frame = 0; frame < numFramesToWrite; ++frame)
-    {
-      const sourceSample = sourceChannelArrays[frame] || 0;
+    for (let channel = 0; channel < channelsToCopy; ++channel)
+      $PACK_SAMPLE$ (dest + $SAMPLE_STRIDE$ * channel, sourceChannelArrays[sourceChannel + channel][frame]);
 
-      for (let channel = 0; channel < $DST_CHANS$; ++channel)
-        $PACK_SAMPLE$ (dest + $SAMPLE_STRIDE$ * channel, sourceSample);
-
-      dest += $FRAME_STRIDE$;
-    }
-  }
-  else
-  {
-    const numSourceChannels = sourceChannelArrays.length;
-
-    for (let frame = 0; frame < numFramesToWrite; ++frame)
-    {
-      for (let channel = 0; channel < $DST_CHANS$; ++channel)
-      {
-        const sourceSample = channel < numSourceChannels ? (sourceChannelArrays[channel][frame] || 0) : 0;
-        $PACK_SAMPLE$ (dest + $SAMPLE_STRIDE$ * channel, sourceSample);
-      }
-
-      dest += $FRAME_STRIDE$;
-    }
+    dest += $FRAME_STRIDE$;
   }
 }
 catch (error)

@@ -131,14 +131,27 @@ R"(
         if (endpoints.length === 0)
             return () => {};
 
-        // N.B. we just take the first for now (and do the same when creating the node).
-        // we can do better, and should probably align with something similar to what the patch player does
-        const first = endpoints[0];
-        const handleFrames = wrapper[`${wrapperMethodNamePrefix}_${first.endpointID}`]?.bind (wrapper);
-        if (! handleFrames)
-            return () => {};
+        var handlers = [];
+        var targetChannels = [];
 
-        return (channels, blockSize) => handleFrames (channels, blockSize);
+        var channelCount = 0;
+
+        for (const endpoint of endpoints)
+        {
+            const handleFrames = wrapper[`${wrapperMethodNamePrefix}_${endpoint.endpointID}`]?.bind (wrapper);
+            if (! handleFrames)
+                return () => {};
+
+            handlers.push (handleFrames);
+            targetChannels.push (channelCount);
+            channelCount += endpoint.numAudioChannels;
+        }
+
+        return (channels, blockSize) =>
+        {
+            for (var i = 0; i < handlers.length; i++)
+                handlers[i] (channels, blockSize, targetChannels[i]);
+        }
     }
 
     function makeInputStreamEndpointHandler (wrapper)
@@ -175,13 +188,13 @@ R"(
 
             const { sessionID = Date.now() & 0x7fffffff, initialValueOverrides = {} } = processorOptions;
 
-            const wrapper = new WrapperClass();
+            const wrapper = new WrapperClass();)"
+R"(
 
             wrapper.initialise (sessionID, sampleRate)
                 .then (() => this.initialisePatch (wrapper, initialValueOverrides))
                 .catch (error => { throw new Error (error)});
-        })"
-R"(
+        }
 
         process (inputs, outputs)
         {
@@ -485,7 +498,7 @@ R"(
     }
 }
 
-async function connectToMIDI (connection, midiEndpointID)
+async function connectToMIDI (connection)
 {
     try
     {
@@ -497,7 +510,7 @@ async function connectToMIDI (connection, midiEndpointID)
         for (const input of midiAccess.inputs.values())
         {
             input.onmidimessage = ({ data }) =>
-                connection.sendMIDIInputEvent (midiEndpointID, data[2] | (data[1] << 8) | (data[0] << 16));
+                connection.sendMIDIInputEvent ("midiIn", data[2] | (data[1] << 8) | (data[0] << 16));
         }
     }
     catch (e)
@@ -549,12 +562,11 @@ R"(
         const audioInputEndpoints  = this.inputEndpoints.filter (({ purpose }) => purpose === "audio in");
         const audioOutputEndpoints = this.outputEndpoints.filter (({ purpose }) => purpose === "audio out");
 
-        // N.B. we just take the first for now (and do the same in the processor too).
-        // we can do better, and should probably align with something similar to what the patch player does
-        const pickFirstEndpointChannelCount = (endpoints) => endpoints.length ? endpoints[0].numAudioChannels : 0;
+        var inputChannelCount = 0;
+        var outputChannelCount = 0;
 
-        const inputChannelCount = pickFirstEndpointChannelCount (audioInputEndpoints);
-        const outputChannelCount = pickFirstEndpointChannelCount (audioOutputEndpoints);
+        audioInputEndpoints.forEach  ((endpoint) => { inputChannelCount = inputChannelCount + endpoint.numAudioChannels; });
+        audioOutputEndpoints.forEach ((endpoint) => { outputChannelCount = outputChannelCount + endpoint.numAudioChannels; });
 
         const hasInput = inputChannelCount > 0;
         const hasOutput = outputChannelCount > 0;)"
@@ -625,19 +637,19 @@ R"TEXT(
         if (! this.audioNode)
             throw new Error ("AudioWorkletPatchConnection.initialise() must have been successfully completed before calling connectDefaultAudioAndMIDI()");
 
-        const getInputWithPurpose = (purpose) =>
+        const hasInputWithPurpose = (purpose) =>
         {
             for (const i of this.inputEndpoints)
                 if (i.purpose === purpose)
-                    return i.endpointID;
+                    return true;
+
+            return false;
         }
 
-        const midiEndpointID = getInputWithPurpose ("midi in");
+        if (hasInputWithPurpose ("midi in"))
+            connectToMIDI (this);
 
-        if (midiEndpointID)
-            connectToMIDI (this, midiEndpointID);
-
-        if (getInputWithPurpose ("audio in"))
+        if (hasInputWithPurpose ("audio in"))
             connectToAudioIn (audioContext, this.audioNode);
 
         this.audioNode.connect (audioContext.destination);
@@ -1170,7 +1182,7 @@ R"(
 //  DISCLAIMED.
 
 import * as cmajor from "/cmaj-patch-server.js";
-import PianoKeyboard from "../cmaj_api/cmaj-piano-keyboard.js"
+import PianoKeyboard from "./helpers/cmaj-piano-keyboard.js"
 import LevelMeter from "./helpers/cmaj-level-meter.js"
 import PatchViewHolder from "./cmaj-patch-view-holder.js"
 import WaveformDisplay from "./helpers/cmaj-waveform-display.js";
@@ -1460,16 +1472,32 @@ class MIDIInputControl  extends EndpointControlBase
 
         this.keyboard.setAttribute ("root-note", 24);
         this.keyboard.setAttribute ("note-count", 63);
+
+        this.keyboard.addEventListener ("note-down", (note) => this.sendNoteOnOffToPatch (note.detail.note, true));
+        this.keyboard.addEventListener ("note-up",   (note) => this.sendNoteOnOffToPatch (note.detail.note, false));
     }
 
     connectedCallback()
     {
-        this.keyboard.attachToPatchConnection (this.patchConnection, this.endpointInfo.endpointID);
+        this.callback = event => this.keyboard.handleExternalMIDI (event.message);
+
+        this.patchConnection.addEndpointListener (this.endpointInfo.endpointID, this.callback);
     }
 
     disconnectedCallback()
     {
-        this.keyboard.detachPatchConnection (this.patchConnection);
+        this.patchConnection.removeEndpointListener (this.endpointInfo.endpointID, this.callback);
+    }
+
+    sendNoteOnOffToPatch (note, isOn)
+    {
+        const controlByte = isOn ? 0x900000 : 0x800000;
+        const velocity = 100;)"
+R"(
+
+        if (this.patchConnection)
+            this.patchConnection.sendMIDIInputEvent (this.endpointInfo.endpointID,
+                                                     controlByte | (note << 8) | velocity);
     }
 }
 
@@ -1488,8 +1516,7 @@ class AudioLevelControl  extends EndpointControlBase
 
         this.meter.setNumChans (endpointInfo.numAudioChannels);
         this.waveform.setNumChans (endpointInfo.numAudioChannels);
-    })"
-R"(
+    }
 
     connectedCallback()
     {
@@ -1517,7 +1544,8 @@ class AudioInputControl  extends EndpointControlBase
     constructor (patchConnection, endpointInfo)
     {
         super (patchConnection, endpointInfo);
-        this.session = patchConnection.session;
+        this.session = patchConnection.session;)"
+R"(
 
         this.initialise (`<cmaj-level-meter></cmaj-level-meter>
                           <cmaj-waveform-display></cmaj-waveform-display>`,
@@ -1537,8 +1565,7 @@ class AudioInputControl  extends EndpointControlBase
         this.ondrop = e => this.handleDrop (e);
 
         this.meter.setNumChans (endpointInfo.numAudioChannels);
-        this.waveform.setNumChans (endpointInfo.numAudioChannels);)"
-R"(
+        this.waveform.setNumChans (endpointInfo.numAudioChannels);
 
         this.modeButtons = [
             { button: this.fileButton, mode: "file" },
@@ -1561,7 +1588,8 @@ R"(
         };
 
         this.modeCallback = mode => this.updateMode (mode);
-    }
+    })"
+R"(
 
     connectedCallback()
     {
@@ -1596,8 +1624,7 @@ R"(
     {
         if (file)
         {
-            const reader = new FileReader();)"
-R"(
+            const reader = new FileReader();
 
             reader.onloadend = (e) =>
             {
@@ -1633,7 +1660,8 @@ R"(
             break;
         }
     }
-}
+})"
+R"(
 
 //==============================================================================
 class AudioDevicePropertiesPanel  extends HTMLElement
@@ -1675,8 +1703,7 @@ class AudioDevicePropertiesPanel  extends HTMLElement
         }
 
         if (p.availableAPIs)
-            addItem ("Audio API", "cmaj-device-io-api", p.availableAPIs, p.audioAPI);)"
-R"(
+            addItem ("Audio API", "cmaj-device-io-api", p.availableAPIs, p.audioAPI);
 
         if (p.availableOutputDevices)
             addItem ("Output Device", "cmaj-device-io-out", p.availableOutputDevices, p.output);
@@ -1690,7 +1717,8 @@ R"(
         if (p.blockSizes)
             addItem ("Block Size", "cmaj-device-io-blocksize", p.blockSizes, p.blockSize);
 
-        this.innerHTML = html;
+        this.innerHTML = html;)"
+R"(
 
         this.querySelector ("#cmaj-device-io-api").onchange       = e => { this.setAudioAPI (e.target.value); };
         this.querySelector ("#cmaj-device-io-out").onchange       = e => { this.setOutputDevice (e.target.value); };
@@ -1727,8 +1755,7 @@ R"(
     {
         this.currentProperties.blockSize = newSize;
         this.session.setAudioDeviceProperties (this.currentProperties);
-    })"
-R"(
+    }
 
     static getCSS()
     {
@@ -1752,7 +1779,8 @@ R"(
         }
     `;
     }
-}
+})"
+R"(
 
 //==============================================================================
 class CodeGenPanel  extends HTMLElement
@@ -1800,8 +1828,7 @@ class CodeGenPanel  extends HTMLElement
             case "javascript":    return "javascript";
             default: break;
         }
-    })"
-R"(
+    }
 
     refreshCodeGenTabs (status)
     {
@@ -1814,7 +1841,8 @@ R"(
         while (this.codeGenListing.firstChild)
             this.codeGenListing.removeChild (this.codeGenListing.lastChild);
 
-        this.codeGenTabs = [];
+        this.codeGenTabs = [];)"
+R"(
 
         if (targetList?.length > 0)
         {
@@ -1862,8 +1890,7 @@ R"(
         }
 
         this.refreshButtonState();
-    })"
-R"(
+    }
 
     selectCodeGenTab (codeGenType)
     {
@@ -1884,7 +1911,8 @@ R"(
     {
         if (! tab.isCodeGenPending)
         {
-            tab.isCodeGenPending = true;
+            tab.isCodeGenPending = true;)"
+R"(
 
             this.session.requestGeneratedCode (tab.name, {},
                 message => {
@@ -1928,8 +1956,7 @@ R"(
             padding-top: 0.5rem;
             overflow: hidden;
             resize: vertical;
-        })"
-R"(
+        }
 
         .cmaj-codegen-tabs {
             user-select: none;
@@ -1957,7 +1984,8 @@ R"(
 
         .cmaj-active-tab {
             background: #222;
-        }
+        })"
+R"(
 
         .cmaj-codegen-listing {
             flex-grow: 2;
@@ -2007,8 +2035,7 @@ export default class PatchPanel  extends HTMLElement
         this.patchConnection = null;
         this.isSessionConnected = false;
 
-        this.root.innerHTML = this.getHTML();)"
-R"(
+        this.root.innerHTML = this.getHTML();
 
         this.statusListener = status => this.updateStatus (status);
         this.session.addStatusListener (this.statusListener);
@@ -2016,7 +2043,8 @@ R"(
         this.fileChangeListener = message => this.handlePatchFilesChanged (message);
         this.session.addFileChangeListener (this.fileChangeListener);
 
-        this.session.addInfiniteLoopListener (handleInfiniteLoopAlert);
+        this.session.addInfiniteLoopListener (handleInfiniteLoopAlert);)"
+R"(
 
         this.controlsContainer   = this.shadowRoot.getElementById ("cmaj-control-container");
         this.logoElement         = this.shadowRoot.getElementById ("cmaj-logo")
@@ -2035,9 +2063,9 @@ R"(
         this.errorListElement    = this.shadowRoot.getElementById ("cmaj-error-list");
         this.audioDevicePanel    = this.shadowRoot.getElementById ("cmaj-audio-device-panel");
         this.codeGenPanel        = this.shadowRoot.getElementById ("cmaj-codegen-panel");
-        this.availablePatchList  = this.shadowRoot.getElementById ("cmaj-available-patch-list-holder");)"
+        this.availablePatchList  = this.shadowRoot.getElementById ("cmaj-available-patch-list-holder");
+        this.availablePatches    = this.shadowRoot.getElementById ("cmaj-available-patch-list");)"
 R"(
-        this.availablePatches    = this.shadowRoot.getElementById ("cmaj-available-patch-list");
 
         this.logoElement.onclick = () => openURLInNewWindow ("https://cmajor.dev");
         this.toggleAudioButton.onclick = () => this.toggleAudio();
@@ -2106,14 +2134,14 @@ R"(
     {
         this.guiHolderElement.clear();
         this.session.loadPatch (null);
-    })"
-R"(
+    }
 
     resetPatch()
     {
         this.session.setAudioPlaybackActive (true);
         this.patchConnection?.resetToInitialState();
-    }
+    })"
+R"(
 
     isShowingFixedPatch()
     {
@@ -3376,6 +3404,385 @@ R"(
     }
 }
 )";
+    static constexpr const char* panel_api_helpers_cmajpianokeyboard_js =
+        R"(//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+import * as midi from "../../cmaj_api/cmaj-midi-helpers.js"
+
+
+export default class PianoKeyboard extends HTMLElement
+{
+    constructor ({ naturalNoteWidth,
+                   accidentalWidth,
+                   accidentalPercentageHeight,
+                   naturalNoteBorder,
+                   accidentalNoteBorder,
+                   pressedNoteColour } = {})
+    {
+        super();
+
+        this.naturalWidth = naturalNoteWidth || 20;
+        this.accidentalWidth = accidentalWidth || 12;
+        this.accidentalPercentageHeight = accidentalPercentageHeight || 66;
+        this.naturalBorder = naturalNoteBorder || "2px solid #333";
+        this.accidentalBorder = accidentalNoteBorder || "2px solid #333";
+        this.pressedColour = pressedNoteColour || "#8ad";
+
+        this.root = this.attachShadow({ mode: "open" });)"
+R"(
+
+        this.root.addEventListener ("mousedown",   (event) => this.handleMouse (event, true, false) );
+        this.root.addEventListener ("mouseup",     (event) => this.handleMouse (event, false, true) );
+        this.root.addEventListener ("mousemove",   (event) => this.handleMouse (event, false, false) );
+        this.root.addEventListener ("mouseenter",  (event) => this.handleMouse (event, false, false) );
+        this.root.addEventListener ("mouseout",    (event) => this.handleMouse (event, false, false) );
+
+        this.addEventListener ("keydown",  (event) => this.handleKey (event, true));
+        this.addEventListener ("keyup",    (event) => this.handleKey (event, false));
+        this.addEventListener ("focusout", (event) => this.allNotesOff());
+
+        this.currentDraggedNote = -1;
+        this.currentExternalNotesOn = new Set();
+        this.currentKeyboardNotes = new Set();
+        this.currentPlayedNotes = new Set();
+        this.currentDisplayedNotes = new Set();
+        this.notes = [];
+        this.currentTouches = new Map();
+
+        this.refreshHTML();
+
+        for (let child of this.root.children)
+        {
+            child.addEventListener ("touchstart", (event) => this.touchStart (event) );
+            child.addEventListener ("touchend",   (event) => this.touchEnd (event) );
+        }
+    }
+
+    static get observedAttributes()
+    {
+        return ["root-note", "note-count", "key-map"];
+    }
+
+    get config()
+    {
+        return {
+            rootNote: parseInt(this.getAttribute("root-note") || "36"),
+            numNotes: parseInt(this.getAttribute("note-count") || "61"),
+            keymap: this.getAttribute("key-map") || "KeyA KeyW KeyS KeyE KeyD KeyF KeyT KeyG KeyY KeyH KeyU KeyJ KeyK KeyO KeyL KeyP Semicolon",
+        };
+    }
+
+    getNoteColour (note)    { return undefined; }
+    getNoteLabel (note)     { return midi.getChromaticScaleIndex (note) == 0 ? midi.getNoteNameWithOctaveNumber (note) : ""; })"
+R"(
+
+    refreshHTML()
+    {
+        this.root.innerHTML = `<style>${this.getCSS()}</style>${this.getNoteElements()}`;
+
+        for (let i = 0; i < 128; ++i)
+        {
+            const elem = this.shadowRoot.getElementById (`note${i.toString()}`);
+            this.notes.push ({ note: i, element: elem });
+        }
+
+        this.style.maxWidth = window.getComputedStyle (this).scrollWidth;
+    }
+
+    touchEnd (event)
+    {
+        for (const touch of event.changedTouches)
+        {
+            const note = this.currentTouches.get (touch.identifier);
+            this.currentTouches.delete (touch.identifier);
+            this.removeKeyboardNote (note);
+        }
+
+        event.preventDefault();
+    }
+
+    touchStart (event)
+    {
+        for (const touch of event.changedTouches)
+        {
+            const note = touch.target.id.substring (4);
+            this.currentTouches.set (touch.identifier, note);
+            this.addKeyboardNote (note);
+        }
+
+        event.preventDefault();
+    }
+
+    handleMouse (event, isDown, isUp)
+    {
+        if (isDown)
+            this.isDragging = true;
+
+        if (this.isDragging)
+        {
+            let newActiveNote = -1;
+
+            if (event.buttons != 0 && event.type != "mouseout")
+            {
+                const note = event.target.id.substring (4);
+
+                if (note !== undefined)
+                    newActiveNote = parseInt (note);
+            }
+
+            this.setDraggedNote (newActiveNote);
+
+            if (! isDown)
+                event.preventDefault();
+        }
+
+        if (isUp)
+            this.isDragging = false;
+    }
+
+    handleKey (event, isDown)
+    {
+        const config = this.config;
+        const index = config.keymap.split (" ").indexOf (event.code);
+
+        if (index >= 0)
+        {
+            const note = Math.floor ((config.rootNote + (config.numNotes / 4) + 11) / 12) * 12 + index;
+
+            if (isDown)
+                this.addKeyboardNote (note);
+            else
+                this.removeKeyboardNote (note);)"
+R"(
+
+            event.preventDefault();
+        }
+    }
+
+    handleExternalMIDI (message)
+    {
+        if (midi.isNoteOn (message))
+        {
+            const note = midi.getNoteNumber (message);
+            this.currentExternalNotesOn.add (note);
+            this.refreshActiveNoteElements();
+        }
+        else if (midi.isNoteOff (message))
+        {
+            const note = midi.getNoteNumber (message);
+            this.currentExternalNotesOn.delete (note);
+            this.refreshActiveNoteElements();
+        }
+    }
+
+    allNotesOff()
+    {
+        this.setDraggedNote (-1);
+
+        for (let note of this.currentKeyboardNotes.values())
+            this.removeKeyboardNote (note);
+
+        this.currentExternalNotesOn.clear();
+        this.refreshActiveNoteElements();
+    }
+
+    setDraggedNote (newNote)
+    {
+        if (newNote != this.currentDraggedNote)
+        {
+            if (this.currentDraggedNote >= 0)
+                this.sendNoteOff (this.currentDraggedNote);
+
+            this.currentDraggedNote = newNote;
+
+            if (this.currentDraggedNote >= 0)
+                this.sendNoteOn (this.currentDraggedNote);
+
+            this.refreshActiveNoteElements();
+        }
+    }
+
+    addKeyboardNote (note)
+    {
+        if (! this.currentKeyboardNotes.has (note))
+        {
+            this.sendNoteOn (note);
+            this.currentKeyboardNotes.add (note);
+            this.refreshActiveNoteElements();
+        }
+    }
+
+    removeKeyboardNote (note)
+    {
+        if (this.currentKeyboardNotes.has (note))
+        {
+            this.sendNoteOff (note);
+            this.currentKeyboardNotes.delete (note);
+            this.refreshActiveNoteElements();
+        }
+    }
+
+    isNoteActive (note)
+    {
+        return note == this.currentDraggedNote
+            || this.currentExternalNotesOn.has (note)
+            || this.currentKeyboardNotes.has (note);
+    })"
+R"(
+
+    sendNoteOn (note)   { this.dispatchEvent (new CustomEvent('note-down', { detail: { note: note }})); }
+    sendNoteOff (note)  { this.dispatchEvent (new CustomEvent('note-up',   { detail: { note: note } })); }
+
+    refreshActiveNoteElements()
+    {
+        for (let note of this.notes)
+        {
+            if (note.element)
+            {
+                if (this.isNoteActive (note.note))
+                    note.element.classList.add ("active");
+                else
+                    note.element.classList.remove ("active");
+            }
+        }
+    }
+
+    getAccidentalOffset (note)
+    {
+        let index = midi.getChromaticScaleIndex (note);
+
+        let negativeOffset = -this.accidentalWidth / 16;
+        let positiveOffset = 3 * this.accidentalWidth / 16;
+
+        const accOffset = this.naturalWidth - (this.accidentalWidth / 2);
+        const offsets = [ 0, negativeOffset, 0, positiveOffset, 0, 0, negativeOffset, 0, 0, 0, positiveOffset, 0 ];
+
+        return accOffset + offsets[index];
+    }
+
+
+    getNoteElements()
+    {
+        const config = this.config;
+        let naturals = "", accidentals = "";
+        let x = 0;
+
+        for (let i = 0; i < config.numNotes; ++i)
+        {
+            const note = config.rootNote + i;
+            const name = this.getNoteLabel (note);
+
+            if (midi.isNatural (note))
+            {
+                naturals += `<div class="natural-note note" id="note${note}" style=" left: ${x + 1}px"><p>${name}</p></div>`;
+            }
+            else
+            {
+                let accidentalOffset = this.getAccidentalOffset (note);
+                accidentals += `<div class="accidental-note note" id="note${note}" style="left: ${x + accidentalOffset}px"></div>`;
+            }
+
+            if (midi.isNatural (note + 1) || i == config.numNotes - 1)
+                x += this.naturalWidth;
+        }
+
+        this.style.maxWidth = (x + 1) + "px";)"
+R"(
+
+        return `<div tabindex="0" class="note-holder" style="width: ${x + 1}px;">
+                ${naturals}
+                ${accidentals}
+                </div>`;
+    }
+
+    getCSS()
+    {
+        let extraColours = "";
+        const config = this.config;
+
+        for (let i = 0; i < config.numNotes; ++i)
+        {
+            const note = config.rootNote + i;
+            const colourOverride = this.getNoteColour (note);
+
+            if (colourOverride)
+                extraColours += `#note${note}:not(.active) { background: ${colourOverride}; }`;
+        }
+
+        return `
+            * {
+                box-sizing: border-box;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            :host {
+                display: block;
+                overflow: auto;
+                position: relative;
+            }
+
+            .natural-note {
+                position: absolute;
+                border: ${this.naturalBorder};
+                background: #fff;
+                width: ${this.naturalWidth}px;
+                height: 100%;
+
+                display: flex;
+                align-items: end;
+                justify-content: center;
+            }
+
+            p {
+                pointer-events: none;
+                text-align: center;
+                font-size: 0.7rem;
+            }
+
+            .accidental-note {
+                position: absolute;
+                top: 0;
+                border: ${this.accidentalBorder};
+                background: #333;
+                width: ${this.accidentalWidth}px;
+                height: ${this.accidentalPercentageHeight}%;
+            }
+
+            .note-holder {
+                position: relative;
+                height: 100%;
+            }
+
+            .active {
+                background: ${this.pressedColour};
+            }
+
+            ${extraColours}
+            `
+    }
+}
+)";
     static constexpr const char* panel_api_helpers_cmajlevelmeter_js =
         R"(//
 //     ,ad888ba,                              88
@@ -3798,15 +4205,16 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 25895) },
+        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 25855) },
         File { "embedded_patch_runner_template.html", std::string_view (embedded_patch_runner_template_html, 904) },
         File { "embedded_patch_chooser_template.html", std::string_view (embedded_patch_chooser_template_html, 300) },
         File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2052) },
         File { "panel_api/cmaj-graph.js", std::string_view (panel_api_cmajgraph_js, 2940) },
         File { "panel_api/cmaj-patch-view-holder.js", std::string_view (panel_api_cmajpatchviewholder_js, 4461) },
-        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 56468) },
+        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 57158) },
         File { "panel_api/cmaj-cpu-meter.js", std::string_view (panel_api_cmajcpumeter_js, 3617) },
         File { "panel_api/helpers/cmaj-image-strip-control.js", std::string_view (panel_api_helpers_cmajimagestripcontrol_js, 5648) },
+        File { "panel_api/helpers/cmaj-piano-keyboard.js", std::string_view (panel_api_helpers_cmajpianokeyboard_js, 11522) },
         File { "panel_api/helpers/cmaj-level-meter.js", std::string_view (panel_api_helpers_cmajlevelmeter_js, 6758) },
         File { "panel_api/helpers/cmaj-waveform-display.js", std::string_view (panel_api_helpers_cmajwaveformdisplay_js, 5020) }
     };

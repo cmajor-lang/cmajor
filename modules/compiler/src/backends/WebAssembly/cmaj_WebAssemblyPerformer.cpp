@@ -238,6 +238,8 @@ initialisePatch();
 
             if (numChannels == 0)
             {
+                s << "[ ";
+
                 for (uint32_t i = 0; i < numFrames + numTrailingFramesToClear; ++i)
                 {
                     if (i != 0)
@@ -248,6 +250,8 @@ initialisePatch();
                     else
                         s << "0";
                 }
+
+                s << " ]";
             }
             else
             {
@@ -273,7 +277,7 @@ initialisePatch();
                 }
             }
 
-            s << "], " << numFrames << ")";
+            s << "], " << numFrames << ", 0)";
             context.evaluate (s.str());
         }
 
