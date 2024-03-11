@@ -1,4 +1,4 @@
-## Examples
+# Examples
 
 This section contains web-based versions of a few of the Cmajor example patches, to give you a quick feel for some of the things that Cmajor can do.
 
