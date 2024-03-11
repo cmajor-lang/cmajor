@@ -17,7 +17,7 @@
 //  DISCLAIMED.
 
 import * as cmajor from "/cmaj-patch-server.js";
-import PianoKeyboard from "./helpers/cmaj-piano-keyboard.js"
+import PianoKeyboard from "../cmaj_api/cmaj-piano-keyboard.js"
 import LevelMeter from "./helpers/cmaj-level-meter.js"
 import PatchViewHolder from "./cmaj-patch-view-holder.js"
 import WaveformDisplay from "./helpers/cmaj-waveform-display.js";
