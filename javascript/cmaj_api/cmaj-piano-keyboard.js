@@ -29,8 +29,11 @@ import * as midi from "./cmaj-midi-helpers.js"
  *  myKeyboardElement.addEventListener("note-up",   (note) => { ...handle note off... });
  *
  *  The `note` object will contain a `note` property with the MIDI note number.
- *
  *  (And obviously you can remove them with removeEventListener)
+ *
+ *  Or, if you're connecting the keyboard to a PatchConnection, you can use the helper
+ *  method attachToPatchConnection() to create and attach some suitable listeners.
+ *
  */
 export default class PianoKeyboard extends HTMLElement
 {
@@ -91,6 +94,53 @@ export default class PianoKeyboard extends HTMLElement
             numNotes: parseInt(this.getAttribute("note-count") || "61"),
             keymap: this.getAttribute("key-map") || "KeyA KeyW KeyS KeyE KeyD KeyF KeyT KeyG KeyY KeyH KeyU KeyJ KeyK KeyO KeyL KeyP Semicolon",
         };
+    }
+
+    /** This attaches suitable listeners to make this keyboard control the given MIDI
+     *  endpoint of a PatchConnection object. Use detachPatchConnection() to remove
+     *  a connection later on.
+     *
+     *  @param {PatchConnection} patchConnection
+     *  @param {string} midiInputEndpointID
+     */
+    attachToPatchConnection (patchConnection, midiInputEndpointID)
+    {
+        const velocity = 100;
+
+        const callbacks = {
+            noteDown: e => patchConnection.sendMIDIInputEvent (midiInputEndpointID, 0x900000 | (e.detail.note << 8) | velocity),
+            noteUp:   e => patchConnection.sendMIDIInputEvent (midiInputEndpointID, 0x800000 | (e.detail.note << 8) | velocity),
+            midiIn:   e => this.handleExternalMIDI (e.message),
+            midiInputEndpointID
+        };
+
+        if (! this.callbacks)
+            this.callbacks = new Map();
+
+        this.callbacks.set (patchConnection, callbacks);
+
+        this.addEventListener ("note-down", callbacks.noteDown);
+        this.addEventListener ("note-up",   callbacks.noteUp);
+        patchConnection.addEndpointListener (midiInputEndpointID, callbacks.midiIn);
+    }
+
+    /** This removes the connection to a PatchConnection object that was previously attached
+     *  with attachToPatchConnection().
+     *
+     *  @param {PatchConnection} patchConnection
+     */
+    detachPatchConnection (patchConnection)
+    {
+        const callbacks = this.callbacks.get (patchConnection);
+
+        if (callbacks)
+        {
+            this.removeEventListener ("note-down", callbacks.noteDown);
+            this.removeEventListener ("note-up",   callbacks.noteUp);
+            patchConnection.removeEndpointListener (callbacks.midiInputEndpointID, callbacks.midiIn);
+        }
+
+        this.callbacks[patchConnection] = undefined;
     }
 
     //==============================================================================
@@ -383,6 +433,7 @@ export default class PianoKeyboard extends HTMLElement
                 pointer-events: none;
                 text-align: center;
                 font-size: 0.7rem;
+                color: grey;
             }
 
             .accidental-note {

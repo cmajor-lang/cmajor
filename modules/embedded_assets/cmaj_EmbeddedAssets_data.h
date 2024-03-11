@@ -485,7 +485,7 @@ R"(
     }
 }
 
-async function connectToMIDI (connection)
+async function connectToMIDI (connection, midiEndpointID)
 {
     try
     {
@@ -497,7 +497,7 @@ async function connectToMIDI (connection)
         for (const input of midiAccess.inputs.values())
         {
             input.onmidimessage = ({ data }) =>
-                connection.sendMIDIInputEvent ("midiIn", data[2] | (data[1] << 8) | (data[0] << 16));
+                connection.sendMIDIInputEvent (midiEndpointID, data[2] | (data[1] << 8) | (data[0] << 16));
         }
     }
     catch (e)
@@ -625,19 +625,19 @@ R"TEXT(
         if (! this.audioNode)
             throw new Error ("AudioWorkletPatchConnection.initialise() must have been successfully completed before calling connectDefaultAudioAndMIDI()");
 
-        const hasInputWithPurpose = (purpose) =>
+        const getInputWithPurpose = (purpose) =>
         {
             for (const i of this.inputEndpoints)
                 if (i.purpose === purpose)
-                    return true;
-
-            return false;
+                    return i.endpointID;
         }
 
-        if (hasInputWithPurpose ("midi in"))
-            connectToMIDI (this);
+        const midiEndpointID = getInputWithPurpose ("midi in");
 
-        if (hasInputWithPurpose ("audio in"))
+        if (midiEndpointID)
+            connectToMIDI (this, midiEndpointID);
+
+        if (getInputWithPurpose ("audio in"))
             connectToAudioIn (audioContext, this.audioNode);
 
         this.audioNode.connect (audioContext.destination);
@@ -1460,32 +1460,16 @@ class MIDIInputControl  extends EndpointControlBase
 
         this.keyboard.setAttribute ("root-note", 24);
         this.keyboard.setAttribute ("note-count", 63);
-
-        this.keyboard.addEventListener ("note-down", (note) => this.sendNoteOnOffToPatch (note.detail.note, true));
-        this.keyboard.addEventListener ("note-up",   (note) => this.sendNoteOnOffToPatch (note.detail.note, false));
     }
 
     connectedCallback()
     {
-        this.callback = event => this.keyboard.handleExternalMIDI (event.message);
-
-        this.patchConnection.addEndpointListener (this.endpointInfo.endpointID, this.callback);
+        this.keyboard.attachToPatchConnection (this.patchConnection, this.endpointInfo.endpointID);
     }
 
     disconnectedCallback()
     {
-        this.patchConnection.removeEndpointListener (this.endpointInfo.endpointID, this.callback);
-    }
-
-    sendNoteOnOffToPatch (note, isOn)
-    {
-        const controlByte = isOn ? 0x900000 : 0x800000;
-        const velocity = 100;)"
-R"(
-
-        if (this.patchConnection)
-            this.patchConnection.sendMIDIInputEvent (this.endpointInfo.endpointID,
-                                                     controlByte | (note << 8) | velocity);
+        this.keyboard.detachPatchConnection (this.patchConnection);
     }
 }
 
@@ -1504,7 +1488,8 @@ class AudioLevelControl  extends EndpointControlBase
 
         this.meter.setNumChans (endpointInfo.numAudioChannels);
         this.waveform.setNumChans (endpointInfo.numAudioChannels);
-    }
+    })"
+R"(
 
     connectedCallback()
     {
@@ -1532,8 +1517,7 @@ class AudioInputControl  extends EndpointControlBase
     constructor (patchConnection, endpointInfo)
     {
         super (patchConnection, endpointInfo);
-        this.session = patchConnection.session;)"
-R"(
+        this.session = patchConnection.session;
 
         this.initialise (`<cmaj-level-meter></cmaj-level-meter>
                           <cmaj-waveform-display></cmaj-waveform-display>`,
@@ -1553,7 +1537,8 @@ R"(
         this.ondrop = e => this.handleDrop (e);
 
         this.meter.setNumChans (endpointInfo.numAudioChannels);
-        this.waveform.setNumChans (endpointInfo.numAudioChannels);
+        this.waveform.setNumChans (endpointInfo.numAudioChannels);)"
+R"(
 
         this.modeButtons = [
             { button: this.fileButton, mode: "file" },
@@ -1576,8 +1561,7 @@ R"(
         };
 
         this.modeCallback = mode => this.updateMode (mode);
-    })"
-R"(
+    }
 
     connectedCallback()
     {
@@ -1612,7 +1596,8 @@ R"(
     {
         if (file)
         {
-            const reader = new FileReader();
+            const reader = new FileReader();)"
+R"(
 
             reader.onloadend = (e) =>
             {
@@ -1648,8 +1633,7 @@ R"(
             break;
         }
     }
-})"
-R"(
+}
 
 //==============================================================================
 class AudioDevicePropertiesPanel  extends HTMLElement
@@ -1691,7 +1675,8 @@ class AudioDevicePropertiesPanel  extends HTMLElement
         }
 
         if (p.availableAPIs)
-            addItem ("Audio API", "cmaj-device-io-api", p.availableAPIs, p.audioAPI);
+            addItem ("Audio API", "cmaj-device-io-api", p.availableAPIs, p.audioAPI);)"
+R"(
 
         if (p.availableOutputDevices)
             addItem ("Output Device", "cmaj-device-io-out", p.availableOutputDevices, p.output);
@@ -1705,8 +1690,7 @@ class AudioDevicePropertiesPanel  extends HTMLElement
         if (p.blockSizes)
             addItem ("Block Size", "cmaj-device-io-blocksize", p.blockSizes, p.blockSize);
 
-        this.innerHTML = html;)"
-R"(
+        this.innerHTML = html;
 
         this.querySelector ("#cmaj-device-io-api").onchange       = e => { this.setAudioAPI (e.target.value); };
         this.querySelector ("#cmaj-device-io-out").onchange       = e => { this.setOutputDevice (e.target.value); };
@@ -1743,7 +1727,8 @@ R"(
     {
         this.currentProperties.blockSize = newSize;
         this.session.setAudioDeviceProperties (this.currentProperties);
-    }
+    })"
+R"(
 
     static getCSS()
     {
@@ -1767,8 +1752,7 @@ R"(
         }
     `;
     }
-})"
-R"(
+}
 
 //==============================================================================
 class CodeGenPanel  extends HTMLElement
@@ -1816,7 +1800,8 @@ class CodeGenPanel  extends HTMLElement
             case "javascript":    return "javascript";
             default: break;
         }
-    }
+    })"
+R"(
 
     refreshCodeGenTabs (status)
     {
@@ -1829,8 +1814,7 @@ class CodeGenPanel  extends HTMLElement
         while (this.codeGenListing.firstChild)
             this.codeGenListing.removeChild (this.codeGenListing.lastChild);
 
-        this.codeGenTabs = [];)"
-R"(
+        this.codeGenTabs = [];
 
         if (targetList?.length > 0)
         {
@@ -1878,7 +1862,8 @@ R"(
         }
 
         this.refreshButtonState();
-    }
+    })"
+R"(
 
     selectCodeGenTab (codeGenType)
     {
@@ -1899,8 +1884,7 @@ R"(
     {
         if (! tab.isCodeGenPending)
         {
-            tab.isCodeGenPending = true;)"
-R"(
+            tab.isCodeGenPending = true;
 
             this.session.requestGeneratedCode (tab.name, {},
                 message => {
@@ -1944,7 +1928,8 @@ R"(
             padding-top: 0.5rem;
             overflow: hidden;
             resize: vertical;
-        }
+        })"
+R"(
 
         .cmaj-codegen-tabs {
             user-select: none;
@@ -1972,8 +1957,7 @@ R"(
 
         .cmaj-active-tab {
             background: #222;
-        })"
-R"(
+        }
 
         .cmaj-codegen-listing {
             flex-grow: 2;
@@ -2023,7 +2007,8 @@ export default class PatchPanel  extends HTMLElement
         this.patchConnection = null;
         this.isSessionConnected = false;
 
-        this.root.innerHTML = this.getHTML();
+        this.root.innerHTML = this.getHTML();)"
+R"(
 
         this.statusListener = status => this.updateStatus (status);
         this.session.addStatusListener (this.statusListener);
@@ -2031,8 +2016,7 @@ export default class PatchPanel  extends HTMLElement
         this.fileChangeListener = message => this.handlePatchFilesChanged (message);
         this.session.addFileChangeListener (this.fileChangeListener);
 
-        this.session.addInfiniteLoopListener (handleInfiniteLoopAlert);)"
-R"(
+        this.session.addInfiniteLoopListener (handleInfiniteLoopAlert);
 
         this.controlsContainer   = this.shadowRoot.getElementById ("cmaj-control-container");
         this.logoElement         = this.shadowRoot.getElementById ("cmaj-logo")
@@ -2051,9 +2035,9 @@ R"(
         this.errorListElement    = this.shadowRoot.getElementById ("cmaj-error-list");
         this.audioDevicePanel    = this.shadowRoot.getElementById ("cmaj-audio-device-panel");
         this.codeGenPanel        = this.shadowRoot.getElementById ("cmaj-codegen-panel");
-        this.availablePatchList  = this.shadowRoot.getElementById ("cmaj-available-patch-list-holder");
-        this.availablePatches    = this.shadowRoot.getElementById ("cmaj-available-patch-list");)"
+        this.availablePatchList  = this.shadowRoot.getElementById ("cmaj-available-patch-list-holder");)"
 R"(
+        this.availablePatches    = this.shadowRoot.getElementById ("cmaj-available-patch-list");
 
         this.logoElement.onclick = () => openURLInNewWindow ("https://cmajor.dev");
         this.toggleAudioButton.onclick = () => this.toggleAudio();
@@ -2122,14 +2106,14 @@ R"(
     {
         this.guiHolderElement.clear();
         this.session.loadPatch (null);
-    }
+    })"
+R"(
 
     resetPatch()
     {
         this.session.setAudioPlaybackActive (true);
         this.patchConnection?.resetToInitialState();
-    })"
-R"(
+    }
 
     isShowingFixedPatch()
     {
@@ -3814,13 +3798,13 @@ R"(
 
     static constexpr std::array files =
     {
-        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 25828) },
+        File { "cmaj_audio_worklet_helper.js", std::string_view (cmaj_audio_worklet_helper_js, 25895) },
         File { "embedded_patch_runner_template.html", std::string_view (embedded_patch_runner_template_html, 904) },
         File { "embedded_patch_chooser_template.html", std::string_view (embedded_patch_chooser_template_html, 300) },
         File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2052) },
         File { "panel_api/cmaj-graph.js", std::string_view (panel_api_cmajgraph_js, 2940) },
         File { "panel_api/cmaj-patch-view-holder.js", std::string_view (panel_api_cmajpatchviewholder_js, 4461) },
-        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 57160) },
+        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 56468) },
         File { "panel_api/cmaj-cpu-meter.js", std::string_view (panel_api_cmajcpumeter_js, 3617) },
         File { "panel_api/helpers/cmaj-image-strip-control.js", std::string_view (panel_api_helpers_cmajimagestripcontrol_js, 5648) },
         File { "panel_api/helpers/cmaj-level-meter.js", std::string_view (panel_api_helpers_cmajlevelmeter_js, 6758) },

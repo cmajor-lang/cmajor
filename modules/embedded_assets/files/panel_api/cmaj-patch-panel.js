@@ -303,31 +303,16 @@ class MIDIInputControl  extends EndpointControlBase
 
         this.keyboard.setAttribute ("root-note", 24);
         this.keyboard.setAttribute ("note-count", 63);
-
-        this.keyboard.addEventListener ("note-down", (note) => this.sendNoteOnOffToPatch (note.detail.note, true));
-        this.keyboard.addEventListener ("note-up",   (note) => this.sendNoteOnOffToPatch (note.detail.note, false));
     }
 
     connectedCallback()
     {
-        this.callback = event => this.keyboard.handleExternalMIDI (event.message);
-
-        this.patchConnection.addEndpointListener (this.endpointInfo.endpointID, this.callback);
+        this.keyboard.attachToPatchConnection (this.patchConnection, this.endpointInfo.endpointID);
     }
 
     disconnectedCallback()
     {
-        this.patchConnection.removeEndpointListener (this.endpointInfo.endpointID, this.callback);
-    }
-
-    sendNoteOnOffToPatch (note, isOn)
-    {
-        const controlByte = isOn ? 0x900000 : 0x800000;
-        const velocity = 100;
-
-        if (this.patchConnection)
-            this.patchConnection.sendMIDIInputEvent (this.endpointInfo.endpointID,
-                                                     controlByte | (note << 8) | velocity);
+        this.keyboard.detachPatchConnection (this.patchConnection);
     }
 }
 

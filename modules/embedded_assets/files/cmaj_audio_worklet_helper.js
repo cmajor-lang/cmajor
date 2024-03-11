@@ -451,7 +451,7 @@ async function connectToAudioIn (audioContext, node)
     }
 }
 
-async function connectToMIDI (connection)
+async function connectToMIDI (connection, midiEndpointID)
 {
     try
     {
@@ -463,7 +463,7 @@ async function connectToMIDI (connection)
         for (const input of midiAccess.inputs.values())
         {
             input.onmidimessage = ({ data }) =>
-                connection.sendMIDIInputEvent ("midiIn", data[2] | (data[1] << 8) | (data[0] << 16));
+                connection.sendMIDIInputEvent (midiEndpointID, data[2] | (data[1] << 8) | (data[0] << 16));
         }
     }
     catch (e)
@@ -588,19 +588,19 @@ export class AudioWorkletPatchConnection extends PatchConnection
         if (! this.audioNode)
             throw new Error ("AudioWorkletPatchConnection.initialise() must have been successfully completed before calling connectDefaultAudioAndMIDI()");
 
-        const hasInputWithPurpose = (purpose) =>
+        const getInputWithPurpose = (purpose) =>
         {
             for (const i of this.inputEndpoints)
                 if (i.purpose === purpose)
-                    return true;
-
-            return false;
+                    return i.endpointID;
         }
 
-        if (hasInputWithPurpose ("midi in"))
-            connectToMIDI (this);
+        const midiEndpointID = getInputWithPurpose ("midi in");
 
-        if (hasInputWithPurpose ("audio in"))
+        if (midiEndpointID)
+            connectToMIDI (this, midiEndpointID);
+
+        if (getInputWithPurpose ("audio in"))
             connectToAudioIn (audioContext, this.audioNode);
 
         this.audioNode.connect (audioContext.destination);

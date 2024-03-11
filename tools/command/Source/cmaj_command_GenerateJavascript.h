@@ -148,7 +148,7 @@ To learn more about Cmajor, visit [cmajor.dev](cmajor.dev)
           <span>PATCH_NAME</span>
           PATCH_DESC
           PATCH_LINK
-          <span style="margin-top: 3rem">- Click to Start -</span>
+          <span id="cmaj-click-to-start">- Click to Start -</span>
         </div>
       </div>
       <button id="cmaj-reset-button">Stop Audio</button>
@@ -186,10 +186,20 @@ To learn more about Cmajor, visit [cmajor.dev](cmajor.dev)
       transform-origin: 0% 0%;
     }
 
+    .cmaj-piano-keyboard {
+      width: 100%;
+      height: 5rem;
+      align-self: center;
+      margin: 0.1rem;
+      overflow: hidden;
+    }
+
     #cmaj-header-bar { position: relative; height: 1.5rem; min-height: 1.5rem; overflow: hidden; display: flex; align-items: center; margin-bottom: 2px; user-select: none; }
     #cmaj-header-content { height: 100%; overflow: hidden; display: flex; align-items: center; flex-grow: 1; }
     #cmaj-header-logo { height: 100%; fill-opacity: 0.8; }
     #cmaj-header-title { height: 100%; flex-grow: 1; text-align: center; padding-right: 1rem; }
+
+    #cmaj-click-to-start { margin-top: 3rem; opacity: 0; }
 
     #cmaj-reset-button { display: none; position: absolute; left: 0; bottom: 0; height: 2rem; margin: 0.1rem; padding: 0.3rem; opacity: 0.4; }
     #cmaj-reset-button:hover  { opacity: 0.5; }
@@ -224,6 +234,47 @@ To learn more about Cmajor, visit [cmajor.dev](cmajor.dev)
 
 import * as patch from "./PATCH_MODULE_FILE"
 import { createPatchView, scalePatchViewToFit } from "./cmaj_api/cmaj-patch-view.js"
+import PianoKeyboard from "./cmaj_api/cmaj-piano-keyboard.js"
+
+customElements.define ("cmaj-panel-piano-keyboard", PianoKeyboard);
+
+let keyboard = null;
+
+function removePianoKeyboard (connection)
+{
+    if (keyboard)
+    {
+        const main = document.getElementById ("cmaj-main");
+        main.removeChild (keyboard);
+
+        keyboard.detachPatchConnection (connection);
+        keyboard = null;
+    }
+}
+
+function getMIDIInputEndpointID (connection)
+{
+    for (const i of connection.inputEndpoints)
+        if (i.purpose === "midi in")
+            return i.endpointID;
+}
+
+function createPianoKeyboard (connection)
+{
+    removePianoKeyboard (connection);
+
+    const midiInputEndpointID = getMIDIInputEndpointID (connection);
+
+    if (midiInputEndpointID)
+    {
+        const main = document.getElementById ("cmaj-main");
+        keyboard = new PianoKeyboard();
+        keyboard.classList.add ("cmaj-piano-keyboard");
+        main.appendChild (keyboard);
+
+        keyboard.attachToPatchConnection (connection, midiInputEndpointID);
+    }
+}
 
 //==============================================================================
 async function loadPatch()
@@ -252,6 +303,7 @@ async function loadPatch()
 
     resetButton.onclick = () =>
     {
+        removePianoKeyboard (connection);
         audioContext?.close();
         connection?.close?.();
 
@@ -269,7 +321,13 @@ async function loadPatch()
         resetButton.style.display = "block";
         connection.connectDefaultAudioAndMIDI (audioContext);
         audioContext.resume();
+
+        if (connection?.manifest?.isInstrument
+             && ! view.hasOnscreenKeyboard)
+            createPianoKeyboard (connection);
     };
+
+    document.getElementById ("cmaj-click-to-start").style.opacity = 1.0;
 }
 
 loadPatch();

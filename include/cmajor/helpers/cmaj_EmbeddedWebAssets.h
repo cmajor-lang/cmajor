@@ -1930,8 +1930,11 @@ import * as midi from "./cmaj-midi-helpers.js"
  *  myKeyboardElement.addEventListener("note-up",   (note) => { ...handle note off... });
  *
  *  The `note` object will contain a `note` property with the MIDI note number.
- *
  *  (And obviously you can remove them with removeEventListener)
+ *
+ *  Or, if you're connecting the keyboard to a PatchConnection, you can use the helper
+ *  method attachToPatchConnection() to create and attach some suitable listeners.
+ *
  */
 export default class PianoKeyboard extends HTMLElement
 {
@@ -1994,6 +1997,54 @@ R"(
             numNotes: parseInt(this.getAttribute("note-count") || "61"),
             keymap: this.getAttribute("key-map") || "KeyA KeyW KeyS KeyE KeyD KeyF KeyT KeyG KeyY KeyH KeyU KeyJ KeyK KeyO KeyL KeyP Semicolon",
         };
+    }
+
+    /** This attaches suitable listeners to make this keyboard control the given MIDI
+     *  endpoint of a PatchConnection object. Use detachPatchConnection() to remove
+     *  a connection later on.
+     *
+     *  @param {PatchConnection} patchConnection
+     *  @param {string} midiInputEndpointID
+     */
+    attachToPatchConnection (patchConnection, midiInputEndpointID)
+    {
+        const velocity = 100;
+
+        const callbacks = {
+            noteDown: e => patchConnection.sendMIDIInputEvent (midiInputEndpointID, 0x900000 | (e.detail.note << 8) | velocity),
+            noteUp:   e => patchConnection.sendMIDIInputEvent (midiInputEndpointID, 0x800000 | (e.detail.note << 8) | velocity),
+            midiIn:   e => this.handleExternalMIDI (e.message),
+            midiInputEndpointID
+        };
+
+        if (! this.callbacks)
+            this.callbacks = new Map();
+
+        this.callbacks.set (patchConnection, callbacks);
+
+        this.addEventListener ("note-down", callbacks.noteDown);
+        this.addEventListener ("note-up",   callbacks.noteUp);
+        patchConnection.addEndpointListener (midiInputEndpointID, callbacks.midiIn);
+    }
+
+    /** This removes the connection to a PatchConnection object that was previously attached
+     *  with attachToPatchConnection().
+     *
+     *  @param {PatchConnection} patchConnection
+     */
+    detachPatchConnection (patchConnection)
+    {
+        const callbacks = this.callbacks.get (patchConnection);)"
+R"(
+
+        if (callbacks)
+        {
+            this.removeEventListener ("note-down", callbacks.noteDown);
+            this.removeEventListener ("note-up",   callbacks.noteUp);
+            patchConnection.removeEndpointListener (callbacks.midiInputEndpointID, callbacks.midiIn);
+        }
+
+        this.callbacks[patchConnection] = undefined;
     }
 
     //==============================================================================
@@ -2290,6 +2341,7 @@ R"(
                 pointer-events: none;
                 text-align: center;
                 font-size: 0.7rem;
+                color: grey;
             }
 
             .accidental-note {
@@ -2654,7 +2706,7 @@ R"(3.948a102.566,102.566,0,0,1,19.979,2V382.85A74.364,74.364,0,0,0,1657.854,381.
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
-        File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 13207) },
+        File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 15225) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6186) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4941) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
