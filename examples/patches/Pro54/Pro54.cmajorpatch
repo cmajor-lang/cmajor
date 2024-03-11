@@ -1,0 +1,28 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.pro54",
+    "version":          "1.0",
+    "name":             "Pro54",
+    "description":      "A faithful Cmajor port of the classic Native Instruments Pro-53 synth",
+    "category":         "generator",
+    "manufacturer":     "Cmajor/Native Instruments",
+    "URL":              "https://github.com/cmajor-lang/cmajor/tree/main/examples/patches/Pro54",
+    "isInstrument":     true,
+
+    "plugin":
+    {
+        "manufacturerCode":  "-NI-",
+        "pluginCode":        "Pr54"
+    },
+
+    "source":           "Pro54.cmajor",
+    "worker":           "worker/worker.js",
+
+    "view":
+    {
+        "src": "gui/index.js",
+        "width": 1143,
+        "height": 537,
+        "resizable": true
+    }
+}

@@ -1,0 +1,3529 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+/**
+
+  Pro-54: A Cmajor port of the Pro-53 instrument from Native Instruments
+
+  This project is a great example of Cmajor being used to import old (possibly clunky!)
+  codebases..
+
+  If you read through this file, you'll spot many aspects of the code that are not such
+  a great example of how to write maintainable code. For example:
+
+  - It's all in one monolithic structure with all of the state in a single lump!
+  - The main() function is over 1000 lines long (!!)
+  - Lots of copy-pasted code rather than it being abstracted into functions or classes
+  - Very little use of types to enforce compile-time correctness
+  - Lots of hard-to-decipher names
+
+  ..but while this isn't how you should write new code, when you're importing old codebases
+  it's very common to end up dealing with this kind of
+
+  So that actually makes this a great example of how you can take a creaky old C or C++
+  project and bash it into a working Cmajor program without too much rewriting.
+  In fact, old codebases like this one, which don't use any modern C++ syntax are
+  particularly easy - a lot of the C syntax for expressions will work as Cmajor with
+  only minor tweaks.
+
+  Beyond just getting this running, we've given it a light tidy-up, just to get the code
+  style into shape, to remove any really crusty bits, and improve some of the naming.
+
+  Given infinite time, a much more elegant but difficult refactoring would involve splitting
+  up the different functional units of the synth into separate Cmajor processors, and
+  connecting them together in a graph.
+
+*/
+
+graph Pro54  [[main]]
+{
+    input engine.*;
+    input event std::midi::Message midiIn   [[ name: "MIDI In" ]];
+    output stream float<2> out              [[ name: "Audio Out" ]];
+
+    node engine = Engine;
+
+    connection std::midi::MPEConverter -> engine.eventIn;
+    connection engine.out -> out;
+
+    event midiIn (std::midi::Message m)
+    {
+        std::midi::MPEConverter.parseMIDI <- m;
+    }
+}
+
+/// As discussed above, this processor is just a simple holder for the original C++
+/// instrument code, rendering everything manually inside its main() loop
+processor Engine
+{
+    output stream float<2> out;
+
+    input event (std::notes::NoteOn,
+                 std::notes::NoteOff,
+                 std::notes::PitchBend,
+                 std::notes::Control) eventIn;
+
+    input stream float externalIn              [[ name: "External Audio In" ]];
+
+    input event float PolyModFilterEnv         [[ name: "PolyMod Source Filt Env"     , unit: "%"  , min: 0.0, max: 100.0, init: 37.7953 ]];
+    input event float PolyModOscB              [[ name: "PolyMod Source Osc B"        , unit: "%"  , min: 0.0, max: 100.0, init: 50.3937 ]];
+    input event float PolyModFreqA             [[ name: "PolyMod Dest Freq A"         , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float PolyModPWA               [[ name: "PolyMod Dest PWidth A"       , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float PolyModFilt              [[ name: "PolyMod Dest Filter"         , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float OscAFreq                 [[ name: "Oscillator A Frequency"      , unit: "st" , min: 0.0, max: 100.0, init: 63.7795 ]];
+    input event float OscASaw                  [[ name: "Oscillator A Sawtooth"       , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float OscAPulse                [[ name: "Oscillator A Pulse"          , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float OscAPW                   [[ name: "Oscillator A PulseWidth"     , unit: "%"  , min: 0.0, max: 100.0, init: 19.685 ]];
+    input event float OscASync                 [[ name: "Oscillator A Sync"           , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float MixerOscALevel           [[ name: "Mixer Oscillator A"          , unit: "%"  , min: 0.0, max: 100.0, init: 61.4173 ]];
+    input event float MixerOscBLevel           [[ name: "Mixer Oscillator B"          , unit: "%"  , min: 0.0, max: 100.0, init: 100.0 ]];
+    input event float MixerNoiseLevel          [[ name: "Mixer Noise"                 , unit: "%"  , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float ExternalInputLevel       [[ name: "Mixer External Input"        , unit: "%"  , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float FilterCutoff             [[ name: "Filter Cutoff"               , unit: "st" , min: 0.0, max: 100.0, init: 29.9213 ]];
+    input event float FilterResonance          [[ name: "Filter Resonance"            , unit: "%"  , min: 0.0, max: 100.0, init: 29.1339 ]];
+    input event float FilterEnvAmt             [[ name: "Filter Envelope Amount"      , unit: "st" , min: 0.0, max: 100.0, init: 37.0079 ]];
+    input event float FilterKeyboardTracking   [[ name: "Filter Keyboard Follow"      , unit: "%"  , min: 0.0, max: 100.0, init: 100.0 ]];
+    input event float FilterAttack             [[ name: "Filter Attack"               , unit: "%"  , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float FilterDecay              [[ name: "Filter Decay"                , unit: "%"  , min: 0.0, max: 100.0, init: 68.5039 ]];
+    input event float FilterSustain            [[ name: "Filter Sustain"              , unit: "%"  , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float FilterRelease            [[ name: "Filter Release"              , unit: "%"  , min: 0.0, max: 100.0, init: 65.3543 ]];
+    input event float DelayTime                [[ name: "Delay Effect Time"           , unit: "ms" , min: 0.0, max: 100.0, init: 68.5039 ]];
+    input event float DelaySpread              [[ name: "Delay Effect Spread"         , unit: "%"  , min: 0.0, max: 100.0, init: 41.7323 ]];
+    input event float DelayDepth               [[ name: "Delay Effect Depth"          , unit: "ms" , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float DelayRate                [[ name: "Delay Effect Rate"           , unit: "Hz" , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float DelayFeedback            [[ name: "Delay Effect Feedback"       , unit: "%"  , min: 0.0, max: 100.0, init: 26.7717 ]];
+    input event float DelayHiCut               [[ name: "Delay Effect High Cut"       , unit: "st" , min: 0.0, max: 100.0, init: 30.7087 ]];
+    input event float DelayLoCut               [[ name: "Delay Effect Low Cut"        , unit: "st" , min: 0.0, max: 100.0, init: 70.0787 ]];
+    input event float DelayINV                 [[ name: "Delay Effect Invert"         , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float DelayON                  [[ name: "Delay Effect On"             , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float DelayWet                 [[ name: "Delay Effect Wet"            , unit: "%"  , min: 0.0, max: 100.0, init: 20.4724 ]];
+    input event float DelaySync                [[ name: "Delay Effect Sync"           , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float DelayMidi                [[ name: "Delay Effect MIDI Sync"      , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float LfoMidiSync              [[ name: "LFO MIDI Sync"               , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float LfoFrequency             [[ name: "LFO Frequency"               , unit: "Hz" , min: 0.0, max: 100.0, init: 73.2283 ]];
+    input event float LfoShapeSaw              [[ name: "LFO Sawtooth"                , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float LfoShapeTri              [[ name: "LFO Triangle"                , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float LfoShapePulse            [[ name: "LFO Pulse"                   , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float OscBFreq                 [[ name: "Oscillator B Frequency"      , unit: "st" , min: 0.0, max: 100.0, init: 25.1968 ]];
+    input event float OscBFreqFine             [[ name: "Oscillator B Freq Fine"      , unit: "ct" , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float OscBShapeSaw             [[ name: "Oscillator B Sawtooth"       , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float OscBShapeTri             [[ name: "Oscillator B Triangle"       , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float OscBShapePulse           [[ name: "Oscillator B Pulse"          , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float OscBPWAmount             [[ name: "Oscillator B PulseWidth"     , unit: "%"  , min: 0.0, max: 100.0, init: 11.0236 ]];
+    input event float OscBSubOsc               [[ name: "Oscillator B Low Freq"       , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float OscBKKeyboardTracking    [[ name: "Oscillator B Key Follow"     , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float WheelModulationLfoNoise  [[ name: "WheelMod LFO-Noise Mix"      , unit: "%"  , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float WheelModulationFreqOscA  [[ name: "WheelMod Dest Freq A"        , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float WheelModulationFreqOscB  [[ name: "WheelMod Dest Freq B"        , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float WheelModulationPWA       [[ name: "WheelMod Dest PWidth A"      , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float WheelModulationPWB       [[ name: "WheelMod Dest PWidth B"      , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float WheelModulationFilter    [[ name: "WheelMod Dest Filter"        , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float Glide                    [[ name: "Glide Time"                  , unit: "%"  , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float Unison                   [[ name: "Unisono Mode"                , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float AmplifierAttack          [[ name: "Amplifier Attack"            , unit: "%"  , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float AmplifierDecay           [[ name: "Amplifier Decay"             , unit: "%"  , min: 0.0, max: 100.0, init: 61.4173 ]];
+    input event float AmplifierSustain         [[ name: "Amplifier Sustain"           , unit: "%"  , min: 0.0, max: 100.0, init: 71.6535 ]];
+    input event float AmplifierRelease         [[ name: "Amplifier Release"           , unit: "%"  , min: 0.0, max: 100.0, init: 37.7953 ]];
+    input event float Release                  [[ name: "Release on/off"              , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float Velocity                 [[ name: "Velocity on/off"             , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
+    input event float Repeat                   [[ name: "LFO Envelope Trigger"        , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float Drone                    [[ name: "Amplifier Hold"              , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float FilterHPF                [[ name: "Filter HPF-Mode"             , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float FilterInvertEnv          [[ name: "Filter Envelope Invert"      , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float Analog                   [[ name: "Analog"                      , unit: "%"  , min: 0.0, max: 100.0, init: 33.0709 ]];
+    input event float MasterTune               [[ name: "Master Tune"                 , unit: "ct" , min: 0.0, max: 100.0, init: 50.0 ]];
+    input event float Volume                   [[ name: "Master Volume"               , unit: "%"  , min: 0.0, max: 100.0, init: 100.0 ]];
+
+    input event float ModWheel                 [[ name: "Modulation Wheel"            , unit: "%"  , min: 0.0, max: 100.0, init: 0.0 ]];
+    input event float PitchBend                [[ name: "Pitch Bend"                  , unit: "ct" , min: 0.0, max: 100.0, init: 50.0 ]];
+    input event float FilterVersion            [[ name: "Filter Version"              , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Old|New|New AA" ]];
+    input event float ActiveVoices             [[ name: "Active Voices"               , unit: ""   , min: 1.0, max: 32.0,  init: 5.0, step: 1.0 ]];
+    input event float TestTone                 [[ name: "Test Tone"                   , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+
+    //==============================================================================
+    //==============================================================================
+    // Constants:
+
+    let numVoices = 32;
+    let controlPeriod = 1;
+    let delayMask = 0x1ffff;
+    let delayLength = delayMask + 1;
+    let envelopeAOffset = -0.02f;
+    let A440Pulse = 1.66f;
+    let inputVolume = 25.0f;
+    let masterVolume = 0.224f;
+    let noteOffMarker = -300;
+    let knobSmoothingTime = 20;
+
+    let tau = float (1.0 / processor.frequency);
+    let tauFilter = float (6.283 / processor.frequency);
+    let piOverSampleRate = float (pi / processor.frequency);
+    let noiseScale = float (sqrt (processor.frequency / 44100) * 4.6566129e-10);
+
+    //==============================================================================
+    //==============================================================================
+    // State:
+
+    MonoSignals state;
+    VoiceState[numVoices] voices;
+    float[delayLength] delayBuffer;
+    bool testToneActive;
+    bool sustainActive;
+    int filterVersion;
+    int lastUnison;
+    int youngestOffVoice = -1;
+    int oldestVoice = -1;
+    int activeVoices = 5;
+
+    int[numVoices] collVoiceNext, collVoicePrev, collVoiceNote;
+    bool[numVoices] collVoiceSustain, collVoiceHold;
+
+    float[2401] exponentLUT;
+    float[2400] exponentLUTSlope;
+
+    struct MonoSignals
+    {
+        float controlCount;
+        int   knobSmoothingCounter;
+        float glide;
+        float glideFinal;
+        float glideOut;
+        float glideInc;
+
+        float lfoPhase;
+        float lfoFreq;
+        float lfoSawA;
+        float lfoTriangleA;
+        float lfoPulseA;
+        bool  lfoPulseSign;
+        float lfoShA;
+        float lfoSh;
+        float lfoConst;
+
+        int64 noiseMem;
+        float noiseFilterFreq;
+        float noiseFilterLPF;
+
+        float lfoNoiseMix;
+        float modulationWheel;
+
+        float envelopeA_D_FAC;
+        float envelopeA_R_FAC;
+        float envelopeA_Rel;
+        float envelopeA_Att;
+        float envelopeA_Sus;
+
+        float envelopeF_D_FAC;
+        float envelopeF_R_FAC;
+        float envelopeF_Rel;
+        float envelopeF_Att;
+        float envelopeF_Sus;
+
+        float oscillatorB_PulseA;
+        float oscillatorB_SawA;
+        bool  oscillatorB_TriA;
+        float oscillatorB_FM_WM;
+        float oscillatorB_PW;
+        float oscillatorB_PW_Inc;
+        float oscillatorB_PW_WM;
+        float oscillatorB_LOF;
+        float oscillatorB_Keyboard;
+        float oscillatorB_Freq;
+        float oscillatorB_Pitch;
+        float oscillatorB_Fine;
+
+        float polymodOscillatorB;
+        float polymodEnvelopeF;
+
+        float oscillatorA_SawA;
+        float oscillatorA_FM_WM;
+        float oscillatorA_FM_PM;
+        float oscillatorA_PW;
+        float oscillatorA_PW_Inc;
+        float oscillatorA_PW_WM;
+        float oscillatorA_PW_PM;
+        bool  oscillatorA_PulseActive;
+        float oscillatorA_SawActive;
+        float oscillatorA_Freq;
+        bool  oscillatorSyncActive;
+
+        float mixerOscillatorA;
+        float mixerOscillatorA_Inc;
+        float mixerOscillatorB;
+        float mixerOscillatorB_Inc;
+        float mixerNoise;
+        float mixerExternal;
+
+        float filter_WM;
+        float filter_PM;
+        float filter_Env;
+        float filter_EnvInc;
+        bool  filter_HPF;
+        float filter_D;
+        float filter_FMAX;
+        float filter_Keyboard;
+        float filter_KeyboardInc;
+        float filter_Cutoff;
+        float filter_Event;
+        float filter_EventInc;
+        float filter_Res;
+        float filterN_D;
+        float filterN_FMAX;
+        float filter1HPF;
+
+        int   smootherCount;
+        float volumeSmooth;
+        float volumeInc;
+        bool  delayActive;
+        float delayDrySmooth;
+        float delayDryInc;
+        float delayWetSmooth;
+        float delayWetInc;
+        float delayFeedbackSmooth;
+        float delayFeedbackInc;
+        float delay_HPF_F;
+        float delay_HPF_LPF;
+        float delay_LPF_F;
+        float delay_LPF_LPF;
+        float delayTime_Mod_1;
+        float delayTime_Mod_2;
+        float delayTime_Mod_3;
+        float delayTime_Mod_4;
+        float delayTime_Inc_1;
+        float delayTime_Inc_2;
+        float delayTime_Inc_3;
+        float delayTime_Inc_4;
+        int   delayBufferIn;
+
+        float A440Freq;
+        float A440Phase;
+        float A440PulseSign;
+        float A440FilterFreq;
+        float A440FilterLPF;
+
+        float filterEnvelopeFinal;
+        float filterKeyboardFinal;
+        float oscillatorA_PW_Final;
+        float oscillatorB_PW_Final;
+        float mixerOscillatorA_Final;
+        float mixerOscillatorB_Final;
+
+        float volumeFinal;
+        float delayWetKnob;
+        float delayWetFinal;
+        float delayDryFinal;
+        float delayFeedbackKnob;
+        float delayFeedbackFinal;
+        float delayInv;
+        float delaySum;
+        float delayTime;
+        float delayTimeRatio;
+        float delayTime_1;
+        float delayTime_2;
+        float delayTime_3;
+        float delayTime_4;
+        float delayRate;
+        float delayRate_1;
+        float delayRate_2;
+        float delayRate_3;
+        float delayRate_4;
+        float delayDepthKnob;
+        float delayDepth;
+        float delayLFO_Pos_1;
+        float delayLFO_Pos_2;
+        float delayLFO_Pos_3;
+        float delayLFO_Pos_4;
+        float delaySpread;
+        float delayMIDI;
+        bool  delaySync;
+
+        float lfoRatio;
+        float midiTempo;
+        float pitchBend;
+        float masterTune;
+        float tune;
+        float velocityAmp;
+        float velocityFilter;
+        float filterEnvelopeInv;
+        float envelopeRelease;
+        bool  unisonActive;
+        float unisonNote;
+        bool  repeatActive;
+        bool  droneActive;
+        float unisonGate;
+
+        float filter_K;
+        float noiseScale;
+    }
+
+    struct VoiceState
+    {
+        bool isActive;
+
+        float gate;
+        float noteNumber;
+        float pitch;
+        float unisonRnd;
+        float oscillatorA_Rnd;
+        float oscillatorA_Tune;
+        float oscillatorB_Rnd;
+        float oscillatorB_Tune;
+
+        float envelopeA_Out;
+        float envelopeA_Level;
+        float envelopeA_Peak;
+        float envelopeA_Inc;
+        float envelopeA_SDif;
+        float envelopeA_Fac;
+        int   envelopeA_Stage;
+
+        float envelopeF_Out;
+        float envelopeF_Level;
+        float envelopeF_Peak;
+        float envelopeF_Inc;
+        float envelopeF_SDif;
+        float envelopeF_Fac;
+        int   envelopeF_Stage;
+
+        float oscillatorB_F;
+        float oscillatorB_Phase;
+        float oscillatorB_Saw_AA2;
+        float oscillatorB_Pulse_AA2;
+
+        float polymodEnvRnd;
+
+        float oscillatorA_F;
+        float oscillatorA_Phase;
+        float oscillatorA_Saw_AA2;
+        float oscillatorA_Pulse_AA2;
+        float eqLast;
+        float filter_Event;
+        float filter_BPF;
+        float filter_LPF;
+        float filter_F_Inc;
+        float filter_F_Smooth;
+        float filter_RND;
+        float filterN_BPF;
+        float filterN_LPF;
+        float saturator_Out;
+        float filter1HP_LPF;
+
+        float filter_S0;
+        float filter_S1;
+        float filter_S2;
+        float filter_S3;
+        float filter_X;
+        float filter_X_1;
+        float filter_X_2;
+        float filter_X_3;
+        float filter_X_4;
+        float filter_F0_4;
+        float filter_F0_1;
+        float filter_F0_2;
+        float filter_F0_3;
+        float filter_Mix;
+
+        float oscillatorB_PW_OLD;
+        int   oscillatorB_PulseLevel;
+        int   oscillatorB_BUFWRITE;
+        float[8] oscillatorB_BUF;
+    }
+
+    //==============================================================================
+    //==============================================================================
+    void init()
+    {
+        initExponentLUT();
+        updateAllTauDependendSignals();
+
+        state.A440Phase = 0;
+        state.smootherCount = 0;
+        state.volumeSmooth = 0;
+        state.delayDrySmooth = 0;
+        state.delayWetSmooth = 0;
+        state.delayFeedbackSmooth = 0;
+        state.filterEnvelopeInv = 1;
+        state.glideOut = 36;
+        state.controlCount = 100;
+        state.noiseMem = 1;
+
+        for (wrap<numVoices> i)
+        {
+            collVoiceSustain[i] = false;
+            collVoiceHold[i] = false;
+            collVoiceNote[i] = noteOffMarker;
+        }
+
+        allSoundOff();
+    }
+
+    //==============================================================================
+    //==============================================================================
+    // Event handlers:
+
+    event eventIn (std::notes::NoteOn e)       { noteOn  (int (e.pitch), int (e.velocity * 128.0f), 0.0f); }
+    event eventIn (std::notes::NoteOff e)      { noteOff (int (e.pitch), int (e.velocity * 128.0f)); }
+    event eventIn (std::notes::PitchBend e)    { setPitchBend (0.5f + 0.5f * (e.bendSemitones / 48.0f)); }
+    event eventIn (std::notes::Control e)      { if (e.control == 1) setModWheel (e.value); }
+
+    event FilterVersion (float n)              { filterVersion = n > 0.6f ? 2 : (n < 0.3f ? 0 : 1); }
+
+    event TestTone (float f)
+    {
+        testToneActive = (f != 0);
+    }
+
+    event PolyModFilterEnv (float value)
+    {
+        value *= 0.01f;
+        let Knob = 0.4f + 4.7f * value; // 0.4 to 5.1
+        state.polymodEnvelopeF = Knob * Knob - 0.16f;
+    }
+
+    event PolyModOscB (float value)
+    {
+        value *= 0.01f;
+        state.polymodOscillatorB = 3.09f * value;
+    }
+
+    event OscAFreq (float value)
+    {
+        value *= 0.01f;
+
+        // -24 to 24 step 1; add 12 because osc phase now goes over 2 units
+        state.oscillatorA_Freq = float (-24 + int ((0.375f * 127.0f) * value + 0.4f)) + 12;
+
+        for (wrap<numVoices> v)
+        {
+            voices[v].oscillatorA_Tune = state.oscillatorA_Freq + voices[v].oscillatorA_Rnd + state.tune;
+            voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+        }
+    }
+
+    event OscAPW (float value)
+    {
+        value *= 0.01f;
+        state.oscillatorA_PW_Final = value * 2 - 1;
+        smoothValue();
+    }
+
+    event MixerOscALevel (float value)
+    {
+        value *= 0.01f;
+        state.mixerOscillatorA_Final = value;
+        smoothValue();
+    }
+
+    event MixerOscBLevel (float value)
+    {
+        value *= 0.01f;
+        state.mixerOscillatorB_Final = 2.0f * value;
+        smoothValue();
+    }
+
+    event MixerNoiseLevel (float value)
+    {
+        value *= 0.01f;
+        state.mixerNoise = 0.35f * 5.0f * value;
+    }
+
+    event ExternalInputLevel (float value)
+    {
+        value *= 0.01f;
+        state.mixerExternal = inputVolume * value;
+    }
+
+    event FilterCutoff (float value)
+    {
+        value *= 0.01f;
+        state.filter_Cutoff = -39.0f + float (int (120.0f * value)); // step 1
+        smoothValue();
+    }
+
+    event FilterResonance (float value)
+    {
+        value *= 0.01f;
+
+        state.filter_Res = value;
+
+        float Res;
+
+        if (state.filter_Res < 0.25)
+            Res = 2.32f * state.filter_Res;
+        else if (state.filter_Res < 0.5f)
+            Res = 0.52f * state.filter_Res + 0.45f;
+        else if (state.filter_Res < 0.75f)
+            Res = 0.92f * state.filter_Res + 0.25f;
+        else
+            Res = 0.036f * state.filter_Res + 0.913f;
+
+        state.filter_D = 2.0f - 2.0f * Res;
+        state.filter_K = 4.1f * value;
+
+        if (state.filter_HPF)
+            state.filter_FMAX = 0.5f + 0.0318f * Res * (27.5989f + Res);
+        else
+            state.filter_FMAX = 0.7352f + 0.2930f * Res * (1.3075f + Res);
+
+        Res *= 0.8f;
+        state.filterN_D = 2.0f - 2.0f * Res;
+
+        if (state.filter_HPF)
+            state.filterN_FMAX = 0.5f + 0.0318f * Res * (27.5989f + Res);
+        else
+            state.filterN_FMAX = 0.7352f + 0.2930f * Res * (1.3075f + Res);
+
+        smoothValue();
+    }
+
+    event FilterHPF (float value)
+    {
+        state.filter_HPF = (value > 0);
+        float Res;
+
+        if (state.filter_Res < 0.25)
+            Res = 2.32f * state.filter_Res;
+        else if (state.filter_Res < 0.5)
+            Res = 0.52f * state.filter_Res + 0.45f;
+        else if (state.filter_Res < 0.75)
+            Res = 0.92f * state.filter_Res + 0.25f;
+        else
+            Res = 0.036f * state.filter_Res + 0.913f;
+
+        state.filter_D = 2.0f - 2.0f * Res;
+
+        if (state.filter_HPF)
+            state.filter_FMAX = 0.5f + 0.0318f * Res * (27.5989f + Res);
+        else
+            state.filter_FMAX = 0.7352f + 0.2930f * Res * (1.3075f + Res);
+
+        Res *= 0.8f;
+        state.filterN_D = 2.0f - 2.0f * Res;
+
+        if (state.filter_HPF)
+            state.filterN_FMAX = 0.5f + 0.0318f * Res * (27.5989f + Res);
+        else
+            state.filterN_FMAX = 0.7352f + 0.2930f * Res * (1.3075f + Res);
+
+        smoothValue();
+    }
+
+    event FilterEnvAmt (float value)
+    {
+        value *= 0.01f;
+
+        state.filterEnvelopeFinal = state.filterEnvelopeInv * 192.0f * value;
+        smoothValue();
+    }
+
+    event FilterInvertEnv (float value)
+    {
+        if (value != 0)
+            state.filterEnvelopeInv = -1.0;
+        else
+            state.filterEnvelopeInv = 1.0;
+
+        if (state.filterEnvelopeFinal > 0)
+            state.filterEnvelopeFinal = state.filterEnvelopeFinal * state.filterEnvelopeInv;
+        else
+            state.filterEnvelopeFinal = -state.filterEnvelopeFinal * state.filterEnvelopeInv;
+
+        smoothValue();
+    }
+
+    event MasterTune (float value)
+    {
+        value *= 0.01f;
+
+        state.masterTune = -0.7f + 1.4f * value; // -0.7 to 0-7
+        state.tune = state.masterTune + state.pitchBend;
+
+        for (wrap<numVoices> v)
+        {
+            voices[v].oscillatorA_Tune = state.oscillatorA_Freq + voices[v].oscillatorA_Rnd + state.tune;
+            voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+
+            voices[v].oscillatorB_Tune = state.oscillatorB_LOF + state.oscillatorB_Pitch + state.oscillatorB_Fine + voices[v].oscillatorB_Rnd + state.tune;
+            voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+        }
+    }
+
+    event LfoFrequency (float value)
+    {
+        value *= 0.01f;
+
+        float octave = -5.5f + 9.725f * value;  // 10 Oktaven
+        int octaveInt = int (floor (octave)); // 0 = Viertelnoten; -6 = 16 Takte, 4 = 64tel
+
+        state.lfoRatio = 0.015625f * (1 << (octaveInt + 6)); // (1 << n) = (2 ^ n),  2^(-6) = 0.015625
+
+        if (octave - octaveInt > 0.58)
+            state.lfoRatio *= 1.5f;
+
+        if (state.midiTempo == 0) //  MIDI Sync is off
+        {
+            let pitch = -92.7f + 116.7f * value; // -92.7 to 24
+            state.lfoFreq = pitchToFreq (pitch);
+        }
+    }
+
+    event OscBFreq (float value)
+    {
+        value *= 0.01f;
+
+        state.oscillatorB_Freq = 0.375f * 127.0f * value;
+        state.oscillatorB_Pitch = 12.0f + 11.0f - 35.0f * state.oscillatorB_Keyboard
+                                   + float (int ((2.0f - state.oscillatorB_Keyboard)
+                                       * (state.oscillatorB_Freq + 0.4f))); // add 12 because osc phase now goes over 2 units
+
+        for (wrap<numVoices> v)
+        {
+            voices[v].oscillatorB_Tune = state.oscillatorB_LOF + state.oscillatorB_Pitch + state.oscillatorB_Fine + voices[v].oscillatorB_Rnd + state.tune;
+            voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+        }
+    }
+
+    event OscBFreqFine (float value)
+    {
+        value *= 0.01f;
+
+        state.oscillatorB_Fine = 0.015f + 0.935f * value; // 0.015 to 0.95
+
+        for (wrap<numVoices> v)
+        {
+            voices[v].oscillatorB_Tune = state.oscillatorB_LOF + state.oscillatorB_Pitch + state.oscillatorB_Fine + voices[v].oscillatorB_Rnd + state.tune;
+            voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+        }
+    }
+
+    event OscBPWAmount (float value)
+    {
+        value *= 0.01f;
+
+        state.oscillatorB_PW_Final = value * 2 - 1; // -1 to 1 because osc phase now goes over 2 units
+        smoothValue();
+    }
+
+    event FilterAttack (float value)
+    {
+        value *= 0.01f;
+        state.envelopeF_Att = tau * timeToIncrement (-5.0f + 90.7f * value);
+    }
+
+    event FilterDecay (float value)
+    {
+        value *= 0.01f;
+        let factor = timeToIncrement (-3.0f + 85.0f * value) * tau;
+
+        if (factor > 1.0)
+            state.envelopeF_D_FAC = 0.0;
+        else
+            state.envelopeF_D_FAC = 1.0f - factor;
+
+        for (wrap<numVoices> v)
+            if (voices[v].envelopeF_Stage == 1) // Decay Stage
+                voices[v].envelopeF_Fac = state.envelopeF_D_FAC;
+    }
+
+    event FilterSustain (float value)
+    {
+        value *= 0.01f;
+        state.envelopeF_Sus = 0.98f * value;
+
+        for (wrap<numVoices> v)
+        {
+            if (voices[v].envelopeF_Stage == 1) // Decay Stage
+            {
+                voices[v].envelopeF_Level = state.envelopeF_Sus * voices[v].envelopeF_Peak;
+                voices[v].envelopeF_SDif = voices[v].envelopeF_Out - voices[v].envelopeF_Level;
+            }
+        }
+    }
+
+    event FilterRelease (float value)
+    {
+        value *= 0.01f;
+        state.envelopeF_Rel = -10.0f + 92.7f * value;
+
+        let factor = timeToIncrement (state.envelopeRelease * state.envelopeF_Rel) * tau;
+
+        if (factor > 1.0)
+            state.envelopeF_R_FAC = 0.0;
+        else
+            state.envelopeF_R_FAC = 1.0f - factor;
+
+        for (wrap<numVoices> v)
+            if (voices[v].envelopeF_Stage == 2)
+                voices[v].envelopeF_Fac = state.envelopeF_R_FAC;
+    }
+
+    event AmplifierAttack (float value)
+    {
+        value *= 0.01f;
+        state.envelopeA_Att = tau * timeToIncrement (-5.0f + 90.7f * value);
+    }
+
+    event AmplifierDecay (float value)
+    {
+        value *= 0.01f;
+        let factor = timeToIncrement (-3.0f + 85.0f * value) * tau;
+
+        state.envelopeA_D_FAC = factor > 1.0 ? 0.0f : (1.0f - factor);
+
+        for (wrap<numVoices> v)
+            if (voices[v].envelopeA_Stage == 1)
+                voices[v].envelopeA_Fac = state.envelopeA_D_FAC;
+    }
+
+    event AmplifierSustain (float value)
+    {
+        value *= 0.01f;
+        state.envelopeA_Sus = 0.95f * value;
+
+        for (wrap<numVoices> v)
+        {
+            if (voices[v].envelopeA_Stage == 1)
+            {
+                voices[v].envelopeA_Level = (voices[v].envelopeA_Peak - envelopeAOffset) * state.envelopeA_Sus + envelopeAOffset;
+                voices[v].envelopeA_SDif = voices[v].envelopeA_Out - voices[v].envelopeA_Level;
+            }
+        }
+    }
+
+    event AmplifierRelease (float value)
+    {
+        value *= 0.01f;
+        state.envelopeA_Rel = -10.0f + 92.0f * value;
+        let factor = timeToIncrement (state.envelopeRelease * state.envelopeA_Rel) * tau;
+
+        state.envelopeA_R_FAC = factor > 1.0 ? 0.0f : (1.0f - factor);
+
+        for (wrap<numVoices> v)
+            if (voices[v].envelopeA_Stage == 2)
+                voices[v].envelopeA_Fac = state.envelopeA_R_FAC;
+    }
+
+    event WheelModulationLfoNoise (float value)
+    {
+        value *= 0.01f;
+
+        state.lfoNoiseMix = value;
+    }
+
+    event Glide (float value)
+    {
+        value *= 0.01f;
+        state.glide = exp_dB (80.0f - 72.0f * value);
+
+        if (state.unisonActive)
+        {
+            if (state.glideFinal == state.glideOut)
+                state.glideInc = 0.0;
+            else if (state.glideFinal > state.glideOut)
+                state.glideInc = state.glide * tau * controlPeriod;
+            else
+                state.glideInc = -state.glide * tau * controlPeriod;
+        }
+    }
+
+    event Volume (float value)
+    {
+        value *= 0.01f;
+
+        state.volumeFinal = masterVolume * value;
+        smoother();
+    }
+
+    event PolyModFreqA (float value)
+    {
+        state.oscillatorA_FM_PM = value != 0 ? 0.4f : 0.0f;
+    }
+
+    event PolyModPWA (float value)
+    {
+        state.oscillatorA_PW_PM = value != 0 ? -1.0f : 0.0f; // now -1 because osc phase now goes over 2 units
+    }
+
+    event PolyModFilt (float value)
+    {
+        state.filter_PM = value != 0 ? 3.8f : 0.0f;
+    }
+
+    event OscASaw (float value)
+    {
+        state.oscillatorA_SawActive = value != 0 ? 1.0f : 0.0f;
+        state.oscillatorA_SawA = state.mixerOscillatorA * state.oscillatorA_SawActive;
+    }
+
+    event OscAPulse (float value)
+    {
+        state.oscillatorA_PulseActive = (value != 0);
+    }
+
+    event OscASync (float value)
+    {
+        state.oscillatorSyncActive = (value > 0.0f);
+    }
+
+    event FilterKeyboardTracking (float value)
+    {
+        state.filterKeyboardFinal = value * 0.01f;
+        smoothValue();
+    }
+
+    event LfoMidiSync (float value)
+    {
+        if (value == 0 && state.midiTempo)
+            state.lfoFreq = 2.0f * state.lfoRatio;
+
+        state.midiTempo = value;
+    }
+
+    event LfoShapeSaw (float value)
+    {
+        if (value != 0) // button on
+        {
+            state.lfoConst = 0.0;
+
+            if (state.lfoShA == 0.0)
+            {
+                state.lfoSawA = 0.4f;
+
+                if (state.lfoPulseA != 0.0 && state.lfoTriangleA != 0.0) // all three buttons now on?
+                {
+                    state.lfoShA = 1.0;  // switch on Sample&Hold mode
+                    state.lfoTriangleA = 0.0; // switch off all LFO waveforms
+                    state.lfoPulseA = 0.0;
+                    state.lfoSawA = 0.0;
+                }
+            }
+        }
+        else // button off
+        {
+            state.lfoSawA = 0.0;
+
+            if (state.lfoShA != 0.0) // currently in Sample&Hold mode
+            {
+                state.lfoShA = 0.0;    // switch off Sample&Hold mode
+                state.lfoPulseA = 0.4f; // switch other LFO waveforms back on
+                state.lfoTriangleA = 0.4f;
+            }
+            else if (state.lfoPulseA == 0.0 && state.lfoTriangleA == 0.0) // all switches now off ?
+            {
+                state.lfoConst = 0.4f;
+            }
+        }
+    }
+
+    event LfoShapeTri (float value)
+    {
+        if (value != 0) // button on
+        {
+            state.lfoConst = 0.0;
+
+            if (state.lfoShA == 0.0)
+            {
+                state.lfoTriangleA = 0.4f;
+
+                if (state.lfoPulseA != 0.0 && state.lfoSawA != 0.0) // all three buttons now on?
+                {
+                    state.lfoShA = 1.0;  // switch on Sample&Hold mode
+                    state.lfoTriangleA = 0.0; // switch off all LFO waveforms
+                    state.lfoPulseA = 0.0;
+                    state.lfoSawA = 0.0;
+                }
+            }
+        }
+        else // button off
+        {
+            state.lfoTriangleA = 0.0;
+
+            if (state.lfoShA != 0.0) // currently in Sample&Hold mode
+            {
+                state.lfoShA = 0.0;    // switch off Sample&Hold mode
+                state.lfoPulseA = 0.4f; // switch other LFO waveforms back on
+                state.lfoSawA = 0.4f;
+            }
+            else if (state.lfoPulseA == 0.0 && state.lfoSawA == 0.0) // all switches now off?
+            {
+                state.lfoConst = 0.4f;
+            }
+        }
+    }
+
+    event LfoShapePulse (float value)
+    {
+        if (value != 0) // button on
+        {
+            state.lfoConst = 0.0;
+
+            if (state.lfoShA == 0.0)
+            {
+                state.lfoPulseA = 0.4f;
+
+                if (state.lfoTriangleA != 0.0 && state.lfoSawA != 0.0) // all three buttons now on?
+                {
+                    state.lfoShA = 1.0;  // switch on Sample&Hold mode
+                    state.lfoTriangleA = 0.0; // switch off all LFO waveforms
+                    state.lfoPulseA = 0.0;
+                    state.lfoSawA = 0.0;
+                }
+            }
+        }
+        else // button off
+        {
+            state.lfoPulseA = 0.0;
+
+            if (state.lfoShA != 0.0) // currently in Sample&Hold mode
+            {
+                state.lfoShA = 0.0;  // switch off Sample&Hold mode
+                state.lfoTriangleA = 0.4f; // switch other LFO waveforms back on
+                state.lfoSawA = 0.4f;
+            }
+            else if (state.lfoTriangleA == 0.0 && state.lfoSawA == 0.0) // all switches now off ?
+            {
+                state.lfoConst = 0.4f;
+            }
+        }
+
+        state.lfoPulseA = value != 0 ? 0.4f : 0.0f;
+    }
+
+    event OscBShapeSaw (float value)
+    {
+        state.oscillatorB_SawA = value != 0 ? 0.5f : 0.0f; // now 0.5 because osc phase now goes over 2 units
+    }
+
+    event OscBShapeTri (float value)
+    {
+        state.oscillatorB_TriA = (value != 0);
+    }
+
+    event OscBShapePulse (float value)
+    {
+        state.oscillatorB_PulseA = value != 0 ? 1.0f : 0.0f;
+    }
+
+    event OscBSubOsc (float value)
+    {
+        state.oscillatorB_LOF = value != 0 ? -91.3f : 0.0f;
+
+        for (wrap<numVoices> v)
+        {
+            voices[v].oscillatorB_Tune = state.oscillatorB_LOF + state.oscillatorB_Pitch + state.oscillatorB_Fine + voices[v].oscillatorB_Rnd + state.tune;
+            voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+        }
+    }
+
+    event OscBKKeyboardTracking (float value)
+    {
+        state.oscillatorB_Keyboard = value != 0 ? 1.0f : 0.0f;
+
+        state.oscillatorB_Pitch = 12.0f + 11.0f - 35.0f * state.oscillatorB_Keyboard
+                                 + float (int ( ((2.0f - state.oscillatorB_Keyboard)
+                                     * (state.oscillatorB_Freq + 0.4f)))); // add 12 because osc phase now goes over 2 units
+
+        for (wrap<numVoices> v)
+        {
+            voices[v].oscillatorB_Tune = state.oscillatorB_LOF + state.oscillatorB_Pitch + state.oscillatorB_Fine + voices[v].oscillatorB_Rnd + state.tune;
+            voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+        }
+    }
+
+    event WheelModulationFreqOscA (float value)
+    {
+        state.oscillatorA_FM_WM = value != 0 ? 0.4f : 0.0f;
+    }
+
+    event WheelModulationFreqOscB (float value)
+    {
+        state.oscillatorB_FM_WM = value != 0 ? 0.4f : 0.0f;
+    }
+
+    event WheelModulationPWA (float value)
+    {
+        state.oscillatorA_PW_WM = value != 0 ? 1.0f : 0.0f; // now 1 because osc phase now goes over 2 units
+    }
+
+    event WheelModulationPWB (float value)
+    {
+        state.oscillatorB_PW_WM = value != 0 ? 1.0f : 0.0f; // now 1 because osc phase now goes over 2 units
+    }
+
+    event WheelModulationFilter (float value)
+    {
+        state.filter_WM = value != 0 ? 60.0f : 0.0f;
+    }
+
+    event Unison (float value)
+    {
+        state.unisonActive = value != 0;
+
+        if (! state.unisonActive)
+        {
+            state.glideInc = 0;
+
+            for (wrap<numVoices> v)
+            {
+                if (voices[v].noteNumber >= 0)
+                {
+                    voices[v].pitch = voices[v].noteNumber;
+                    voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+                    voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+                }
+
+                if (voices[v].gate <= 0)
+                {
+                    voices[v].envelopeA_Stage = 2;
+                    voices[v].envelopeA_Fac = state.envelopeA_R_FAC;
+                    voices[v].envelopeA_Level = envelopeAOffset;
+                    voices[v].envelopeA_SDif = voices[v].envelopeA_Out - voices[v].envelopeA_Level;
+
+                    voices[v].envelopeF_Stage = 2;
+                    voices[v].envelopeF_Fac = state.envelopeF_R_FAC;
+                    voices[v].envelopeF_Level = 0.0;
+                    voices[v].envelopeF_SDif = voices[v].envelopeF_Out - voices[v].envelopeF_Level;
+                }
+            }
+
+            state.unisonGate = 0;
+        }
+        else // Unison on
+        {
+            state.glideFinal = state.unisonNote;
+
+            if (state.glideFinal == state.glideOut)
+            {
+                state.glideInc = 0.0;
+
+                for (wrap<numVoices> v)
+                {
+                    if (v == activeVoices)
+                        break;
+
+                    voices[v].pitch = state.glideFinal + voices[v].unisonRnd;
+
+                    voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+                    voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+                }
+            }
+            else if (state.glideFinal > state.glideOut)
+            {
+                state.glideInc = state.glide * tau * controlPeriod;
+            }
+            else
+            {
+                state.glideInc = -state.glide * tau * controlPeriod;
+            }
+
+            if (state.droneActive)
+            {
+                sustainedNotesOff();
+                noteOn (60, 64, 0.0f);
+                sustainActive = true;
+                noteOff (60, 0);
+            }
+        }
+    }
+
+    event Release (float value)
+    {
+        state.envelopeRelease = value != 0 ? 1.0f : 0.0f;
+
+        let factor1 = timeToIncrement (state.envelopeRelease * state.envelopeA_Rel) * tau;
+        state.envelopeA_R_FAC = factor1 > 1.0 ? 0.0f : (1.0f - factor1);
+
+        for (wrap<numVoices> v)
+            if (voices[v].envelopeA_Stage == 2) // Release Stage
+                voices[v].envelopeA_Fac = state.envelopeA_R_FAC;
+
+        let factor2 = timeToIncrement (state.envelopeRelease * state.envelopeF_Rel) * tau;
+
+        state.envelopeF_R_FAC = factor2 > 1.0 ? 0.0f : (1.0f - factor2);
+
+        for (wrap<numVoices> v)
+            if (voices[v].envelopeF_Stage == 2) // Release Stage
+                voices[v].envelopeF_Fac = state.envelopeF_R_FAC;
+    }
+
+    event Velocity (float value)
+    {
+        if (value != 0)
+        {
+            state.velocityFilter = 0.55f;
+            state.velocityAmp = 0.8f;
+        }
+        else
+        {
+            state.velocityFilter = 0.0;
+            state.velocityAmp = 0.0;
+        }
+    }
+
+    event Repeat (float value)
+    {
+        state.repeatActive = (value != 0);
+    }
+
+    event Drone (float value)
+    {
+        state.droneActive = int (value) != 0;
+
+        if (state.droneActive)
+        {
+            // already playing a note?
+            bool already_playing = false;
+
+            for (wrap<numVoices> v)
+            {
+                if (v == activeVoices)
+                    break;
+
+                if (collVoiceNote[v] > 0)
+                {
+                    already_playing = true; // don't turn on C3
+                    break;
+                }
+            }
+
+            if (! already_playing)
+            {
+                noteOn (60, 64, 0.0f);
+                sustainActive = true;
+                noteOff (60, 0);
+            }
+            else
+            {
+                sustainActive = true;
+            }
+        }
+        else
+        {
+            sustainedNotesOff();
+        }
+    }
+
+    event Analog (float value)
+    {
+        value *= 0.01f;
+        let tune = value > 0 ? exp_E (5.0f * value) * 0.19205f : 0.0f;
+        var seed = 1234567890;
+
+        for (wrap<numVoices> v)
+        {
+            var Feedback = (seed ^ (seed >> 5) ^ (seed >> 13)) << 31;
+            seed >>= 1;
+            seed |= Feedback;
+
+            voices[v].oscillatorA_Rnd = 0.01f * tune * (-1.0f + (3.0518e-5f * float (seed & 65535)));
+            voices[v].oscillatorA_Tune = state.oscillatorA_Freq + voices[v].oscillatorA_Rnd + state.tune;
+
+            Feedback = (seed ^ (seed >> 5) ^ (seed >> 13)) << 31;
+            seed >>= 1;
+            seed |= Feedback;
+
+            voices[v].oscillatorB_Rnd = 0.01f * tune * (-1.0f + (3.0518e-5f * float (seed & 65535)));
+            voices[v].oscillatorB_Tune = state.oscillatorB_LOF + state.oscillatorB_Pitch + state.oscillatorB_Fine + voices[v].oscillatorB_Rnd + state.tune;
+
+            Feedback = (seed ^ (seed >> 5) ^ (seed >> 13)) << 31;
+            seed >>= 1;
+            seed |= Feedback;
+
+            voices[v].filter_RND = 0.5f * tune * (-1.0f + (3.0518e-5f * float (seed & 65535)));
+            smoothValue();
+
+            Feedback = (seed ^ (seed >> 5) ^ (seed >> 13)) << 31;
+            seed >>= 1;
+            seed |= Feedback;
+
+            voices[v].polymodEnvRnd = 1.0f + 0.1f * tune * (-1.0f + (3.0518e-5f * float (seed & 65535)));
+
+            Feedback = (seed ^ (seed >> 5) ^ (seed >> 13)) << 31;
+            seed >>= 1;
+            seed |= Feedback;
+
+            if (tune != 0)
+                voices[v].unisonRnd = 0.035f * tune * (-1.0f + (3.0518e-5f * float (seed & 65535)));
+            else
+                voices[v].unisonRnd = 0.035f * 2.0f / float (activeVoices) * (bool (v & 1) ? ((v + 1) >> 1) : -(v >> 1));
+
+            updatePitch();
+        }
+    }
+
+    event ModWheel (float value)
+    {
+        setModWheel (value * 0.01f);
+    }
+
+    event PitchBend (float value)
+    {
+        setPitchBend (value * 0.01f);
+    }
+
+    void setPitchBend (float value)
+    {
+        state.pitchBend = 4.0f * (value - 0.5f); // -2 to 2
+
+        state.tune = state.masterTune + state.pitchBend;
+
+        for (wrap<numVoices> v)
+        {
+            voices[v].oscillatorA_Tune = state.oscillatorA_Freq + voices[v].oscillatorA_Rnd + state.tune;
+            voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+
+            voices[v].oscillatorB_Tune = state.oscillatorB_LOF + state.oscillatorB_Pitch + state.oscillatorB_Fine + voices[v].oscillatorB_Rnd + state.tune;
+            voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+        }
+    }
+
+    void setModWheel (float value)
+    {
+        state.modulationWheel = value * 5; // 0 to 5 (5/127)
+    }
+
+    // Delay Effect Parameters
+
+    event DelayTime (float value)
+    {
+        value *= 0.01f;
+
+        let octave = -8.97f + (1.0f + 8.97f) * value;  // 10 octaves
+        let octaveInt = int (floor (octave)); // 1 = half note, 0 = whole note, -2 = 16th
+
+        state.delayTimeRatio = 0.001953125f * (1 << (octaveInt + 9)); // (1 << n) = (2 ^ n),  2^(-9) = 0.001953125, ratio = 2^octaveInt
+
+        state.delayTimeRatio *= 60.0f; // convert BPM to Hz
+
+        if (octave - octaveInt > 0.58)
+            state.delayTimeRatio *= 1.5f;
+
+        if (state.delayMIDI == 0) //  MIDI Sync is off
+            state.delayTime = exp_dB (-60.f + 60.0f * value); //  -60 to 0 = 1ms to 1sec
+
+        computeDelayTimes();
+    }
+
+    event DelaySpread (float value)
+    {
+        value *= 0.01f;
+        state.delaySpread = value;
+        computeDelayTimes();
+    }
+
+    event DelayDepth (float value)
+    {
+        value *= 0.01f;
+        state.delayDepthKnob = value > 0 ? exp_E (5.0f * value) * 0.000185f : 0.0f;
+        state.delayDepth = state.delayDepthKnob * float (processor.frequency);
+        computeDelayTimes();
+    }
+
+    event DelayFeedback (float value)
+    {
+        value *= 0.01f;
+        state.delayFeedbackKnob = value * 0.25f;
+        state.delayFeedbackFinal = state.delayFeedbackKnob * state.delayInv * (1.0f - 0.5f * state.delay_HPF_F);
+        smoother();
+    }
+
+    event DelayLoCut (float value)
+    {
+        value *= 0.01f;
+        state.delay_LPF_F = min (0.99f, pitchToFreq (40.0f + 80.0f * value) * tauFilter);
+    }
+
+    event DelayHiCut (float value)
+    {
+        value *= 0.01f;
+        state.delay_HPF_F = min (0.99f, pitchToFreq (0.0f + 120.0f * value) * tauFilter);
+        state.delayFeedbackFinal = state.delayFeedbackKnob * state.delayInv * (1.0f - 0.5f * state.delay_HPF_F);
+        smoother();
+    }
+
+    event DelayINV (float value)
+    {
+        state.delayInv = value >= 0.5 ? -1.0f : 1.0f;
+        state.delayFeedbackFinal = state.delayFeedbackKnob * state.delayInv * (1.0f - 0.5f * state.delay_HPF_F);
+        state.delayWetFinal = state.delayWetKnob * (1.828f - 0.828f * state.delayWetKnob) * 0.5f * state.delayInv;
+        smoother();
+    }
+
+    event DelayON (float value)
+    {
+        if (value < 0.5)
+        {
+            state.delayActive = false;
+            state.delayWetFinal = 0.0;
+            state.delayDryFinal = 1.0;
+            smoother();
+        }
+        else if (! state.delayActive)
+        {
+            state.delayActive = true;
+
+            state.delayWetFinal = state.delayWetKnob * (1.828f - 0.828f * state.delayWetKnob) * 0.5f * state.delayInv;
+            state.delayDryFinal = (1.0f - state.delayWetKnob) * (1.828f - 0.828f * (1.0f - state.delayWetKnob));
+            smoother();
+
+            state.delaySum = 0.0;
+            state.delay_HPF_LPF = 0.0;
+            state.delay_LPF_LPF = 0.0;
+
+            state.delayTime_Inc_1 = 0.0;
+            state.delayTime_Inc_2 = 0.0;
+            state.delayTime_Inc_3 = 0.0;
+            state.delayTime_Inc_4 = 0.0;
+
+            state.delayLFO_Pos_1 = 0.0;
+            state.delayLFO_Pos_2 = 0.0;
+            state.delayLFO_Pos_3 = 0.0;
+            state.delayLFO_Pos_4 = 0.0;
+
+            state.delayTime_Mod_1 = state.delayTime_1;
+            state.delayTime_Mod_2 = state.delayTime_2;
+            state.delayTime_Mod_3 = state.delayTime_3;
+            state.delayTime_Mod_4 = state.delayTime_4;
+
+            delayBuffer = 0;
+        }
+    }
+
+    event DelayWet (float value)
+    {
+        value *= 0.01f;
+
+        state.delayWetKnob = value;
+
+        if (state.delayActive)
+        {
+            state.delayWetFinal = state.delayWetKnob * (1.828f - 0.828f * state.delayWetKnob) * 0.5f * state.delayInv;
+            state.delayDryFinal = (1.0f - state.delayWetKnob) * (1.828f - 0.828f * (1.0f - state.delayWetKnob));
+            smoother();
+        }
+    }
+
+    event DelayRate (float value)
+    {
+        value *= 0.01f;
+        state.delayRate = pitchToFreq (-60 + 80.0f * value); // P = -60 to 20, F = 0.26Hz to 26Hz
+
+        if (state.delaySync)
+        {
+            state.delayRate_1 = state.delayRate; // only rate1 used in sync mode
+        }
+        else
+        {
+            state.delayRate_1 = state.delayRate * 1.029f; // +0.5 semitones
+            state.delayRate_2 = state.delayRate * 0.917f; // -1.5 semitones
+            state.delayRate_3 = state.delayRate * 0.972f; // -0.5 semitones
+            state.delayRate_4 = state.delayRate * 1.091f; // -1.5 semitones
+        }
+    }
+
+    event DelaySync (float value)
+    {
+        if (value >= 0.5)
+        {
+            state.delaySync = true;
+            state.delayRate_1 = state.delayRate; // only rate1 used in sync mode
+        }
+        else
+        {
+            state.delaySync = false;
+
+            state.delayRate_1 = state.delayRate * 1.029f; // +0.5 semitones
+            state.delayRate_2 = state.delayRate * 0.917f; // -1.5 semitones
+            state.delayRate_3 = state.delayRate * 0.972f; // -0.5 semitones
+            state.delayRate_4 = state.delayRate * 1.091f; // -1.5 semitones
+
+            state.delayLFO_Pos_2 = state.delayLFO_Pos_1; // set all LFOs to same phase, will drift apart
+            state.delayLFO_Pos_3 = state.delayLFO_Pos_1;
+            state.delayLFO_Pos_4 = state.delayLFO_Pos_1;
+        }
+
+        computeDelayTimes();
+    }
+
+    event DelayMidi (float value)
+    {
+        if (value >= 0.5)
+        {
+            state.delayMIDI = 1;
+        }
+        else if (state.delayMIDI != 0) // switching MIDI Sync off ?
+        {
+            state.delayMIDI = 0;
+            state.delayTime = state.delayTimeRatio / 120.0f; // fudge: Time bleibt noch quantisiert, aber bei 120BPM
+            computeDelayTimes();
+        }
+    }
+
+    event ActiveVoices (float value)
+    {
+        let v = wrap<numVoices + 1> (value);
+
+        if (activeVoices != v)
+        {
+            activeVoices = v;
+            allSoundOff();
+        }
+    }
+
+    //==============================================================================
+    //==============================================================================
+    //==============================================================================
+    void smoothValue()
+    {
+        state.knobSmoothingCounter = knobSmoothingTime;
+        float factor = 1.0f / knobSmoothingTime;
+
+        state.mixerOscillatorA_Inc  = undenormalise ((state.mixerOscillatorA_Final - state.mixerOscillatorA) * factor);
+        state.mixerOscillatorB_Inc  = undenormalise ((state.mixerOscillatorB_Final - state.mixerOscillatorB) * factor);
+        state.oscillatorA_PW_Inc    = undenormalise ((state.oscillatorA_PW_Final - state.oscillatorA_PW) * factor);
+        state.oscillatorB_PW_Inc    = undenormalise ((state.oscillatorB_PW_Final - state.oscillatorB_PW) * factor);
+        state.filter_EnvInc         = undenormalise ((state.filterEnvelopeFinal - state.filter_Env) * factor);
+        state.filter_KeyboardInc    = undenormalise ((state.filterKeyboardFinal - state.filter_Keyboard) * factor);
+
+        let final = 35.0f * (1.0f - state.filterKeyboardFinal) + state.filter_Cutoff + 4.5f * state.filter_Res;
+        state.filter_EventInc = undenormalise ((final - state.filter_Event) * (1.0f / (knobSmoothingTime)));
+    }
+
+    void smoother()
+    {
+        state.smootherCount = int (0.02 * processor.frequency); // transition in 20ms
+        float factor = 1.0f / state.smootherCount;
+
+        state.volumeInc        = undenormalise ((state.volumeFinal - state.volumeSmooth) * factor);
+        state.delayWetInc      = undenormalise ((state.delayWetFinal - state.delayWetSmooth) * factor);
+        state.delayDryInc      = undenormalise ((state.delayDryFinal - state.delayDrySmooth) * factor);
+        state.delayFeedbackInc = undenormalise ((state.delayFeedbackFinal - state.delayFeedbackSmooth) * factor);
+    }
+
+    void sustainedNotesOff()
+    {
+        sustainActive = false;
+
+        for (wrap<numVoices> i)
+        {
+            if (i == activeVoices)
+                break;
+
+            if (collVoiceSustain[i] && (! collVoiceHold[i]))
+            {
+                collVoiceSustain[i] = false;
+                triggerNoteOff (i, 0);
+                releaseVoice (i);
+                collVoiceNote[i] = noteOffMarker - collVoiceNote[i];
+            }
+        }
+    }
+
+    bool triggerNoteOn (wrap<numVoices> voice, int vel, float Detune) // |K< 03.12.99
+    {
+        let notePitch = collVoiceNote[voice];
+
+        voices[voice].noteNumber = float (notePitch);
+
+        let scaledPitch = voices[voice].noteNumber + Detune;
+
+        if (state.unisonActive)
+        {
+            state.unisonNote = float (notePitch);
+            state.glideFinal = scaledPitch;
+
+            if (state.glideFinal == state.glideOut)
+            {
+                state.glideInc = 0.0;
+
+                for (wrap<numVoices> v)
+                {
+                    if (v == activeVoices)
+                        break;
+
+                    voices[v].pitch = state.glideFinal + voices[v].unisonRnd;
+
+                    voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+                    voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+                }
+            }
+            else if (state.glideFinal > state.glideOut)
+            {
+                state.glideInc = state.glide * tau * controlPeriod;
+            }
+            else
+            {
+                state.glideInc = -state.glide * tau * controlPeriod;
+            }
+
+            state.unisonGate = 1;
+
+            int numActiveVoices;
+
+            for (wrap<numVoices> v)
+            {
+                if (v == activeVoices)
+                    break;
+
+                if (voices[v].gate > 0.0)
+                    ++numActiveVoices;
+            }
+
+            if (state.repeatActive)
+            {
+                if (state.midiTempo == 0 && numActiveVoices == 0)
+                    state.lfoPhase = 1.0; // key sync LFO, when not synced to song tempo
+            }
+            else // only trigger when Repeat is off, otherwise triggering will happen from LFO
+            {
+                if (numActiveVoices == 0)
+                {
+                    let peakA = 0.5f + state.velocityAmp * (vel * 0.0078125f - 0.5f);
+                    let peakF = 0.5f + state.velocityFilter * (vel * 0.0078125f - 0.5f);
+
+                    for (wrap<numVoices> v)
+                    {
+                        if (v == activeVoices)
+                            break;
+
+                        // Amplitude Envelope Gate On
+                        voices[v].isActive = true;
+
+                        if (voices[v].envelopeA_Out < 0.0)
+                            voices[v].envelopeA_Out = 0.0;
+
+                        if (voices[v].envelopeA_Out > peakA)
+                        {
+                            voices[v].envelopeA_Peak = voices[v].envelopeA_Out;
+                            voices[v].envelopeA_Stage = 1;
+                            voices[v].envelopeA_Fac = state.envelopeA_D_FAC;
+                            voices[v].envelopeA_Level = (voices[v].envelopeA_Peak - envelopeAOffset) * state.envelopeA_Sus + envelopeAOffset; // Sustain-Level als Teil des Peaklevels
+                            voices[v].envelopeA_SDif = voices[v].envelopeA_Peak - voices[v].envelopeA_Level;
+                        }
+                        else
+                        {
+                            voices[v].envelopeA_Inc = peakA * state.envelopeA_Att;
+                            voices[v].envelopeA_Peak = peakA;
+                            voices[v].envelopeA_Stage = 0;
+                        }
+
+                        // Filter Envelope Gate On
+                        if (voices[v].envelopeF_Out > peakF)
+                        {
+                            voices[v].envelopeF_Peak = voices[v].envelopeF_Out;
+                            voices[v].envelopeF_Stage = 1;
+                            voices[v].envelopeF_Fac = state.envelopeF_D_FAC;
+                            voices[v].envelopeF_Level = voices[v].envelopeF_Peak * state.envelopeF_Sus;
+                            voices[v].envelopeF_SDif = voices[v].envelopeF_Out - voices[v].envelopeF_Level;
+                        }
+                        else
+                        {
+                            voices[v].envelopeF_Inc = peakF * state.envelopeF_Att;
+                            voices[v].envelopeF_Peak = peakF;
+                            voices[v].envelopeF_Stage = 0;
+                            voices[v].envelopeF_SDif = 1;
+                        }
+                    }
+                }
+                else // already playing but change in envelope amplitude by velocity is possible
+                {
+                    let peakA = 0.5f + state.velocityAmp * (vel * 0.0078125f - 0.5f);
+                    let peakF = 0.5f + state.velocityFilter * (vel * 0.0078125f - 0.5f);
+
+                    for (wrap<numVoices> v)
+                    {
+                        if (v == activeVoices)
+                            break;
+
+                        voices[v].envelopeA_Peak = peakA;
+
+                        if (voices[v].envelopeA_Stage == 0 && voices[v].envelopeA_Out < peakA) // still in attack
+                        {
+                            voices[v].envelopeA_Inc = peakA * state.envelopeA_Att; // Attack-Increment
+                        }
+                        else // in decay
+                        {
+                            voices[v].envelopeA_Stage = 1;
+                            voices[v].envelopeA_Fac = state.envelopeA_D_FAC;
+                            voices[v].envelopeA_Level = (voices[v].envelopeA_Peak - envelopeAOffset) * state.envelopeA_Sus + envelopeAOffset; // Sustain-Level als Teil des Peaklevels
+                            voices[v].envelopeA_SDif = voices[v].envelopeA_Out - voices[v].envelopeA_Level;
+                        }
+
+                        voices[v].envelopeF_Peak = peakF;
+
+                        if (voices[v].envelopeF_Stage == 0 && voices[v].envelopeF_Out < peakF) // still in attack
+                        {
+                            voices[v].envelopeF_Inc = peakF * state.envelopeF_Att; // Attack-Increment
+                            voices[v].envelopeF_SDif = 1;
+                        }
+                        else
+                        {
+                            voices[v].envelopeF_Stage = 1;
+                            voices[v].envelopeF_Fac = state.envelopeF_D_FAC;
+                            voices[v].envelopeF_Level = voices[v].envelopeF_Peak * state.envelopeF_Sus;
+                            voices[v].envelopeF_SDif = voices[v].envelopeF_Out - voices[v].envelopeF_Level;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (state.repeatActive)
+            {
+                if (state.midiTempo == 0)
+                {
+                    int numActiveVoices;
+
+                    for (wrap<numVoices> v)
+                    {
+                        if (v == activeVoices)
+                            break;
+
+                        if (voices[v].gate > 0.0)
+                            ++numActiveVoices;
+                    }
+
+                    if (numActiveVoices == 0)
+                        state.lfoPhase = 1.0; // key sync LFO, when not synced to song tempo
+                }
+            }
+            else // only trigger when Repeat is off, otherwise triggering will happen from LFO
+            {
+                let peakA = 0.5f + state.velocityAmp * (vel * 0.0078125f - 0.5f);
+                let peakF = 0.5f + state.velocityFilter * (vel * 0.0078125f - 0.5f);
+
+                // Amplitude Envelope Gate On
+                voices[voice].isActive = true;
+
+                if (voices[voice].envelopeA_Out > peakA)
+                {
+                    voices[voice].envelopeA_Peak = voices[voice].envelopeA_Out;
+                    voices[voice].envelopeA_Stage = 1;
+                    voices[voice].envelopeA_Fac = state.envelopeA_D_FAC;
+                    voices[voice].envelopeA_Level = (voices[voice].envelopeA_Peak - envelopeAOffset) * state.envelopeA_Sus + envelopeAOffset;
+                    voices[voice].envelopeA_SDif = voices[voice].envelopeA_Peak - voices[voice].envelopeA_Level;
+                }
+                else
+                {
+                    voices[voice].envelopeA_Inc = peakA * state.envelopeA_Att;
+                    voices[voice].envelopeA_Peak = peakA;
+                    voices[voice].envelopeA_Stage = 0;
+                }
+
+                // Filter Envelope Gate On
+                if (voices[voice].envelopeF_Out > peakF)
+                {
+                    voices[voice].envelopeF_Peak = voices[voice].envelopeF_Out;
+                    voices[voice].envelopeF_Stage = 1;
+                    voices[voice].envelopeF_Fac = state.envelopeF_D_FAC;
+                    voices[voice].envelopeF_Level = voices[voice].envelopeF_Peak * state.envelopeF_Sus;
+                    voices[voice].envelopeF_SDif = voices[voice].envelopeF_Out - voices[voice].envelopeF_Level;
+                }
+                else
+                {
+                    voices[voice].envelopeF_Inc = peakF * state.envelopeF_Att;
+                    voices[voice].envelopeF_Peak = peakF;
+                    voices[voice].envelopeF_Stage = 0;
+                    voices[voice].envelopeF_SDif = 1;
+                }
+            }
+
+            voices[voice].pitch = scaledPitch;
+
+            voices[voice].oscillatorA_F = pitchToFreq (voices[voice].pitch + voices[voice].oscillatorA_Tune);
+            voices[voice].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[voice].pitch + voices[voice].oscillatorB_Tune);
+
+            state.unisonNote = float (notePitch);
+        }
+
+        voices[voice].gate = float (vel);
+        return true;
+    }
+
+    void triggerNoteOff (wrap<numVoices> voice, int vel)
+    {
+        let notePitch = collVoiceNote[voice];
+
+        voices[voice].noteNumber = float (notePitch);
+
+        if (state.unisonActive)
+        {
+            if (notePitch != state.unisonNote)
+            {
+                voices[voice].gate = 0.0;
+                return;
+            }
+
+            int numActiveVoices = 0;
+            float nearestNote = 1000.0;
+
+            for (wrap<numVoices> v)
+            {
+                if (v == activeVoices)
+                    break;
+
+                if (voices[v].gate > 0.0)
+                {
+                    ++numActiveVoices;
+
+                    let bestDiff = int (notePitch - nearestNote);
+                    let currDiff = int (notePitch - voices[v].noteNumber);
+
+                    if (currDiff * currDiff < bestDiff * bestDiff && v != voice)
+                        nearestNote = voices[v].noteNumber;
+                }
+            }
+
+            if (voices[voice].gate > 0.0)
+            {
+                if (numActiveVoices == 1)
+                {
+                    for (wrap<numVoices> v)
+                    {
+                        if (v == activeVoices)
+                            break;
+
+                        voices[v].envelopeA_Stage = 2;
+                        voices[v].envelopeA_Fac = state.envelopeA_R_FAC;
+                        voices[v].envelopeA_Level = envelopeAOffset;
+                        voices[v].envelopeA_SDif = voices[v].envelopeA_Out - voices[v].envelopeA_Level;
+
+                        voices[v].envelopeF_Stage = 2;
+                        voices[v].envelopeF_Fac = state.envelopeF_R_FAC;
+                        voices[v].envelopeF_Level = 0.0;
+                        voices[v].envelopeF_SDif = voices[v].envelopeF_Out - voices[v].envelopeF_Level;
+                    }
+
+                    state.unisonGate = 0;
+                }
+                else if (numActiveVoices > 1)
+                {
+                    lastUnison = int (nearestNote);
+
+                    state.unisonNote = nearestNote;
+                    state.glideFinal = state.unisonNote;
+
+                    if (state.glideFinal == state.glideOut)
+                    {
+                        state.glideInc = 0.0;
+
+                        for (wrap<numVoices> v)
+                        {
+                            if (v == activeVoices)
+                                break;
+
+                            voices[v].pitch = state.glideFinal + voices[v].unisonRnd;
+
+                            voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+                            voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+                        }
+                    }
+                    else if (state.glideFinal > state.glideOut)
+                    {
+                        state.glideInc = state.glide * tau * controlPeriod;
+                    }
+                    else
+                    {
+                        state.glideInc = -state.glide * tau * controlPeriod;
+                    }
+                }
+            }
+        }
+        else
+        {
+            voices[voice].envelopeA_Stage = 2;
+            voices[voice].envelopeA_Fac = state.envelopeA_R_FAC;
+            voices[voice].envelopeA_Level = envelopeAOffset;
+            voices[voice].envelopeA_SDif = voices[voice].envelopeA_Out - voices[voice].envelopeA_Level;
+
+            voices[voice].envelopeF_Stage = 2;
+            voices[voice].envelopeF_Fac = state.envelopeF_R_FAC;
+            voices[voice].envelopeF_Level = 0.0;
+            voices[voice].envelopeF_SDif = voices[voice].envelopeF_Out - voices[voice].envelopeF_Level;
+        }
+
+        voices[voice].gate = 0.0;
+    }
+
+    void releaseVoice (wrap<numVoices> v)
+    {
+        if (youngestOffVoice == -1)
+        {
+            insertBefore (wrap<numVoices> (oldestVoice), v);
+            oldestVoice = v;
+        }
+        else
+        {
+            insertAfter (wrap<numVoices> (youngestOffVoice), v);
+        }
+
+        youngestOffVoice = v;
+    }
+
+    void allSoundOff()
+    {
+        for (wrap<numVoices> i)
+        {
+            voices[i].gate = 0.0;
+            voices[i].noteNumber = 255.0;
+
+            voices[i].oscillatorA_Phase = fmod (float (i) * 1.97f, 2.0f) - 1; // almost random phase distribution
+            voices[i].oscillatorB_Phase = fmod (float (i) * 1.87f, 2.0f) - 1; // almost random phase distribution
+
+            voices[i].oscillatorA_Saw_AA2 = 0.0;
+            voices[i].oscillatorA_Pulse_AA2 = 0.0;
+            voices[i].oscillatorB_Saw_AA2 = 0.0;
+            voices[i].oscillatorB_Pulse_AA2 = 0.0;
+
+            voices[i].filter_BPF = 0.0;
+            voices[i].filter_LPF = 0.0;
+            voices[i].filterN_BPF = 0.0;
+            voices[i].filterN_LPF = 0.0;
+
+            voices[i].envelopeA_Out = 0.0;
+            voices[i].envelopeA_SDif = 0.0;
+            voices[i].envelopeA_Level = 0.0;
+            voices[i].envelopeF_Out = 0.0;
+            voices[i].isActive = false;
+
+            voices[i].filter_Event = state.filter_Event + voices[i].filter_RND;
+        }
+
+        state.unisonNote = 36;
+        delayBuffer = 0;
+        setPitchBend (0.5f);
+        initVoiceQueue();
+    }
+
+    void noteOn (int note, int vel, float detune)
+    {
+        int n = allocateVoice (oldestVoice, note);
+
+        if (n < 0)
+            return;
+
+        let v = wrap<numVoices> (n);
+
+        collVoiceNote[v] = note;
+
+        if (triggerNoteOn (v, vel, detune))
+            if (state.unisonActive)
+                lastUnison = note;
+
+        collVoiceSustain[v] = false;
+        collVoiceHold[v] = false;
+    }
+
+    void noteOff (int note, int vel)
+    {
+        for (wrap<numVoices> v)
+        {
+            if (v == activeVoices)
+                break;
+
+            if (collVoiceNote[v] == note)
+            {
+                collVoiceSustain[v] = sustainActive;
+
+                if (! (collVoiceSustain[v] || collVoiceHold[v]))
+                {
+                    triggerNoteOff (v, vel);
+                    releaseVoice (v);
+                    collVoiceNote[v] = noteOffMarker - note;
+                }
+            }
+        }
+    }
+
+    int allocateVoice (int last, int note)
+    {
+        for (int v = 0; v < activeVoices; v++)
+        {
+            if (collVoiceNote.at (v) == note
+                 || collVoiceNote.at (v) == noteOffMarker - note)
+            {
+                let s = v;
+
+                if (s == oldestVoice)
+                {
+                    oldestVoice = collVoiceNext.at (oldestVoice);
+
+                    if (s == youngestOffVoice)
+                        youngestOffVoice = -1;
+                }
+                else
+                {
+                    if (s == youngestOffVoice)
+                        youngestOffVoice = collVoicePrev.at (youngestOffVoice);
+                }
+
+                insertBefore (wrap<numVoices> (last), wrap<numVoices> (s));
+                return s;
+            }
+        }
+
+        if (youngestOffVoice >= 0)
+        {
+            let s = wrap<numVoices> (oldestVoice);
+            oldestVoice = collVoiceNext.at (oldestVoice);
+
+            if (s == youngestOffVoice)
+               youngestOffVoice = -1;
+
+            insertBefore (wrap<numVoices> (last), wrap<numVoices> (s));
+            return s;
+        }
+
+        var s = collVoicePrev.at (last);
+        var v = s;
+        bool foundOldest;
+
+        while (! foundOldest)
+        {
+            s = v;
+            v = collVoicePrev.at (v);
+            foundOldest = (v == collVoicePrev.at (oldestVoice));
+        }
+
+        if (s == oldestVoice)
+            oldestVoice = collVoiceNext.at (oldestVoice);
+
+        insertBefore (wrap<numVoices> (last), wrap<numVoices> (s));
+        return s;
+    }
+
+    void updatePitch()
+    {
+        if (state.unisonActive)
+        {
+            state.glideFinal = state.unisonNote;
+
+            if (state.glideFinal == state.glideOut)
+            {
+                state.glideInc = 0.0;
+
+                for (wrap<numVoices> v)
+                {
+                    if (v == activeVoices)
+                        break;
+
+                    voices[v].pitch = state.glideFinal + voices[v].unisonRnd;
+
+                    voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+                    voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+                }
+            }
+            else if (state.glideFinal > state.glideOut)
+            {
+                state.glideInc = state.glide * tau * controlPeriod;
+            }
+            else
+            {
+                state.glideInc = -state.glide * tau * controlPeriod;
+            }
+        }
+        else
+        {
+            for (wrap<numVoices> v)
+            {
+                if (voices[v].noteNumber >= 0)
+                {
+                    voices[v].pitch = voices[v].noteNumber;
+                    voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+                    voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+                }
+
+                voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+                voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+            }
+        }
+    }
+
+    void insertAfter (wrap<numVoices> dest, wrap<numVoices> source)
+    {
+        if (source == dest)
+            return;
+
+        collVoiceNext[wrap<numVoices> (collVoicePrev[source])] = collVoiceNext[source];
+        collVoicePrev[wrap<numVoices> (collVoiceNext[source])] = collVoicePrev[source];
+
+        collVoiceNext[source] = collVoiceNext[dest];
+        collVoicePrev[source] = dest;
+        collVoicePrev[wrap<numVoices> (collVoiceNext[dest])] = source;
+        collVoiceNext[dest] = source;
+    }
+
+    void insertBefore (wrap<numVoices> dest, wrap<numVoices> source)
+    {
+        if (source != dest)
+            insertAfter (wrap<numVoices> (collVoicePrev[dest]), source);
+    }
+
+    void initVoiceQueue()
+    {
+        for (wrap<numVoices> i)
+        {
+            collVoiceSustain[i] = false;
+            collVoiceHold[i] = false;
+            triggerNoteOff (i, 0);
+            collVoiceNote[i] = noteOffMarker;
+        }
+
+        for (int i = 0; i < numVoices; i++)
+        {
+            collVoicePrev.at (i) = i - 1;
+            collVoiceNext.at (i) = i + 1;
+        }
+
+        collVoicePrev[0] = activeVoices - 1;
+        collVoiceNext.at (activeVoices - 1) = 0;
+
+        youngestOffVoice = activeVoices - 1;
+        oldestVoice = 0;
+        sustainActive = false;
+
+        if (state.droneActive)
+        {
+            noteOn (60, 64, 0.0f);
+            sustainActive = true;
+            noteOff (60, 0);
+        }
+    }
+
+    void updateAllTauDependendSignals()
+    {
+        state.delayDepth = state.delayDepthKnob * float (processor.frequency);
+        computeDelayTimes();
+
+        state.A440FilterFreq = pitchToFreq (55.0f) * tauFilter;
+        state.noiseFilterFreq = pitchToFreq (50.0f) * tauFilter;
+        state.filter1HPF = pitchToFreq (-40.0f) * tauFilter;
+
+        state.A440Freq = 440.0f * tau;
+    }
+
+    void computeDelayTimes()
+    {
+        float time = float (int (state.delayTime * processor.frequency + 0.5)); // make it an exact number of samples to minimise treble loss
+
+        if (state.delaySync)
+        {
+            state.delayTime_1 = time * (1.0f - state.delaySpread);
+            state.delayTime_2 = time * (1.0f - 0.5f * state.delaySpread);
+            state.delayTime_3 = time * (1.0f + 0.5f * state.delaySpread);
+            state.delayTime_4 = time * (1.0f + state.delaySpread);
+        }
+        else
+        {
+            state.delayTime_1 = time * (1.0f - state.delaySpread);
+            state.delayTime_2 = time * (1.0f - 0.4f * state.delaySpread);
+            state.delayTime_3 = time * (1.0f + 0.5f * state.delaySpread);
+            state.delayTime_4 = time * (1.0f + 0.9f * state.delaySpread);
+        }
+
+        // lower limit for delay times, so that at full modulation time is still >= 0
+
+        if (state.delayTime_1 < state.delayDepth)
+            state.delayTime_1 = state.delayDepth;
+
+        if (state.delayTime_2 < state.delayDepth)
+            state.delayTime_2 = state.delayDepth;
+
+        if (state.delayTime_3 < state.delayDepth)
+            state.delayTime_3 = state.delayDepth;
+
+        if (state.delayTime_4 < state.delayDepth)
+            state.delayTime_4 = state.delayDepth;
+
+        // upper limit for delay times
+
+        float timeLimit = (delayLength - 1) - state.delayDepth;
+
+        if (state.delayTime_1 > timeLimit)
+            state.delayTime_1 = timeLimit;
+
+        if (state.delayTime_2 > timeLimit)
+            state.delayTime_2 = timeLimit;
+
+        if (state.delayTime_3 > timeLimit)
+            state.delayTime_3 = timeLimit;
+
+        if (state.delayTime_4 > timeLimit)
+            state.delayTime_4 = timeLimit;
+    }
+
+    /// Oh god, a main function with more than 1000 lines of code!!
+    /// See the notes at the top of this file for why we've left it like this!
+    void main()
+    {
+        loop
+        {
+            float LFO_Pulse, LFO_Saw, LFO_Tri, Noise_White, Noise_Filtered, PolyMod;
+            float PulseWidthA, PulseWidthB, WheelMod2OscAFm, WheelMod2OscBFm, WheelMod2Filt;
+            float OscB_All, OscB_Pulse, OscB_Saw, OscB_Tri, OscB_PulseTri, OscA_Pulse, OscA_Saw, EQ_Out, Mixer;
+            bool oscillatorSyncNow = false;
+            float Osc_Sync_x;
+
+            // Monophonic Section
+            {
+                let Inc = state.lfoFreq * tau;
+                state.lfoPhase += Inc;
+
+                if (state.lfoPulseSign)
+                {
+                    float Diff = 1.0f - state.lfoPhase;
+
+                    if (Diff > 0.5f * Inc)
+                    {
+                        LFO_Pulse = state.lfoPulseA;
+                        LFO_Saw = state.lfoSawA * state.lfoPhase;
+                        LFO_Tri = state.lfoTriangleA * (2.0f * state.lfoPhase - 1.5f);
+                    }
+                    else
+                    {
+                        float diffInc = 0.5f + Diff / Inc;
+
+                        LFO_Pulse = state.lfoPulseA * diffInc;
+                        LFO_Saw = state.lfoSawA * (diffInc - Diff);
+                        LFO_Tri = state.lfoTriangleA * (0.5f - Inc);
+
+                        state.lfoPhase -= 1.0f;
+                        state.lfoPulseSign = false;
+                        state.lfoSh = state.lfoShA * state.noiseFilterLPF;
+
+                        if (state.repeatActive)
+                        {
+                            for (wrap<numVoices> v)
+                            {
+                                if (v == activeVoices)
+                                    break;
+
+                                if (voices[v].gate > 0.0f || state.unisonGate)
+                                {
+                                    voices[v].isActive = true;
+
+                                    // Amplitude Envelope Gate On
+                                    float peakA = 0.5f + state.velocityAmp * (voices[v].gate * 0.0078125f - 0.5f);
+                                    float peakF = 0.5f + state.velocityFilter * (voices[v].gate * 0.0078125f - 0.5f);
+
+                                    if (voices[v].envelopeA_Out > peakA)
+                                    {
+                                        voices[v].envelopeA_Peak = voices[v].envelopeA_Out;
+                                        voices[v].envelopeA_Stage = 1;
+                                        voices[v].envelopeA_Fac = state.envelopeA_D_FAC;
+                                        voices[v].envelopeA_Level = (voices[v].envelopeA_Peak - envelopeAOffset) * state.envelopeA_Sus + envelopeAOffset;
+                                        voices[v].envelopeA_SDif = voices[v].envelopeA_Peak - voices[v].envelopeA_Level;
+                                    }
+                                    else
+                                    {
+                                        voices[v].envelopeA_Inc = peakA * state.envelopeA_Att;
+                                        voices[v].envelopeA_Peak = peakA;
+                                        voices[v].envelopeA_Stage = 0;
+                                    }
+
+                                    // Filter Envelope Gate On
+                                    if (voices[v].envelopeF_Out > peakF)
+                                    {
+                                        voices[v].envelopeF_Peak = voices[v].envelopeF_Out;
+                                        voices[v].envelopeF_Stage = 1;
+                                        voices[v].envelopeF_Fac = state.envelopeF_D_FAC;
+                                        voices[v].envelopeF_Level = voices[v].envelopeF_Peak * state.envelopeF_Sus;
+                                        voices[v].envelopeF_SDif = voices[v].envelopeF_Out - voices[v].envelopeF_Level;
+                                    }
+                                    else
+                                    {
+                                        voices[v].envelopeF_Inc = peakF * state.envelopeF_Att;
+                                        voices[v].envelopeF_Peak = peakF;
+                                        voices[v].envelopeF_Stage = 0;
+                                        voices[v].envelopeF_SDif = 1.0f;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    float Diff = 0.5f - state.lfoPhase;
+
+                    if (Diff > 0.5f * Inc)
+                    {
+                        LFO_Pulse = 0.0f;
+                        LFO_Tri = state.lfoTriangleA * (0.5f - 2.0f * state.lfoPhase);
+                    }
+                    else
+                    {
+                        LFO_Pulse = state.lfoPulseA * (0.5f - (Diff / Inc));
+                        LFO_Tri = state.lfoTriangleA * (-0.5f + Inc);
+
+                        state.lfoPulseSign = true;
+
+                        if (state.repeatActive)
+                        {
+                            for (wrap<numVoices> v)
+                            {
+                                if (v == activeVoices)
+                                    break;
+
+                                if (! voices[v].isActive)
+                                    continue;
+
+                                if (voices[v].gate > 0.0f || state.unisonGate)
+                                {
+                                    voices[v].envelopeA_Stage = 2;
+                                    voices[v].envelopeA_Fac = state.envelopeA_R_FAC;
+                                    voices[v].envelopeA_Level = envelopeAOffset;
+                                    voices[v].envelopeA_SDif = voices[v].envelopeA_Out - voices[v].envelopeA_Level;
+
+                                    voices[v].envelopeF_Stage = 2;
+                                    voices[v].envelopeF_Fac = state.envelopeF_R_FAC;
+                                    voices[v].envelopeF_Level = 0.0f;
+                                    voices[v].envelopeF_SDif = voices[v].envelopeF_Out - voices[v].envelopeF_Level;
+                                }
+                            }
+                        }
+                    }
+
+                    LFO_Saw = state.lfoSawA * state.lfoPhase;
+                }
+            }
+
+            // Noise
+            {
+                int64 Wort = state.noiseMem;
+                int64 Feedback = (Wort ^ (Wort >> 5) ^ (Wort >> 13)) << 31;
+                Feedback &= 0xFFFFFFFFi64;
+                Wort >>= 1;
+                Wort |= Feedback;
+                Noise_White = -0.5f + (Wort & 1);
+                state.noiseMem = Wort;
+            }
+
+            // Noise filter
+            {
+                let Hpf = Noise_White - state.noiseFilterLPF;
+                state.noiseFilterLPF += Hpf * state.noiseFilterFreq;
+                Noise_Filtered = state.noiseFilterLPF;
+            }
+
+            // Xfade
+            {
+                let In1 = LFO_Pulse + LFO_Saw + LFO_Tri + state.lfoSh + state.lfoConst;
+                let In2 = Noise_Filtered;
+
+                let WheelMod = (In1 + state.lfoNoiseMix * (In2 - In1)) * state.modulationWheel;
+
+                PulseWidthA = state.oscillatorA_PW + state.oscillatorA_PW_WM * WheelMod; // clipped after Polymod added
+                PulseWidthB = state.oscillatorB_PW + state.oscillatorB_PW_WM * WheelMod;
+                PulseWidthB = clamp (PulseWidthB, -1.0f, 1.0f); // clip to range -1...1
+
+                WheelMod2OscAFm = state.oscillatorA_FM_WM * WheelMod;
+                WheelMod2OscBFm = state.oscillatorB_FM_WM * WheelMod;
+                WheelMod2Filt = state.filter_WM * WheelMod;
+            }
+
+            // Control Rate Section
+            --state.controlCount;
+
+            if (state.controlCount <= 0)
+            {
+                state.controlCount = controlPeriod;
+
+                // Knob Smoothing
+                if (state.knobSmoothingCounter != 0)
+                {
+                    --state.knobSmoothingCounter;
+
+                    state.mixerOscillatorA += state.mixerOscillatorA_Inc;
+                    state.mixerOscillatorB += state.mixerOscillatorB_Inc;
+                    state.oscillatorA_SawA = state.mixerOscillatorA * state.oscillatorA_SawActive;
+
+                    state.oscillatorA_PW += state.oscillatorA_PW_Inc;
+                    state.oscillatorB_PW += state.oscillatorB_PW_Inc;
+
+                    state.filter_Event += state.filter_EventInc;
+
+                    for (wrap<numVoices> v)
+                    {
+                        if (v == activeVoices)
+                            break;
+
+                        voices[v].filter_Event = state.filter_Event + voices[v].filter_RND;
+                    }
+
+                    state.filter_Env += state.filter_EnvInc;
+                    state.filter_Keyboard += state.filter_KeyboardInc;
+                }
+
+                // Glide
+                if (state.glideInc != 0.0f)
+                {
+                    state.glideOut += state.glideInc;
+
+                    if ( (state.glideOut - state.glideFinal) * state.glideInc > 0.0f)
+                    {
+                        state.glideOut = state.glideFinal;
+                        state.glideInc = 0.0f;
+                    }
+
+                    for (wrap<numVoices> v)
+                    {
+                        if (v == activeVoices)
+                            break;
+
+                        voices[v].pitch = state.glideOut + voices[v].unisonRnd;
+
+                        voices[v].oscillatorA_F = pitchToFreq (voices[v].pitch + voices[v].oscillatorA_Tune);
+                        voices[v].oscillatorB_F = pitchToFreq (state.oscillatorB_Keyboard * voices[v].pitch + voices[v].oscillatorB_Tune);
+                    }
+                }
+
+                for (wrap<numVoices> v)
+                {
+                    if (v == activeVoices)
+                        break;
+
+                    if (! voices[v].isActive)
+                        continue;
+
+                    let final = pitchToFreq (WheelMod2Filt + state.filter_Env * voices[v].envelopeF_Out + voices[v].filter_Event + state.filter_Keyboard * voices[v].pitch);
+                    voices[v].filter_F_Inc = (final - voices[v].filter_F_Smooth) * (0.8f / controlPeriod);
+
+                    if (voices[v].envelopeA_Out < 0.0f)
+                    {
+                        voices[v].envelopeA_Out = 0.0f;
+                        voices[v].envelopeA_SDif = 0.0f;
+                        voices[v].envelopeA_Level = 0.0f;
+                        voices[v].envelopeF_Out = 0.0f;
+                        voices[v].isActive = false;
+                    }
+                    else if (voices[v].envelopeA_SDif < 0.0001f) // -80dB
+                    {
+                        if (voices[v].envelopeA_SDif > -0.0001f) // -80dB
+                        {
+                            voices[v].envelopeA_SDif = 0.0f;
+                            voices[v].envelopeA_Level = voices[v].envelopeA_Out;
+                        }
+                    }
+
+                    if (voices[v].envelopeF_SDif < 0.0001f) // -80dB
+                    {
+                        if (voices[v].envelopeF_SDif > -0.0001f) // -80dB
+                        {
+                            voices[v].envelopeF_SDif = 0.0f;
+                            voices[v].envelopeF_Level = voices[v].envelopeF_Out;
+                        }
+                    }
+
+                    if (voices[v].filter1HP_LPF * voices[v].filter1HP_LPF < 0.0000001) // -80dB
+                        voices[v].filter1HP_LPF = 0.0f;
+                }
+
+                // Delay LFOs
+                if (state.delayActive)
+                {
+                    float tri, final;
+
+                    // Delay 1
+                    state.delayLFO_Pos_1 += state.delayRate_1 * (4 * controlPeriod) * tau;
+
+                    if (state.delayLFO_Pos_1 > 1.0f)
+                    {
+                        if (state.delayLFO_Pos_1 > 3.0f)
+                        {
+                            state.delayLFO_Pos_1 -= 4.0f;
+                            tri = state.delayLFO_Pos_1;
+                        }
+                        else
+                        {
+                            tri = 2.0f - state.delayLFO_Pos_1; // Pos = 1 ... 3, Tri = 1 ... -1
+                        }
+                    }
+                    else
+                    {
+                        tri = state.delayLFO_Pos_1; // Pos = -1 ... 1, Tri = -1 ... 1
+                    }
+
+                    final = state.delayTime_1 + state.delayDepth * tri;
+                    state.delayTime_Inc_1 = (final - state.delayTime_Mod_1) * tau * 25; // transition time = 40ms = 1/25 sec
+
+                    if (state.delaySync)
+                    {
+                        // Delay 2
+                        final = state.delayTime_2 + state.delayDepth * tri;
+                        state.delayTime_Inc_2 = (final - state.delayTime_Mod_2) * tau * 25; // transition time = 40ms = 1/25 sec
+
+                        // Delay 3
+                        final = state.delayTime_3 + state.delayDepth * tri;
+                        state.delayTime_Inc_3 = (final - state.delayTime_Mod_3) * tau * 25; // transition time = 40ms = 1/25 sec
+
+                        // Delay 4
+                        final = state.delayTime_4 + state.delayDepth * tri;
+                        state.delayTime_Inc_4 = (final - state.delayTime_Mod_4) * tau * 25; // transition time = 40ms = 1/25 sec
+                    }
+                    else
+                    {
+                        // Delay 2
+                        state.delayLFO_Pos_2 += state.delayRate_2 * (4 * controlPeriod) * tau;
+
+                        if (state.delayLFO_Pos_2 > 1.0f)
+                        {
+                            if (state.delayLFO_Pos_2 > 3.0f)
+                            {
+                                state.delayLFO_Pos_2 -= 4.0f;
+                                tri = state.delayLFO_Pos_2;
+                            }
+                            else
+                            {
+                                tri = 2.0f - state.delayLFO_Pos_2;
+                            }
+                        }
+                        else
+                        {
+                            tri = state.delayLFO_Pos_2;
+                        }
+
+                        final = state.delayTime_2 + state.delayDepth * tri;
+                        state.delayTime_Inc_2 = (final - state.delayTime_Mod_2) * tau * 25; // transition time = 40ms = 1/25 sec
+
+                        // Delay 3
+                        state.delayLFO_Pos_3 += state.delayRate_3 * (4 * controlPeriod) * tau;
+
+                        if (state.delayLFO_Pos_3 > 1.0f)
+                        {
+                            if (state.delayLFO_Pos_3 > 3.0f)
+                            {
+                                state.delayLFO_Pos_3 -= 4.0f;
+                                tri = state.delayLFO_Pos_3;
+                            }
+                            else
+                            {
+                                tri = 2.0f - state.delayLFO_Pos_3;
+                            }
+                        }
+                        else
+                        {
+                            tri = state.delayLFO_Pos_3;
+                        }
+
+                        final = state.delayTime_3 + state.delayDepth * tri;
+                        state.delayTime_Inc_3 = (final - state.delayTime_Mod_3) * tau * 25; // transition time = 40ms = 1/25 sec
+
+                        // Delay 4
+                        state.delayLFO_Pos_4 += state.delayRate_4 * (4 * controlPeriod) * tau;
+
+                        if (state.delayLFO_Pos_4 > 1.0f)
+                        {
+                            if (state.delayLFO_Pos_4 > 3.0f)
+                            {
+                                state.delayLFO_Pos_4 -= 4.0f;
+
+                                tri = state.delayLFO_Pos_4;
+                            }
+                            else
+                            {
+                                tri = 2.0f - state.delayLFO_Pos_4;
+                            }
+                        }
+                        else
+                        {
+                            tri = state.delayLFO_Pos_4;
+                        }
+
+                        final = state.delayTime_4 + state.delayDepth * tri;
+                        state.delayTime_Inc_4 = (final - state.delayTime_Mod_4) * tau * 25; // transition time = 40ms = 1/25 sec
+                    }
+                }
+            }
+
+            // Polyphonic Section
+
+            let inputSignal = externalIn * state.mixerExternal;
+            float voiceOutput;
+
+            for (wrap<numVoices> v)
+            {
+                if (v == activeVoices)
+                    break;
+
+                if (! voices[v].isActive)
+                    continue;
+
+                if (voices[v].envelopeA_Stage != 0)
+                {
+                    voices[v].envelopeA_SDif *= voices[v].envelopeA_Fac;
+                    voices[v].envelopeA_Out = voices[v].envelopeA_Level + voices[v].envelopeA_SDif;
+                }
+                else
+                {
+                    voices[v].envelopeA_Out += voices[v].envelopeA_Inc;
+
+                    if (voices[v].envelopeA_Out > voices[v].envelopeA_Peak)
+                    {
+                        voices[v].envelopeA_Out = voices[v].envelopeA_Peak;
+                        voices[v].envelopeA_Stage = 1;
+                        voices[v].envelopeA_Fac = state.envelopeA_D_FAC;
+                        voices[v].envelopeA_Level = (voices[v].envelopeA_Peak - envelopeAOffset) * state.envelopeA_Sus + envelopeAOffset;
+                        voices[v].envelopeA_SDif = voices[v].envelopeA_Peak - voices[v].envelopeA_Level;
+                    }
+                }
+
+                if (voices[v].envelopeF_Stage != 0)
+                {
+                    voices[v].envelopeF_SDif *= voices[v].envelopeF_Fac;
+                    voices[v].envelopeF_Out = voices[v].envelopeF_Level + voices[v].envelopeF_SDif;
+                }
+                else
+                {
+                    voices[v].envelopeF_Out += voices[v].envelopeF_Inc;
+
+                    if (voices[v].envelopeF_Out > voices[v].envelopeF_Peak)
+                    {
+                        voices[v].envelopeF_Out = voices[v].envelopeF_Peak;
+                        voices[v].envelopeF_Stage = 1;
+
+                        voices[v].envelopeF_Fac = state.envelopeF_D_FAC;
+                        voices[v].envelopeF_Level = voices[v].envelopeF_Peak * state.envelopeF_Sus;
+                        voices[v].envelopeF_SDif = voices[v].envelopeF_Peak - voices[v].envelopeF_Level;
+
+                        let final = pitchToFreq (WheelMod2Filt + state.filter_Env * voices[v].envelopeF_Out + voices[v].filter_Event + state.filter_Keyboard * voices[v].pitch);
+                        voices[v].filter_F_Inc = (final - voices[v].filter_F_Smooth) * (.8f / controlPeriod);
+                    }
+                }
+
+                bool useNewOsc = false;
+
+                // Oscillator B
+                if (useNewOsc)
+                {
+                    float f = (voices[v].oscillatorB_F + voices[v].oscillatorB_F * WheelMod2OscBFm) * tau;
+
+                    if (abs(f) > 0.99f)
+                        f = f > 0 ? 0.99f : -0.99f;
+
+                    float ph = voices[v].oscillatorB_Phase;
+                    float newph = ph + f;
+                    float level = float (voices[v].oscillatorB_PulseLevel - 1);
+
+                    if (abs (newph) >= 1) // main transition
+                    {
+                        float cposMain = (abs(newph) - 1.0f) / abs(f); // complementary subsample pos
+                        float sgnf = f > 0 ? 1.0f : -1.0f;
+                        float pwmain = xfade (PulseWidthB,voices[v].oscillatorB_PW_OLD, cposMain);
+
+                        // pw transition prior to main
+                        if ((sgnf - pwmain) * level > 0)
+                        {
+                            float cpos = findPWT(sgnf, pwmain,ph, voices[v].oscillatorB_PW_OLD) * (1 - cposMain) + cposMain;
+                            addBlep0(voices[v].oscillatorB_BUF, voices[v].oscillatorB_BUFWRITE, 7, cpos, -2.0f * state.oscillatorB_PulseA * level);
+                            level = -level; voices[v].oscillatorB_PulseLevel ^= 2;
+                        }
+
+                        addBlep0 (voices[v].oscillatorB_BUF, voices[v].oscillatorB_BUFWRITE, 7, cposMain, -sgnf * (state.oscillatorB_SawA + state.oscillatorB_PulseA));
+                        newph -= 2.0f *sgnf;
+                        level = -level; voices[v].oscillatorB_PulseLevel ^= 2;
+
+                        // pw transition after main
+                        if ((newph - PulseWidthB) * level > 0)
+                        {
+                            float cpos = findPWT(newph,PulseWidthB,-sgnf,pwmain)*cposMain;
+                            addBlep0 (voices[v].oscillatorB_BUF, voices[v].oscillatorB_BUFWRITE, 7, cpos, -2.0f * state.oscillatorB_PulseA * level);
+                            level = -level; voices[v].oscillatorB_PulseLevel ^= 2;
+                        }
+                    }
+                    else if ((newph - PulseWidthB) * level > 0) // but a pw transition
+                    {
+                        float cpos = findPWT (newph, PulseWidthB, ph, voices[v].oscillatorB_PW_OLD);
+                        addBlep0 (voices[v].oscillatorB_BUF, voices[v].oscillatorB_BUFWRITE, 7, cpos, -2.0f * state.oscillatorB_PulseA * level);
+                        level = -level; voices[v].oscillatorB_PulseLevel ^= 2;
+                    }
+
+                    voices[v].oscillatorB_BUF.at (voices[v].oscillatorB_BUFWRITE) += newph * state.oscillatorB_SawA + level * state.oscillatorB_PulseA;
+                    voices[v].oscillatorB_Phase = newph;
+                    float out = voices[v].oscillatorB_BUF.at ((voices[v].oscillatorB_BUFWRITE - 2) & 7);
+                    voices[v].oscillatorB_BUFWRITE = (voices[v].oscillatorB_BUFWRITE + 1) & 7;
+                    OscB_All = out;
+                    voices[v].oscillatorB_BUF.at ((voices[v].oscillatorB_BUFWRITE - 2) & 7) = 0;
+                    voices[v].oscillatorB_PW_OLD = PulseWidthB;
+                }
+                else
+                {
+                    float f = (voices[v].oscillatorB_F + voices[v].oscillatorB_F * WheelMod2OscBFm) * tau;
+                    float ph = voices[v].oscillatorB_Phase;
+
+                    f = max (f, 0.0f);
+
+                    if (f >= 1.0f)
+                    {
+                        ph = 0.0f;
+                        OscB_Saw = 0.0f;
+                        OscB_Pulse = 0.0f;
+                        OscB_Tri = 0.0f;
+                        oscillatorSyncNow = false;
+                    }
+                    else
+                    {
+                        ph = (ph + f);
+
+                        if (ph >= 1.0f) //  ph_mask_p=1, dn_mask=1
+                        {
+                            oscillatorSyncNow = state.oscillatorSyncActive; // Sync OSC-A now if sync is on
+
+                            ph = ph - 2.0f;
+
+                            float d = 1.0f + ph;    // float d = 1 - ph_abs;
+                            float f_rcp = 1.0f / f; // reciprocal estimate operator
+                            float x = d * f_rcp;
+                            float x_1 = x - 1.0f;
+                            Osc_Sync_x = x;
+
+                            let aa_dn_1 = (2.0f - x * x); // first part of anti-aliasing
+                            let y_saw = ph + voices[v].oscillatorB_Saw_AA2 + aa_dn_1;
+                            let aa_dn_2 = x_1 * x_1;
+                            voices[v].oscillatorB_Saw_AA2 = aa_dn_2; // second part of anti-aliasing, use once then reset
+                            OscB_Saw = state.oscillatorB_SawA * (y_saw + 1.0f); // add one to give correct modulation DC offset
+
+                            if (state.oscillatorB_PulseA != 0)
+                            {
+                                let ph_pwm = PulseWidthB;
+                                let ph2 = ph - ph_pwm;
+                                let ph2_sign = sign (ph2); // (ph2 >= 0 ? 1 : -1);
+
+                                let ph3 = getPhase (ph2);
+                                float pulse_aa_2 = voices[v].oscillatorB_Pulse_AA2;
+
+                                if (ph3 * (ph3 - f) < 0.0f) // up_mask=1
+                                {
+                                    let ph3_abs = abs (ph3);
+                                    let x3 = ph3_abs * f_rcp;
+                                    let x3_1 = x3 - 1.0f;
+                                    let aa_up_1 = (2.0f - x3 * x3); // first part of anti-aliasing
+                                    let aa_up_2 = x3_1 * x3_1;
+                                    let y_pulse = ph2_sign + pulse_aa_2 + aa_dn_1 - aa_up_1;
+                                    pulse_aa_2 = aa_dn_2 - aa_up_2;     // second part of anti-aliasing, use once then reset
+                                    OscB_Pulse = 0.5f - 0.5f * y_pulse; // add one to give correct modulation DC offset
+                                }
+                                else
+                                {
+                                    let y_pulse = ph2_sign + pulse_aa_2 + aa_dn_1;
+                                    pulse_aa_2 = aa_dn_2;               // second part of anti-aliasing, reset
+                                    OscB_Pulse = 0.5f - 0.5f * y_pulse; // add one to give correct modulation DC offset
+                                }
+                                voices[v].oscillatorB_Pulse_AA2 = pulse_aa_2;
+                            }
+                            else
+                            {
+                                OscB_Pulse = 0.0f;
+                            }
+
+                            if (state.oscillatorB_TriA)
+                            {
+                                if (ph * (ph - f) < 0.0f) // btm_mask=1
+                                {
+                                    let aa_top = (x * (2.0f - x) - 1.0f);
+                                    let aa_btm = (1.0f - f_rcp * (2.0f + f_rcp));
+                                    OscB_Tri = 0.5f - (0.5f * f - ph) - f * (aa_top - aa_btm);
+                                }
+                                else // btm_mask=0
+                                {
+                                    let aa_top = (x * (2.0f - x) - 1.0f);
+                                    OscB_Tri = 0.5f - (0.5f * f - ph) - f * (aa_top);
+                                }
+                            }
+                            else
+                            {
+                                OscB_Tri = 0.0f;
+                            }
+                        }
+                        else
+                        {
+                            oscillatorSyncNow = false; // Sync now if sync is on
+
+                            let y_saw = ph + voices[v].oscillatorB_Saw_AA2;
+                            voices[v].oscillatorB_Saw_AA2 = 0;  // second part of anti-aliasing, reset
+                            OscB_Saw = state.oscillatorB_SawA * (y_saw + 1.0f); // add one to give correct modulation DC offset
+
+                            if (state.oscillatorB_PulseA != 0)
+                            {
+                                let ph_pwm = PulseWidthB;
+                                let ph2 = ph - ph_pwm;
+                                let ph2_sign = sign (ph2);
+
+                                let ph3 = getPhase (ph2);
+                                float pulse_aa_2 = voices[v].oscillatorB_Pulse_AA2;
+
+                                if (ph3 * (ph3 - f) < 0.0f) // up_mask=1
+                                {
+                                    let ph3_abs = abs (ph3);
+                                    let x3 = ph3_abs / f;
+                                    let x3_1 = x3 - 1.0f;
+                                    let aa_up_1 = (2.0f - x3 * x3); // first part of anti-aliasing
+                                    let aa_up_2 = x3_1 * x3_1;        // second part of anti-aliasing, use once then reset
+                                    let y_pulse = ph2_sign + pulse_aa_2 - aa_up_1;
+                                    pulse_aa_2 = -aa_up_2; // second part of anti-aliasing, use once then reset
+                                    OscB_Pulse = 0.5f - 0.5f * y_pulse;
+                                }
+                                else
+                                {
+                                    let y_pulse = ph2_sign + pulse_aa_2;
+                                    pulse_aa_2 = 0; // second part of anti-aliasing, reset
+                                    OscB_Pulse = 0.5f - 0.5f * y_pulse;
+                                }
+
+                                voices[v].oscillatorB_Pulse_AA2 = pulse_aa_2;
+                            }
+                            else
+                            {
+                                OscB_Pulse = 0.0f;
+                            }
+
+                            if (state.oscillatorB_TriA)
+                            {
+                                let ph_sign = sign (ph); // for tri
+
+                                if (ph * (ph - f) < 0) // btm_mask=1
+                                {
+                                    let ph_abs = abs (ph);
+                                    let x5 = ph_abs / f;
+                                    let aa_btm = (x5 * (2.0f - x5) - 1.0f);
+                                    OscB_Tri = 0.5f + ph_sign * (0.5f * f - ph) + f * aa_btm;
+                                }
+                                else // btm_mask=0
+                                {
+                                    OscB_Tri = 0.5f + ph_sign * (0.5f * f - ph);
+                                }
+                            }
+                            else
+                            {
+                                OscB_Tri = 0.0f;
+                            }
+                        }
+                    }
+
+                    voices[v].oscillatorB_Phase = ph;
+                }
+
+                // Poly Mod
+                if (useNewOsc)
+                {
+                    PolyMod = state.polymodOscillatorB * OscB_All + state.polymodEnvelopeF * (voices[v].envelopeF_Out * voices[v].polymodEnvRnd);
+                }
+                else
+                {
+                    OscB_PulseTri = OscB_Pulse + OscB_Tri;
+
+                    PolyMod = state.polymodOscillatorB * (OscB_Saw + OscB_PulseTri)
+                               + state.polymodEnvelopeF * (voices[v].envelopeF_Out * voices[v].polymodEnvRnd);
+                }
+
+                // Oscillator A
+                {
+                    float f = (voices[v].oscillatorA_F + voices[v].oscillatorA_F * (WheelMod2OscAFm + state.oscillatorA_FM_PM * PolyMod)) * tau;
+                    f = max (f, 0.0f);
+
+                    float ph = voices[v].oscillatorA_Phase;
+
+                    if (f >= 1.0f) // f_mask=0
+                    {
+                        ph = 0.0f;
+                        OscA_Saw = 0.0f;
+                        OscA_Pulse = 0.0f;
+                    }
+                    else
+                    {
+                        ph = (ph + f);
+
+                        if (oscillatorSyncNow)
+                        {
+                            let x_snc = Osc_Sync_x;
+                            let x_snc_1 = x_snc - 1.0f;
+                            let d_snc = x_snc * f;
+                            let snc_ph = d_snc - 1.0f;
+                            let ph_adj = ph - d_snc;
+
+                            if (ph_adj >= 1.0f) //  ph_mask_p=1, dn_mask=1
+                            {
+                                ph = ph - 2.0f;
+
+                                let ph_abs = abs (ph);
+                                let d = 1.0f - ph_abs;
+                                let f_rcp = 1.0f / f; // reciprocal estimate operator
+                                let x = d * f_rcp;
+                                let x_1 = x - 1.0f;
+
+                                float ph2 = ph;
+                                let ph_snc_change = (snc_ph - ph);
+                                ph = ph + ph_snc_change;
+
+                                let snc_aa_amp = (-0.5f) * ph_snc_change;
+
+                                let aa_dn_1 = (2.0f - x * x);          // first part of anti-aliasing
+                                let aa_snc_1 = (2.0f - x_snc * x_snc); // first part of anti-aliasing
+                                let aa_snc_1_saw = aa_snc_1 * snc_aa_amp;
+
+                                let aa_dn_2 = x_1 * x_1;                  // second part of anti-aliasing, use once then reset
+                                let aa_snc_2 = x_snc_1 * x_snc_1;         // second part of anti-aliasing, use once then reset
+                                let aa_snc_2_saw = aa_snc_2 * snc_aa_amp; // second part of anti-aliasing, use once then reset
+
+                                let y_saw = ph + voices[v].oscillatorA_Saw_AA2 + aa_dn_1 + aa_snc_1_saw;
+                                voices[v].oscillatorA_Saw_AA2 = aa_dn_2 + aa_snc_2_saw;
+                                OscA_Saw = state.oscillatorA_SawA * y_saw;
+
+                                if (state.oscillatorA_PulseActive)
+                                {
+                                    float ph_pwm = PulseWidthA + state.oscillatorA_PW_PM * PolyMod;
+                                    ph_pwm = clamp (ph_pwm, -1.0f, 1.0f); // clip to range -1...1
+                                    ph2 = ph2 - ph_pwm;
+
+                                    let ph3 = getPhase (ph2);
+                                    float ph4 = ph2 + ph_snc_change;
+
+                                    float aa_up_snc_1, aa_up_snc_2;
+                                    if (ph4 * (ph4 + ph_snc_change - f) < 0.0f) // up_snc_mask=1
+                                    {
+                                        float x4 = abs (ph4) * f_rcp;
+                                        float x4_1 = x4 - 1.0f;
+                                        aa_up_snc_1 = (2.0f - x4 * x4); // first part of anti-aliasing
+                                        aa_up_snc_2 = x4_1 * x4_1;      // second part of anti-aliasing, use once then reset
+                                    }
+                                    else
+                                    {
+                                        aa_up_snc_1 = 0.0f; // first part of anti-aliasing
+                                        aa_up_snc_2 = 0.0f; // second part of anti-aliasing, use once then reset
+                                    }
+
+                                    float aa_snc_1_pulse, aa_snc_2_pulse;
+
+                                    if ( (ph2 - d_snc) > 0.0f) // snc_pulse_mask=1
+                                    {
+                                        aa_snc_1_pulse = aa_snc_1;
+                                        aa_snc_2_pulse = aa_snc_2;
+                                    }
+                                    else
+                                    {
+                                        aa_snc_1_pulse = 0.0f;
+                                        aa_snc_2_pulse = 0.0f;
+                                    }
+
+                                    let ph2_sign = sign (ph - ph_pwm);
+                                    float pulse_aa_2 = voices[v].oscillatorA_Pulse_AA2;
+
+                                    if ( (ph3 - d_snc) * (ph3 - f) < 0.0f) // up_mask=1
+                                    {
+                                        let ph3_abs = abs (ph3);
+                                        let x3 = ph3_abs * f_rcp;
+                                        let x3_1 = x3 - 1.0f;
+                                        let aa_up_1 = (2.0f - x3 * x3); // first part of anti-aliasing
+                                        let aa_up_2 = x3_1 * x3_1;      // second part of anti-aliasing, use once then reset
+                                        let y_pulse = ph2_sign + pulse_aa_2 + aa_dn_1 - aa_up_1 - aa_up_snc_1 + aa_snc_1_pulse;
+                                        pulse_aa_2 = aa_dn_2 - aa_up_2 - aa_up_snc_2 + aa_snc_2_pulse; // second part of anti-aliasing, use once then reset
+                                        OscA_Pulse = state.mixerOscillatorA * y_pulse;
+                                    }
+                                    else
+                                    {
+                                        let y_pulse = ph2_sign + pulse_aa_2 + aa_dn_1 - aa_up_snc_1 + aa_snc_1_pulse;
+                                        pulse_aa_2 = aa_dn_2 - aa_up_snc_2 + aa_snc_2_pulse; // second part of anti-aliasing, use once then reset
+                                        OscA_Pulse = state.mixerOscillatorA * y_pulse;
+                                    }
+                                    voices[v].oscillatorA_Pulse_AA2 = pulse_aa_2;
+                                }
+                                else
+                                {
+                                    OscA_Pulse = 0.0f;
+                                }
+                            }
+                            else // dn_mask=0
+                            {
+                                float ph2 = ph;
+                                let ph_snc_change = (snc_ph - ph);
+                                ph = ph + ph_snc_change;
+
+                                let snc_aa_amp = (-0.5f) * ph_snc_change;
+
+                                let aa_snc_1 = (2.0f - x_snc * x_snc); // first part of anti-aliasing
+                                let aa_snc_1_saw = aa_snc_1 * snc_aa_amp;
+
+                                let aa_snc_2 = x_snc_1 * x_snc_1;         // second part of anti-aliasing, use once then reset
+                                let aa_snc_2_saw = aa_snc_2 * snc_aa_amp; // second part of anti-aliasing, use once then reset
+
+                                let y_saw = ph + voices[v].oscillatorA_Saw_AA2 + aa_snc_1_saw;
+                                voices[v].oscillatorA_Saw_AA2 = aa_snc_2_saw;
+                                OscA_Saw = state.oscillatorA_SawA * y_saw;
+
+                                if (state.oscillatorA_PulseActive)
+                                {
+                                    let ph_pwm = clamp (PulseWidthA + state.oscillatorA_PW_PM * PolyMod, -1.0f, 1.0f);
+                                    ph2 = ph2 - ph_pwm;
+
+                                    let ph3 = getPhase (ph2);
+                                    let ph4 = ph2 + ph_snc_change;
+                                    float aa_up_snc_1, aa_up_snc_2;
+
+                                    if (ph4 * (ph4 + ph_snc_change - f) < 0.0f) // up_snc_mask=1
+                                    {
+                                        let x4 = abs (ph4) / f;
+                                        let x4_1 = x4 - 1.0f;
+                                        aa_up_snc_1 = (2.0f - x4 * x4); // first part of anti-aliasing
+                                        aa_up_snc_2 = x4_1 * x4_1;      // second part of anti-aliasing, use once then reset
+                                    }
+
+                                    float aa_snc_1_pulse, aa_snc_2_pulse;
+
+                                    if ((ph2 - d_snc) > 0.0f) // snc_pulse_mask=1
+                                    {
+                                        aa_snc_1_pulse = aa_snc_1;
+                                        aa_snc_2_pulse = aa_snc_2;
+                                    }
+                                    else
+                                    {
+                                        aa_snc_1_pulse = 0.0f;
+                                        aa_snc_2_pulse = 0.0f;
+                                    }
+
+                                    let ph2_sign = sign (ph - ph_pwm);
+                                    float pulse_aa_2 = voices[v].oscillatorA_Pulse_AA2;
+
+                                    if ((ph3 - d_snc) * (ph3 - f) < 0.0f) // up_mask=1
+                                    {
+                                        let ph3_abs = abs (ph3);
+                                        let x3 = ph3_abs / f;
+                                        let x3_1 = x3 - 1.0f;
+                                        let aa_up_1 = (2.0f - x3 * x3); // first part of anti-aliasing
+                                        let aa_up_2 = x3_1 * x3_1;      // second part of anti-aliasing, use once then reset
+                                        let y_pulse = ph2_sign + pulse_aa_2 - aa_up_1 - aa_up_snc_1 + aa_snc_1_pulse;
+                                        pulse_aa_2 = -aa_up_2 - aa_up_snc_2 + aa_snc_2_pulse; // second part of anti-aliasing, use once then reset
+                                        OscA_Pulse = state.mixerOscillatorA * y_pulse;
+                                    }
+                                    else
+                                    {
+                                        let y_pulse = ph2_sign + pulse_aa_2 - aa_up_snc_1 + aa_snc_1_pulse;
+                                        pulse_aa_2 = -aa_up_snc_2 + aa_snc_2_pulse; // second part of anti-aliasing, use once then reset
+                                        OscA_Pulse = state.mixerOscillatorA * y_pulse;
+                                    }
+
+                                    voices[v].oscillatorA_Pulse_AA2 = pulse_aa_2;
+                                }
+                                else
+                                {
+                                    OscA_Pulse = 0.0f;
+                                }
+                            }
+                        }
+                        else // no sync
+                        {
+                            if (ph >= 1.0f) //  ph_mask_p=1, dn_mask=1
+                            {
+                                ph = ph - 2.0f;
+
+                                let d = 1.0f + ph;    // float d = 1 - ph_abs;
+                                let f_rcp = 1.0f / f; // reciprocal estimate operator
+                                let x = d * f_rcp;
+                                let x_1 = x - 1.0f;
+                                let aa_dn_1 = (2.0f - x * x); // first part of anti-aliasing
+                                let aa_dn_2 = x_1 * x_1;      // second part of anti-aliasing, use once then reset
+
+                                let y_saw = ph + voices[v].oscillatorA_Saw_AA2 + aa_dn_1;
+                                voices[v].oscillatorA_Saw_AA2 = aa_dn_2;
+                                OscA_Saw = state.oscillatorA_SawA * y_saw;
+
+                                if (state.oscillatorA_PulseActive)
+                                {
+                                    let ph_pwm = clamp (PulseWidthA + state.oscillatorA_PW_PM * PolyMod, -1.0f, 1.0f);
+                                    let ph2 = ph - ph_pwm;
+                                    let ph2_sign = sign (ph2);
+
+                                    let ph3 = getPhase (ph2);
+                                    float pulse_aa_2 = voices[v].oscillatorA_Pulse_AA2;
+
+                                    if (ph3 * (ph3 - f) < 0.0f) // up_mask=1
+                                    {
+                                        let ph3_abs = abs (ph3);
+                                        let x3 = ph3_abs * f_rcp;
+                                        let x3_1 = x3 - 1.0f;
+                                        let aa_up_1 = (2.0f - x3 * x3); // first part of anti-aliasing
+                                        let aa_up_2 = x3_1 * x3_1;      // second part of anti-aliasing, use once then reset
+                                        let y_pulse = ph2_sign + pulse_aa_2 + aa_dn_1 - aa_up_1;
+                                        pulse_aa_2 = aa_dn_2 - aa_up_2; // second part of anti-aliasing, use once then reset
+                                        OscA_Pulse = state.mixerOscillatorA * y_pulse;
+                                    }
+                                    else
+                                    {
+                                        let y_pulse = ph2_sign + pulse_aa_2 + aa_dn_1;
+                                        pulse_aa_2 = aa_dn_2; // second part of anti-aliasing, reset
+                                        OscA_Pulse = state.mixerOscillatorA * y_pulse;
+                                    }
+                                    voices[v].oscillatorA_Pulse_AA2 = pulse_aa_2;
+                                }
+                                else
+                                {
+                                    OscA_Pulse = 0.0f;
+                                }
+                            }
+                            else // dn_mask=0
+                            {
+                                let y_saw = ph + voices[v].oscillatorA_Saw_AA2;
+                                voices[v].oscillatorA_Saw_AA2 = 0;
+                                OscA_Saw = state.oscillatorA_SawA * y_saw;
+
+                                if (state.oscillatorA_PulseActive)
+                                {
+                                    let ph_pwm = clamp (PulseWidthA + state.oscillatorA_PW_PM * PolyMod, -1.0f, 1.0f);
+                                    let ph2 = ph - ph_pwm;
+                                    let ph2_sign = sign (ph2);
+
+                                    let ph3 = getPhase (ph2);
+                                    float pulse_aa_2 = voices[v].oscillatorA_Pulse_AA2;
+
+                                    if (ph3 * (ph3 - f) < 0.0f) // up_mask=1
+                                    {
+                                        let ph3_abs = abs (ph3);
+                                        let x3 = ph3_abs / f;
+                                        let x3_1 = x3 - 1.0f;
+                                        let aa_up_1 = (2.0f - x3 * x3); // first part of anti-aliasing
+                                        let aa_up_2 = x3_1 * x3_1;      // second part of anti-aliasing, use once then reset
+                                        let y_pulse = ph2_sign + pulse_aa_2 - aa_up_1;
+                                        pulse_aa_2 = -aa_up_2; // second part of anti-aliasing, use once then reset
+                                        OscA_Pulse = state.mixerOscillatorA * y_pulse;
+                                    }
+                                    else
+                                    {
+                                        let y_pulse = ph2_sign + pulse_aa_2;
+                                        pulse_aa_2 = 0; // second part of anti-aliasing, use once then reset
+                                        OscA_Pulse = state.mixerOscillatorA * y_pulse;
+                                    }
+
+                                    voices[v].oscillatorA_Pulse_AA2 = pulse_aa_2;
+                                }
+                                else
+                                {
+                                    OscA_Pulse = 0.0f;
+                                }
+                            }
+                        }
+                    }
+
+                    voices[v].oscillatorA_Phase = ph;
+                }
+
+                // EQ
+                // boost high frequencies (up to +3.1dB at Nyquist) to compensate loss due to antialiasing
+                if (useNewOsc)
+                {
+                    EQ_Out = state.mixerOscillatorB * OscB_All;
+                }
+                else
+                {
+                    float EQ_In = OscA_Pulse + OscA_Saw + state.mixerOscillatorB * (OscB_Saw - OscB_PulseTri);
+                    EQ_Out = EQ_In + -0.171f * voices[v].eqLast;
+                    voices[v].eqLast = EQ_In;
+                }
+
+                // Mixer
+                Mixer = EQ_Out + state.mixerNoise * Noise_White + inputSignal;
+
+                if (filterVersion == 0) // Old filter
+                {
+                    float satIn;
+
+                    {
+                        voices[v].filter_F_Smooth += voices[v].filter_F_Inc;
+
+                        var FM = state.filter_PM * PolyMod * voices[v].filter_F_Smooth;
+                        var FN = (voices[v].filter_F_Smooth + FM) * tauFilter;
+                        var F = FN;
+
+                        if (F < 0.0f)
+                        {
+                            FN = 0.0f;
+                            F = 0.0f;
+                        }
+                        else
+                        {
+                            if (F > state.filterN_FMAX)
+                            {
+                                FN = state.filterN_FMAX;
+
+                                if (F > state.filter_FMAX)
+                                    F = state.filter_FMAX;
+                            }
+                        }
+
+                        let In = Mixer - voices[v].saturator_Out;
+                        var hpf = In - (voices[v].filter_BPF * state.filter_D + voices[v].filter_LPF);
+                        voices[v].filter_BPF += hpf * F;
+                        voices[v].filter_LPF += voices[v].filter_BPF * F + 1.0e-7f;
+
+                        if (state.filter_HPF)
+                        {
+                            let notch = hpf - voices[v].filterN_BPF;
+                            hpf = notch * state.filterN_D - voices[v].filterN_LPF;
+                            voices[v].filterN_BPF += hpf * FN;
+                            voices[v].filterN_LPF += voices[v].filterN_BPF * FN;
+
+                            satIn = hpf;
+                        }
+                        else
+                        {
+                            let notch = voices[v].filter_LPF - voices[v].filterN_BPF;
+                            hpf = notch * state.filterN_D - voices[v].filterN_LPF;
+                            voices[v].filterN_BPF += hpf * FN;
+                            voices[v].filterN_LPF += voices[v].filterN_BPF * FN;
+
+                            satIn = voices[v].filterN_LPF;
+                        }
+                    }
+
+                    // Saturator
+                    if (satIn > 0.0f)
+                        voices[v].saturator_Out = satIn < 4.0f ? satIn * (satIn * (-0.125f * 0.13335f) + 0.13335f)
+                                                               : 0.13335f * 2.0f;
+                    else
+                        voices[v].saturator_Out = satIn > -4.0f ? satIn * (satIn * (0.125f * 0.13335f) + 0.13335f)
+                                                                : -0.13335f * 2.0f;
+
+                    // Filt1
+                    let filter1_Hpf = satIn - voices[v].filter1HP_LPF;
+                    voices[v].filter1HP_LPF += filter1_Hpf * state.filter1HPF;
+
+                    // Voice Combiner
+                    voiceOutput -= filter1_Hpf * voices[v].envelopeA_Out;
+                }
+                else
+                {
+                    bool bAA = (filterVersion == 2);
+                    bool bBPF = state.filter_HPF;
+
+                    voices[v].filter_F_Smooth += voices[v].filter_F_Inc;
+                    let FM = state.filter_PM * PolyMod * voices[v].filter_F_Smooth;
+                    let F = max (1.0f, voices[v].filter_F_Smooth + FM);
+                    let g = fasttanf (min (1.5f, F * piOverSampleRate));
+                    let norm = 1.0f / (1.0f + g);
+                    let gnorm = g * norm;
+                    let gnorm2 = gnorm * gnorm;
+                    let GF = gnorm2 * gnorm2;
+                    let G = GF * state.filter_K;
+
+                    let scale = 2.0f / 3.0f;
+                    float x = Mixer * scale + 1e-5f;
+                    x *= 1 + state.filter_K * 0.1f;
+                    float[5] s;
+
+                    if (bAA)
+                    {
+                        let x_ = voices[v].filter_X; voices[v].filter_X = x;
+                        x = (x + x_) * 0.5f;
+                        let g2 = g + g, g2norm = g2 * norm;
+                        float S = voices[v].filter_S0 - g2norm * voices[v].filter_S0;
+                        S = ((S + voices[v].filter_X_1) * g+voices[v].filter_S1) * norm;
+                        S = ((S + voices[v].filter_X_2) * g+voices[v].filter_S2) * norm;
+                        S = ((S + voices[v].filter_X_3) * g+voices[v].filter_S3) * norm;
+                        S = (GF * (x + x) + S - G * voices[v].filter_X_4) / (1 + G);
+                        S = tanhaa (S, voices[v].filter_X_4, voices[v].filter_F0_4);
+                        x = x - S * state.filter_K; s[0] = x;
+                        float u = (x - voices[v].filter_S0) * g2norm; voices[v].filter_S0 = voices[v].filter_S0 + u; x = voices[v].filter_S0; s[1] = x;
+                        u = tanhaa ((x - voices[v].filter_S1 - voices[v].filter_X_1 * g) * norm, voices[v].filter_X_1,voices[v].filter_F0_1) * g2; voices[v].filter_S1 = voices[v].filter_S1 + u; x = voices[v].filter_S1; s[2] = x;
+                        u = tanhaa ((x - voices[v].filter_S2 - voices[v].filter_X_2 * g) * norm, voices[v].filter_X_2,voices[v].filter_F0_2) * g2; voices[v].filter_S2 = voices[v].filter_S2 + u; x = voices[v].filter_S2; s[3] = x;
+                        u = tanhaa ((x - voices[v].filter_S3 - voices[v].filter_X_3 * g) * norm, voices[v].filter_X_3,voices[v].filter_F0_3) * g2; voices[v].filter_S3 = voices[v].filter_S3 + u; x = voices[v].filter_S3; s[4] = x;
+                    }
+                    else
+                    {
+                        float S = gnorm * (0 - voices[v].filter_S0) + voices[v].filter_S0;
+                        S = gnorm * (S - voices[v].filter_S1) + voices[v].filter_S1;
+                        S = gnorm * (S - voices[v].filter_S2) + voices[v].filter_S2;
+                        S = gnorm * (S - voices[v].filter_S3) + voices[v].filter_S3;
+                        S = fasttanhf (S);
+                        S *= state.filter_K;
+                        x = (x - S) / (1 + G); s[0] = x;
+                        float u = fasttanhf (x-voices[v].filter_S0)*gnorm; x = voices[v].filter_S0+u; voices[v].filter_S0 = u+x; s[1] = x;
+                        u = fasttanhf (x-voices[v].filter_S1)*gnorm; x = voices[v].filter_S1+u; voices[v].filter_S1 = u+x; s[2] = x;
+                        u = fasttanhf (x-voices[v].filter_S2)*gnorm; x = voices[v].filter_S2+u; voices[v].filter_S2 = u+x; s[3] = x;
+                        u = fasttanhf (x-voices[v].filter_S3)*gnorm; x = voices[v].filter_S3+u; voices[v].filter_S3 = u+x; s[4] = x;
+                    }
+
+                    if (bBPF)
+                    {
+                        if (false)
+                        {
+                            float mix = s[4] - 4 * (s[1] + s[3]) + 6 * s[2];
+                            mix = (mix + voices[v].filter_Mix) * 0.5f;
+                            voices[v].filter_Mix = mix;
+                            x = mix + s[0];
+                        }
+                        else
+                        {
+                            x = s[2] - 2 * s[3] + s[4];
+                        }
+                    }
+
+                    x *= 2 / scale;
+                    voiceOutput += x * voices[v].envelopeA_Out;
+                }
+            }
+
+            // Monophonic Section
+
+            // Smoother
+            if (state.smootherCount > 0)
+            {
+                --state.smootherCount;
+
+                state.volumeSmooth += state.volumeInc;
+                state.delayWetSmooth += state.delayWetInc;
+                state.delayDrySmooth += state.delayDryInc;
+                state.delayFeedbackSmooth += state.delayFeedbackInc;
+            }
+
+            // Delay Effect
+
+            float dryOut = voiceOutput * state.delayDrySmooth;
+            float delayL, delayR;
+
+            if (state.delayActive)
+            {
+                // Filt1
+                {
+                    float Hpf = (voiceOutput + state.delaySum * state.delayFeedbackSmooth) - state.delay_HPF_LPF;
+                    state.delay_HPF_LPF += Hpf * state.delay_HPF_F + 1e-12f;
+
+                    Hpf = Hpf - state.delay_LPF_LPF;
+
+                    state.delay_LPF_LPF += Hpf * state.delay_LPF_F;
+                }
+
+                // LFOs
+
+                // waveform is controlled by setting Inc's at control rate
+                state.delayTime_Mod_1 += state.delayTime_Inc_1;
+                state.delayTime_Mod_2 += state.delayTime_Inc_2;
+                state.delayTime_Mod_3 += state.delayTime_Inc_3;
+                state.delayTime_Mod_4 += state.delayTime_Inc_4;
+
+                // Delays
+
+                delayBuffer.at (state.delayBufferIn) = state.delay_LPF_LPF; // Delay Input
+
+                // Delay 1
+                let prec1 = state.delayTime_Mod_1;
+                let trunc1 = int (prec1);
+                let lo1 = delayBuffer.at ((state.delayBufferIn - trunc1) & delayMask);
+                let hi1 = delayBuffer.at ((state.delayBufferIn - trunc1 - 1) & delayMask);
+
+                let delay1 = lo1 + (prec1 - trunc1) * (hi1 - lo1);
+
+                // Delay 2 ...
+                let prec2 = state.delayTime_Mod_2;
+                let trunc2 = int (prec2);
+                let lo2 = delayBuffer.at ((state.delayBufferIn - trunc2) & delayMask);
+                let hi2 = delayBuffer.at ((state.delayBufferIn - trunc2 - 1) & delayMask);
+
+                let delay2 = lo2 + (prec2 - trunc2) * (hi2 - lo2);
+
+                // Delay 3 ...
+                let prec3 = state.delayTime_Mod_3;
+                let trunc3 = int (prec3);
+                let lo3 = delayBuffer.at ((state.delayBufferIn - trunc3) & delayMask);
+                let hi3 = delayBuffer.at ((state.delayBufferIn - trunc3 - 1) & delayMask);
+
+                let delay3 = lo3 + (prec3 - trunc3) * (hi3 - lo3);
+
+                // Delay 4 ...
+                let prec4 = state.delayTime_Mod_4;
+                let trunc4 = int (prec4);
+                let lo4 = delayBuffer.at ((state.delayBufferIn - trunc4) & delayMask);
+                let hi4 = delayBuffer.at ((state.delayBufferIn - trunc4 - 1) & delayMask);
+
+                float delay4 = lo4 + (prec4 - trunc4) * (hi4 - lo4);
+
+                state.delayBufferIn = (state.delayBufferIn + 1) & delayMask;
+                state.delaySum = delay1 + delay2 + delay3 + delay4;
+
+                // 1: half-left, 2: half-right; 3; full-left, 4: full-right
+                delayL = state.delayWetSmooth * (0.75f * delay1 + 0.25f * delay2 + delay3);
+                delayR = state.delayWetSmooth * (0.25f * delay1 + 0.75f * delay2 + delay4);
+            }
+
+            // A-440
+            if (testToneActive)
+            {
+                let Inc = state.A440Freq;
+                state.A440Phase += Inc;
+                float A440_Pulse;
+
+                if (state.A440PulseSign != 0)
+                {
+                    let diff = 1.0f - state.A440Phase;
+
+                    if (diff > 0.5f * Inc)
+                    {
+                        A440_Pulse = A440Pulse;
+                    }
+                    else
+                    {
+                        let diffInc = 0.5f + diff / Inc;
+                        A440_Pulse = A440Pulse * diffInc;
+                        state.A440Phase -= 1.0f;
+                        state.A440PulseSign = 0;
+                    }
+                }
+                else
+                {
+                    let diff = 0.5f - state.A440Phase;
+
+                    if (diff > 0.5f * Inc)
+                    {
+                        A440_Pulse = 0.0f;
+                    }
+                    else
+                    {
+                        A440_Pulse = A440Pulse * (0.5f - (diff / Inc));
+                        state.A440PulseSign = 1;
+                    }
+                }
+
+                let hpf = (A440_Pulse - 0.5f * A440Pulse) - state.A440FilterLPF;
+                state.A440FilterLPF += hpf * state.A440FilterFreq;
+                dryOut += state.A440FilterLPF;
+            }
+
+            out <- float<2> (state.volumeSmooth * (dryOut + delayL),
+                             state.volumeSmooth * (dryOut + delayR));
+            advance();
+        }
+    }
+
+
+    //==============================================================================
+    //==============================================================================
+    // Helper functions:
+
+    float undenormalise (float f)   { return -1e-12 < f && f < 1e-12 ? 0.0f : f; }
+
+    T sign<T> (T val)    { return val >= 0 ? 1.0f : -1.0f; }
+
+    T fastExp<T> (T v)
+    {
+        let trunc = int (v);
+
+        if (trunc > 2399)
+            return exponentLUT [2400];
+
+        if (trunc < 0)
+            return 0;
+
+        return exponentLUT.at (trunc) + (float (v) - trunc) * exponentLUTSlope.at (trunc);
+    }
+
+    void initExponentLUT()
+    {
+        exponentLUT[0] = pow (2.0, -20.0);
+
+        for (int i = 1; i < 2401; ++i)
+        {
+            let value = pow (2.0f, (float (i) - 1200.0f) / 60.0f);
+            exponentLUT.at (i) = value;
+            exponentLUTSlope.at (i - 1) = value - exponentLUT.at (i - 1);
+        }
+    }
+
+    T pitchToFreq<T> (T v)        { return fastExp (v * 5.0f + 1381.88158f); }
+    T timeToIncrement<T> (T v)    { return fastExp (1797.94705708f - v * 9.96578428466f); }
+    T exp_dB<T> (T v)             { return fastExp (v * 9.96578428466f + 1200.0f); }
+    T exp_E<T> (T v)              { return fastExp (v * 86.56170245334f + 1200.0f); }
+
+    float findPWT (float phase0, float width0, float phase1, float width1)
+    {
+        return (width0 - phase0) / ((width0 - phase0) - (width1 - phase1));
+    }
+
+    float xfade (float x0, float x1, float t)
+    {
+        return x0 + (x1 - x0) * t;
+    }
+
+    float blep0 (float pos)
+    {
+        let x = 0.5f * pos;
+        return ((((((-4.36023f * x + 13.5038f) * x - 11.5128f) * x - 3.25094f)
+                  * x + 7.83529f) * x - 0.2393f) * x - 2.97566f) * x + 0.99986f;
+    }
+
+    void addBlep0 (float[8]& buf, int writePos, int mask, float cpos, float halfampl)
+    {
+        buf.at ((writePos - 2) & mask) += halfampl * blep0 (2 - cpos);
+        buf.at ((writePos - 1) & mask) += halfampl * blep0 (1 - cpos);
+        buf.at (writePos) -= halfampl * blep0 (cpos);
+        buf.at ((writePos + 1) & mask) -= halfampl * blep0 (cpos + 1);
+    }
+
+    // 0..1.50845 range only!
+    float fasttanf (float x)
+    {
+        float a = ((-0.0896638f * x + 0.0388452f) * x + 1.00005f) * x;
+        float b = (-0.430871f * x + 0.0404318f) * x + 1.0f;
+        return a / b;
+    }
+
+    float fasttanhf (float x)
+    {
+        let ax = abs (x);
+
+        if (ax > 4.9717869f)
+            return x > 0 ? 1.0f : -1.0f;
+
+        let x2 = x * x;
+        let a = (((x2 + 378) * x2 + 17325) * x2 + 135135) * x;
+        let b = ((28 * x2 + 3150) * x2 + 62370) * x2 + 135135;
+        return a / b;
+    }
+
+    float tanhaa (float x, float& xOut, float& outF0)
+    {
+        float x2 = xOut;
+        xOut = x;
+        float dx = x - x2;
+
+        if (abs (dx) < 0.001)
+        {
+            x = tanh ((x + x2) * 0.5f);
+            outF0 = -2.0f;
+        }
+        else
+        {
+            if (outF0 < -1.0f)
+                outF0 = abs (x2) < 12 ? log (cosh (x2)) : x2 - 0.69314718f;
+
+            let F0 = abs (x) < 12 ? log (cosh (x)) : x - 0.69314718f;
+            x = (F0 - outF0) / dx;
+            outF0 = F0;
+        }
+
+        return x;
+    }
+
+    float getPhase (float ph2)
+    {
+        if (ph2 >= 1.0f)
+            return ph2 - 2.0f;
+
+        if (ph2 <= -1.0f)
+            return ph2 + 2.0f;
+
+        return ph2;
+    }
+}
