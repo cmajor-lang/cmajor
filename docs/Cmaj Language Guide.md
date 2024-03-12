@@ -1573,7 +1573,7 @@ processor Test
 
 ### Processor composition caveats
 
-Processor composition is an advanced feature, and it is possible to write very confusing DSP this way! Since the wrapping processor has control over how time is advanced within the wrapped processor, it is possible to created unexpected results. For example, if `advance` is not called on the wrapped processor, or if `advance` is not called for a number of frames, the wrapped processor is likely to have old internal state which is unlikely to produce surprising results.
+Processor composition is an advanced feature, and it is possible to write very confusing DSP this way! Since the wrapping processor has control over how time is advanced within the wrapped processor, it is possible to created unexpected results. For example, if `advance` is not called on the wrapped processor, or if `advance` is not called for a number of frames, the wrapped processor is likely to have old internal state which is likely to produce surprising results.
 
 ## When to use a processor vs a graph
 
