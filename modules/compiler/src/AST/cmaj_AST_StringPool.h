@@ -97,6 +97,7 @@ struct Strings
                        systemInitFunctionName        { stringPool.get ("_initialise") },
                        systemAdvanceFunctionName     { stringPool.get ("_advance") },
                        rootNamespaceName             { stringPool.get ("_root") },
+                       initFnProcessorIDParamName    { stringPool.get ("processorID") },
                        initFnSessionIDParamName      { stringPool.get ("sessionID") },
                        initFnFrequencyParamName      { stringPool.get ("frequency") },
                        consoleEndpointName           { stringPool.get ("console") },

@@ -32,6 +32,7 @@ struct FlattenGraph
             if (initFunction == nullptr)
             {
                 initFunction = AST::createExportedFunction (graph, graph.context.allocator.voidType, g.getStrings().systemInitFunctionName);
+                AST::addFunctionParameter (*initFunction, graph.context.allocator.int32Type,         g.getStrings().initFnProcessorIDParamName, true);
                 AST::addFunctionParameter (*initFunction, graph.context.allocator.int32Type,         g.getStrings().initFnSessionIDParamName);
                 AST::addFunctionParameter (*initFunction, graph.context.allocator.float64Type,       g.getStrings().initFnFrequencyParamName);
             }
@@ -124,8 +125,9 @@ struct FlattenGraph
                 auto& stateVariable = AST::createVariableReference (block.context, stateVariableDeclaration);
                 auto systemInitFn = processorType->findSystemInitFunction();
 
-                auto& sessionIDParamRef = AST::createVariableReference (block.context, initFunction->getParameter (node.getStrings().initFnSessionIDParamName));
-                auto& frequencyParamRef = AST::createVariableReference (block.context, initFunction->getParameter (node.getStrings().initFnFrequencyParamName));
+                auto& processorIDParamRef = AST::createVariableReference (block.context, initFunction->getParameter (node.getStrings().initFnProcessorIDParamName));
+                auto& sessionIDParamRef   = AST::createVariableReference (block.context, initFunction->getParameter (node.getStrings().initFnSessionIDParamName));
+                auto& frequencyParamRef   = AST::createVariableReference (block.context, initFunction->getParameter (node.getStrings().initFnFrequencyParamName));
 
                 if (arraySize)
                 {
@@ -136,11 +138,11 @@ struct FlattenGraph
                         writeInstanceIndexToState (loopBlock, arrayElement, index);
 
                         if (processorInfo.usesProcessorId)
-                            writeProcessorIdToState (loopBlock, arrayElement, index);
+                            writeProcessorIdToState (loopBlock, arrayElement, processorIDParamRef);
 
                         if (systemInitFn)
                             loopBlock.addStatement (AST::createFunctionCall (loopBlock, *systemInitFn, arrayElement,
-                                                                             sessionIDParamRef, frequencyParamRef));
+                                                                             processorIDParamRef, sessionIDParamRef, frequencyParamRef));
                     });
 
                     if (processorInfo.usesProcessorId)
@@ -150,13 +152,13 @@ struct FlattenGraph
                 {
                     if (processorInfo.usesProcessorId)
                     {
-                        writeProcessorIdToState (block, stateVariable);
+                        writeProcessorIdToState (block, stateVariable, processorIDParamRef);
                         nextProcessorId++;
                     }
 
                     if (systemInitFn)
                         block.addStatement (AST::createFunctionCall (block, *systemInitFn, stateVariable,
-                                                                     sessionIDParamRef, frequencyParamRef));
+                                                                     processorIDParamRef, sessionIDParamRef, frequencyParamRef));
                 }
             }
 
@@ -186,20 +188,11 @@ struct FlattenGraph
                 delayNodes.push_back (std::addressof (node));
         }
 
-        void writeProcessorIdToState (AST::ScopeBlock& block, AST::ValueBase& stateVariable)
+        void writeProcessorIdToState (AST::ScopeBlock& block, AST::ValueBase& stateVariable, AST::ValueBase& processorIDParam)
         {
             auto& stateMember = AST::createGetStructMember (block, stateVariable, EventHandlerUtilities::getIdMemberName());
-            AST::addAssignment (block, stateMember, block.context.allocator.createConstantInt32 (nextProcessorId));
-        }
-
-        void writeProcessorIdToState (AST::ScopeBlock& block, AST::ValueBase& stateVariable, AST::ValueBase& index)
-        {
-            auto& stateMember = AST::createGetStructMember (block, stateVariable, EventHandlerUtilities::getIdMemberName());
-
-            AST::addAssignment (block, stateMember, AST::createBinaryOp (block,
-                                                                         AST::BinaryOpTypeEnum::Enum::add,
-                                                                         index,
-                                                                         block.context.allocator.createConstantInt32 (nextProcessorId)));
+            block.addStatement (AST::createPreInc(block.context, processorIDParam));
+            AST::addAssignment (block, stateMember, processorIDParam);
         }
 
         void writeInstanceIndexToState (AST::ScopeBlock& block, AST::ValueBase& stateVariable, AST::ValueBase& index)

@@ -168,15 +168,17 @@ inline AST::ProcessorBase& createBlockTransformProcessor (AST::ProcessorBase& or
                                                         blockProcessor.context.allocator.voidType,
                                                         blockProcessor.getStrings().systemInitFunctionName);
 
-        auto stateParam     = AST::addFunctionParameter (initialise, stateType, initialise.getStrings()._state, true, false);
-        auto sessionIDParam = AST::addFunctionParameter (initialise, initialise.context.allocator.int32Type,   blockProcessor.getStrings().initFnSessionIDParamName);
-        auto frequencyParam = AST::addFunctionParameter (initialise, initialise.context.allocator.float64Type, blockProcessor.getStrings().initFnFrequencyParamName);
+        auto stateParam       = AST::addFunctionParameter (initialise, stateType, initialise.getStrings()._state, true, false);
+        auto processorIDParam = AST::addFunctionParameter (initialise, initialise.context.allocator.int32Type,   blockProcessor.getStrings().initFnProcessorIDParamName, true);
+        auto sessionIDParam   = AST::addFunctionParameter (initialise, initialise.context.allocator.int32Type,   blockProcessor.getStrings().initFnSessionIDParamName);
+        auto frequencyParam   = AST::addFunctionParameter (initialise, initialise.context.allocator.float64Type, blockProcessor.getStrings().initFnFrequencyParamName);
 
         auto mainBlock = initialise.getMainBlock();
 
         if (auto initFn = originalProcessor.findSystemInitFunction())
             mainBlock->addStatement (AST::createFunctionCall (initialise.context, *initFn,
                                                               AST::createGetStructMember (initialise.context, stateParam, "_state"),
+                                                              processorIDParam,
                                                               sessionIDParam,
                                                               frequencyParam));
     }

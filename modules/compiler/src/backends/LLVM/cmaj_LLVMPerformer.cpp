@@ -211,7 +211,7 @@ struct LLVMEngine
     static constexpr bool supportsExternalFunctions = true;
     static bool engineSupportsIntrinsic (AST::Intrinsic::Type) { return true; }
 
-    using InitialiseFn       = void*(*)(void*, int32_t, double);
+    using InitialiseFn       = void*(*)(void*, int32_t*, int32_t, double);
     using AdvanceOneFrameFn  = void(*)(void*, void*);
     using AdvanceBlockFn     = void(*)(void*, void*, uint32_t);
     using SetValueRampFn     = void(*)(void*, const void*, uint32_t);
@@ -463,7 +463,8 @@ struct LLVMEngine
             ioMemory.clear();
             ioPointer = static_cast<uint8_t*> (ioMemory.data());
 
-            code->initialiseFn (statePointer, sessionID, frequency);
+            int processorID = 0;
+            code->initialiseFn (statePointer, &processorID, sessionID, frequency);
 
             advanceOneFrameFn = code->advanceOneFrameFn;
             advanceBlockFn = code->advanceBlockFn;

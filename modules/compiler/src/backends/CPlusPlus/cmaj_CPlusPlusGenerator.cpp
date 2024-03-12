@@ -312,11 +312,12 @@ IO_STRUCT io = {};
 
             out << "assert (frequency <= getMaxFrequency());" << newLine;
             out << blankLine;
+            out << "int32_t processorID = 0;" << newLine;
 
             if (auto f = mainProcessor.findSystemInitFunction())
-                out << codeGenerator->getFunctionName (*f) + " (state, sessionID, frequency);" << newLine;
+                out << codeGenerator->getFunctionName (*f) + " (state, processorID, sessionID, frequency);" << newLine;
             else
-                out << "(void) sessionID; (void) frequency;" << newLine;
+                out << "(void) processorID; (void) sessionID; (void) frequency;" << newLine;
         }
 
         out << blankLine;

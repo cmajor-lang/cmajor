@@ -130,7 +130,8 @@ class MAIN_CLASS
                                     "$STATE_ADDRESS$", std::to_string (module.stateStructAddress),
                                     "$IO_ADDRESS$", std::to_string (module.ioStructAddress),
                                     "$INITIAL_NUM_MEM_PAGES$", std::to_string (module.initialNumMemPages),
-                                    "$STACK_TOP$", std::to_string (module.stackTop));
+                                    "$STACK_TOP$", std::to_string (module.stackTop),
+                                    "$SCRATCH_SPACE_ADDRESS$", std::to_string (module.scratchSpaceAddress));
     }
 
     //==============================================================================
@@ -190,7 +191,7 @@ async initialise (sessionID, frequency)
   else
     this._advance = () => exports.advanceOneFrame ($STATE_ADDRESS$, $IO_ADDRESS$);
 
-  exports.initialise?.($STATE_ADDRESS$, sessionID, frequency);
+  exports.initialise?.($STATE_ADDRESS$, $SCRATCH_SPACE_ADDRESS$, sessionID, frequency);
   return true;
 }
 )js");

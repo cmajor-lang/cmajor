@@ -92,10 +92,13 @@ inline void createSystemInitFunctions (AST::Program& program,
                 return *f;
 
             auto& f = AST::createFunctionInModule (p, p.context.allocator.voidType, p.getStrings().systemInitFunctionName);
-            auto sessionIDParam = AST::addFunctionParameter (f, p.context.allocator.int32Type, p.getStrings().initFnSessionIDParamName);
-            auto frequencyParam = AST::addFunctionParameter (f, p.context.allocator.float64Type, p.getStrings().initFnFrequencyParamName);
+            auto processorIDParam = AST::addFunctionParameter (f, p.context.allocator.int32Type, p.getStrings().initFnProcessorIDParamName, true);
+            auto sessionIDParam   = AST::addFunctionParameter (f, p.context.allocator.int32Type, p.getStrings().initFnSessionIDParamName);
+            auto frequencyParam   = AST::addFunctionParameter (f, p.context.allocator.float64Type, p.getStrings().initFnFrequencyParamName);
             auto& mainBlock = *f.getMainBlock();
 
+            (void) processorIDParam;
+            
             if (sessionIDVariable != nullptr)
                 AST::addAssignment (mainBlock, AST::createVariableReference (mainBlock.context, *sessionIDVariable), sessionIDParam);
 

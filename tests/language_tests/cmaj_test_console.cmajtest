@@ -371,3 +371,36 @@ processor Test
         advance();
     }
 }
+
+## testConsole ("1234")
+
+graph Test [[ main ]]
+{
+    output stream float out;
+
+    node voices = Voice[4];
+
+    connection
+        voices.out -> out;
+}
+
+graph Voice
+{
+    output stream float out;
+
+    node v = VoiceComponent;
+
+    connection
+        v.out -> out;
+}
+
+processor VoiceComponent
+{
+    output stream float out;
+
+    void main()
+    {
+        console <- processor.id;
+        advance();
+    }
+}

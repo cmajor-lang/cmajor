@@ -570,10 +570,11 @@ struct OversamplingTransformation
 
         if (originalInitFunction || hasIndexMember || hasIdParameter)
         {
-            auto& initialise    = AST::createFunctionInModule (processor, processor.context.allocator.voidType, processor.getStrings().systemInitFunctionName);
-            auto stateParam     = AST::addFunctionParameter (initialise, stateType, "_state", true, false);
-            auto sessionIDParam = AST::addFunctionParameter (initialise, initialise.context.allocator.int32Type,   processor.getStrings().initFnSessionIDParamName);
-            auto frequencyParam = AST::addFunctionParameter (initialise, initialise.context.allocator.float64Type, processor.getStrings().initFnFrequencyParamName);
+            auto& initialise      = AST::createFunctionInModule (processor, processor.context.allocator.voidType, processor.getStrings().systemInitFunctionName);
+            auto stateParam       = AST::addFunctionParameter (initialise, stateType, "_state", true, false);
+            auto processorIDParam = AST::addFunctionParameter (initialise, initialise.context.allocator.int32Type,   processor.getStrings().initFnProcessorIDParamName, true);
+            auto sessionIDParam   = AST::addFunctionParameter (initialise, initialise.context.allocator.int32Type,   processor.getStrings().initFnSessionIDParamName);
+            auto frequencyParam   = AST::addFunctionParameter (initialise, initialise.context.allocator.float64Type, processor.getStrings().initFnFrequencyParamName);
 
             auto mainBlock = initialise.getMainBlock();
 
@@ -590,6 +591,7 @@ struct OversamplingTransformation
             if (originalInitFunction)
                 mainBlock->addStatement (AST::createFunctionCall (initialise.context, *originalInitFunction,
                                                                   AST::createGetStructMember (initialise.context, stateParam, "_state"),
+                                                                  processorIDParam,
                                                                   sessionIDParam,
                                                                   frequencyParam));
         }
