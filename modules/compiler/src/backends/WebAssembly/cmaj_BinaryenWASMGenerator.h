@@ -360,6 +360,7 @@ struct WebAssemblyGenerator
     {
         auto& initFn = addNewFunction ("initialise", allocator.voidType, true);
         auto stateParam = wasm::Builder::addParam (std::addressof (initFn), "state", wasm::Type::i32);
+        auto processorIDParam = wasm::Builder::addParam (std::addressof (initFn), "processorID", wasm::Type::i32);
         auto sessionIDParam = wasm::Builder::addParam (std::addressof (initFn), "sessionID", wasm::Type::i32);
         auto frequencyParam = wasm::Builder::addParam (std::addressof (initFn), "frequency", wasm::Type::f64);
 
@@ -369,6 +370,7 @@ struct WebAssemblyGenerator
         auto& systemInit = *program.getMainProcessor().findSystemInitFunction();
         auto& call = createCallExpression (getFunction (systemInit));
         call.operands.push_back (createLocalGet (static_cast<int32_t> (stateParam), wasm::Type::i32));
+        call.operands.push_back (createLocalGet (static_cast<int32_t> (processorIDParam), wasm::Type::i32));
         call.operands.push_back (createLocalGet (static_cast<int32_t> (sessionIDParam), wasm::Type::i32));
         call.operands.push_back (createLocalGet (static_cast<int32_t> (frequencyParam), wasm::Type::f64));
         call.finalize();
