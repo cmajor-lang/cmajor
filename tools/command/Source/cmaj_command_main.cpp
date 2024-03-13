@@ -67,10 +67,10 @@ https://cmajor.dev
 
 cmaj <command> [options]    Runs the given command. Options can include the following:
 
-    -O0|1|2|3               Set the optimisation level to the given value
+    -O0|1|2|3|4             Set the optimisation level to the given value
     --debug                 Turn on debug output from the performer
     --sessionID=n           Set the session id to the given value
-    --engine=<type>         Use the specified engine - e.g. llvm, wasm, cpp
+    --engine=<type>         Use the specified engine - e.g. llvm, webview, cpp
 
 Supported commands:
 
@@ -88,6 +88,12 @@ cmaj play file [opts]       Plays a .cmajorpatch, or executes a .js javascript f
                             running and retry when files are modified)
     --dry-run               Doesn't attempt to play any audio, just builds the patch, emits
                             any errors that are found, and exits
+
+cmaj server [opts] dir      Run cmaj as an http service, serving the patches within the given
+                            directory. Connect to the server using a browser to the http address
+                            given
+
+    --address=<addr>:<port> Serve from the specified address, defaults to 127.0.0.1:51000
 
 cmaj test [opts] <files>    Runs one or more .cmajtest scripts, and print the aggregate results
                             for the tests. See the documentation for writing tests for more info.
