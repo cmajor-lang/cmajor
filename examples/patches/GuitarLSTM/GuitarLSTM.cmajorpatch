@@ -1,0 +1,12 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.GuitarLSTM",
+    "version":          "1.0",
+    "name":             "GuitarLSTM",
+    "description":      "A distortion demo using ML inference",
+    "category":         "generator",
+    "manufacturer":     "Cmajor Software Ltd",
+    "isInstrument":     false,
+
+    "source":           [ "rtneural.cmajor", "GuitarLSTM.cmajor" ]
+}

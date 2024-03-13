@@ -20,7 +20,7 @@ graph Filter [[ main ]]
     input stream float<2> in;
     output stream float<2> out;
 
-    node filter             = std::filters (float<2>)::tpt::svf::Processor;
+    node filter = std::filters (float<2>)::tpt::svf::Processor;
 
     connection
     {

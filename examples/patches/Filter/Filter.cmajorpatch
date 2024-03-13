@@ -1,9 +1,9 @@
 {
     "CmajorVersion":    1,
-    "ID":               "dev.cmajor.Filter",
+    "ID":               "dev.cmajor.examples.filter",
     "version":          "1.0",
     "name":             "Filter",
-    "description":      "Filter",
+    "description":      "A tiny patch that demonstrates how to set up a filter",
     "category":         "generator",
     "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,

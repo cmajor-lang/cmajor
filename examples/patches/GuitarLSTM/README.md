@@ -1,6 +1,6 @@
 ## GuitarLSTM
 
-This patch is a machine leaning inference implemented in Cmajor.
+This example demonstrates Cmajor being used for machine learning inference.
 
 The code to generate this patch can be found in https://github.com/cmajor-lang/GuitarLSTM, which is a fork of the github project provided by https://guitarml.com
 

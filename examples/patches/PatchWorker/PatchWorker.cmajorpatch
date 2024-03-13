@@ -1,9 +1,9 @@
 {
     "CmajorVersion":    1,
-    "ID":               "dev.cmajor.examples.helloworld",
+    "ID":               "dev.cmajor.examples.helloworld_patchworker",
     "version":          "1.0",
     "name":             "Hello World with PatchWorker",
-    "description":      "The classic audio Hello World",
+    "description":      "The classic audio Hello World, but showing how a javascript patch-worker can control the patch",
     "manufacturer":     "Cmajor Software Ltd",
     "category":         "generator",
     "isInstrument":     false,
