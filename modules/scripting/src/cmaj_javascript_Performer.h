@@ -453,7 +453,8 @@ private:
                 if (! messages.empty())
                     return messages.toJSON();
 
-                return choc::value::Value ((endTime - startTime).count());
+                std::chrono::duration<double> elapsed = endTime - startTime;
+                return choc::value::Value (elapsed.count());
             }
 
             return createErrorObject ("Unknown program");
@@ -470,7 +471,8 @@ private:
             if (! messages.empty())
                 return messages.toJSON();
 
-            return choc::value::Value ((endTime - startTime).count());
+            std::chrono::duration<double> elapsed = endTime - startTime;
+            return choc::value::Value (elapsed.count());
         }
 
         choc::value::Value isLoaded()
@@ -621,7 +623,6 @@ private:
                 return messages.toJSON();
 
             std::chrono::duration<double> elapsed = endTime - startTime;
-
             return choc::value::Value (elapsed.count());
         }
 
