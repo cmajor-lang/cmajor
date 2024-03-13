@@ -1,0 +1,18 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "com.audolon.compufart",
+    "version":          "0.1.01",
+    "name":             "CompuFart",
+    "description":      "CompuFart Fart Synthesizer",
+    "category":         "generator",
+    "manufacturer":     "Audolon",
+    "isInstrument":     true,
+
+    "source":           [ "Audolon.cmajor",
+                          "CompuFart.cmajor",
+                          "CompuFartSynth.cmajor",
+                          "Delay.cmajor",
+                          "Envelopes.cmajor",
+                          "RePoot.cmajor",
+                          "Utils.cmajor" ]
+}

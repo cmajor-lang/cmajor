@@ -1,0 +1,8 @@
+// Copyright (c) 2023 Alex M. Fink. All rights reserved.
+// Licensed under the MIT License https://github.com/alexmfink/compufart
+
+namespace Audolon
+{
+    //! An empty token struct for use where void cannot be used (e.g., endpoint types)
+    struct devoid{}
+}

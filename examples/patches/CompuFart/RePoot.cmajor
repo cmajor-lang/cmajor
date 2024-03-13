@@ -1,0 +1,263 @@
+// Copyright (c) 2023 Alex M. Fink. All rights reserved.
+// Licensed under the MIT License https://github.com/alexmfink/compufart
+
+namespace Audolon::Reverb
+{
+    const float StableGainLimit = 0.9999f;
+
+    //! Limits gains for stability in feedback paths
+    float SanitizeGain(float gain)
+    {
+        return Audolon::Utils::ClipValue(gain, -StableGainLimit, StableGainLimit);
+    }
+
+    const int MaxNumRePootFIRTaps = 3;
+
+    enum RePootMode
+    {
+        // Don't forget to update conversion functions if this is changed.
+        None, ToiletBowl, ChurchPew
+    }
+    const int NumRepootModes = 3;
+
+    RePootMode GetRePootModeForInt(int modeNumber)
+    {
+        if (modeNumber == 1)
+        {
+            return RePootMode::ToiletBowl;
+        }
+        else if (modeNumber == 2)
+        {
+            return RePootMode::ChurchPew;
+        }
+        // case 0 and to appease the compiler
+        return RePootMode::None;
+    }
+
+    //! Note that delay values beyond the Max amount in the processor will be clipped.
+    //! Feedback gain values are also clipped for stability.
+    struct RePootSettings
+    {
+        int numFIRTaps;
+        float[MaxNumRePootFIRTaps] firDelays_sec;
+        float[MaxNumRePootFIRTaps] firCoefficients;
+        float innerDelay_sec;
+        float innerGain;
+        float outerDelay_sec;
+        float outerGain;
+        float fdbkDelay_sec;
+        float fdbkGain;
+        float fdbkCutoffFreq;
+        float outputGain;
+    }
+
+    const RePootSettings ToiletBowlSettings = (
+        3, /*numFIRTaps*/
+        (0.45351474e-3f, 0.997732426e-3f, 1.360544e-3f), /*firDelays_sec*/
+        (0.7f, 0.6f, 0.9f), /*firCoefficients*/
+        1.224490e-3f, /*innerDelay_sec*/
+        0.291047f, /*innerGain*/
+        0.2721088e-3f, /*outerDelay_sec*/
+        -0.401173f, /*outerGain*/
+        2.947846e-3f, /*fdbkDelay_sec*/
+        0.668622f, /*fdbkGain*/
+        1411.76f, /*fdbkCutoffFreq*/
+        0.55f /*outputGain*/
+    );
+
+    const RePootSettings ChurchPewSettings = (
+        2, /*numFIRTaps*/
+        (6.349206e-3f, 8.61678e-3f, 1.0e-3f), /*firDelays_sec*/
+        (0.6f, 0.5f, 0.f), /*firCoefficients*/
+        3.537415e-3f, /*innerDelay_sec*/
+        0.180921f, /*innerGain*/
+        4.399093e-3f, /*outerDelay_sec*/
+        -0.30678f, /*outerGain*/
+        20.1814059e-3f, /*fdbkDelay_sec*/
+        0.196654f, /*fdbkGain*/
+        705.882f, /*fdbkCutoffFreq*/
+        0.6f /*outputGain*/
+    );
+
+    /*
+    *
+    *      Reverberator for farts--not setup for dynamic modification (e.g., moving delay length)
+    *
+    *      Reverb model is a nested allpass with LPF'ed delayed feedback, as well as a pre-FIR echo
+    *      (sparse) filter.
+    *
+    *                                           -g_o
+    *                   +------------------------|>----------------------------+
+    *                   |                            -g_i                      |
+    *                   |                    +--------|>------------+          |
+    *                   |                    |                      |          |
+    *                   |                    |                      V          V           g_out
+    *  -->[FIR]-->(+)---+---(+)--->[Delay]---+-->(+)--->[Delay]--->(+)---+--->(+)---+---+---|>--->
+    *              ^         ^                    ^                      |          |   |
+    *              |         |                    |            g_i       |          |   |
+    *              |         |                    +------------<|--------+          |   |
+    *              |         |                           g_o                        |   |
+    *              |         +---------------------------<|-------------------------+   |
+    *              |              g_fdbk                                                |
+    *              +---------------<|---[Delay]<---[LPF]<-------------------------------+
+    *
+    */
+
+    //! This is a reverb model developed for fart processing.
+    processor RePoot
+    {
+        input stream float in_audio;
+        output stream float out_audio;
+
+        input event RePootMode in_mode;
+
+        // Delay limits, based on the max values used with the presets.
+        const float MaxFIRDelaySeconds = 10e-3f;
+        const float MaxAllpassDelaySeconds = 5e-3f;
+        const float MaxFeedbackDelaySeconds = 25e-3f;
+        const int MaxFIRDelay = int(ceil(MaxFIRDelaySeconds * float(96000.0)));
+        const int MaxAllpassDelay = int(ceil(MaxAllpassDelaySeconds * float(96000.0)));
+        const int MaxFeedbackDelay = int(ceil(MaxFeedbackDelaySeconds * float(96000.0)));
+
+        bool m_isBypassed;
+
+        RePootMode m_mode;
+
+        Delay(float, MaxAllpassDelay)::DelayLine m_innerDelay;
+        Delay(float, MaxAllpassDelay)::DelayLine m_outerDelay;
+        Delay(float, MaxFeedbackDelay)::DelayLine m_fdbkDelay;
+
+        float[MaxFIRDelay] m_firBuffer;
+        int m_numFIRTaps;
+        int[MaxNumRePootFIRTaps] m_firDelays;
+        float [MaxNumRePootFIRTaps] m_firCoefficients;
+        wrap<MaxFIRDelay> m_firWriteIndex;
+
+        float m_lastLPFOutput;
+        float m_lpfCoefficient;
+        float m_lpfNormalizingGain;
+
+        float m_innerGain;
+        float m_outerGain;
+        float m_fdbkGain;
+        float m_outputGain;
+
+        void init()
+        {
+            setMode(RePootMode::ToiletBowl);
+        }
+
+        event in_mode(RePootMode mode)
+        {
+            setMode(mode);
+        }
+
+        int delayInSecondsToLength(float inDelaySeconds)
+        {
+            return roundToInt(inDelaySeconds * float(processor.frequency));
+        }
+
+        void setLPF(float cutoffFreq)
+        {
+            // Design a one-pole LPF with the gain at DC set to 1
+            // Note that the negative of the coefficient is used later
+            m_lpfCoefficient = (cutoffFreq * float(twoPi) / float(processor.frequency)) - 1.0f; // approximate
+            m_lpfCoefficient = SanitizeGain(min(0.0f, m_lpfCoefficient));
+            m_lpfNormalizingGain = 1.0f + m_lpfCoefficient;
+        }
+
+        void setMode(RePootMode mode)
+        {
+            m_mode = mode;
+
+            if (m_mode == RePootMode::None)
+            {
+                // We will simply bypass in the processing function, so there is
+                // nothing we must do here.
+            }
+            else if (m_mode == RePootMode::ToiletBowl)
+            {
+                setParameters(ToiletBowlSettings);
+            }
+            else if (m_mode == RePootMode::ChurchPew)
+            {
+                setParameters(ChurchPewSettings);
+            }
+        }
+
+        void setParameters (RePootSettings parameters)
+        {
+            m_numFIRTaps = parameters.numFIRTaps;
+            for (wrap<MaxNumRePootFIRTaps> tapIndex)
+            {
+                m_firDelays[tapIndex] = delayInSecondsToLength(parameters.firDelays_sec[tapIndex]);
+                m_firCoefficients[tapIndex] = parameters.firCoefficients[tapIndex];
+            }
+            m_innerDelay.SetDelayLength(delayInSecondsToLength(parameters.innerDelay_sec));
+            m_innerGain = SanitizeGain(parameters.innerGain);
+            m_outerDelay.SetDelayLength(delayInSecondsToLength(parameters.outerDelay_sec));
+            m_outerGain = SanitizeGain(parameters.outerGain);
+            m_fdbkDelay.SetDelayLength(delayInSecondsToLength(parameters.fdbkDelay_sec));
+            m_fdbkGain = SanitizeGain(parameters.fdbkGain);
+            setLPF(parameters.fdbkCutoffFreq);
+            m_outputGain = parameters.outputGain;
+            Reset();
+        }
+
+        void Reset()
+        {
+            m_innerDelay.Reset();
+            m_outerDelay.Reset();
+            m_fdbkDelay.Reset();
+            m_lastLPFOutput = 0.0f;
+            for (wrap<MaxFIRDelay> bufferIndex)
+            {
+                m_firBuffer[bufferIndex] = 0.0f;
+            }
+        }
+
+        void main()
+        {
+            loop
+            {
+                // Hard bypass
+                if (m_mode == RePootMode::None)
+                {
+                    out_audio <- in_audio;
+                }
+                else
+                {
+                    float temp = in_audio;
+
+                    // FIR Filter
+                    for (wrap<MaxNumRePootFIRTaps> tapIndex)
+                    {
+                        if (tapIndex >= m_numFIRTaps)
+                        {
+                            break;
+                        }
+                        wrap<MaxFIRDelay> readIndex = wrap<MaxFIRDelay>(m_firWriteIndex + MaxFIRDelay - m_firDelays[tapIndex]);
+                        temp += m_firCoefficients[tapIndex] * m_firBuffer[readIndex];
+                    }
+                    m_firBuffer[m_firWriteIndex] = in_audio;
+                    m_firWriteIndex++; // Wraps itself!
+
+                    // Nested Allpass
+                    temp += m_fdbkGain * m_fdbkDelay.GetNextOut();
+                    float innerAllpassOutput = m_innerDelay.GetNextOut() - (m_innerGain * m_outerDelay.GetNextOut());
+                    float preGainOutValue = innerAllpassOutput - (m_outerGain * temp);
+                    temp += m_outerGain * preGainOutValue;
+                    m_innerDelay.Tick(m_outerDelay.Tick(temp) + m_innerGain * innerAllpassOutput);
+
+                    // LPF'ed Feedback
+                    m_lastLPFOutput = m_lpfNormalizingGain * preGainOutValue - m_lpfCoefficient * m_lastLPFOutput;
+                    m_fdbkDelay.Tick(m_lastLPFOutput);
+
+                    out_audio <- preGainOutValue * m_outputGain;
+                }
+                advance();
+            }
+        }
+    }
+
+}

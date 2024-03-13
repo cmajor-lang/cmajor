@@ -1,0 +1,15 @@
+// Copyright (c) 2023 Alex M. Fink. All rights reserved.
+// Licensed under the MIT License https://github.com/alexmfink/compufart
+
+namespace Audolon::Utils
+{
+    float ClipValue(float inValue, float minValue, float maxValue)
+    {
+        return max(min(inValue, maxValue), minValue);
+    }
+
+    int ClipValue(int inValue, int minValue, int maxValue)
+    {
+        return max(min(inValue, maxValue), minValue);
+    }
+}

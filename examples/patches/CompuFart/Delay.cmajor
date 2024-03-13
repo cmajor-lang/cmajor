@@ -1,0 +1,48 @@
+// Copyright (c) 2023 Alex M. Fink. All rights reserved.
+// Licensed under the MIT License https://github.com/alexmfink/compufart
+
+namespace Audolon::Delay (using FrameType, int MaxDelay)
+{
+    //! This is a simple delay line that zeros the buffer on delay changes
+    struct DelayLine
+    {
+        // Note: All are init'ed to zero
+        FrameType[MaxDelay] m_buffer;
+        int m_delay;
+        wrap<MaxDelay> m_tapIndex;
+
+        FrameType GetNextOut()
+        {
+            return this.m_buffer[this.m_tapIndex];
+        }
+
+        FrameType Tick(FrameType inputSample)
+        {
+            FrameType outputSample = this.m_buffer[this.m_tapIndex];
+            this.m_buffer[this.m_tapIndex] = inputSample;
+            ++this.m_tapIndex;
+            if (this.m_tapIndex >= this.m_delay)
+            {
+                this.m_tapIndex -= this.m_delay;
+            }
+            return outputSample;
+        }
+
+        void Reset()
+        {
+            for (wrap<MaxDelay> index)
+            {
+                this.m_buffer[index] = 0.0;
+            }
+            this.m_tapIndex = 0;
+        }
+
+        void SetDelayLength(int delayLength)
+        {
+            this.m_delay = Audolon::Utils::ClipValue(delayLength, 1, MaxDelay);
+            this.Reset();
+        }
+
+
+    }
+}

@@ -1,0 +1,139 @@
+// Copyright (c) 2023 Alex M. Fink. All rights reserved.
+// Licensed under the MIT License https://github.com/alexmfink/compufart
+
+namespace Audolon::Envelopes {
+    //! A code that must be provided to the Initialized(int) namespace that encloses structs
+    //! with required initialization. Such structs should generally be obtained from factory
+    //! functions. Using structs within other structs may prevent this, so you may then use
+    const int InitCodeADSR = 42069;
+
+    Initialized(InitCodeADSR)::ADSR GetADSR(float64 samplerate)
+    {
+        var adsr = Initialized(InitCodeADSR)::ADSR();
+        adsr.Initialize(float (samplerate));
+        return adsr;
+    }
+}
+
+namespace Audolon::Envelopes::Initialized(int code)
+{
+    // This is intended to disallow usage of structs contained herein with proper initialization
+    static_assert(code == InitCodeADSR, "Use the factory, or only provide the code yourself if you initialize all instances!");
+
+    enum ADSRState
+    {
+        Off, Attack, Decay, Sustain, Release
+    }
+
+    //! Linear ADSR
+    struct ADSR
+    {
+        float m_samplerate;
+
+        ADSRState m_state;
+        float m_lastOut;
+
+        int m_decayTimeSamples;
+        int m_releaseTimeSamples;
+
+        float m_attackStep;
+        float m_decayStep;
+        float m_releaseStep;
+        float m_sustainLevel;
+
+        bool isInited;
+
+        void Initialize(float sampleRate)
+        {
+           this.m_samplerate = sampleRate;
+           this.SetAttackTimeSeconds(0.01f);
+           this.SetDecayTimeSeconds(0.02f);
+           this.SetReleaseTimeSeconds(0.5f);
+           this.SetSustainLevel(0.8f);
+           this.Reset();
+        }
+
+        void Reset()
+        {
+            this.m_state = ADSRState::Off;
+            this.m_lastOut = 0.f;
+        }
+
+        void On()
+        {
+            this.m_state = ADSRState::Attack;
+        }
+
+        void Off()
+        {
+            if (this.m_state != ADSRState::Off)
+            {
+                this.m_state = ADSRState::Release;
+            }
+        }
+
+        void SetAttackTimeSeconds(float time)
+        {
+            float timeInSamples = max(1.0f, time * this.m_samplerate);
+            this.m_attackStep = 1.f / timeInSamples;
+        }
+
+        void SetDecayTimeSeconds(float time)
+        {
+            this.m_decayTimeSamples = max(1, int(time * this.m_samplerate));
+            this.m_decayStep = (1.f - this.m_sustainLevel) / this.m_decayTimeSamples;
+        }
+
+        void SetReleaseTimeSeconds(float time)
+        {
+            this.m_releaseTimeSamples = max(1, int(time * this.m_samplerate));
+            this.m_releaseStep = (this.m_sustainLevel) / this.m_releaseTimeSamples;
+        }
+
+        void SetSustainLevel(float level) {
+            this.m_sustainLevel = Audolon::Utils::ClipValue(level, 0.0f, 1.0f);
+            this.m_decayStep = (1.f - this.m_sustainLevel) / this.m_decayTimeSamples;
+            this.m_releaseStep = (this.m_sustainLevel) / this.m_releaseTimeSamples;
+        }
+
+        float tick()
+        {
+
+            if (this.m_state == ADSRState::Attack)
+            {
+                this.m_lastOut += this.m_attackStep;
+                if (this.m_lastOut >= 1.0f)
+                {
+                    this.m_state = ADSRState::Decay;
+                }
+            }
+            else if (this.m_state == ADSRState::Decay)
+            {
+                this.m_lastOut -= this.m_decayStep;
+                if (this.m_lastOut <= this.m_sustainLevel)
+                {
+                    this.m_lastOut = this.m_sustainLevel;
+                    this.m_state = ADSRState::Sustain;
+                }
+            }
+            else if (this.m_state == ADSRState::Sustain)
+            {
+                // Nothing to do
+            }
+            else if (this.m_state == ADSRState::Release)
+            {
+                this.m_lastOut -= this.m_releaseStep;
+                if (this.m_lastOut <= 0.0f)
+                {
+                    this.m_state = ADSRState::Off;
+                }
+            }
+
+            this.m_lastOut = Audolon::Utils::ClipValue(this.m_lastOut, 0.0f, 1.0f);
+
+            return this.m_lastOut;
+        }
+    }
+
+
+}

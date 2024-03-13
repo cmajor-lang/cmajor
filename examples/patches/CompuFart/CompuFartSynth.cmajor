@@ -1,0 +1,386 @@
+// Copyright (c) 2023 Alex M. Fink. All rights reserved.
+// Licensed under the MIT License https://github.com/alexmfink/compufart
+
+namespace Audolon::CompuFart {
+
+    graph CompuFartSynth [[main]]
+    {
+        input event std::midi::Message in_midi;
+        output stream float out_audio;
+
+        input event
+        {
+
+            float in_pinch [[ name: "Pinch", min: 0.0f, max: 1.0f, init: 0.5f, step: 0.001f, automatable: true]];
+            float in_cheek [[ name: "Cheek", min: 0.0f, max: 1.0f, init: 0.5f, step: 0.001f, automatable: true]];
+            float in_strain [[ name: "Strain", min: 0.0f, max: 1.0f, init: 0.7f, step: 0.001f, automatable: true]];
+            float in_strainIntensity [[ name: "Strain Intensity", min: 0.0f, max: 1.0f, init: 0.5f, step: 0.001f, automatable: true]];
+
+            float in_pressureEnvAttackTime [[ name: "Pressure Attack", min: 0.0f, max: 1.0f, init: 0.005f, step: 0.001f, automatable: true]];
+            float in_pressureEnvDecayTime [[ name: "Pressure Decay", min: 0.0f, max: 5.0f, init: 0.020f, step: 0.001f, automatable: true]];
+            float in_pressureEnvSustainLevel [[ name: "Pressure Sustain", min: 0.0f, max: 1.0f, init: 0.8f, step: 0.001f, automatable: true]];
+            float in_pressureEnvReleaseTime [[ name: "Pressure Release", min: 0.0f, max: 5.0f, init: 0.85f, step: 0.001f, automatable: true]];
+
+            float in_pitchEnvAmount [[ name: "Pitch Env Amount", min: -3.0f, max: 3.0f, init: 2.0f, step: 0.001f, automatable: true]];
+            float in_pitchEnvAttackTime [[ name: "Pitch Attack", min: 0.0f, max: 1.0f, init: 0.005f, step: 0.001f, automatable: true]];
+            float in_pitchEnvDecayTime [[ name: "Pitch Decay", min: 0.0f, max: 5.0f, init: 0.3f, step: 0.001f, automatable: true]];
+            float in_pitchEnvSustainLevel [[ name: "Pitch Sustain", min: 0.0f, max: 1.0f, init: 0.0f, step: 0.001f, automatable: true]];
+            float in_pitchEnvReleaseTime [[ name: "Pitch Release", min: 0.0f, max: 5.0f, init: 0.25f, step: 0.001f, automatable: true]];
+
+            int in_reverbMode [[ name: "Reverb", min: 0, max: 2, init:  1, text: "None|Toilet Bowl|Church Pew", automatable: true ]];
+
+            float in_pitchGlideTime [[ name: "Pitch Glide", min: 0.0f, max: 1.0f, init: 0.1f, step: 0.001f, automatable: true]];
+            float in_pitchBendRangeSemitones [[ name: "Pitch Bend Range", min: 0.0f, max: 48.0f, init: 48.0f, step: 0.001f, automatable: true]];
+            bool in_modWheelOn [[ name: "Mod Wheel", boolean, init: false, automatable: true]];
+        }
+
+        static_assert(Audolon::Reverb::NumRepootModes == 3, "Patch parameters assume 3 reverb modes");
+
+        event in_reverbMode(int mode)
+        {
+            reverb.in_mode <- Audolon::Reverb::GetRePootModeForInt(mode);
+        }
+
+        node
+        {
+            singleCompufartVoice = Audolon::CompuFart::CompuFartSynthVoice;
+            reverb = Audolon::Reverb::RePoot;
+        }
+
+        connection
+        {
+            in_midi -> std::midi::MPEConverter -> singleCompufartVoice.in_midiEvent;
+
+            in_pressureEnvAttackTime -> singleCompufartVoice.in_pressureEnvAttackTime;
+            in_pressureEnvDecayTime -> singleCompufartVoice.in_pressureEnvDecayTime;
+            in_pressureEnvSustainLevel -> singleCompufartVoice.in_pressureEnvSustainLevel;
+            in_pressureEnvReleaseTime -> singleCompufartVoice.in_pressureEnvReleaseTime;
+
+            in_pitchGlideTime -> singleCompufartVoice.in_pitchGlideTime;
+            in_pitchEnvAmount -> singleCompufartVoice.in_pitchEnvAmount;
+            in_pitchEnvAttackTime -> singleCompufartVoice.in_pitchEnvAttackTime;
+            in_pitchEnvDecayTime -> singleCompufartVoice.in_pitchEnvDecayTime;
+            in_pitchEnvSustainLevel -> singleCompufartVoice.in_pitchEnvSustainLevel;
+            in_pitchEnvReleaseTime -> singleCompufartVoice.in_pitchEnvReleaseTime;
+
+            in_pitchBendRangeSemitones -> singleCompufartVoice.in_pitchBendRangeSemitones;
+            in_modWheelOn ->singleCompufartVoice.in_modWheelOn;
+
+            in_pinch -> singleCompufartVoice.in_pinch;
+            in_cheek -> singleCompufartVoice.in_cheek;
+
+            in_strain -> singleCompufartVoice.in_strain;
+            in_strainIntensity -> singleCompufartVoice.in_strainIntensity;
+
+            singleCompufartVoice.out_audio -> reverb.in_audio;
+            reverb.out_audio -> out_audio;
+        }
+
+    }
+
+    graph CompuFartSynthVoice
+    {
+        input event (std::notes::NoteOn,
+                     std::notes::NoteOff,
+                     std::notes::PitchBend,
+                     std::notes::Slide,
+                     std::notes::Pressure,
+                     std::notes::Control)    in_midiEvent;
+
+        input event
+        {
+            float in_pinch;
+            float in_cheek;
+
+            float in_strain;
+            float in_strainIntensity;
+
+            float in_pressureEnvAttackTime;
+            float in_pressureEnvDecayTime;
+            float in_pressureEnvSustainLevel;
+            float in_pressureEnvReleaseTime;
+
+            float in_pitchGlideTime;
+            float in_pitchEnvAmount;
+            float in_pitchEnvAttackTime;
+            float in_pitchEnvDecayTime;
+            float in_pitchEnvSustainLevel;
+            float in_pitchEnvReleaseTime;
+
+            float in_pitchBendRangeSemitones;
+
+            bool in_modWheelOn;
+        }
+
+        output stream float out_audio;
+
+        node
+        {
+            midi2butt = MIDI2MonoButt;
+            buttInputInterface = TerranceInputInterface;
+            buttModel = Terrance;
+            buttOutputInterface = TerranceOutputInterface;
+        }
+
+        connection
+        {
+            in_midiEvent -> midi2butt.in_midiEvent;
+
+            in_pressureEnvAttackTime -> midi2butt.in_pressureEnvAttackTime;
+            in_pressureEnvDecayTime -> midi2butt.in_pressureEnvDecayTime;
+            in_pressureEnvSustainLevel -> midi2butt.in_pressureEnvSustainLevel;
+            in_pressureEnvReleaseTime -> midi2butt.in_pressureEnvReleaseTime;
+
+            in_pitchGlideTime -> midi2butt.in_pitchGlideTime;
+            in_pitchEnvAmount -> midi2butt.in_pitchEnvAmount;
+            in_pitchEnvAttackTime -> midi2butt.in_pitchEnvAttackTime;
+            in_pitchEnvDecayTime -> midi2butt.in_pitchEnvDecayTime;
+            in_pitchEnvSustainLevel -> midi2butt.in_pitchEnvSustainLevel;
+            in_pitchEnvReleaseTime -> midi2butt.in_pitchEnvReleaseTime;
+
+            in_pitchBendRangeSemitones -> midi2butt.in_pitchBendRangeSemitones;
+            in_modWheelOn -> midi2butt.in_modWheelOn;
+
+            midi2butt.out_frequencyHz -> buttInputInterface.in_frequencyHz;
+            midi2butt.out_controlPressure -> buttInputInterface.in_controlPressure;
+            midi2butt.out_panic -> buttInputInterface.in_panic;
+            midi2butt.out_panic -> buttModel.in_panic;
+            midi2butt.out_panic -> buttOutputInterface.in_panic;
+            in_pinch -> buttInputInterface.in_pinch;
+            in_cheek -> buttInputInterface.in_cheek;
+
+            in_strain -> buttInputInterface.in_strain;
+            in_strainIntensity -> buttInputInterface.in_strainIntensity;
+
+            buttInputInterface.out_frequencyHz -> buttModel.in_frequencyHz;
+            buttInputInterface.out_pressure -> buttModel.in_pressure;
+            // buttInputInterface.out_panic -> buttModel.in_panic;
+
+            buttInputInterface.out_kc -> buttModel.in_kc;
+            buttInputInterface.out_xLowerLimit -> buttModel.in_xLowerLimit;
+            buttInputInterface.out_xUpperLimit -> buttModel.in_xUpperLimit;
+
+            buttModel.out_flow -> buttOutputInterface.in_flow;
+            buttOutputInterface.out_audio -> out_audio;
+        }
+    }
+
+
+    //! Interface to convert MIDI messages to standardized control inputs to a single model interface.
+    //! Works like a mono synth, using the latest NoteOn.
+    processor MIDI2MonoButt {
+        input event (std::notes::NoteOn,
+                     std::notes::NoteOff,
+                     std::notes::PitchBend,
+                     std::notes::Slide,
+                     std::notes::Pressure,
+                     std::notes::Control)    in_midiEvent;
+
+        input event {
+            float in_pressureEnvAttackTime;
+            float in_pressureEnvDecayTime;
+            float in_pressureEnvSustainLevel;
+            float in_pressureEnvReleaseTime;
+
+            float in_pitchGlideTime;
+            float in_pitchEnvAmount;
+            float in_pitchEnvAttackTime;
+            float in_pitchEnvDecayTime;
+            float in_pitchEnvSustainLevel;
+            float in_pitchEnvReleaseTime;
+
+            float in_pitchBendRangeSemitones;
+
+            bool in_modWheelOn;
+        }
+
+        output event
+        {
+            devoid out_panic;
+        }
+
+        output stream
+        {
+            float out_controlPressure;
+            float out_frequencyHz;
+        }
+
+        const int DefaultGlide = max(1, int(0.0005 * processor.frequency)); // 0.5 msec
+        const float DefaultFrequencyHz = 100.0f;
+        const float DefaultPitchBendRangeSemitones = 12.0f;
+
+        int m_numNotes;
+
+        var m_pressureEnvelope = Envelopes::GetADSR(processor.frequency);
+        std::smoothing::SmoothedValue m_pressureVelocityLevel; //!< The latest NoteOn Velocity used to scale the pressure
+        std::smoothing::SmoothedValue m_pressureModLevel; //!< Pressure scaling from Mod Wheel
+        bool m_modWheelOn;
+        float m_pressureModWheelTarget;
+
+        var m_pitchEnvelope = Envelopes::GetADSR(processor.frequency);
+        std::smoothing::SmoothedValue m_pitchEnvAmount;
+
+        int m_pitchGlideSamples;
+
+        std::smoothing::SmoothedValue m_smoothFrequencyHz; //!< The latest NoteOn frequency. (The frequency of zero pitch envelope level)
+        std::smoothing::SmoothedValue m_smoothPitchBend;
+        float m_pitchBendRangeSemitones;
+        float m_pitchBendTargetNormalized;
+
+        void init()
+        {
+            // Note that the envelopes should already be init'ed
+            m_numNotes = 0;
+            m_pressureVelocityLevel.reset(0.0f);
+            m_modWheelOn = false;
+            m_pressureModWheelTarget = 1.0f;
+            m_pitchGlideSamples = DefaultGlide;
+            m_pitchEnvAmount.reset(0.0f);
+            m_smoothFrequencyHz.reset(DefaultFrequencyHz);
+            m_smoothPitchBend.reset(0.0f);
+            m_pitchBendRangeSemitones = DefaultPitchBendRangeSemitones;
+            m_pitchBendTargetNormalized = 0.0f;
+        }
+
+        void Panic()
+        {
+            m_numNotes = 0;
+            m_pressureVelocityLevel.reset(0.0f);
+            // amf TODO: reset envelope and hook up more panics
+        }
+
+        event in_midiEvent (std::notes::NoteOn noteOn)
+        {
+            m_smoothFrequencyHz.setTarget(std::notes::noteToFrequency(noteOn.pitch), m_pitchGlideSamples);
+            m_pressureVelocityLevel.setTarget(noteOn.velocity, DefaultGlide);
+            if (m_numNotes == 0)
+            {
+                m_pressureEnvelope.On();
+                m_pitchEnvelope.On();
+            }
+            m_numNotes++;
+        }
+
+
+        event in_midiEvent (std::notes::NoteOff noteOff)
+        {
+            if (m_numNotes <= 0)
+            {
+                return;
+            }
+
+            m_numNotes--;
+            if (m_numNotes == 0)
+            {
+                m_pressureEnvelope.Off();
+                m_pitchEnvelope.Off();
+            }
+        }
+
+        // amf TODO: Handle more MIDI msgs (pitch, mod)
+        event in_midiEvent(std::notes::PitchBend pitchBend)
+        {
+            m_pitchBendTargetNormalized = pitchBend.bendSemitones / std::midi::semitoneBendRange;
+            updatePitchBend();
+        }
+
+
+        event in_midiEvent (std::notes::Control controlMsg)
+        {
+            if (controlMsg.control == 1)
+            {
+                m_pressureModWheelTarget = controlMsg.value;
+                updateModWheel();
+            }
+            else if (controlMsg.control == 123)
+            {
+                Panic();
+                out_panic <- devoid();
+            }
+        }
+
+        event in_pressureEnvAttackTime(float time)
+        {
+            m_pressureEnvelope.SetAttackTimeSeconds(time);
+        }
+
+        event in_pressureEnvDecayTime(float time)
+        {
+            m_pressureEnvelope.SetDecayTimeSeconds(time);
+        }
+
+        event in_pressureEnvSustainLevel(float level)
+        {
+            m_pressureEnvelope.SetSustainLevel(level);
+        }
+
+        event in_pressureEnvReleaseTime(float time)
+        {
+            m_pressureEnvelope.SetReleaseTimeSeconds(time);
+        }
+
+        event in_pitchGlideTime(float time)
+        {
+            m_pitchGlideSamples = max(1, int(processor.frequency * time));
+        }
+
+        event in_pitchEnvAmount(float amount)
+        {
+            m_pitchEnvAmount.setTarget(amount, DefaultGlide);
+        }
+
+        event in_pitchEnvAttackTime(float time)
+        {
+            m_pitchEnvelope.SetAttackTimeSeconds(time);
+        }
+
+        event in_pitchEnvDecayTime(float time)
+        {
+            m_pitchEnvelope.SetDecayTimeSeconds(time);
+        }
+
+        event in_pitchEnvSustainLevel(float level)
+        {
+            m_pitchEnvelope.SetSustainLevel(level);
+        }
+
+        event in_pitchEnvReleaseTime(float time)
+        {
+            m_pitchEnvelope.SetReleaseTimeSeconds(time);
+        }
+
+        event in_pitchBendRangeSemitones(float semitones)
+        {
+            m_pitchBendRangeSemitones = semitones;
+            updatePitchBend();
+        }
+
+        event in_modWheelOn(bool wheelOn)
+        {
+            m_modWheelOn = wheelOn;
+            updateModWheel();
+        }
+
+        void updatePitchBend()
+        {
+            m_smoothPitchBend.setTarget(m_pitchBendTargetNormalized * m_pitchBendRangeSemitones, DefaultGlide);
+        }
+
+        void updateModWheel()
+        {
+            m_pressureModLevel.setTarget(m_modWheelOn ? m_pressureModWheelTarget : 1.0f, DefaultGlide);
+        }
+
+        void main()
+        {
+            loop
+            {
+                float pitchEnvInOctaves = m_pitchEnvAmount.getNext() * m_pitchEnvelope.tick();
+                float pitchBendInSemitones = m_smoothPitchBend.getNext();
+                out_frequencyHz <- m_smoothFrequencyHz.getNext() * (2.0f **(pitchEnvInOctaves + pitchBendInSemitones / 12.0f));
+                out_controlPressure <- m_pressureVelocityLevel.getNext() * m_pressureEnvelope.tick() * m_pressureModLevel.getNext();
+                advance();
+            }
+        }
+    }
+}

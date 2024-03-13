@@ -1,0 +1,481 @@
+// Copyright (c) 2023 Alex M. Fink. All rights reserved.
+// Licensed under the MIT License https://github.com/alexmfink/compufart
+
+namespace Audolon::CompuFart {
+    //! Interface to convert simple or normalized inputs into physically-meaningful units for the
+    //! Terrance butthole model.
+    processor TerranceInputInterface {
+        input event
+        {
+            float in_frequencyGlideTimeSeconds;
+
+            float in_pinch; //<! A timbral control [0,1]
+            float in_cheek; //<! A timbral control [0,1]
+
+            float in_strain;
+            float in_strainIntensity;
+
+            devoid in_panic;
+        }
+
+        input stream
+        {
+            float in_frequencyHz;
+            float in_controlPressure; //<! Air pressure control signal (on [0,1])
+        }
+
+        output stream
+        {
+            float out_frequencyHz;
+            float out_pressure;
+        }
+
+        output event
+        {
+            float out_kc;
+            float out_xLowerLimit;
+            float out_xUpperLimit;
+
+            // devoid out_panic;
+        }
+
+        std::random::RNG rng;
+
+        float m_pressureNoiseMagnitude;
+        float m_prevNoiseValue;
+        float m_noiseFilterCoeff;
+
+        void init()
+        {
+            rng.seed(69L + processor.id);
+            m_pressureNoiseMagnitude = 0.f;
+            m_prevNoiseValue = 0.f;
+            m_noiseFilterCoeff = 0.0f;
+        }
+
+        event in_pinch (float pinch)
+        {
+            // Arbitrarily chosen mapping to a reasonable physical range
+            pinch = pinch*(0.75f) + 0.25f;
+            pinch *= pinch;
+            pinch *= 4.2e8f; //4.0f*105.0f*1000000.0f
+            out_kc <- pinch;
+        }
+
+        event in_cheek (float cheek)
+        {
+            // Arbitrarily chosen mappings
+            float hiLimit = cheek;
+            hiLimit *= hiLimit;
+            hiLimit = 0.0012f * hiLimit + 0.0015f;
+            float loLimit = (1.0f - cheek);
+            loLimit *= loLimit;
+            loLimit = -0.0006f * loLimit;
+
+            out_xLowerLimit <- loLimit;
+            out_xUpperLimit <- hiLimit;
+
+            // amf TODO: Stop motion? Done in original?
+        }
+
+        event in_strain(float strain)
+        {
+            const float StrainScale = 0.35f;
+            m_pressureNoiseMagnitude = Utils::ClipValue(StrainScale * strain, 0.f, StrainScale);
+        }
+
+        event in_strainIntensity(float val)
+        {
+            val = Utils::ClipValue(val, 0.0f, 1.0f);
+            float cutoffFreq = val * 10000.0f + 100.f;
+            m_noiseFilterCoeff = 1.0f - (cutoffFreq * float(twoPi) / float(processor.frequency)); // approximate
+            m_noiseFilterCoeff = Utils::ClipValue(m_noiseFilterCoeff, 0.f, 0.999f);
+        }
+
+        event in_panic(devoid nothing)
+        {
+            // amf TODO:
+        }
+
+        // Note that this method changes state involving the noise generator and its filter
+        float mapPressureControl(float pressure)
+        {
+            // Map control pressure values above the breakpoint linearly from "min" to "max".
+            // Values below the breakpoint are linearly mapped from zero to the "min"
+            const float PressureBreakPoint = 0.05f;
+            const float MinPressure = 4800.0f;
+            const float MaxPressure = 8000.0f;
+            if (pressure < PressureBreakPoint)
+            {
+                return pressure/PressureBreakPoint * MinPressure;
+            }
+
+            // Generate filtered noise
+            float randValue = (1.0f - m_noiseFilterCoeff) * rng.getBipolar();
+            randValue += randValue + m_noiseFilterCoeff * m_prevNoiseValue;
+            m_prevNoiseValue = randValue;
+
+            return ((pressure - PressureBreakPoint) / (1.0f - PressureBreakPoint) * (MaxPressure - MinPressure) + MinPressure) * 0.95f * (1.0f + m_pressureNoiseMagnitude * randValue);
+        }
+
+        void main()
+        {
+            loop
+            {
+                out_frequencyHz <- in_frequencyHz;
+                out_pressure <- mapPressureControl(in_controlPressure);
+                advance();
+            }
+        }
+
+    }
+
+    // A physical model-based fart synthesizer. This simulates air flowing through an
+    // asshole.
+    processor Terrance {
+        input stream float in_frequencyHz; // amf TODO: Change, eventually
+        input stream float in_pressure;
+
+        input event devoid in_panic;
+
+        input event float in_kc;
+        input event float in_xLowerLimit;
+        input event float in_xUpperLimit;
+
+        output stream float out_flow;
+        output event string out_msg;
+        output event float<8> out_values;
+
+        const float samplerate = float(processor.frequency);
+        const float samplePeriod = 1.0f / samplerate;
+
+        // Mechanical Stuff        // NOTE: There are some redundancies
+        float m_mass;            // Mass (dependent on frequency)
+        float m_QOpen;        // Quality factor for open condition.  Determines r
+        float m_QClosed;        // Quality factor for closed condition.
+        float r_;            // Damping coefficient (Dependent on m, k, Q, fLip)
+        float m_rOpen;        // Damping coefficient for open condition
+        float m_rClosed;    // Damping coefficient for closed condition
+        float m_rn;        // nonlinear damper // amf TODO: unused
+        float m_k;            // Spring coefficient (Dependent on fLip)
+        float m_kp;         // nonlinear spring coefficient (for open condition)
+        float m_kc;        // nonlinear spring coefficient (for y below limit)
+        float m_w;            // Width of lip/opening (from a front view)
+        float m_l;            // Length of lip/opening (going from inside to outside)
+        float m_x0;        // x-coord. of rest position
+        float m_y0;        // y-coord. of rest position
+        float m_xJoint;    // The position of the joint
+        float m_yJoint;    //
+        float m_yUpperLim; // Upper limit of y (hard clips)
+        float m_yLowerLim; // Lower limit of y, beyond which a nonlin. spring is applied
+        float m_xLowerLim;        // Limit of x
+        float m_xUpperLim;        // Limit of x
+        bool m_open;                // Boolean indicating if the orifice is open or closed
+        float m_SLip;        // lip/orifice opening area
+        float m_SCup;        // area of "cup"
+        float m_xn;        // current x-coord x[n]
+        float m_yn;        // current y-coord y[n]
+        float m_xnm1;        // previous x-coord x[n-1]
+        float m_ynm1;        // previous y-coord y[n-1]
+        float m_xnm2;        // earlier x-coord x[n-2]
+        float m_ynm2;        // earlier y-coord y[n-2]
+
+        // Fluid Stuff
+        float m_ZC;        // "Cup" imedance
+        float m_rho;        // Air Density (units?)
+        float m_nu;        // Air Viscosity (units?)
+        float m_c;            // Speed of sound
+        float m_p0;        // Source/mouth pressure (The primary input/ctrl variable)
+        float m_p;            // outside/cup pressure (not atmospheric pressure--this is pressure due to flowing stuff, &c.)
+        float m_pLip;        // pressure acting on the mass(es). ( Mech eqn. uses a previous value for simplicity)
+        float m_Uac;        // Flow (not counting volume swept by lip).
+        float m_Uacm1;        // from previous time
+        float m_Un;        // Total flow (***OUTPUT***)
+        float m_ULip;        // flow from sweeping of lip
+
+        const float tauFloat = float32(twoPi);
+        const float piFloat = float(pi);
+
+        void main()
+        {
+            loop
+            {
+                m_mass = (1.5f/(4.0f*piFloat*piFloat*(in_frequencyHz/16.f)));
+                m_rOpen =     (sqrt(m_mass * m_k)/m_QOpen);
+                m_rClosed =     (sqrt(m_mass * m_k)/m_QClosed);
+
+                out_flow <- tick(in_pressure);
+
+                advance();
+            }
+        }
+
+        void init() {
+            // Numbers from the aether
+            float fLip_ =     100.0f;
+            m_mass =    (1.5f/(4.0f*piFloat*piFloat*fLip_));
+            m_QOpen =     3.0f;
+            m_QClosed = 0.5f;
+            m_k =         105.0f;//(1.5*fLip_);
+            m_kp =         50.0e8f;//(m_k*1000000.0);
+            m_kc =         (1.0f * 105.0f * 1.5e6f);
+            r_ =         (sqrt(m_mass * m_k)/m_QOpen);
+            m_rOpen =     (sqrt(m_mass * m_k)/m_QOpen);
+            m_rClosed =     (sqrt(m_mass * m_k)/m_QClosed);
+            m_rn =         0.0f;
+            m_w =         0.007f;
+            m_l =         0.002f;
+
+            m_x0 =         -0.001f; //amf TODO: Why not 0.0f ???
+            m_y0 =         -0.001f;
+            m_xJoint =     0.0f;
+            m_yJoint =     0.004f;
+            m_yLowerLim= -0.0004f;
+            m_yUpperLim= 0.0002f;
+            m_xLowerLim =     -0.004f;
+            m_xUpperLim =     0.004f;
+            m_open =        true;
+
+            m_rho =        1.2f;
+            m_nu =         0.0000185f;
+            m_c =        340.0f;     // not used at time of comment
+
+            // Start still
+            m_xn =         m_x0;
+            m_yn =         m_y0;
+            m_xnm1 =     m_x0;
+            m_ynm1 =     m_y0;
+            m_xnm2 =     m_x0;
+            m_ynm2 =     m_y0;
+
+
+            m_SLip =        2.0f * m_w * m_yn;
+            m_SCup =     0.0025f;
+            m_ZC =        m_rho*m_c/m_SCup;
+
+            m_p0 =         0.0f;
+            m_p =        0.0f;
+            m_pLip =        0.0f;
+
+            m_Uac =        0.0f;
+            m_Uacm1 =     0.0f;
+            m_Un =        0.0f;
+        }
+
+        void stopMotion()
+        {
+            m_open =        true;
+
+            // Start still
+            m_xn =         m_xLowerLim;//m_x0;
+            m_yn =         m_yLowerLim;//m_x0;
+            m_xnm1 =     m_xLowerLim;//m_x0;
+            m_ynm1 =     m_yLowerLim;//m_x0;
+            m_xnm2 =     m_xLowerLim;//m_x0;
+            m_ynm2 =     m_yLowerLim;//m_x0;
+
+            m_p0 =         0.0f;
+            m_p =        0.0f;
+            m_pLip =        0.0f;
+
+            m_Uac =        0.0f;
+            m_Uacm1 =     0.0f;
+            m_Un =        0.0f;
+        }
+
+
+        void Reset()
+        {
+        }
+
+        event in_panic(devoid nothing)
+        {
+            stopMotion();
+        }
+
+        event in_kc (float kc)
+        {
+            m_kc = kc;
+        }
+
+        event in_xLowerLimit (float limit)
+        {
+            m_xLowerLim = limit;
+        }
+        event in_xUpperLimit (float limit)
+        {
+            m_xUpperLim = limit;
+        }
+
+        float tick(float inPressure)
+        {
+
+            m_p0 = inPressure;
+
+            //Update past values
+            m_xnm2 = m_xnm1;
+            m_ynm2 = m_ynm1;
+            m_xnm1 = m_xn;
+            m_ynm1 = m_yn;
+
+            // Change damping based on open/close
+            if (m_open)
+            {
+                r_ = m_rOpen;
+            }
+            else
+            {
+                r_ = m_rClosed;
+            }
+
+            // Update position
+            m_xn = (2.0f * m_mass * samplerate * samplerate - r_ * samplerate - m_k) * m_xnm1;
+            m_yn = (2.0f * m_mass * samplerate * samplerate - r_ * samplerate - m_k) * m_ynm1;
+
+            m_xn += 2.0f * m_w * (m_p0 - m_p) * (-m_ynm1);
+            m_yn += 2.0f * m_w * (m_p0 - m_p) * (m_xnm1);
+
+            m_xn += (-m_mass * samplerate * samplerate + r_ * samplerate) * m_xnm2;
+            m_yn += (-m_mass * samplerate * samplerate + r_ * samplerate) * m_ynm2;
+
+            m_xn += m_k * m_x0;
+            m_yn += m_k * m_y0;
+
+            m_xn += -2.0f * m_w * (m_p0 - m_p) * (-m_yJoint);
+            m_yn += -2.0f * m_w * (m_p0 - m_p) * (m_xJoint);
+
+            // no m_xn update this step
+            m_yn += 2.0f * m_w * m_l * m_pLip;
+
+            // Nonlinear spring for open condition
+            if (m_open)
+            {
+                m_xn += -0.5f * m_kc * ((m_xnm1 - m_x0) ** 3.0f);
+                m_yn += -0.5f * m_kc * ((m_ynm1 - m_y0) ** 3.0f);
+            }
+
+            // NONLINEAR DAMPER //
+            //m_xn -= (m_rn*m_rOpen*samplerate)*pow((m_xnm1-m_xnm2),3.0);
+            //m_yn -= (m_rn*m_rOpen*samplerate)*pow((m_ynm1-m_ynm2),3.0);
+            //////////////////////
+
+            if (m_ynm1 < m_yLowerLim)
+            {
+                float displacement = (m_ynm1 - m_yLowerLim);
+                m_yn += -0.5f * m_kp * (displacement * displacement * displacement);
+            }
+
+
+            m_xn *= samplePeriod * samplePeriod / m_mass;
+            m_yn *= samplePeriod * samplePeriod / m_mass;
+
+            if (m_yn > m_yUpperLim)
+            {
+                m_yn = m_yUpperLim;
+            }
+
+
+            if (m_xn > m_xUpperLim)
+            {
+                m_xn = m_xUpperLim;
+            }
+            else if (m_xn < m_xLowerLim)
+            {
+                m_xn = m_xLowerLim;
+            }
+
+            ///////////////////////////////////////////////
+            // Fluid stuff, etc. //////////////////////////
+
+            if (m_yn > 0.0f)
+            {
+                m_open = true;
+                m_SLip = 2.0f * m_w * m_yn;
+            }
+            else
+            {
+                m_open = false;
+                m_SLip = 0.0f;
+            }
+
+            m_ULip = m_w * ((m_xn - m_xJoint) * (m_yn - m_ynm1) * samplerate - (m_yn - m_yJoint) * (m_xn - m_xnm1) * samplerate);
+
+            if (m_open)
+            {
+                m_Uacm1 = m_Uac;
+
+                // amf TODO: move all of this in the conditionals above so it's clear that Slip won't be zero
+
+                // These need to be 64-bit because the numbers are CRAZY
+                float64 aa = 0.5f * m_rho / (m_SLip * m_SLip) -  m_rho * (1.0f / (m_SLip * m_SCup) - 1.0f / (m_SCup * m_SCup));
+                float64 bb = m_rho * m_l * samplerate / m_SLip + 12.0f * m_nu * m_w * m_w * m_l / (m_SLip * m_SLip * m_SLip);
+                float64 cc = m_p - m_p0 - m_rho * m_l * m_Uacm1 * samplerate / m_SLip;
+                float64 radicalArg = (bb * bb - 4.0f * aa * cc);
+                float64 rt = radicalArg < 0.f ? 0.0f : radicalArg ** 0.5f;
+                m_Uac = (float(-bb) + float(rt)) / (2.0f * float(aa));
+
+                m_pLip = m_p0 - 0.5f * m_rho * m_Uac * m_Uac / (m_SLip * m_SLip) - m_rho * m_l * (m_Uac - m_Uacm1) * samplerate / m_SLip - 12.0f * m_nu * m_w * m_w * m_l * m_Uac / (m_SLip * m_SLip * m_SLip);
+
+            }
+            else
+            {
+                m_Uac = 0.0f;
+                m_pLip = 0.0f;
+                // m_ULip = 0; // amf TODO: ???
+
+                // m_Uacm1 shouldn't need to be updated here
+            }
+
+            float totalFlow = m_ULip + m_Uac;
+
+            m_p = m_ZC * totalFlow;
+
+            return totalFlow;
+        }
+
+    }
+
+    processor TerranceOutputInterface
+    {
+        input stream float in_flow;
+        output stream float out_audio;
+
+        input event
+        {
+            devoid in_panic;
+        }
+
+        float m_lastIn;
+        float m_lastOut;
+
+        event in_panic(devoid nothing)
+        {
+            Reset();
+        }
+
+        void init()
+        {
+           Reset();
+        }
+
+        void Reset()
+        {
+            m_lastIn = 0.0f;
+            m_lastOut = 0.0f;
+        }
+
+
+        void main() {
+            loop {
+                // The flow is small w.r.t. full-scale [-1,1], so we apply significant gain
+                float unfilteredInput =  2500.0f * in_flow;
+                // Apply a DC-blocking filter
+                m_lastOut = 0.99f * m_lastOut + 0.995f * unfilteredInput - 0.995f * m_lastIn;
+                m_lastIn = unfilteredInput;
+                out_audio <- m_lastOut;
+                advance();
+            }
+        }
+    }
+}
+// }

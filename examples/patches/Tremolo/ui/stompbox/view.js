@@ -341,10 +341,10 @@ function makeRotatable ({
     {
         const degrees = toRotation (nextValue);
 
-        if (! force && state.rotation === degrees) return;
+        if (! force && state.rotation === degrees)
+            return;
 
         state.rotation = degrees;
-
         element.style.transform = `rotate(${degrees}deg)`
     };
 
@@ -353,19 +353,17 @@ function makeRotatable ({
     const force = true;
     update (initialValue, force);
 
-    let accumulatedRotation = undefined;
+    let accumulatedRotation, touchIdentifier, previousClientY;
+
+    const nextRotation = (rotation, delta) =>
+    {
+        const clamp = (v, min, max) => Math.min (Math.max (v, min), max);
+        return clamp (rotation - delta, -maxRotation, maxRotation);
+    };
 
     const onMouseMove = (event) =>
     {
         event.preventDefault(); // avoid scrolling whilst dragging
-
-        const nextRotation = (rotation, delta) =>
-        {
-            const clamp = (v, min, max) => Math.min (Math.max (v, min), max);
-
-            return clamp (rotation - delta, -maxRotation, maxRotation);
-        };
-
         const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
         accumulatedRotation = nextRotation (accumulatedRotation, event.movementY * speedMultiplier);
         onEdit?.(toValue (accumulatedRotation));
@@ -387,10 +385,48 @@ function makeRotatable ({
         window.addEventListener ("mouseup", onMouseUp);
     };
 
+    const onTouchMove = (event) =>
+    {
+        for (const touch of event.changedTouches)
+        {
+            if (touch.identifier == touchIdentifier)
+            {
+                event.preventDefault(); // avoid scrolling whilst dragging
+                const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
+                const movementY = touch.clientY - previousClientY;
+                previousClientY = touch.clientY;
+                accumulatedRotation = nextRotation (accumulatedRotation, movementY * speedMultiplier);
+                onEdit?.(toValue (accumulatedRotation));
+            }
+        }
+    };
+
+    const onTouchStart = (event) =>
+    {
+        accumulatedRotation = state.rotation;
+        previousClientY = event.changedTouches[0].clientY
+        touchIdentifier = event.changedTouches[0].identifier;
+        onBeginEdit?.();
+        window.addEventListener ("touchmove", onTouchMove);
+        window.addEventListener ("touchend", onTouchEnd);
+        event.preventDefault();
+    };
+
+    const onTouchEnd = (event) =>
+    {
+        previousClientY = undefined;
+        accumulatedRotation = undefined;
+        window.removeEventListener ("touchmove", onTouchMove);
+        window.removeEventListener ("touchend", onTouchEnd);
+        onEndEdit?.();
+        event.preventDefault();
+    };
+
     const onReset = () => setValueAsGesture (initialValue, { onBeginEdit, onEdit, onEndEdit });
 
     element.addEventListener ("mousedown", onMouseDown);
     element.addEventListener ("dblclick", onReset);
+    element.addEventListener ('touchstart', onTouchStart);
 
     return update;
 }
