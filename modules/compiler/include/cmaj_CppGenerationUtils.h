@@ -131,7 +131,7 @@ namespace cmaj::cpp_utils
             }
             else
             {
-                currentLine += ", ";
+                currentLine += ",";
             }
 
             if (static_cast<signed char> (c) < 0)
