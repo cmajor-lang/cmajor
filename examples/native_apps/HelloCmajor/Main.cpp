@@ -3,6 +3,9 @@
     some data through it..
 */
 
+#undef CHOC_ASSERT
+#define CHOC_ASSERT(x) assert(x)
+
 #include <iostream>
 #include <memory>
 #include "../../../include/cmajor/API/cmaj_Engine.h"
@@ -28,20 +31,8 @@ processor Gain
 )";
 
 //==============================================================================
-int main (int argc, char** argv)
+int main ()
 {
-    if (argc < 2)
-    {
-        std::cout << "Error: Specify the location of your " << cmaj::Library::getDLLName() << " shared library file as the first argument" << std::endl;
-        exit (-1);
-    }
-
-    if (! cmaj::Library::initialise (argv[1]))
-    {
-        std::cout << "Failed to load the " << cmaj::Library::getDLLName() << " DLL from " << argv[1] << "!" << std::endl;
-        return 1;
-    }
-
     std::cout << "Engine types available: "
               << choc::text::joinStrings (cmaj::Engine::getAvailableEngineTypes(), ", ") << std::endl;
 

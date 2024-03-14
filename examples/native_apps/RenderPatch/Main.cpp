@@ -1,4 +1,7 @@
 
+#undef CHOC_ASSERT
+#define CHOC_ASSERT(x) assert(x)
+
 #include "../../../include/cmajor/API/cmaj_Engine.h"
 #include "../../../include/cmajor/helpers/cmaj_Patch.h"
 #include "../../../include/choc/javascript/choc_javascript_QuickJS.h"
@@ -42,27 +45,21 @@ std::string getFrameValue (choc::buffer::ChannelArrayBuffer<float>& buffer, uint
 //==============================================================================
 int main (int argc, char** argv)
 {
-    if (argc < 3)
+    if (argc < 2)
     {
-        std::cout << argv[0] << ": cmajLibraryPath patchfile" << std::endl
+        std::cout << argv[0] << ": patchfile" << std::endl
                   << std::endl
-                  << "Specify the cmaj library path as the first argument, followed by a patch to load as the second argument" << std::endl;
+                  << "Specify a patch to load as the first argument" << std::endl;
         exit (-1);
     }
 
-    if (! cmaj::Library::initialise (argv[1]))
-    {
-        std::cout << "Failed to load the library " << cmaj::Library::getDLLName() << " from " << argv[1] << "!" << std::endl;
-        return 1;
-    }
-
-    std::cout << "Loading patch " << argv[2] << std::endl;
+    std::cout << "Loading patch " << argv[1] << std::endl;
 
     cmaj::PatchManifest patchManifest;
 
     try
     {
-        patchManifest.initialiseWithFile (argv[2]);
+        patchManifest.initialiseWithFile (argv[1]);
     }
     catch (const std::runtime_error& e)
     {
