@@ -43,6 +43,11 @@ struct Performer
     Performer() = default;
     ~Performer();
 
+    Performer (const Performer&) = default;
+    Performer (Performer&&) = default;
+    Performer& operator= (const Performer&) = default;
+    Performer& operator= (Performer&&) = default;
+
     Performer (PerformerPtr);
 
     /// Returns true if this is a valid performer.

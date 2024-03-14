@@ -23,6 +23,7 @@ set(CMAJ_WARNING_FLAGS
         -Wsign-compare -Wsign-conversion -Wstrict-aliasing -Wswitch-enum -Wuninitialized -Wunreachable-code
         -Wunused-parameter -Wunused-private-field -Wnon-virtual-dtor -fvisibility=hidden -fvisibility-inlines-hidden
         $<$<COMPILE_LANGUAGE:CXX>:-Woverloaded-virtual -Wreorder -Wzero-as-null-pointer-constant>>
+        -Wdeprecated-copy -Wdeprecated-copy-dtor
     $<$<CXX_COMPILER_ID:GNU>:
         ${EXTRA_WARNINGS} -Wall -Wcast-align -Wextra -Wno-ignored-qualifiers -Wno-implicit-fallthrough
         -Wno-maybe-uninitialized -Wno-missing-field-initializers -Wno-strict-overflow

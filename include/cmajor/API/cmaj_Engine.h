@@ -41,6 +41,11 @@ struct Engine
     Engine() = default;
     ~Engine();
 
+    Engine (const Engine&) = default;
+    Engine (Engine&&) = default;
+    Engine& operator= (const Engine&) = default;
+    Engine& operator= (Engine&&) = default;
+
     Engine (EnginePtr);
 
     /// Returns true if this is a valid engine.

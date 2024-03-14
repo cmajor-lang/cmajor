@@ -108,10 +108,6 @@ struct DiagnosticMessage  final
 /// Manages a list of errors or warnings
 struct DiagnosticMessageList
 {
-    DiagnosticMessageList() = default;
-    ~DiagnosticMessageList() = default;
-
-    //==============================================================================
     void add (const DiagnosticMessage&);
     void add (const DiagnosticMessageList&);
     bool addFromJSON (const choc::value::ValueView&);
