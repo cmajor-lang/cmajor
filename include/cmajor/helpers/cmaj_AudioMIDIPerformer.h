@@ -228,9 +228,9 @@ static uint32_t countTotalAudioChannels (const cmaj::EndpointDetailsList& endpoi
 inline AudioMIDIPerformer::Builder::Builder (cmaj::Engine e, uint32_t eventFIFOSize)
     : result (new AudioMIDIPerformer (std::move (e), eventFIFOSize))
 {
-    CMAJ_ASSERT (e.isLoaded()); // The engine must be loaded before trying to build a performer for it
+    CMAJ_ASSERT (result->engine.isLoaded()); // The engine must be loaded before trying to build a performer for it
 
-    audioOutputChannelsUsed.resize (countTotalAudioChannels (e.getOutputEndpoints()));
+    audioOutputChannelsUsed.resize (countTotalAudioChannels (result->engine.getOutputEndpoints()));
 }
 
 inline void AudioMIDIPerformer::Builder::ensureInputScratchBufferChannelCount (uint32_t channelsNeeded)
