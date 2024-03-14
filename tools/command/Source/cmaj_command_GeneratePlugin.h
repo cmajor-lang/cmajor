@@ -60,7 +60,7 @@ std::filesystem::path unzipCmajorPluginHelpers (const std::filesystem::path& pat
             throw std::runtime_error (result.getErrorMessage().toStdString());
     }
 
-    return "helpers";
+    return "${CMAKE_CURRENT_SOURCE_DIR}/helpers";
 }
 
 inline std::string createFileData (const GeneratedFiles& files)
@@ -466,24 +466,18 @@ inline void generatePluginProject (juce::ArgumentList& args, std::string outputF
 
     GeneratedFiles generatedFiles;
 
+    auto getLibraryPath = [&] (const char* argName) -> std::string
+    {
+        if (args.containsOption (argName))
+            return args.getExistingFolderForOptionAndRemove (argName).getFullPathName().toStdString();
+
+        return {};
+    };
+
     if (isCLAP)
-    {
-        std::string clapIncludePath;
-
-        if (args.containsOption ("--clapIncludePath"))
-            clapIncludePath = args.getExistingFolderForOptionAndRemove ("--clapIncludePath").getFullPathName().toStdString();
-
-        createClapPluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, clapIncludePath, outputFile);
-    }
+        createClapPluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--clapIncludePath"), outputFile);
     else
-    {
-        std::string jucePath;
-
-        if (args.containsOption ("--jucePath"))
-            jucePath = args.getExistingFolderForOptionAndRemove ("--jucePath").getFullPathName().toStdString();
-
-        createJucePluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, jucePath);
-    }
+        createJucePluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--jucePath"));
 
     generatedFiles.writeToOutputFolder (outputFile);
 }

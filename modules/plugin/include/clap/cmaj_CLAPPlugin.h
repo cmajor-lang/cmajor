@@ -21,8 +21,7 @@
 
 #pragma once
 
-#include "cmaj_PluginHelpers.h"
-
+#include "cmajor/helpers/cmaj_PluginHelpers.h"
 #include "cmajor/helpers/cmaj_PatchHelpers.h"
 #include "cmajor/helpers/cmaj_Patch.h"
 #include "cmajor/helpers/cmaj_PatchWebView.h"
@@ -126,7 +125,7 @@ private:
 
     PluginFactoryArgs cachedArgs;
 
-    class Impl;
+    struct Impl;
     std::unique_ptr<Impl> impl;
 
     clap_plugin_audio_ports_t audioPortsExtension;
@@ -137,17 +136,46 @@ private:
     clap_plugin_gui_t guiExtension;
 };
 
-class Plugin::Impl
+struct Plugin::Impl
 {
-public:
-    Impl (const clap_host_t&, const std::filesystem::path&, const Environment&);
+    Impl (const clap_host_t& hostToUse,
+          const std::filesystem::path& pathToManifest,
+          const Environment& environmentToUse)
+        : host (hostToUse),
+          lastRequestedManifestPath (pathToManifest),
+          environment (environmentToUse),
+          patch (true, false)
+    {
+        // needed to consume the events dispatched from the ClientEventQueue thread on Windows.
+        // this, amongst other things, delivers the parameter value changes to the views.
+        choc::messageloop::initialise();
+        environment.initialisePatch (patch);
+        editorToProcessorEventQueue.reset (8192);
+
+        if (environment.engineType == Environment::EngineType::AOT)
+        {
+            [[maybe_unused]] const auto compiled = loadPatch (lastRequestedManifestPath, { 44100, 128 });
+            CMAJ_ASSERT (compiled);
+
+            updateParameterInfoCachesFromLoadedPatch();
+            updateAudioPortInfoCachesFromLoadedPatch();
+        }
+    }
 
     Impl (const Impl&) = delete;
     Impl (Impl&&) = delete;
     Impl& operator= (const Impl&) = delete;
     Impl& operator= (Impl&&) = delete;
 
-    void update (const std::filesystem::path&);
+    void update (const std::filesystem::path& nextPathToManifest)
+    {
+        if (! blockRestartRequests)
+        {
+            isResetRequestPending = true;
+            lastRequestedManifestPath = nextPathToManifest;
+            host.request_restart (std::addressof (host));
+        }
+    }
 
     //==============================================================================
 
@@ -202,13 +230,6 @@ public:
 
 private:
     //==============================================================================
-    struct BuildSettingsSubset
-    {
-        double frequency;
-        uint32_t maxBlockSize;
-    };
-
-    bool loadPatch (const std::filesystem::path&, const BuildSettingsSubset&);
     void updateParameterInfoCachesFromLoadedPatch();
     void updateAudioPortInfoCachesFromLoadedPatch();
     void updateNotePortInfoCachesFromLoadedPatch();
@@ -240,7 +261,6 @@ private:
     std::atomic<bool> blockEditorDispatch = false;
     std::atomic<bool> blockRestartRequests = false; // Bitwig seems to crash when requesting restart whilst being restarted
     std::atomic<bool> isResetRequestPending = false; // Doesn't actually need to be atomic unless we do something in start/stop processing
-//    static_assert (std::atomic<bool>::is_always_lock_free);
 
     // currently ramp frames are not applied when setting via host automation
     using SetParameterValueFromProcessFn = std::function<void(cmaj::EndpointHandle, float)>;
@@ -274,34 +294,38 @@ private:
     uint32_t maxBlockSize = 0;
 
     using Bytes = std::vector<uint8_t>;
+
     struct StateCache
     {
         Bytes serialised;
         choc::value::Value fullStoredState;
     };
+
     std::optional<StateCache> pendingStateToApplyWhenActivated;
 
     struct BeginGesture
     {
         cmaj::EndpointHandle handle;
     };
+
     struct EndGesture
     {
         cmaj::EndpointHandle handle;
     };
+
     struct SendValue
     {
         cmaj::EndpointHandle handle;
         float value;
     };
+
     using EditorParameterEvent = std::variant<BeginGesture, EndGesture, SendValue>;
     choc::fifo::SingleReaderSingleWriterFIFO<EditorParameterEvent> editorToProcessorEventQueue;
 
-    class ViewHolder
+    struct ViewHolder
     {
-    public:
-        explicit ViewHolder (cmaj::Patch& patchToUse, std::optional<double> initialScaleFactorToUse = {})
-            : webview (cmaj::PatchWebView::create (patchToUse, extractView (patchToUse)))
+        ViewHolder (cmaj::Patch& patchToUse, std::optional<double> initialScaleFactorToUse)
+            : webview (cmaj::PatchWebView::create (patchToUse, findDefaultViewForPatch (patchToUse)))
         {
             if (initialScaleFactorToUse)
                 setScaleFactor (*initialScaleFactorToUse);
@@ -323,12 +347,13 @@ private:
 
         Size size() const
         {
-            return { scaled (webview->width), scaled (webview->height) };
+            return { scaled (webview->width),
+                     scaled (webview->height) };
         }
 
         bool setSize (const Size& sizeToUse)
         {
-            webview->width = unscaled (sizeToUse.width);
+            webview->width  = unscaled (sizeToUse.width);
             webview->height = unscaled (sizeToUse.height);
 
             return updateNativeViewSize();
@@ -348,34 +373,10 @@ private:
         }
 
     private:
-        static cmaj::PatchManifest::View extractView (const cmaj::Patch& patch)
-        {
-            if (auto manifest = patch.getManifest())
-                if (auto* maybeView = manifest->findDefaultView())
-                    return *maybeView;
-
-            return {};
-        }
-
-        void* nativeViewHandle() const
-        {
-            return webview->getWebView().getViewHandle();
-        }
-
-        uint32_t scaled (uint32_t x) const
-        {
-            return scaleFactor ? toIntegerPixel (*scaleFactor * x) : x;
-        }
-
-        uint32_t unscaled (uint32_t x) const
-        {
-            return scaleFactor ? toIntegerPixel (*inverseScaleFactor * x) : x;
-        }
-
-        static uint32_t toIntegerPixel (double x)
-        {
-            return static_cast<uint32_t> (0.5 + x);
-        }
+        void* nativeViewHandle() const                  { return webview->getWebView().getViewHandle(); }
+        uint32_t scaled (uint32_t x) const              { return scaleFactor ? toIntegerPixel (*scaleFactor * x) : x; }
+        uint32_t unscaled (uint32_t x) const            { return scaleFactor ? toIntegerPixel (*inverseScaleFactor * x) : x; }
+        static uint32_t toIntegerPixel (double x)       { return static_cast<uint32_t> (0.5 + x); }
 
         bool updateNativeViewSize()
         {
@@ -391,6 +392,48 @@ private:
 
     std::optional<double> cachedViewScaleFactor; // workaround Bitwig only passing the scale factor the first time the view is shown
     std::optional<ViewHolder> editor;
+
+    bool loadPatch (const std::filesystem::path& pathToManifest, FrequencyAndBlockSize frequencyAndBlockSize)
+    {
+        const auto manifest = cmaj::plugin::makePatchManifest (pathToManifest, environment);
+
+        using InitialParameterValues = std::unordered_map<std::string, float>;
+        InitialParameterValues initialParameterValues {};
+
+        for (const auto& parameter : patch.getParameterList())
+            initialParameterValues[parameter->properties.endpointID] = parameter->currentValue;
+
+        if (! patch.preload (manifest))
+            return {};
+
+        const auto sumTotalChannelsAcrossAudioEndpoints = [] (const cmaj::EndpointDetailsList& endpoints) -> uint32_t
+        {
+            uint32_t totalChannelCount = 0;
+
+            for (const auto& endpoint : endpoints)
+                totalChannelCount += endpoint.getNumAudioChannels();
+
+            return totalChannelCount;
+        };
+
+        patch.setPlaybackParams ({
+            frequencyAndBlockSize.frequency,
+            frequencyAndBlockSize.maxBlockSize,
+            sumTotalChannelsAcrossAudioEndpoints (patch.getInputEndpoints()),
+            sumTotalChannelsAcrossAudioEndpoints (patch.getOutputEndpoints()),
+        });
+
+        if (! patch.loadPatch ({ manifest, initialParameterValues }))
+            return {};
+
+        if (! patch.isPlayable())
+            return {};
+
+        flattenedInputChannelsScratchBuffer.resize (sumTotalChannelsAcrossAudioEndpoints (patch.getInputEndpoints()));
+        flattenedOutputChannelsScratchBuffer.resize (sumTotalChannelsAcrossAudioEndpoints (patch.getOutputEndpoints()));
+
+        return true;
+    }
 };
 
 template <typename T>
@@ -405,114 +448,10 @@ T& unsafeCastToRef (const clap_plugin_t* plugin)
     return *unsafeCastToPtr<T> (plugin);
 }
 
-//==============================================================================
-inline Plugin::Impl::Impl (const clap_host_t& hostToUse,
-                           const std::filesystem::path& pathToManifest,
-                           const Environment& environmentToUse)
-    : host (hostToUse),
-      lastRequestedManifestPath (pathToManifest),
-      environment (environmentToUse),
-      patch (true, false)
-{
-    // needed to consume the events dispatched from the ClientEventQueue thread on Windows.
-    // this, amongst other things, delivers the parameter value changes to the views.
-    choc::messageloop::initialise();
-
-    patch.createEngine = environment.createEngine;
-
-    patch.stopPlayback = [] {};
-    patch.startPlayback = [] {};
-    patch.patchChanged = [] {};
-    patch.statusChanged = [] (auto&&...) {};
-
-    patch.handleOutputEvent = [] (auto&&...) {};
-
-    editorToProcessorEventQueue.reset (8192);
-
-    if (environment.engineType == Environment::EngineType::AOT)
-    {
-        [[maybe_unused]] const auto compiled = loadPatch (lastRequestedManifestPath, { 44100, 128 });
-        CMAJ_ASSERT (compiled);
-
-        updateParameterInfoCachesFromLoadedPatch();
-        updateAudioPortInfoCachesFromLoadedPatch();
-    }
-}
-
 template <typename T>
 auto getExtension (const clap_host_t& host, const char* extension)
 {
     return reinterpret_cast<const T*> (host.get_extension (std::addressof (host), extension));
-}
-
-inline bool Plugin::Impl::loadPatch (const std::filesystem::path& pathToManifest, const BuildSettingsSubset& buildSettings)
-{
-    const auto makePatchManifest = [this] (const std::filesystem::path& path) -> cmaj::PatchManifest
-    {
-        try
-        {
-            if (! environment.vfs)
-            {
-                cmaj::PatchManifest manifest;
-                manifest.initialiseWithFile (path);
-                return manifest;
-            }
-
-            cmaj::PatchManifest manifest;
-            manifest.needsToBuildSource = environment.engineType == Environment::EngineType::JIT;
-
-            const auto& fs = environment.vfs;
-            manifest.initialiseWithVirtualFile (path.generic_string(),
-                                                fs->createFileReader,
-                                                [getFullPathForFile = fs->getFullPathForFile] (const auto& p) { return getFullPathForFile (p).string(); },
-                                                fs->getFileModificationTime,
-                                                fs->fileExists);
-            return manifest;
-        }
-        catch (...)
-        {
-            return {};
-        }
-    };
-
-    const auto manifest = makePatchManifest (pathToManifest);
-
-    using InitialParameterValues = std::unordered_map<std::string, float>;
-    InitialParameterValues initialParameterValues {};
-
-    for (const auto& parameter : patch.getParameterList())
-        initialParameterValues[parameter->properties.endpointID] = parameter->currentValue;
-
-    if (! patch.preload (manifest))
-        return {};
-
-    const auto sumTotalChannelsAcrossAudioEndpoints = [] (const cmaj::EndpointDetailsList& endpoints) -> uint32_t
-    {
-        uint32_t totalChannelCount = 0;
-
-        for (const auto& endpoint : endpoints)
-            totalChannelCount += endpoint.getNumAudioChannels();
-
-        return totalChannelCount;
-    };
-
-    patch.setPlaybackParams ({
-        buildSettings.frequency,
-        buildSettings.maxBlockSize,
-        sumTotalChannelsAcrossAudioEndpoints (patch.getInputEndpoints()),
-        sumTotalChannelsAcrossAudioEndpoints (patch.getOutputEndpoints()),
-    });
-
-    if (! patch.loadPatch ({ manifest, initialParameterValues }))
-        return {};
-
-    if (! patch.isPlayable())
-        return {};
-
-    flattenedInputChannelsScratchBuffer.resize (sumTotalChannelsAcrossAudioEndpoints (patch.getInputEndpoints()));
-    flattenedOutputChannelsScratchBuffer.resize (sumTotalChannelsAcrossAudioEndpoints (patch.getOutputEndpoints()));
-
-    return true;
 }
 
 inline bool Plugin::Impl::clapPlugin_activate (double frequencyToUse, uint32_t, uint32_t maxBlockSizeToUse)
@@ -863,8 +802,8 @@ void forEachFilteredEventRange (const EventTimeRange& range,
     using SizeType = EventTimeRange::SizeType;
 
     SizeType rangeStartOffset = range.start;
-
     const auto eventCount = events.size (std::addressof (events));
+
     for (SizeType eventIndex = 0; eventIndex < eventCount; ++eventIndex)
     {
         const auto* event = events.get (std::addressof (events), eventIndex);
@@ -920,6 +859,7 @@ inline clap_process_status Plugin::Impl::clapPlugin_process (const clap_process_
             const auto populateFlattenedChannelsScatchBuffer = [] (auto& flattened, const auto& info, auto* buffers)
             {
                 size_t flattenedChannelsIndex = 0;
+
                 for (size_t i = 0; i < info.size(); ++i)
                 {
                     const auto& buffer = buffers[i];
@@ -942,8 +882,10 @@ inline clap_process_status Plugin::Impl::clapPlugin_process (const clap_process_
                                    inputQueue,
                                    shouldConsumeEvent,
                                    [this] (const auto& event) { dispatchEvent (event); },
-                                   [&] (const auto& range) {
-            const auto replaceOutput = true;
+                                   [&] (const auto& range)
+        {
+            const bool replaceOutput = true;
+
             patch.process ({
                 inputChannels.getFrameRange ({ range.start, range.end }),
                 outputChannels.getFrameRange ({ range.start, range.end }),
@@ -985,7 +927,6 @@ inline clap_process_status Plugin::Impl::clapPlugin_process (const clap_process_
                             );
 
                             outputQueue.try_push (std::addressof (outputQueue), std::addressof (clapEvent.header));
-
                             return;
                         }
                     }
@@ -1030,8 +971,6 @@ inline void Plugin::Impl::consumeEventsFromEditor (const clap_output_events_t& o
                     return clapEvent;
                 };
 
-                (void) makeClapGestureEvent;
-
                 if constexpr (std::is_same_v<T, BeginGesture>)
                 {
                     auto clapEvent = makeClapGestureEvent (CLAP_EVENT_PARAM_GESTURE_BEGIN, event);
@@ -1044,6 +983,7 @@ inline void Plugin::Impl::consumeEventsFromEditor (const clap_output_events_t& o
                 }
                 else if constexpr (std::is_same_v<T, SendValue>)
                 {
+                    (void) makeClapGestureEvent;
                     clap_event_param_value clapEvent {};
                     clapEvent.header.size = sizeof (clap_event_param_value);
                     clapEvent.header.type = static_cast<uint16_t> (CLAP_EVENT_PARAM_VALUE);
@@ -1244,7 +1184,6 @@ inline bool Plugin::Impl::clapAudioPorts_get (uint32_t index, bool input, clap_a
         return false;
 
     *out = ports[index];
-
     return true;
 }
 
@@ -1263,7 +1202,6 @@ inline bool Plugin::Impl::clapNotePorts_get (uint32_t index, bool input, clap_no
         return false;
 
     *out = ports[index];
-
     return true;
 }
 
@@ -1292,9 +1230,7 @@ inline bool Plugin::Impl::clapState_save (const clap_ostream_t* stream)
     };
 
     const auto& buffer = pendingStateToApplyWhenActivated ? pendingStateToApplyWhenActivated->serialised : serialise();
-
     const auto totalBytesToWrite = buffer.size();
-
     auto readPointer = buffer.data();
     size_t readIndex = 0;
 
@@ -1334,8 +1270,8 @@ inline bool Plugin::Impl::clapState_load (const clap_istream_t* stream)
     try
     {
         const auto state = choc::json::parse ({ reinterpret_cast<const char*> (serialised.data()), serialised.size() });
-
         const auto activated = patch.isPlayable();
+
         if (! activated)
         {
             pendingStateToApplyWhenActivated = { serialised, state };
@@ -1343,7 +1279,6 @@ inline bool Plugin::Impl::clapState_load (const clap_istream_t* stream)
         }
 
         patch.setFullStoredState (state);
-
         return true;
     }
     catch (...) {}
@@ -1363,7 +1298,6 @@ inline bool Plugin::Impl::clapParameters_getInfo (uint32_t index, clap_param_inf
         return false;
 
     *out = automatableParameterInfo[index];
-
     return true;
 }
 
@@ -1401,9 +1335,7 @@ inline bool Plugin::Impl::clapParameters_valueToText (clap_id id, double value, 
 
         const auto& properties = parameterEntry->second->properties;
         copyAndNullTerminateTruncatingIfNecessary (properties.getValueAsString (static_cast<float> (value)),
-                                                   out,
-                                                   capacity);
-
+                                                   out, capacity);
         return true;
     }
 
@@ -1415,23 +1347,19 @@ inline bool Plugin::Impl::clapParameters_textToValue (clap_id id, const char* te
     if (auto parameterEntry = automatableParametersByHandle.find (id);
         parameterEntry != automatableParametersByHandle.end())
     {
-        const auto& properties = parameterEntry->second->properties;
-
-        const auto maybeValue = properties.getStringAsValue (text);
-        if (! maybeValue)
-            return false;
-
-        auto value = *maybeValue;
-
-        if (auto maybeMappers = automatableParameterMappingFunctionsByHandle.find (id);
-            maybeMappers != automatableParameterMappingFunctionsByHandle.end())
+        if (auto maybeValue = parameterEntry->second->properties.getStringAsValue (text))
         {
-            value = maybeMappers->second.toClapValue (value);
+            auto value = *maybeValue;
+
+            if (auto maybeMappers = automatableParameterMappingFunctionsByHandle.find (id);
+                maybeMappers != automatableParameterMappingFunctionsByHandle.end())
+            {
+                value = maybeMappers->second.toClapValue (value);
+            }
+
+            *out = value;
+            return true;
         }
-
-        *out = value;
-
-        return true;
     }
 
     return false;
@@ -1440,6 +1368,7 @@ inline bool Plugin::Impl::clapParameters_textToValue (clap_id id, const char* te
 inline void Plugin::Impl::clapParameters_flush (const clap_input_events_t* inputQueue, const clap_output_events_t*)
 {
     const auto eventCount = inputQueue->size (inputQueue);
+
     for (uint32_t eventIndex = 0; eventIndex < eventCount; ++eventIndex)
         dispatchEvent (*inputQueue->get (inputQueue, eventIndex));
 }
@@ -1482,7 +1411,6 @@ inline bool Plugin::Impl::clapGui_getPreferredApi (const char** api, bool* float
 inline bool Plugin::Impl::clapGui_create (const char*, bool)
 {
     editor = ViewHolder (patch, cachedViewScaleFactor);
-
     return true;
 }
 
@@ -1572,18 +1500,7 @@ inline void Plugin::Impl::resetIfRequestIsPending()
         return;
 
     isResetRequestPending = false;
-
     clapPlugin_activate (frequency, maxBlockSize, maxBlockSize);
-}
-
-inline void Plugin::Impl::update (const std::filesystem::path& nextPathToManifest)
-{
-    if (! blockRestartRequests)
-    {
-        isResetRequestPending = true;
-        lastRequestedManifestPath = nextPathToManifest;
-        host.request_restart (std::addressof (host));
-    }
 }
 
 void Plugin::Impl::copyAndNullTerminateTruncatingIfNecessary (const std::string& from, char* to, size_t capacity)
@@ -1647,6 +1564,7 @@ inline PluginPtr Plugin::create (const clap_plugin_descriptor_t& description,
                 delete ptr;
             }
         };
+
         return std::unique_ptr<clap_plugin, decltype (deleter)> (p, deleter);
     };
 
@@ -1876,26 +1794,16 @@ inline void Plugin::clapPlugin_destroy (const clap_plugin_t* plugin)
 inline const void* Plugin::clapPlugin_getExtension (const clap_plugin_t* plugin, const char* id)
 {
     auto& self = unsafeCastToRef<Plugin> (plugin);
+    auto stringID = std::string_view (id);
 
-    if (std::string_view (id) == CLAP_EXT_LATENCY)
-        return std::addressof (self.latencyExtension);
+    if (stringID == CLAP_EXT_LATENCY)      return std::addressof (self.latencyExtension);
+    if (stringID == CLAP_EXT_STATE)        return std::addressof (self.stateExtension);
+    if (stringID == CLAP_EXT_AUDIO_PORTS)  return std::addressof (self.audioPortsExtension);
+    if (stringID == CLAP_EXT_NOTE_PORTS)   return std::addressof (self.notePortsExtension);
+    if (stringID == CLAP_EXT_PARAMS)       return std::addressof (self.parametersExtension);
+    if (stringID == CLAP_EXT_GUI)          return std::addressof (self.guiExtension);
 
-    if (std::string_view (id) == CLAP_EXT_STATE)
-        return std::addressof (self.stateExtension);
-
-    if (std::string_view (id) == CLAP_EXT_AUDIO_PORTS)
-        return std::addressof (self.audioPortsExtension);
-
-    if (std::string_view (id) == CLAP_EXT_NOTE_PORTS)
-        return std::addressof (self.notePortsExtension);
-
-    if (std::string_view (id) == CLAP_EXT_PARAMS)
-        return std::addressof (self.parametersExtension);
-
-    if (std::string_view (id) == CLAP_EXT_GUI)
-        return std::addressof (self.guiExtension);
-
-    return nullptr;
+    return {};
 }
 
 inline void Plugin::update (const std::filesystem::path& pathToManifest)
@@ -2146,7 +2054,6 @@ auto makeGeneratedCppPluginFactory()
 } // namespace detail
 
 //==============================================================================
-
 inline PluginPtr create (const clap_plugin_descriptor& descriptor,
                          const clap_host& host,
                          const std::filesystem::path& pathToManifest,

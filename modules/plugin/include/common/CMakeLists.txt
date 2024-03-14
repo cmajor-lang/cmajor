@@ -19,7 +19,6 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 add_library(cmaj_plugin_helpers INTERFACE)
-target_sources(cmaj_plugin_helpers INTERFACE cmaj_PluginHelpers.h)
 target_include_directories(cmaj_plugin_helpers INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 target_compile_features(cmaj_plugin_helpers INTERFACE cxx_std_17)
 target_link_libraries(cmaj_plugin_helpers INTERFACE cmaj_public_deps_for_plugin_wrapper)
