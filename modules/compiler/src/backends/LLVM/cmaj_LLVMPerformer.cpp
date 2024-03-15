@@ -406,24 +406,24 @@ struct LLVMEngine
                     else if (endpoint.details.isEvent())
                     {
                         auto& eventListType = *codeGen.stateStruct->getTypeForMember (endpointID);
-                        auto& eventEntryType = AST::castToRef<AST::StructType> (eventListType.getArrayOrVectorElementType());
+                        auto eventEntryType = AST::castTo<AST::StructType> (eventListType.getArrayOrVectorElementType());
 
                         outputEvents.push_back ({ handle,
                                                   codeGen.getStructMemberOffset (*codeGen.stateStruct, EventHandlerUtilities::getEventCountStateMemberName (endpointID)),
                                                   codeGen.getStructMemberOffset (*codeGen.stateStruct, endpointID),
-                                                  codeGen.getStructPaddedSize (eventEntryType),
-                                                  codeGen.getStructMemberOffset (eventEntryType, 1) });
+                                                  codeGen.getStructPaddedSize (*eventEntryType),
+                                                  codeGen.getStructMemberOffset (*eventEntryType, 1) });
 
                         for (uint32_t i = 0; i < endpoint.details.dataTypes.size(); ++i)
                         {
-                            auto memberIndex = eventEntryType.indexOfMember ("value_" + std::to_string (i));
+                            auto memberIndex = eventEntryType->indexOfMember ("value_" + std::to_string (i));
 
-                            auto& type = (memberIndex >= 0) ? eventEntryType.getMemberType (static_cast<size_t> (memberIndex)) : eventEntryType.context.allocator.createVoidType();
+                            auto& type = (memberIndex >= 0) ? eventEntryType->getMemberType (static_cast<size_t> (memberIndex)) : eventEntryType->context.allocator.createVoidType();
 
                             if (memberIndex < 0)
                                 memberIndex = 0;
 
-                            outputEvents.back().eventTypeHandlers.push_back ({ static_cast<uint32_t> (codeGen.getStructMemberOffset (eventEntryType, static_cast<uint32_t> (memberIndex))),
+                            outputEvents.back().eventTypeHandlers.push_back ({ static_cast<uint32_t> (codeGen.getStructMemberOffset (*eventEntryType, static_cast<uint32_t> (memberIndex))),
                                                                                nativeTypeLayouts.get (type) });
                         }
                     }
