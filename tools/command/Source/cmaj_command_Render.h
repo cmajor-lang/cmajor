@@ -80,7 +80,7 @@ struct RenderState
     RenderState (const RenderOptions& options,
                  const choc::value::Value& engineOptions,
                  cmaj::BuildSettings& buildSettings)
-      : patchPlayer (engineOptions, buildSettings, true, false)
+      : patchPlayer (engineOptions, buildSettings)
     {
         auto audioOptions = options.audioOptions;
         audioOptions.createPlayer = cmaj::audio_utils::createRenderingPlayer;
@@ -163,7 +163,7 @@ struct RenderState
                 throw std::runtime_error (s.messageList.toString());
         };
 
-        if (! patchPlayer.loadPatch (options.patchFile))
+        if (! patchPlayer.loadPatch (options.patchFile, true))
             throw std::runtime_error ("Could not load patch");
 
         stopped = false;

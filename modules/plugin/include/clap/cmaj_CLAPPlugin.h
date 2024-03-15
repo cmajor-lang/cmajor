@@ -143,8 +143,7 @@ struct Plugin::Impl
           const Environment& environmentToUse)
         : host (hostToUse),
           lastRequestedManifestPath (pathToManifest),
-          environment (environmentToUse),
-          patch (true, false)
+          environment (environmentToUse)
     {
         // needed to consume the events dispatched from the ClientEventQueue thread on Windows.
         // this, amongst other things, delivers the parameter value changes to the views.
@@ -423,7 +422,7 @@ private:
             sumTotalChannelsAcrossAudioEndpoints (patch.getOutputEndpoints()),
         });
 
-        if (! patch.loadPatch ({ manifest, initialParameterValues }))
+        if (! patch.loadPatch ({ manifest, initialParameterValues }, true))
             return {};
 
         if (! patch.isPlayable())

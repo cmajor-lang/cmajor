@@ -32,10 +32,7 @@ namespace cmaj
 struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
 {
     PatchPlayer (const choc::value::Value& engineOptions,
-                 const cmaj::BuildSettings& buildSettings,
-                 bool buildSynchronously = false,
-                 bool checkFilesForChanges = true)
-        : patch (buildSynchronously, checkFilesForChanges)
+                 const cmaj::BuildSettings& buildSettings)
     {
         initPatchCallbacks (engineOptions, buildSettings);
     }
@@ -90,9 +87,9 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
     }
 
     //==============================================================================
-    bool loadPatch (const std::string& patchFile)
+    bool loadPatch (const std::string& patchFile, bool synchronous = false)
     {
-        return patch.loadPatchFromFile (patchFile);
+        return patch.loadPatchFromFile (patchFile, synchronous);
     }
 
     bool isPlaying() const

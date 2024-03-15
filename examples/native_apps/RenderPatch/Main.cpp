@@ -67,7 +67,7 @@ int main (int argc, char** argv)
         return 1;
     }
 
-    cmaj::Patch patch (true, false);
+    cmaj::Patch patch;
 
     patch.createEngine = [&] { return cmaj::Engine::create(); };
 
@@ -101,7 +101,7 @@ int main (int argc, char** argv)
 
     loadParams.manifest = patchManifest;
 
-    if (! patch.loadPatch (loadParams))
+    if (! patch.loadPatch (loadParams, true))
     {
         std::cerr << "Failed to load patch" << std::endl;
         return 1;

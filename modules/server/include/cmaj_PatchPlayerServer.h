@@ -636,15 +636,15 @@ struct PatchPlayerServer
                     codeGenThread.stop();
                     codeGenThread.start (0, [this, params, type, replyType, options = choc::value::Value (options)]
                     {
-                        cmaj::Patch p (true, false);
+                        cmaj::Patch p;
                         p.setPlaybackParams (patchPlayer->patch.getPlaybackParams());
                         p.createEngine = [&] { return cmaj::Engine::create(); };
                         auto output = p.generateCode (params, type, choc::json::toString (options));
 
                         sendMessageToClient (replyType,
-                                            choc::json::create ("code", output.generatedCode,
-                                                                "mainClass", output.mainClassName,
-                                                                "messages", output.messages.toJSON()));
+                                             choc::json::create ("code", output.generatedCode,
+                                                                 "mainClass", output.mainClassName,
+                                                                 "messages", output.messages.toJSON()));
 
                     });
 

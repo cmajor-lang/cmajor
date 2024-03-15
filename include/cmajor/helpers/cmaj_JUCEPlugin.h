@@ -1479,7 +1479,8 @@ public:
             PatchManifest manifest;
             manifest.initialiseWithFile (PluginInstance::getFileFromPluginID (desc.fileOrIdentifier));
 
-            auto patch = std::make_unique<Patch> (false, true);
+            auto patch = std::make_unique<Patch>();
+            patch->setAutoRebuildOnFileChange (true);
             patch->createEngine = +[] { return cmaj::Engine::create(); };
             patch->cache = cache;
             patch->preload (manifest);

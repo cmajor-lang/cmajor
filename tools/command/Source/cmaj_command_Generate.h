@@ -86,7 +86,7 @@ void generateFromPatch (juce::ArgumentList& args,
                         const cmaj::BuildSettings& buildSettings,
                         const choc::value::Value& engineOptions)
 {
-    cmaj::Patch patch (true, false);
+    cmaj::Patch patch;
 
     patch.createEngine = [&]
     {
@@ -94,6 +94,8 @@ void generateFromPatch (juce::ArgumentList& args,
         engine.setBuildSettings (buildSettings);
         return engine;
     };
+
+    patch.createContextForPatchWorker = [] { return choc::javascript::Context(); };
 
     patch.setPlaybackParams ({ 44100, buildSettings.getMaxBlockSize(), 0, 0 });
 

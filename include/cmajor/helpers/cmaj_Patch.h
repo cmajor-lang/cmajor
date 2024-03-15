@@ -39,7 +39,7 @@ using PatchParameterPtr = std::shared_ptr<PatchParameter>;
 /// rebuilds safely on a background thread.
 struct Patch
 {
-    Patch (bool buildSynchronously, bool keepCheckingFilesForChanges);
+    Patch();
     ~Patch();
 
     struct LoadParams
@@ -56,13 +56,19 @@ struct Patch
 
     /// Kicks off a full build of a patch, optionally providing some initial
     /// parameter values to apply before processing starts.
-    bool loadPatch (const LoadParams&);
+    /// If synchronous is true, this method will block while the build completes,
+    /// otherwise it will return and leave a background thread doing the build.
+    bool loadPatch (const LoadParams&, bool synchronous = false);
 
-    /// Tries to load a patch from a file path
-    bool loadPatchFromFile (const std::string& patchFilePath);
+    /// Tries to load a patch from a file path.
+    /// If synchronous is true, this method will block while the build completes,
+    /// otherwise it will return and leave a background thread doing the build.
+    bool loadPatchFromFile (const std::string& patchFilePath, bool synchronous = false);
 
-    /// Tries to load a patch from a manifest
-    bool loadPatchFromManifest (PatchManifest&&);
+    /// Tries to load a patch from a manifest.
+    /// If synchronous is true, this method will block while the build completes,
+    /// otherwise it will return and leave a background thread doing the build.
+    bool loadPatchFromManifest (PatchManifest&&, bool synchronous = false);
 
     /// Triggers a rebuild of the current patch, which may be needed if the code
     /// or playback parameters change.
@@ -107,7 +113,13 @@ struct Patch
     /// they have changed.
     void setPlaybackParams (PlaybackParams);
 
+    /// Returns the current playback parameters.
     PlaybackParams getPlaybackParams() const        { return currentPlaybackParams; }
+
+    /// Enables/disables use of a background thread to check for any changes
+    /// to patch files, and to trigger a rebuild when that happens.
+    /// This defaults to false.
+    void setAutoRebuildOnFileChange (bool shouldMonitorFilesForChanges);
 
     /// Attempts to code-generate from a patch.
     Engine::CodeGenOutput generateCode (const LoadParams&,
@@ -273,6 +285,8 @@ struct Patch
 
     CustomAudioSourcePtr getCustomAudioSourceForInput (const EndpointID&) const;
 
+    std::function<choc::javascript::Context()> createContextForPatchWorker;
+
     /// A client can provide this callback to get a callback when something modifies
     /// one of the patches in the bundle
     std::function<void(PatchFileChangeChecker::ChangeType)> patchFilesChanged;
@@ -296,7 +310,7 @@ private:
     friend struct PatchView;
     friend struct PatchParameter;
 
-    const bool scanFilesForChanges;
+    bool scanFilesForChanges = false;
     LoadParams lastLoadParams;
     std::shared_ptr<PatchRenderer> renderer;
     PlaybackParams currentPlaybackParams;
@@ -700,13 +714,10 @@ struct Patch::PatchWorker  : public PatchView
 {
     PatchWorker (Patch& p, PatchManifest& m) : PatchView (p), manifest (m)
     {
-        if (! manifest.patchWorker.empty())
-        {
-            initCallback = [this] { initialiseWorker(); };
-            runCodeCallback = [this] (const std::string& code) { runCode (code); };
-            running = true;
-            choc::messageloop::postMessage ([f = initCallback] { f(); });
-        }
+        initCallback = [this] { initialiseWorker(); };
+        runCodeCallback = [this] (const std::string& code) { runCode (code); };
+        running = true;
+        choc::messageloop::postMessage ([f = initCallback] { f(); });
     }
 
     ~PatchWorker() override
@@ -729,8 +740,12 @@ struct Patch::PatchWorker  : public PatchView
     {
         try
         {
-            // NB: QuickJS needs the context to be created by the thread that uses it
-            context = choc::javascript::createQuickJSContext();
+            // NB: Some types of context need to be created by the thread that uses it
+            context = patch.createContextForPatchWorker();
+
+            if (! context)
+                return; // If a client deliberately provides a null context, we'll just not run the worker
+
             registerTimerFunctions (context);
             registerConsoleFunctions (context);
             registerLibraryFunctions();
@@ -1575,7 +1590,14 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
     void startPatchWorker()
     {
-        patchWorker = std::make_unique<PatchWorker> (patch, manifest);
+        if (! manifest.patchWorker.empty())
+        {
+            // If loading patches with a worker, the caller must set up the
+            // createContextForPatchWorker functor to create a suitable javascript
+            // context.
+            CMAJ_ASSERT (patch.createContextForPatchWorker != nullptr);
+            patchWorker = std::make_unique<PatchWorker> (patch, manifest);
+        }
     }
 
     void startInfiniteLoopCheck (std::function<void()> handleInfiniteLoopFn)
@@ -1881,8 +1903,7 @@ private:
 };
 
 //==============================================================================
-inline Patch::Patch (bool buildSynchronously, bool keepCheckingFilesForChanges)
-    : scanFilesForChanges (keepCheckingFilesForChanges)
+inline Patch::Patch()
 {
     const size_t midiBufferSize = 256;
     midiMessageTimes.reserve (midiBufferSize);
@@ -1890,8 +1911,7 @@ inline Patch::Patch (bool buildSynchronously, bool keepCheckingFilesForChanges)
 
     clientEventQueue = std::make_unique<ClientEventQueue> (*this);
 
-    if (! buildSynchronously)
-        buildThread = std::make_unique<BuildThread> (*this);
+    createContextForPatchWorker = [] { return choc::javascript::createQuickJSContext(); };
 }
 
 inline Patch::~Patch()
@@ -1911,7 +1931,7 @@ inline bool Patch::preload (const PatchManifest& m)
     return renderer != nullptr && ! renderer->errors.hasErrors();
 }
 
-inline bool Patch::loadPatch (const LoadParams& params)
+inline bool Patch::loadPatch (const LoadParams& params, bool synchronous)
 {
     if (! currentPlaybackParams.isValid())
         return false;
@@ -1925,18 +1945,21 @@ inline bool Patch::loadPatch (const LoadParams& params)
 
     setStatus ("Loading: " + params.manifest.manifestFile);
 
-    if (buildThread != nullptr)
+    if (synchronous)
     {
-        buildThread->startBuild (std::move (build));
-        return true;
+        build->build ([] {});
+        setNewRenderer (build->takeRenderer());
+        return isPlayable();
     }
 
-    build->build ([] {});
-    setNewRenderer (build->takeRenderer());
-    return isPlayable();
+    if (buildThread == nullptr)
+        buildThread = std::make_unique<BuildThread> (*this);
+
+    buildThread->startBuild (std::move (build));
+    return true;
 }
 
-inline bool Patch::loadPatchFromManifest (PatchManifest&& m)
+inline bool Patch::loadPatchFromManifest (PatchManifest&& m, bool synchronous)
 {
     LoadParams params;
 
@@ -1960,14 +1983,14 @@ inline bool Patch::loadPatchFromManifest (PatchManifest&& m)
         return false;
     }
 
-    return loadPatch (params);
+    return loadPatch (params, synchronous);
 }
 
-inline bool Patch::loadPatchFromFile (const std::string& patchFile)
+inline bool Patch::loadPatchFromFile (const std::string& patchFile, bool synchronous)
 {
     PatchManifest manifest;
     manifest.createFileReaderFunctions (patchFile);
-    return loadPatchFromManifest (std::move (manifest));
+    return loadPatchFromManifest (std::move (manifest), synchronous);
 }
 
 inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, const std::string& target, const std::string& options)
@@ -2006,6 +2029,14 @@ inline void Patch::unload()
 inline std::string Patch::getLastBuildLog() const
 {
     return renderer != nullptr ? renderer->lastBuildLog : std::string();
+}
+
+inline void Patch::setAutoRebuildOnFileChange (bool shouldMonitorFilesForChanges)
+{
+    scanFilesForChanges = shouldMonitorFilesForChanges;
+
+    if (! scanFilesForChanges)
+        fileChangeChecker.reset();
 }
 
 inline void Patch::startCheckingForChanges()
@@ -2060,7 +2091,7 @@ inline void Patch::rebuild()
 
         if (lastLoadParams.manifest.reload())
         {
-            loadPatch (lastLoadParams);
+            loadPatch (lastLoadParams, false);
             return;
         }
     }
@@ -2677,7 +2708,7 @@ inline bool Patch::handleClientMessage (PatchView& sourceView, const choc::value
         if (type == "load_patch")
         {
             if (auto file = msg["file"].toString(); ! file.empty())
-                return loadPatchFromFile (file);
+                return loadPatchFromFile (file, false);
 
             unload();
             return true;

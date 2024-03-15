@@ -110,8 +110,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
         patch.stopPlayback      = [] {};
@@ -127,7 +126,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         params.numOutputChannels = 0;
         patch.setPlaybackParams (params);
 
-        CHOC_EXPECT_TRUE (patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }));
+        CHOC_EXPECT_TRUE (patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }, true));
         CHOC_EXPECT_EQ (patch.getFramesLatency(), 32.0);
     }
 
@@ -158,8 +157,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
 
@@ -177,7 +175,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         params.numOutputChannels = 0;
         patch.setPlaybackParams (params);
 
-        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }))
+        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }, true))
         {
             CHOC_FAIL ("Failed to load patch");
             return false;
@@ -236,8 +234,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
 
@@ -255,7 +252,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         params.numOutputChannels = 0;
         patch.setPlaybackParams (params);
 
-        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }))
+        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }, true))
         {
             CHOC_FAIL ("Failed to load patch");
             return false;
@@ -323,8 +320,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
 
@@ -342,7 +338,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         params.numOutputChannels = 1;
         patch.setPlaybackParams (params);
 
-        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }))
+        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }, true))
         {
             CHOC_FAIL ("Failed to load patch");
             return false;
@@ -408,8 +404,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
 
@@ -427,7 +422,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         params.numOutputChannels = 1;
         patch.setPlaybackParams (params);
 
-        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }))
+        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }, true))
         {
             CHOC_FAIL ("Failed to load patch");
             return false;
@@ -495,8 +490,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
 
@@ -513,7 +507,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         params.numOutputChannels = 1;
         patch.setPlaybackParams (params);
 
-        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }))
+        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }, true))
         {
             CHOC_FAIL ("Failed to load patch");
             return false;
@@ -575,8 +569,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
         patch.stopPlayback      = [] {};
@@ -593,7 +586,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         patch.setPlaybackParams (params);
 
         const File testSource { "Test.cmajor", shouldCompile ? validCmajorSource : invalidCmajorSource };
-        CHOC_EXPECT_EQ (patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, { testSource }), {} }), shouldCompile);
+        CHOC_EXPECT_EQ (patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, { testSource }), {} }, true), shouldCompile);
 
         const std::vector<choc::value::Value> messages
         {
@@ -759,8 +752,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
 
@@ -778,7 +770,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         params.numOutputChannels = 1;
         patch.setPlaybackParams (params);
 
-        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }))
+        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }, true))
         {
             CHOC_FAIL ("Failed to load patch");
             return false;
@@ -996,8 +988,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
              }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
 
@@ -1015,7 +1006,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         params.numOutputChannels = 1;
         patch.setPlaybackParams (params);
 
-        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }))
+        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }, true))
         {
             CHOC_FAIL ("Failed to load patch");
             return false;
@@ -1172,8 +1163,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             }
         )";
 
-        const bool buildSynchronously = true, scanForChanges = false;
-        Patch patch (buildSynchronously, scanForChanges);
+        Patch patch;
 
         patch.createEngine      = [] { return Engine::create(); };
 
@@ -1191,7 +1181,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         params.numOutputChannels = 1;
         patch.setPlaybackParams (params);
 
-        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }))
+        if (! patch.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", cmajorSource }}), {} }, true))
         {
             CHOC_FAIL ("Failed to load patch");
             return false;

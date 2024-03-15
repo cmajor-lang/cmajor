@@ -92,7 +92,7 @@ void playFile (juce::ArgumentList& args,
 
     if (dryRun)
     {
-        cmaj::Patch patch (true, false);
+        cmaj::Patch patch;
 
         patch.createEngine   = [] { return cmaj::Engine::create(); };
         patch.stopPlayback   = [] {};
@@ -109,7 +109,7 @@ void playFile (juce::ArgumentList& args,
             patch.setPlaybackParams (params);
         }
 
-        patch.loadPatchFromFile (filename);
+        patch.loadPatchFromFile (filename, true);
         return;
     }
 

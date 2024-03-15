@@ -33,7 +33,7 @@ struct PatchLibrary
         context.registerFunction ("loadAndTestPatch", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
         {
             choc::value::Value lastError;
-            cmaj::Patch patch { true, false };
+            cmaj::Patch patch;
 
             patch.createEngine = [this]
             {
@@ -59,7 +59,7 @@ struct PatchLibrary
 
             if (auto file = args[0])
             {
-                if (patch.loadPatchFromFile (file->toString()))
+                if (patch.loadPatchFromFile (file->toString(), true))
                     lastError = choc::value::Value();
             }
             else
