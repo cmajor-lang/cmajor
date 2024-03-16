@@ -514,7 +514,8 @@ private:
             {
                 juce::ValueTree value (ids.VALUE);
                 value.setProperty (ids.key,   juce::String (v.first.data(),  v.first.length()), nullptr);
-                value.setProperty (ids.value, juce::String (choc::json::toString (v.second)), nullptr);
+                auto serialised = v.second.serialise();
+                value.setProperty (ids.value, juce::var (serialised.data.data(), serialised.data.size()), nullptr);
                 stateValues.appendChild (value, nullptr);
             }
 
@@ -644,6 +645,13 @@ private:
         {
             auto json = juce::JSON::toString (v, juce::JSON::FormatOptions().withSpacing (juce::JSON::Spacing::none));
             return choc::json::parse (json.toStdString());
+        }
+
+        if (v.isBinaryData())
+        {
+            auto* block = v.getBinaryData();
+            auto  inputData = choc::value::InputData { (unsigned char *) block->begin(), (unsigned char *) block->end() };
+            return choc::value::Value::deserialise (inputData);
         }
 
         jassertfalse;
