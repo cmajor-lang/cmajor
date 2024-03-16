@@ -579,6 +579,32 @@ export class PresetBank
 
         preset["PatchName"] = name;
     }
+
+    getPatchDetails()
+    {
+        let list = [];
+
+        for (const p of this.bank)
+        {
+            let clone = { ...p[1] };
+            clone.id = p[0];
+            list.push (clone);
+        }
+
+        return list;
+    }
+
+    setPatchDetails (list)
+    {
+        this.bank.clear();
+
+        for (const item of list)
+        {
+            const id = item.id;
+            delete item.id;
+            this.bank.set (id, item);
+        }
+    }
 }
 
 export function splitIntoDigits (value)

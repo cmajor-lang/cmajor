@@ -44,26 +44,40 @@ const stateValueChangeListener = event =>
             return;
         }
 
+        const oldProgramNumber = programNumber;
         programNumber = event.value ^ 0;
-
         const info = presetBank.getPatch (programNumber);
 
         if (info)
         {
             currentParameterValues.clear();
-            presetBank.sendParameterValuesToPatchConnection (patchConnection, programNumber);
+
+            if (oldProgramNumber != 0 && programNumber != oldProgramNumber)
+                presetBank.sendParameterValuesToPatchConnection (patchConnection, programNumber);
+
             patchConnection.sendStoredStateValue ("patchName", info.PatchName);
         }
     }
 
     if (event.key == "recordEnabled")
     {
+        if (recording == 1 && event.value == 0)
+            patchConnection.sendStoredStateValue ("patchDetails", presetBank.getPatchDetails());
+
         recording = event.value;
     }
 
     if (event.key == "setPatchName")
     {
         presetBank.setPatchName (programNumber, event.value);
+    }
+
+    if (event.key == "patchDetails")
+    {
+        if (event.value)
+            presetBank.setPatchDetails (event.value);
+
+        patchConnection.sendStoredStateValue ("patchList", presetBank.getPatchList());
     }
 }
 
@@ -105,6 +119,7 @@ export default function runWorker (pc)
     patchConnection.addEndpointListener ("midiIn", midiInListener);
     patchConnection.addAllParameterListener (parameterListener);
 
-    patchConnection.sendStoredStateValue ("patchList", presetBank.getPatchList());
+    patchConnection.requestStoredStateValue ("patchDetails");
+    patchConnection.requestStoredStateValue ("currentProgram");
 }
 
