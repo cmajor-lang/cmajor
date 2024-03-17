@@ -498,7 +498,7 @@ private:
 
     juce::ValueTree getUpdatedState()
     {
-        auto state = createEmptyState (patch->getPatchFile());
+        auto state = createEmptyState (patch->getManifestFile());
 
         if (isViewResizable() && lastEditorWidth != 0 && lastEditorHeight != 0)
         {
