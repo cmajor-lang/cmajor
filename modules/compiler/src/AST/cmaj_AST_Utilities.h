@@ -239,6 +239,7 @@ struct UniqueNameList
     void clear()
     {
         names.clear();
+        suffixes.clear();
     }
 
     std::unordered_map<const ObjectType*, std::string> names;
