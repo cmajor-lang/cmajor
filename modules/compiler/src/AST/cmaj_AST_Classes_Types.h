@@ -662,6 +662,9 @@ struct StructType  : public TypeBase
     {
         if (auto otherStruct = other.getAsStructType())
         {
+            if (otherStruct == this)
+                return true;
+
             if (memberNames.size() != otherStruct->memberNames.size())
                 return false;
 
