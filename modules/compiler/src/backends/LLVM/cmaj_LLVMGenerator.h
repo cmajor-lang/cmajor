@@ -334,23 +334,33 @@ struct LLVMCodeGenerator
         ::llvm::SmallVector<char, 100000> result;
         ::llvm::raw_svector_ostream ostream (result);
 
-        if (auto machineBuilder = ::llvm::orc::JITTargetMachineBuilder::detectHost())
+        std::unique_ptr<::llvm::TargetMachine> targetMachine;
+
+        if (webAssemblyMode)
         {
-            auto& opts = machineBuilder->getOptions();
-            opts.ExceptionModel = ::llvm::ExceptionHandling::None;
-            opts.setFPDenormalMode (::llvm::DenormalMode::getPositiveZero());
-
-            machineBuilder->setCodeGenOptLevel (getCodeGenOptLevel (buildSettings.getOptimisationLevel()));
-
-            if (auto targetMachine = machineBuilder->createTargetMachine())
+            ::llvm::SmallVector<std::string, 16> attributes {};
+            targetMachine.reset (::llvm::EngineBuilder().selectTarget (::llvm::Triple (targetModule->getTargetTriple()), {}, {}, attributes));
+        }
+        else
+        {
+            if (auto machineBuilder = ::llvm::orc::JITTargetMachineBuilder::detectHost())
             {
-                ::llvm::legacy::PassManager passManager;
+                auto& opts = machineBuilder->getOptions();
+                opts.ExceptionModel = ::llvm::ExceptionHandling::None;
+                opts.setFPDenormalMode (::llvm::DenormalMode::getPositiveZero());
 
-                targetMachine.get()->Options.MCOptions.AsmVerbose = true;
-                targetMachine.get()->addPassesToEmitFile (passManager, ostream, nullptr, ::llvm::CGFT_AssemblyFile);
-                passManager.run (*targetModule);
+                machineBuilder->setCodeGenOptLevel (getCodeGenOptLevel (buildSettings.getOptimisationLevel()));
+
+                if (auto tm = machineBuilder->createTargetMachine())
+                    targetMachine = std::move (tm.get());
             }
         }
+
+        ::llvm::legacy::PassManager passManager;
+
+        targetMachine.get()->Options.MCOptions.AsmVerbose = true;
+        targetMachine.get()->addPassesToEmitFile (passManager, ostream, nullptr, ::llvm::CGFT_AssemblyFile);
+        passManager.run (*targetModule);
 
         return std::string (result.begin(), result.end());
     }
