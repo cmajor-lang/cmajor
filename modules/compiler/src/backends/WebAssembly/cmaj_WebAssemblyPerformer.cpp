@@ -427,19 +427,29 @@ initialisePatch();
                     });
                 }
 
-                choc::value::Value evaluateWithResult (const std::string& script)
+                choc::value::Value evaluateWithResult (const std::string& s)
                 {
-                    std::unique_lock<std::mutex> l (instance.callHappenedMutex);
+                    /// Can't trust the webview to handle bigint types
+                    auto script = R"(JSON.stringify ()" + s + R"(,
+                                     (key, value) => typeof value === 'bigint' ? value.toString() : value))";
 
-                    performOnMessageThread ([this, script]
+                    std::unique_lock<std::mutex> l (instance.callMutex);
+                    std::condition_variable callHappened;
+                    std::string result;
+
+                    choc::messageloop::postMessage ([&]
                     {
-                        instance.webview->evaluateJavascript ("try { window.setFunctionResult (" + script
-                                                                + ") } catch (e) { window.setFunctionResult(); }");
+                        instance.webview->evaluateJavascript (script, [this, &callHappened, &result]
+                                                                      (const std::string&, const choc::value::ValueView& value)
+                        {
+                            std::unique_lock<std::mutex> guard (instance.callMutex);
+                            result = value.toString();
+                            callHappened.notify_all();
+                        });
                     });
 
-                    instance.callHappened.wait (l);
-
-                    return instance.lastCallResult;
+                    callHappened.wait (l);
+                    return choc::json::parseValue (result);
                 }
 
                 std::function<void(const choc::value::ValueView&)> initFinished;
@@ -466,20 +476,6 @@ initialisePatch();
                     webview = std::make_unique<choc::ui::WebView> (opts);
 
                     CMAJ_ASSERT (webview->loadedOK());
-
-                    webview->bind ("setFunctionResult", [this] (const choc::value::ValueView& args)
-                    {
-                        if (args.isArray())
-                            lastCallResult = args.size() > 0 ? args[0] : choc::value::Value();
-                        else if (args.isVoid())
-                            lastCallResult = args;
-                        else
-                            CMAJ_ASSERT_FALSE;
-
-                        std::unique_lock<std::mutex> lock (callHappenedMutex);
-                        callHappened.notify_all();
-                        return choc::value::Value();
-                    });
 
                     webview->bind ("initFinished", [this] (const choc::value::ValueView& args)
                     {
@@ -511,9 +507,7 @@ initialisePatch();
 
             //==============================================================================
             std::unique_ptr<choc::ui::WebView> webview;
-            choc::value::Value lastCallResult;
-            std::condition_variable callHappened;
-            std::mutex callHappenedMutex;
+            std::mutex callMutex;
 
             std::recursive_mutex mutex;
             Context* currentContext = nullptr;
