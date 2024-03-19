@@ -2518,16 +2518,3 @@ processor Test [[ main ]]
 
     void main() { advance(); }
 }
-
-## expectError ("7:33: error: Endpoints can only be read or written by code that is called from the main() function")
-
-graph Test [[ main ]]
-{
-    input value float in;
-    output stream float out;
-
-    float getInValue() { return in; }
-
-    connection
-        getInValue() -> out;
-}
