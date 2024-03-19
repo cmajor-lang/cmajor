@@ -1800,9 +1800,7 @@ namespace cmaj::validation
                             throwError (endpointAccess, Errors::endpointsCannotBeUsedDuringInit());
 
                         if (info.calledFromEvent)
-                            throwError (endpointAccess, Errors::streamsCannotBeUsedInEventCallbacks());
-
-                        throwError (endpointAccess, Errors::endpointsCanOnlyBeUsedInMain());
+                            throwError (endpointAccess, Errors::valuesCannotBeUsedInEventCallbacks());
                     }
 
                     if (info.calledFromInit)

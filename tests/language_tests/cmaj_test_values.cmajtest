@@ -1,0 +1,75 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     (C)2024 Cmajor Software Ltd
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     https://cmajor.dev
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88
+//                                           ,88
+//                                        888P"
+//
+//  This code may be used under either a GPLv3 or commercial
+//  license: see LICENSE.md for more details.
+
+## expectError ("10:20: error: Values cannot be used in event callback functions")
+
+graph Test [[ main ]]
+{
+    input value float inValue;
+    input event float trigger;
+    output event float out;
+
+    event trigger (float f)
+    {
+        out <- f * inValue;
+    }
+}
+
+## expectError ("11:13: error: Endpoints cannot be read or written during init()")
+
+processor Test [[ main ]]
+{
+    input value float in;
+    output event float out;
+
+    float v;
+
+    void init()
+    {
+        v = in;
+    }
+}
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    input value float inValue;
+    output stream float out;
+
+    float getValue()
+    {
+        return inValue * 0.1f;
+    }
+
+    connection
+        getValue() -> out;
+}
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    input value float inValue;
+    output stream float out;
+    output value float outValue;
+
+    float getValue()
+    {
+        outValue <- inValue;
+        return inValue * 0.1f;
+    }
+
+    connection
+        getValue() -> out;
+}

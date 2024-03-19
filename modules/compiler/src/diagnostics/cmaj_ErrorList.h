@@ -322,6 +322,7 @@ DECL_COMPILE_ERROR (paramCannotContainSlice,                "functions that call
 DECL_COMPILE_ERROR (endpointsCanOnlyBeUsedInMain,           "Endpoints can only be read or written by code that is called from the main() function")
 DECL_COMPILE_ERROR (endpointsCannotBeUsedDuringInit,        "Endpoints cannot be read or written during init()")
 DECL_COMPILE_ERROR (streamsCannotBeUsedInEventCallbacks,    "Streams cannot be used in event callback functions")
+DECL_COMPILE_ERROR (valuesCannotBeUsedInEventCallbacks,     "Values cannot be used in event callback functions")
 DECL_COMPILE_ERROR (noSuchInputEvent,                       "Event handler '{0}' does not match an event input")
 DECL_COMPILE_ERROR (cannotUseVarFromOtherProcessor,         "Cannot reference a mutable variable belonging to another processor")
 DECL_COMPILE_ERROR (propertiesOutsideProcessor,             "Processor properties are only valid inside a processor declaration")
