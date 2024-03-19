@@ -114,13 +114,17 @@ public:
             setNewStateAsync (createEmptyState (fileToLoad));
     }
 
-    void loadPatch (const PatchManifest& manifest)
+    bool loadPatch (const PatchManifest& manifest)
     {
         if (dllLoadedSuccessfully)
         {
             Patch::LoadParams loadParams;
             loadParams.manifest = manifest;
-            patch->loadPatch (loadParams);
+            return patch->loadPatch (loadParams);
+        }
+        else
+        {
+            return false;
         }
     }
 
