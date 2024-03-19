@@ -225,6 +225,7 @@ struct LLVMEngine
              latency (latencyToUse)
         {
             LLVMCodeGenerator codeGen (*llvmEngine.engine.program,
+                                       llvmEngine.engine.options,
                                        llvmEngine.engine.buildSettings,
                                        lljit.getTargetTriple(),
                                        lljit.getDataLayout(),
@@ -754,6 +755,7 @@ std::string generateAssembler (const cmaj::ProgramInterface& p,
     choc::value::SimpleStringDictionary stringDictionary;
 
     LLVMCodeGenerator generator (AST::getProgram (p),
+                                 options,
                                  buildSettings,
                                  targetTriple.str(),
                                  dataLayout,
@@ -801,13 +803,16 @@ static uint32_t roundUp (Type size, uint32_t granularity)
 }
 
 #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
-webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface& p, const BuildSettings& buildSettings, bool createWAST)
+webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface& p, const BuildSettings& buildSettings, bool useSimd, bool createWAST)
 {
     initialiseLLVM();
 
     std::unique_ptr<::llvm::TargetMachine> targetMachine;
     ::llvm::SmallVector<std::string, 16> attributes {};
     targetMachine.reset (::llvm::EngineBuilder().selectTarget (::llvm::Triple ("wasm32"), {}, {}, attributes));
+
+    if (useSimd)
+        targetMachine->setTargetFeatureString ("+simd128");
 
     if (! targetMachine)
         throw std::runtime_error ("Failed to create WASM target machine");
@@ -822,7 +827,13 @@ webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface& p, c
     m.stateStructType = *mainProcessor.findStruct (mainProcessor.getStrings().stateStructName);
     m.ioStructType    = *mainProcessor.findStruct (mainProcessor.getStrings().ioStructName);
 
+    auto options = choc::value::createObject ("options");
+
+    if (useSimd)
+        options.addMember ("simd", true);
+
     auto generator = std::make_shared<LLVMCodeGenerator> (program,
+                                                          options,
                                                           buildSettings,
                                                           targetTriple.str(),
                                                           dataLayout,

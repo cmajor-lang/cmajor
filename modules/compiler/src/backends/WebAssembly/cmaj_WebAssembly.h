@@ -27,6 +27,8 @@
 
 namespace cmaj::webassembly
 {
+    static constexpr const char* backendName = "webview";
+
     struct WebAssemblyModule
     {
         std::string binaryWASMData;
@@ -55,17 +57,13 @@ namespace cmaj::webassembly
         std::string code, mainClassName;
     };
 
-    JavascriptWrapper generateJavascriptWrapper (const ProgramInterface&, const BuildSettings&, bool useBinaryen);
+    JavascriptWrapper generateJavascriptWrapper (const ProgramInterface&, std::string_view options, const BuildSettings&);
 
     std::string generateWAST (const ProgramInterface&, const BuildSettings&);
    #endif
 
    #if CMAJ_ENABLE_PERFORMER_WEBVIEW
     EngineFactoryPtr createEngineFactory();
-   #endif
-
-   #if CMAJ_ENABLE_PERFORMER_WEBVIEW && CMAJ_ENABLE_CODEGEN_BINARYEN
-    EngineFactoryPtr createEngineFactoryWithBinaryen();
    #endif
 }
 

@@ -71,6 +71,8 @@ cmaj <command> [options]    Runs the given command. Options can include the foll
     --debug                 Turn on debug output from the performer
     --sessionID=n           Set the session id to the given value
     --engine=<type>         Use the specified engine - e.g. llvm, webview, cpp
+    --simd                  Enable SIMD support in WASM generation
+    --binaryen              Use the binaryen WASM generator
 
 Supported commands:
 
@@ -212,6 +214,12 @@ static choc::value::Value parseEngineArgs (juce::ArgumentList& args)
     if (args.removeOptionIfFound ("--validatePrint"))
         engineOptions.addMember ("validatePrint", true);
 
+    if (args.removeOptionIfFound ("--binaryen"))
+        engineOptions.addMember ("binaryen", true);
+
+    if (args.removeOptionIfFound ("--simd"))
+        engineOptions.addMember ("simd", true);
+
     return engineOptions;
 }
 
@@ -247,7 +255,7 @@ static void performCommandLineTask (juce::ArgumentList& args)
 
     if (isCommand (args, "play"))      return playFile (args, engine, buildSettings, parseAudioDeviceArgs (args));
     if (isCommand (args, "server"))    return runServerProcess (args, engine, buildSettings, parseAudioDeviceArgs (args));
-    if (isCommand (args, "generate"))  return generate (args, buildSettings);
+    if (isCommand (args, "generate"))  return generate (args, engine, buildSettings);
     if (isCommand (args, "render"))    return render (args, engine, buildSettings);
     if (isCommand (args, "test"))      return runTests (args, engine, buildSettings);
     if (isCommand (args, "create"))    return createPatch (args);

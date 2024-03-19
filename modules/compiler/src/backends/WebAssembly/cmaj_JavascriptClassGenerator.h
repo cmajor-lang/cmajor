@@ -35,10 +35,12 @@ struct JavascriptClassGenerator
     JavascriptClassGenerator (const AST::Program& p,
                               const BuildSettings& buildSettingsToUse,
                               std::string optionalMainClassName,
-                              bool shouldUseBinaryen)
+                              bool shouldUseBinaryen,
+                              bool shouldUseSimd)
         : program (p),
           buildSettings (buildSettingsToUse),
           useBinaryen (shouldUseBinaryen),
+          useSimd (shouldUseSimd),
           mainClassName (std::move (optionalMainClassName))
     {
     }
@@ -56,7 +58,7 @@ struct JavascriptClassGenerator
         else
         {
            #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
-            module = llvm::generateWebAssembly (program, buildSettings);
+            module = llvm::generateWebAssembly (program, buildSettings, useSimd);
            #endif
         }
 
@@ -1032,6 +1034,7 @@ catch (error)
     WebAssemblyModule module;
     const BuildSettings& buildSettings;
     const bool useBinaryen;
+    const bool useSimd;
     std::string mainClassName;
     ptr<const NativeTypeLayout> stateStructLayout, ioStructLayout;
     choc::value::Type stateStructChocType, ioStructChocType;

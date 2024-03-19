@@ -41,7 +41,7 @@ namespace cmaj::llvm
    #endif
 
    #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
-    webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface&, const BuildSettings&, bool createWAST = false);
+    webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface&, const BuildSettings&, bool useSimd, bool createWAST = false);
    #endif
 }
 

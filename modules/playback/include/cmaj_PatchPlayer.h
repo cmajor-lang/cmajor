@@ -152,7 +152,7 @@ private:
 
         patch.createEngine = [=]
         {
-            auto engine = cmaj::Engine::create (engineType);
+            auto engine = cmaj::Engine::create (engineType, &engineOptions);
             engine.setBuildSettings (buildSettings);
             return engine;
         };

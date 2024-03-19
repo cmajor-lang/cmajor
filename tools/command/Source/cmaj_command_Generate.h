@@ -78,22 +78,13 @@ static std::string getCodeGenTargetHelp()
     return table.toString ({}, "  ", "\n");
 }
 
-static std::string getTargetWithoutBinaryenSuffix (const std::string& targetType)
-{
-   #if CMAJ_ENABLE_CODEGEN_BINARYEN
-    if (choc::text::endsWith (targetType, "-binaryen"))
-        return targetType.substr (0, targetType.length() - std::string_view ("-binaryen").length());
-   #endif
-
-   return targetType;
-}
-
 //==============================================================================
 void generateFromPatch (juce::ArgumentList& args,
                         std::filesystem::path patchManifestFile,
                         std::string targetType,
                         std::string outputFile,
-                        const cmaj::BuildSettings& buildSettings)
+                        const cmaj::BuildSettings& buildSettings,
+                        const choc::value::Value& engineOptions)
 {
     cmaj::Patch patch (true, false);
 
@@ -113,13 +104,12 @@ void generateFromPatch (juce::ArgumentList& args,
     if (targetType == "clap")  return generate_cpp::generatePluginProject (args, outputFile, patch, loadParams, true);
 
    #if CMAJ_ENABLE_CODEGEN_BINARYEN || CMAJ_ENABLE_CODEGEN_LLVM_WASM
-    bool useBinaryen = choc::text::endsWith (targetType, "-binaryen");
 
-    if (getTargetWithoutBinaryenSuffix (targetType) == "webaudio-html")
-        return generate_javascript::generateWebAudioHTML (patch, loadParams, useBinaryen).writeToOutputFolder (outputFile);
+    if (targetType == "webaudio-html")
+        return generate_javascript::generateWebAudioHTML (patch, loadParams, engineOptions).writeToOutputFolder (outputFile);
 
-    if (getTargetWithoutBinaryenSuffix (targetType) == "webaudio")
-        return writeToFolderOrConsole (outputFile, generate_javascript::generateJavascriptWorklet (patch, loadParams, useBinaryen));
+    if (targetType == "webaudio")
+        return writeToFolderOrConsole (outputFile, generate_javascript::generateJavascriptWorklet (patch, loadParams, engineOptions));
    #endif
 
     std::string optionsJSON;
@@ -141,7 +131,9 @@ void generateFromPatch (juce::ArgumentList& args,
 }
 
 //==============================================================================
-void generate (juce::ArgumentList& args, cmaj::BuildSettings& buildSettings)
+void generate (juce::ArgumentList& args, 
+               const choc::value::Value& engineOptions,
+               cmaj::BuildSettings& buildSettings)
 {
     std::string target;
 
@@ -162,7 +154,7 @@ void generate (juce::ArgumentList& args, cmaj::BuildSettings& buildSettings)
 
     auto possibleTargets = getCodeGenTargetList();
 
-    if (std::find (possibleTargets.begin(), possibleTargets.end(), getTargetWithoutBinaryenSuffix (target)) == possibleTargets.end())
+    if (std::find (possibleTargets.begin(), possibleTargets.end(), target) == possibleTargets.end())
         throw std::runtime_error ("Unknown target \"" + target
                                     + "\"\n\nAvailable values for --target are:\n\n" + getCodeGenTargetHelp());
 
@@ -203,5 +195,5 @@ void generate (juce::ArgumentList& args, cmaj::BuildSettings& buildSettings)
         throw std::runtime_error ("Expected a .cmajorpatch file");
     };
 
-    generateFromPatch (args, findPatchManifestFile(), target, outputFile, buildSettings);
+    generateFromPatch (args, findPatchManifestFile(), target, outputFile, buildSettings, engineOptions);
 }

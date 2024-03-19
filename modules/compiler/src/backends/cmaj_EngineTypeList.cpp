@@ -44,11 +44,7 @@ static BackEnd backends[] =
    #endif
 
    #if CMAJ_ENABLE_PERFORMER_WEBVIEW
-    { "webview", cmaj::webassembly::createEngineFactory },
-   #endif
-
-   #if CMAJ_ENABLE_PERFORMER_WEBVIEW && CMAJ_ENABLE_CODEGEN_BINARYEN
-    { "webview-binaryen", cmaj::webassembly::createEngineFactoryWithBinaryen },
+    { cmaj::webassembly::backendName, cmaj::webassembly::createEngineFactory },
    #endif
 
    #if CMAJ_ENABLE_PERFORMER_CPP

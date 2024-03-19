@@ -38,9 +38,17 @@ namespace cmaj::webassembly
 template <bool useBinaryen>
 struct WebAssemblyEngine
 {
-    WebAssemblyEngine (EngineBase<WebAssemblyEngine>& e) : engine (e) {}
+    WebAssemblyEngine (EngineBase<WebAssemblyEngine>& e) : engine (e)
+    {
+
+    }
 
     EngineBase<WebAssemblyEngine>& engine;
+
+    bool useSimd() const
+    {
+        return engine.options.isObject() && engine.options.hasObjectMember ("simd");
+    }
 
     static std::string getEngineVersion()   { return std::string ("wasm1"); }
 
@@ -63,7 +71,7 @@ struct WebAssemblyEngine
             : latency (latencyToUse)
         {
             JavascriptClassGenerator gen (AST::getProgram (*wasmEngine.engine.program),
-                                          wasmEngine.engine.buildSettings, {}, useBinaryen);
+                                          wasmEngine.engine.buildSettings, {}, useBinaryen, wasmEngine.useSimd());
 
             wrapperJavascript = gen.generate();
             mainClassName = gen.mainClassName;
@@ -613,17 +621,24 @@ initialisePatch();
 };
 
 //==============================================================================
-template <bool useBinaryen>
-struct Factory : public choc::com::ObjectWithAtomicRefCount<EngineFactoryInterface, Factory<useBinaryen>>
+struct Factory : public choc::com::ObjectWithAtomicRefCount<EngineFactoryInterface, Factory>
 {
     virtual ~Factory() = default;
-    const char* getName() override      { return useBinaryen ? "webview-binaryen" : "webview"; }
+    const char* getName() override      { return "webview"; }
 
     EngineInterface* createEngine (const char* engineCreationOptions) override
     {
         try
         {
-            return choc::com::create<EngineBase<WebAssemblyEngine<useBinaryen>>> (engineCreationOptions).getWithIncrementedRefCount();
+           #if CMAJ_ENABLE_CODEGEN_BINARYEN
+            auto options = choc::json::parse (engineCreationOptions);
+            bool useBinaryen = options.isObject() && options.hasObjectMember("binaryen");
+
+            if (useBinaryen)
+                return choc::com::create<EngineBase<WebAssemblyEngine<true>>> (engineCreationOptions).getWithIncrementedRefCount();
+           #endif
+
+            return choc::com::create<EngineBase<WebAssemblyEngine<false>>> (engineCreationOptions).getWithIncrementedRefCount();
         }
         catch (...) {}
 
@@ -631,8 +646,7 @@ struct Factory : public choc::com::ObjectWithAtomicRefCount<EngineFactoryInterfa
     }
 };
 
-EngineFactoryPtr createEngineFactory()              { return choc::com::create<Factory<false>>(); }
-EngineFactoryPtr createEngineFactoryWithBinaryen()  { return choc::com::create<Factory<true>>(); }
+EngineFactoryPtr createEngineFactory()              { return choc::com::create<Factory>(); }
 
 
 } // namespace cmaj::webassembly

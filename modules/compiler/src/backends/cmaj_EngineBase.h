@@ -389,10 +389,9 @@ struct EngineBase  : public choc::com::ObjectWithAtomicRefCount<EngineInterface,
            #endif
 
            #if CMAJ_ENABLE_CODEGEN_LLVM_WASM || CMAJ_ENABLE_CODEGEN_BINARYEN
-            if (choc::text::startsWith (type, "javascript"))
+            if (type == "javascript")
             {
-                bool useBinaryen = choc::text::endsWith (type, "binaryen");
-                auto result = cmaj::webassembly::generateJavascriptWrapper (*program, buildSettings, useBinaryen);
+                auto result = cmaj::webassembly::generateJavascriptWrapper (*program, optionsString, buildSettings);
                 output = result.code;
                 mainClassName = result.mainClassName;
                 outputTypeKnown = true;

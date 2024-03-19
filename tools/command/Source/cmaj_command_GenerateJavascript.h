@@ -21,7 +21,7 @@
 namespace generate_javascript
 {
 
-inline std::string generateJavascriptWorklet (cmaj::Patch& patch, const cmaj::Patch::LoadParams& loadParams, bool useBinaryen)
+inline std::string generateJavascriptWorklet (cmaj::Patch& patch, const cmaj::Patch::LoadParams& loadParams, const choc::value::Value& engineOptions)
 {
     static constexpr const auto generatedModuleSourceText = R"(
 //==============================================================================
@@ -75,7 +75,7 @@ CMAJOR_WRAPPER_CLASS
 
 )";
 
-    auto wrapper = generateCodeAndCheckResult (patch, loadParams, useBinaryen ? "javascript-binaryen" : "javascript", {});
+    auto wrapper = generateCodeAndCheckResult (patch, loadParams, "javascript", choc::json::toString (engineOptions));
     auto manifest = choc::text::trim (choc::json::toString (loadParams.manifest.manifest, true));
 
     return choc::text::trim (choc::text::replace (generatedModuleSourceText,
@@ -87,7 +87,7 @@ CMAJOR_WRAPPER_CLASS
 }
 
 //==============================================================================
-inline GeneratedFiles generateWebAudioHTML (cmaj::Patch& patch, const cmaj::Patch::LoadParams& loadParams, bool useBinaryen)
+inline GeneratedFiles generateWebAudioHTML (cmaj::Patch& patch, const cmaj::Patch::LoadParams& loadParams, const choc::value::Value& engineOptions)
 {
     auto& manifest = loadParams.manifest;
 
@@ -342,7 +342,7 @@ loadPatch();
 
     GeneratedFiles generatedFiles;
 
-    generatedFiles.addFile (patchModuleFile, generateJavascriptWorklet (patch, loadParams, useBinaryen));
+    generatedFiles.addFile (patchModuleFile, generateJavascriptWorklet (patch, loadParams, engineOptions));
     generatedFiles.addFile ("index.html", html);
     generatedFiles.addFile ("README.md", readme);
     generatedFiles.addFile ("cmaj_api/cmaj_audio_worklet_helper.js", cmaj::EmbeddedAssets::getInstance().findContent ("cmaj_audio_worklet_helper.js"));

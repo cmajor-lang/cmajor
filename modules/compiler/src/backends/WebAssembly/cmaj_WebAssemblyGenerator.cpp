@@ -34,9 +34,14 @@
 namespace cmaj::webassembly
 {
 
-JavascriptWrapper generateJavascriptWrapper (const ProgramInterface& p, const BuildSettings& buildSettings, bool useBinaryen)
+JavascriptWrapper generateJavascriptWrapper (const ProgramInterface& p, std::string_view opts, const BuildSettings& buildSettings)
 {
-    JavascriptClassGenerator gen (AST::getProgram (p), buildSettings, {}, useBinaryen);
+    auto options = choc::json::parse (opts);
+
+    bool useBinaryen = options.isObject() && options.hasObjectMember ("binaryen");
+    bool useSimd     = options.isObject() && options.hasObjectMember ("simd");
+
+    JavascriptClassGenerator gen (AST::getProgram (p), buildSettings, {}, useBinaryen, useSimd);
 
     JavascriptWrapper w;
     w.code = gen.generate();

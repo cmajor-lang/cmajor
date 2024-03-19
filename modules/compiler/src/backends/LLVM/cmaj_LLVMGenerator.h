@@ -29,12 +29,15 @@ namespace cmaj::llvm
 struct LLVMCodeGenerator
 {
     LLVMCodeGenerator (const AST::Program& p,
+                       const choc::value::Value& options,
                        const BuildSettings& buildSettingsToUse,
                        const std::string& targetTriple,
                        const ::llvm::DataLayout& layout,
                        choc::value::SimpleStringDictionary& dictionary,
                        bool isWebAssembly)
-        : program (p), buildSettings (buildSettingsToUse),
+        : program (p),
+          engineOptions (options),
+          buildSettings (buildSettingsToUse),
           allocator (program.allocator),
           dataLayout (layout),
           stringDictionary (dictionary),
@@ -203,6 +206,7 @@ struct LLVMCodeGenerator
 
     //==============================================================================
     const AST::Program& program;
+    const choc::value::Value& engineOptions;
     const BuildSettings& buildSettings;
     const AST::Allocator& allocator;
     ptr<AST::StructType> stateStruct, ioStruct;
@@ -340,6 +344,9 @@ struct LLVMCodeGenerator
         {
             ::llvm::SmallVector<std::string, 16> attributes {};
             targetMachine.reset (::llvm::EngineBuilder().selectTarget (::llvm::Triple (targetModule->getTargetTriple()), {}, {}, attributes));
+
+            if (engineOptions.isObject() && engineOptions.hasObjectMember ("simd"))
+                targetMachine->setTargetFeatureString ("+simd128");
         }
         else
         {
