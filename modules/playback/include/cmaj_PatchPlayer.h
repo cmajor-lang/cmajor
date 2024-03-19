@@ -22,6 +22,7 @@
 
 #include "../../compiler/include/cmaj_ErrorHandling.h"
 #include "cmajor/helpers/cmaj_Patch.h"
+#include "cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
 #include "choc/text/choc_JSON.h"
 #include "cmaj_AudioPlayer.h"
 
@@ -153,6 +154,8 @@ private:
             engine.setBuildSettings (buildSettings);
             return engine;
         };
+
+        enableQuickJSPatchWorker (patch);
 
         patch.stopPlayback      = [this] { setPatchCallbacksActive (false); };
         patch.startPlayback     = [this] { setPatchCallbacksActive (true); };

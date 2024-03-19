@@ -71,6 +71,17 @@ static constexpr bool hasStaticallyLinkedPerformer()
    #endif
 }
 
+static void initTestPatch (Patch& patch)
+{
+    patch.createEngine      = [] { return Engine::create(); };
+    patch.createContextForPatchWorker = [] { return choc::javascript::Context(); };
+    patch.stopPlayback      = [] {};
+    patch.startPlayback     = [] {};
+    patch.patchChanged      = [] {};
+    patch.statusChanged     = [] (auto&&...) {};
+    patch.handleOutputEvent = [] (auto&&...) {};
+}
+
 static bool runUnitTests (choc::test::TestProgress& progress)
 {
     CMAJ_ASSERT (hasStaticallyLinkedPerformer());
@@ -111,13 +122,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 1;
@@ -158,15 +163,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 1;
@@ -235,15 +232,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 1;
@@ -321,15 +310,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 4;
@@ -405,15 +386,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 4;
@@ -491,14 +464,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 4;
@@ -570,13 +536,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 1;
@@ -753,15 +713,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 4;
@@ -989,15 +941,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 4;
@@ -1164,15 +1108,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         )";
 
         Patch patch;
-
-        patch.createEngine      = [] { return Engine::create(); };
-
-        patch.stopPlayback      = [] {};
-        patch.startPlayback     = [] {};
-        patch.patchChanged      = [] {};
-        patch.statusChanged     = [] (auto&&...) {};
-
-        patch.handleOutputEvent = [] (auto&&...) {};
+        initTestPatch (patch);
 
         cmaj::Patch::PlaybackParams params;
         params.blockSize = 4;

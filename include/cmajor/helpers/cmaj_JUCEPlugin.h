@@ -19,6 +19,7 @@
 #pragma once
 
 #include "cmaj_PatchWebView.h"
+#include "cmaj_PatchWorker_QuickJS.h"
 #include "cmaj_GeneratedCppEngine.h"
 #include "../../choc/memory/choc_xxHash.h"
 
@@ -79,6 +80,8 @@ public:
             {
                 handleOutputEvent (frame, endpointID, v);
             };
+
+            enableQuickJSPatchWorker (*patch);
 
             if constexpr (EngineType::isPrecompiled)
             {
@@ -1482,6 +1485,7 @@ public:
             auto patch = std::make_unique<Patch>();
             patch->setAutoRebuildOnFileChange (true);
             patch->createEngine = +[] { return cmaj::Engine::create(); };
+            enableQuickJSPatchWorker (*patch);
             patch->cache = cache;
             patch->preload (manifest);
 

@@ -4,7 +4,7 @@
 
 #include "../../../include/cmajor/API/cmaj_Engine.h"
 #include "../../../include/cmajor/helpers/cmaj_Patch.h"
-#include "../../../include/choc/javascript/choc_javascript_QuickJS.h"
+#include "../../../include/cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
 
 #include <iostream>
 #include <memory>
@@ -70,6 +70,8 @@ int main (int argc, char** argv)
     cmaj::Patch patch;
 
     patch.createEngine = [&] { return cmaj::Engine::create(); };
+
+    enableQuickJSPatchWorker (patch);
 
     if (! patch.preload (patchManifest))
     {

@@ -746,10 +746,6 @@ struct Patch::PatchWorker  : public PatchView
             if (! context)
                 return; // If a client deliberately provides a null context, we'll just not run the worker
 
-            registerTimerFunctions (context);
-            registerConsoleFunctions (context);
-            registerLibraryFunctions();
-
             choc::javascript::Context::ReadModuleContentFn resolveModule = [this] (std::string_view path) -> std::optional<std::string>
             {
                 return readJavascriptResource (path, std::addressof (manifest));
@@ -781,44 +777,6 @@ struct Patch::PatchWorker  : public PatchView
         {
             patch.setErrorStatus (std::string ("Error in patch worker script: ") + e.what(), manifest.patchWorker, {}, true);
         }
-    }
-
-    void registerLibraryFunctions()
-    {
-        context.registerFunction ("_internalReadResource", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
-        {
-            try
-            {
-                if (auto path = args.get<std::string>(0); ! path.empty())
-                {
-                    if (auto content = manifest.readFileContent (path))
-                    {
-                        if (choc::text::findInvalidUTF8Data (content->data(), content->length()) == nullptr)
-                            return choc::value::Value (*content);
-
-                        return choc::value::createArray (static_cast<uint32_t> (content->length()),
-                                                         [&] (uint32_t i) { return static_cast<int32_t> ((*content)[i]); });
-                    }
-                }
-            }
-            catch (...)
-            {}
-
-            return {};
-        });
-
-        context.registerFunction ("_internalReadResourceAsAudioData", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
-        {
-            try
-            {
-                if (auto path = args.get<std::string>(0); ! path.empty())
-                    return readManifestResourceAsAudioData (manifest, path, args[1] != nullptr ? *args[1] : choc::value::Value());
-            }
-            catch (...)
-            {}
-
-            return {};
-        });
     }
 
     std::string getGlueCode() const
@@ -1592,9 +1550,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     {
         if (! manifest.patchWorker.empty())
         {
-            // If loading patches with a worker, the caller must set up the
-            // createContextForPatchWorker functor to create a suitable javascript
-            // context.
+            // You must provide a function to create a patch worker context before building
             CMAJ_ASSERT (patch.createContextForPatchWorker != nullptr);
             patchWorker = std::make_unique<PatchWorker> (patch, manifest);
         }
@@ -1910,8 +1866,6 @@ inline Patch::Patch()
     midiMessages.reserve (midiBufferSize);
 
     clientEventQueue = std::make_unique<ClientEventQueue> (*this);
-
-    createContextForPatchWorker = [] { return choc::javascript::createQuickJSContext(); };
 }
 
 inline Patch::~Patch()
@@ -1922,6 +1876,9 @@ inline Patch::~Patch()
 
 inline bool Patch::preload (const PatchManifest& m)
 {
+    // You must provide a function to create a patch worker context before building
+    CMAJ_ASSERT (createContextForPatchWorker != nullptr);
+
     LoadParams params;
     params.manifest = m;
 
@@ -1933,6 +1890,9 @@ inline bool Patch::preload (const PatchManifest& m)
 
 inline bool Patch::loadPatch (const LoadParams& params, bool synchronous)
 {
+    // You must provide a function to create a patch worker context before building
+    CMAJ_ASSERT (createContextForPatchWorker != nullptr);
+
     if (! currentPlaybackParams.isValid())
         return false;
 

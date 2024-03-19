@@ -402,8 +402,8 @@ namespace cmaj::api_tests
         CHOC_CATEGORY (Performer);
 
         checkExternalFunctions (progress);
-        checkInvalidEngine (progress);
         checkGraph (progress);
         checkOutputEventWithMultipleTypes (progress);
+        checkInvalidEngine (progress);
     }
 }

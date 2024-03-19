@@ -19,6 +19,7 @@
 #pragma once
 
 #include "cmaj_Patch.h"
+#include "cmaj_PatchWorker_QuickJS.h"
 #include "cmaj_GeneratedCppEngine.h"
 
 #include <filesystem>
@@ -54,6 +55,7 @@ struct Environment
     void initialisePatch (cmaj::Patch& patch) const
     {
         patch.createEngine = createEngine;
+        enableQuickJSPatchWorker (patch);
         patch.stopPlayback = [] {};
         patch.startPlayback = [] {};
         patch.patchChanged = [] {};
