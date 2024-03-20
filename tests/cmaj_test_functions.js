@@ -1187,11 +1187,9 @@ function buildEngineWithLoadedProgram (testSection, options, timingInfo, engine)
 
 function createEngine (options)
 {
-    let engineOptions;
+    let engineOptions = options?.engine;
 
-    if (options != null)
-        engineOptions = options.engine;
-    else
+    if (engineOptions == null)
         engineOptions = getDefaultEngineOptions();
 
     return new Engine (engineOptions);
