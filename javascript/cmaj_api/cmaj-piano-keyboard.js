@@ -71,6 +71,7 @@ export default class PianoKeyboard extends HTMLElement
         this.currentPlayedNotes = new Set();
         this.currentDisplayedNotes = new Set();
         this.notes = [];
+        this.modifierKeys = 0;
         this.currentTouches = new Map();
 
         this.refreshHTML();
@@ -183,6 +184,7 @@ export default class PianoKeyboard extends HTMLElement
     allNotesOff()
     {
         this.setDraggedNote (-1);
+        this.modifierKeys = 0;
 
         for (let note of this.currentKeyboardNotes.values())
             this.removeKeyboardNote (note);
@@ -292,6 +294,15 @@ export default class PianoKeyboard extends HTMLElement
     /** @private */
     handleKey (event, isDown)
     {
+        if (event.key == "Meta" || event.key == "Alt" || event.key == "Control" || event.key == "Shift")
+        {
+            this.modifierKeys += isDown ? 1 : -1;
+            return;
+        }
+
+        if (this.modifierKeys != 0)
+            return;
+
         const config = this.config;
         const index = config.keymap.split (" ").indexOf (event.code);
 

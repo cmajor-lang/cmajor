@@ -1973,6 +1973,7 @@ R"(
         this.currentPlayedNotes = new Set();
         this.currentDisplayedNotes = new Set();
         this.notes = [];
+        this.modifierKeys = 0;
         this.currentTouches = new Map();
 
         this.refreshHTML();
@@ -2088,6 +2089,7 @@ R"(
     allNotesOff()
     {
         this.setDraggedNote (-1);
+        this.modifierKeys = 0;
 
         for (let note of this.currentKeyboardNotes.values())
             this.removeKeyboardNote (note);
@@ -2198,6 +2200,15 @@ R"(
     /** @private */
     handleKey (event, isDown)
     {
+        if (event.key == "Meta" || event.key == "Alt" || event.key == "Control" || event.key == "Shift")
+        {
+            this.modifierKeys += isDown ? 1 : -1;
+            return;
+        }
+
+        if (this.modifierKeys != 0)
+            return;
+
         const config = this.config;
         const index = config.keymap.split (" ").indexOf (event.code);
 
@@ -2223,11 +2234,11 @@ R"(
         {
             const elem = this.shadowRoot.getElementById (`note${i.toString()}`);
             this.notes.push ({ note: i, element: elem });
-        }
+        })"
+R"(
 
         this.style.maxWidth = window.getComputedStyle (this).scrollWidth;
-    })"
-R"(
+    }
 
     /** @private */
     refreshActiveNoteElements()
@@ -2706,7 +2717,7 @@ R"(3.948a102.566,102.566,0,0,1,19.979,2V382.85A74.364,74.364,0,0,0,1657.854,381.
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
-        File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 15225) },
+        File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 15540) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6186) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4941) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
