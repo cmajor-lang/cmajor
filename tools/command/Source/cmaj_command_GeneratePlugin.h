@@ -89,9 +89,9 @@ inline std::string createFileData (const GeneratedFiles& files)
         {
             result += "    static constexpr const char " + name + "[] = {\n        "
                        + cmaj::cpp_utils::createDataLiteral (f.content) + " };\n";
-
-            name = "std::string_view (" + name + ", " + std::to_string (f.content.length()) + ")";
         }
+
+        name = "std::string_view (" + name + ", " + std::to_string (f.content.length()) + ")";
 
         fileList += "        File { " + cmaj::cpp_utils::createStringLiteral (f.filename) + ", " + name + " }";
     }
