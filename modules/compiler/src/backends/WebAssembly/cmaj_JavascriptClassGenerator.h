@@ -30,17 +30,31 @@
 namespace cmaj::webassembly
 {
 
+struct SIMDMode
+{
+    SIMDMode (const choc::value::ValueView& options)
+    {
+        auto mode = options.isObject() ? options["SIMD"].toString() : std::string();
+        allowSIMD = mode != "disable";
+        allowNonSIMD = mode != "simd-only";
+    }
+
+    bool allowSIMD = true;
+    bool allowNonSIMD = true;
+};
+
 struct JavascriptClassGenerator
 {
     JavascriptClassGenerator (const AST::Program& p,
                               const BuildSettings& buildSettingsToUse,
                               std::string optionalMainClassName,
                               bool shouldUseBinaryen,
-                              bool shouldUseSimd)
+                              SIMDMode simdMode)
         : program (p),
           buildSettings (buildSettingsToUse),
           useBinaryen (shouldUseBinaryen),
-          useSimd (shouldUseSimd),
+          generateSIMD (simdMode.allowSIMD),
+          generateNonSIMD (simdMode.allowNonSIMD),
           mainClassName (std::move (optionalMainClassName))
     {
     }
@@ -50,7 +64,7 @@ struct JavascriptClassGenerator
         if (useBinaryen)
         {
            #if CMAJ_ENABLE_CODEGEN_BINARYEN
-            module = binaryen::generateWebAssembly (program, buildSettings);
+            hasNonSIMD = moduleNonSIMD.generate (program, buildSettings, true, false);
            #else
             CMAJ_ASSERT_FALSE;
            #endif
@@ -58,20 +72,18 @@ struct JavascriptClassGenerator
         else
         {
            #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
-            module = llvm::generateWebAssembly (program, buildSettings, useSimd);
+            if (generateSIMD)
+                hasSIMD = moduleSIMD.generate (program, buildSettings, false, true);
+
+            if (generateNonSIMD)
+                hasNonSIMD = moduleNonSIMD.generate (program, buildSettings, false, false);
            #endif
         }
 
-        if (module.binaryWASMData.empty())
-            return {};
+        if (hasNonSIMD || hasSIMD)
+            return emitClass();
 
-        stateStructLayout = module.nativeTypeLayouts.get (*module.stateStructType);
-        ioStructLayout = module.nativeTypeLayouts.get (*module.ioStructType);
-
-        stateStructChocType = module.getChocType (*module.stateStructType);
-        ioStructChocType = module.getChocType (*module.ioStructType);
-
-        return emitClass();
+        return {};
     }
 
     std::string emitClass()
@@ -121,20 +133,18 @@ class MAIN_CLASS
                 << "// Code beyond this point is private internal implementation detail"
                 << sectionBreak;
 
-            emitPackerFunctions();
+            for (auto& f : moduleSetupFns)
+                f();
+
             emitStringHandleLookup();
-            emitWasmBytesFunction();
         }
 
         out << blankLine;
 
-        return choc::text::replace (out.toString(),
-                                    "$STATE_ADDRESS$", std::to_string (module.stateStructAddress),
-                                    "$IO_ADDRESS$", std::to_string (module.ioStructAddress),
-                                    "$INITIAL_NUM_MEM_PAGES$", std::to_string (module.initialNumMemPages),
-                                    "$STACK_TOP$", std::to_string (module.stackTop),
-                                    "$SCRATCH_SPACE_ADDRESS$", std::to_string (module.scratchSpaceAddress));
+        return out.toString();
     }
+
+    struct GeneratedModule;
 
     //==============================================================================
     void emitConstructor()
@@ -150,8 +160,43 @@ constructor()
 
     void emitInitialiseFunction()
     {
+        std::string callInitFn;
+
+        if (hasSIMD && hasNonSIMD)
+        {
+            callInitFn = R"(
+  const isSIMDAvailable = WebAssembly.validate (new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]));
+
+  if (isSIMDAvailable)
+    await this._initialiseInternalSIMD (sessionID, frequency);
+  else
+    await this._initialiseInternalNonSIMD (sessionID, frequency);
+)";
+            moduleSetupFns.push_back ([this] { emitModuleSetupFunction ("SIMD", moduleSIMD); });
+            moduleSetupFns.push_back ([this] { emitModuleSetupFunction ("NonSIMD", moduleNonSIMD); });
+
+            moduleSetupFns.push_back ([this] { emitWasmBytesFunction ("_getWasmBytesSIMD", moduleSIMD); });
+            moduleSetupFns.push_back ([this] { emitWasmBytesFunction ("_getWasmBytesNonSIMD", moduleNonSIMD); });
+        }
+        else
+        {
+            callInitFn = R"(
+    await this._initialiseInternal (sessionID, frequency);
+)";
+            if (hasSIMD)
+            {
+                moduleSetupFns.push_back ([this] { emitModuleSetupFunction ({}, moduleSIMD); });
+                moduleSetupFns.push_back ([this] { emitWasmBytesFunction ("_getWasmBytes", moduleSIMD); });
+            }
+            else
+            {
+                moduleSetupFns.push_back ([this] { emitModuleSetupFunction ({}, moduleNonSIMD); });
+                moduleSetupFns.push_back ([this] { emitWasmBytesFunction ("_getWasmBytes", moduleNonSIMD); });
+            }
+        }
+
         out << sectionBreak
-            << choc::text::trimStart (R"js(
+            << choc::text::replace (choc::text::trimStart (R"js(
 /** Prepares this processor for use.
  *
  *  @param {number} sessionID - A unique integer ID which will be used for `processor.session`.
@@ -164,39 +209,100 @@ async initialise (sessionID, frequency)
 
   if (! (frequency > 1))
     throw new Error ("initialise() requires a valid frequency argument");
-
-  const memory = new WebAssembly.Memory ({ initial: $INITIAL_NUM_MEM_PAGES$ });
-  const stack = new WebAssembly.Global ({ value: "i32", mutable: true }, $STACK_TOP$);
-
-  const imports = {
-    env: {
-      __linear_memory: memory,
-      __memory_base: 0,
-      __stack_pointer: stack,
-      __table_base: 0,
-      memcpy:  (dst, src, len) => { this.byteMemory.copyWithin (dst, src, src + len); return dst; },
-      memmove: (dst, src, len) => { this.byteMemory.copyWithin (dst, src, src + len); return dst; },
-      memset:  (dst, value, len) => { this.byteMemory.fill (value, dst, dst + len); return dst; }
-    },
-  };
-
-  const result = await WebAssembly.instantiate (this._getWasmBytes(), imports);
-  this.instance = result.instance;
-  const exports = this.instance.exports;
-
-  const memoryBuffer = exports.memory?.buffer || memory.buffer;
-  this.byteMemory = new Uint8Array (memoryBuffer);
-  this.memoryDataView = new DataView (memoryBuffer);
-
-  if (exports.advanceBlock)
-    this._advance = numFrames => exports.advanceBlock ($STATE_ADDRESS$, $IO_ADDRESS$, numFrames);
-  else
-    this._advance = () => exports.advanceOneFrame ($STATE_ADDRESS$, $IO_ADDRESS$);
-
-  exports.initialise?.($STATE_ADDRESS$, $SCRATCH_SPACE_ADDRESS$, sessionID, frequency);
+  $CALL_INIT$
   return true;
 }
-)js");
+)js"),
+           "$CALL_INIT$", callInitFn);
+    }
+
+    void emitModuleSetupFunction (std::string suffix, GeneratedModule& module)
+    {
+        auto replaceModuleParams = [&] (std::string_view text)
+        {
+            return choc::text::replace (text,
+                                        "$STATE_ADDRESS$", std::to_string (module.module.stateStructAddress),
+                                        "$IO_ADDRESS$", std::to_string (module.module.ioStructAddress),
+                                        "$SCRATCH_SPACE_ADDRESS$", std::to_string (module.module.scratchSpaceAddress),
+                                        "$INITIAL_NUM_MEM_PAGES$", std::to_string (module.module.initialNumMemPages),
+                                        "$STACK_TOP$", std::to_string (module.module.stackTop),
+                                        "$SUFFIX$", suffix);
+        };
+
+        out << sectionBreak
+            << choc::text::trimStart (R"(
+/** @access private */
+async _initialiseInternal)") << suffix << " (sessionID, frequency)" << newLine;
+        {
+            auto indent = out.createIndentWithBraces();
+
+            out << replaceModuleParams (choc::text::trimStart (R"js(
+this.stateAddress = $STATE_ADDRESS$;
+this.scratchSpaceAddress = $SCRATCH_SPACE_ADDRESS$;
+
+const memory = new WebAssembly.Memory ({ initial: $INITIAL_NUM_MEM_PAGES$ });
+const stack = new WebAssembly.Global ({ value: "i32", mutable: true }, $STACK_TOP$);
+const imports = {
+  env: {
+    __linear_memory: memory,
+    __memory_base: 0,
+    __stack_pointer: stack,
+    __table_base: 0,
+    memcpy:  (dst, src, len) => { this.byteMemory.copyWithin (dst, src, src + len); return dst; },
+    memmove: (dst, src, len) => { this.byteMemory.copyWithin (dst, src, src + len); return dst; },
+    memset:  (dst, value, len) => { this.byteMemory.fill (value, dst, dst + len); return dst; }
+  },
+};
+
+const result = await WebAssembly.instantiate (this._getWasmBytes$SUFFIX$(), imports);
+this.instance = result.instance;
+const exports = this.instance.exports;
+const memoryBuffer = exports.memory?.buffer || memory.buffer;
+const memoryDataView = new DataView (memoryBuffer);
+const byteMemory = new Uint8Array (memoryBuffer);
+this.byteMemory = byteMemory;
+this.memoryDataView = memoryDataView;
+
+exports.initialise?.(this.stateAddress, this.scratchSpaceAddress, sessionID, frequency);
+
+const advanceFn = exports.advanceBlock ? ((numFrames) => exports.advanceBlock ($STATE_ADDRESS$, $IO_ADDRESS$, numFrames))
+                                       : (() => exports.advanceOneFrame ($STATE_ADDRESS$, $IO_ADDRESS$));
+
+this._advanceInternal = (numFrames) => )js"));
+
+            {
+                auto indent2 = out.createIndentWithBraces();
+
+                for (auto& output : program.getMainProcessor().getOutputEndpoints (true))
+                {
+                    if (output->isStream())
+                    {
+                        auto details = findOriginalEndpointDetails (output);
+                        auto info = getStreamInfo (module, details);
+
+                        out << "byteMemory.fill (0, " << info.address << ", ";
+
+                        if (buildSettings.getMaxBlockSize() == 1)
+                            out << info.address + info.frameStride;
+                        else
+                            out << info.address << " + numFrames * " << info.frameStride;
+
+                        out << ");" << newLine;
+                    }
+                }
+
+                out << "advanceFn (numFrames);" << blankLine;
+            }
+
+            out << ";" << blankLine;
+
+            for (auto& f : emitModuleSpecificFnSetup)
+                f (module);
+
+            emitPackerFunctions (module);
+        }
+
+        out << blankLine;
     }
 
     //==============================================================================
@@ -215,28 +321,10 @@ async initialise (sessionID, frequency)
  *                              This must be greater than zero.
  */
 advance (numFrames)
+{
+  this._advanceInternal (numFrames);
+}
 )");
-        auto indent2 = out.createIndentWithBraces();
-
-        for (auto& output : program.getMainProcessor().getOutputEndpoints (true))
-        {
-            if (output->isStream())
-            {
-                auto details = findOriginalEndpointDetails (output);
-                auto info = getStreamInfo (details);
-
-                out << "this.byteMemory.fill (0, " << info.address << ", ";
-
-                if (buildSettings.getMaxBlockSize() == 1)
-                    out << info.address + info.frameStride;
-                else
-                    out << info.address << " + numFrames * " << info.frameStride;
-
-                out << ");" << newLine;
-            }
-        }
-
-        out << "this._advance (numFrames);" << blankLine;
     }
 
     //==============================================================================
@@ -340,8 +428,8 @@ setInputValue_ENDPOINT (newValue, numFramesToReachValue)
                     auto indent = out.createIndentWithBraces();
                     auto setValueFunctionName = AST::getSetValueFunctionName (input);
 
-                    out << "this." << getPackerFunctionName (type) << " (" << module.scratchSpaceAddress << ", newValue);" << newLine;
-                    out << "this.instance.exports." << setValueFunctionName << " ($STATE_ADDRESS$, " << module.scratchSpaceAddress << ", numFramesToReachValue);" << newLine;
+                    out << "this." << getPackerFunctionName (type) << " (this.scratchSpaceAddress, newValue);" << newLine;
+                    out << "this.instance.exports." << setValueFunctionName << " (this.stateAddress, this.scratchSpaceAddress, numFramesToReachValue);" << newLine;
                 }
             }
             else if (details.isEvent())
@@ -385,16 +473,16 @@ setInputValue_ENDPOINT (newValue, numFramesToReachValue)
 
                             if (isWASMPrimitive (eventType))
                             {
-                                out << "this.instance.exports." << wasmEventHandlerFn << " ($STATE_ADDRESS$, "
+                                out << "this.instance.exports." << wasmEventHandlerFn << " (this.stateAddress, "
                                     << paramVariable << ");" << newLine;
                             }
                             else
                             {
                                 auto type = TypePair { eventType.get(), details.dataTypes[index++] };
-                                out << "this." << getPackerFunctionName (type) << " (" << module.scratchSpaceAddress
-                                    << ", " << paramVariable << ");" << newLine
-                                    << "this.instance.exports." << wasmEventHandlerFn << " ($STATE_ADDRESS$, "
-                                    << module.scratchSpaceAddress << ");" << newLine;
+                                out << "this." << getPackerFunctionName (type) << " (this.scratchSpaceAddress, "
+                                    << paramVariable << ");" << newLine
+                                    << "this.instance.exports." << wasmEventHandlerFn
+                                    << " (this.stateAddress, this.scratchSpaceAddress);" << newLine;
                             }
                         }
                     }
@@ -418,9 +506,22 @@ setInputValue_ENDPOINT (newValue, numFramesToReachValue)
     void emitOutputEventAccessorFunctions (const AST::EndpointDeclaration& output, const std::string& endpointID,
                                            const AST::StructType& stateStructType, uint32_t listIndex, uint32_t countIndex)
     {
-        auto countPackedOffset = stateStructChocType.getElementTypeAndOffset (countIndex).offset;
-        auto countNativeBit = stateStructLayout->convertPackedByteToNativeBit (static_cast<uint32_t> (countPackedOffset));
-        auto countType = createTypePair (*stateStructType.getAggregateElementType (countIndex));
+        emitModuleSpecificFnSetup.push_back ([this, &output, endpointID, listIndex, countIndex, &stateStructType] (GeneratedModule& module)
+        {
+            auto countPackedOffset = module.stateStructChocType.getElementTypeAndOffset (countIndex).offset;
+            auto countNativeBit = module.stateStructLayout->convertPackedByteToNativeBit (static_cast<uint32_t> (countPackedOffset));
+            auto countType = createTypePair (module, *stateStructType.getAggregateElementType (countIndex));
+            auto address = module.module.stateStructAddress + countNativeBit / 8;
+
+            out << "this._unpackEventCountInternal_" << endpointID << " = () => { return "
+                << getUnpackFunctionCall (module, countType, std::to_string (address))
+                << "; };" << newLine;
+
+            out << "this._resetEventCountInternal_" << endpointID << " = () => { memoryDataView.setInt32 ("
+                << address << ", 0, true); };" << newLine;
+
+            emitEventReadFunction (module, output, endpointID, stateStructType, listIndex);
+        });
 
         out << textWithEndpointReplacement (endpointID, R"(
 /** Returns the number of events available for endpoint "ENDPOINT" */
@@ -428,7 +529,7 @@ getOutputEventCount_ENDPOINT()
 )");
         {
             auto indent = out.createIndentWithBraces();
-            out << "return " << getUnpackFunctionCall (countType, std::to_string (module.stateStructAddress + countNativeBit / 8)) << ";" << newLine;
+            out << "return this._unpackEventCountInternal_" << endpointID << "();" << newLine;
         }
 
         out << blankLine
@@ -438,7 +539,7 @@ resetOutputEventCount_ENDPOINT()
 )");
         {
             auto indent = out.createIndentWithBraces();
-            out << "this." << getPackerFunctionName (countType) << "(" << (module.stateStructAddress + countNativeBit / 8) << ", 0);" << newLine;
+            out << "this._resetEventCountInternal_" << endpointID << "();" << newLine;
         }
 
         out << blankLine
@@ -450,8 +551,20 @@ getOutputEvent_ENDPOINT (index)
 )");
         {
             auto indent = out.createIndentWithBraces();
+            out << "return this._readEventInternal_" << endpointID << " (index);" << newLine;
+        }
+    }
 
-            auto listArrayTypeAndOffset = stateStructChocType.getElementTypeAndOffset (listIndex);
+    void emitEventReadFunction (GeneratedModule& module, const AST::EndpointDeclaration& output,
+                                const std::string& endpointID, const AST::StructType& stateStructType, uint32_t listIndex)
+    {
+        out << blankLine
+            << "this._readEventInternal_" << endpointID << " = (index) => ";
+
+        {
+            auto indent = out.createIndentWithBraces();
+
+            auto listArrayTypeAndOffset = module.stateStructChocType.getElementTypeAndOffset (listIndex);
             auto& eventArrayType = listArrayTypeAndOffset.elementType;
             auto eventArrayPackedOffsetFromState = static_cast<uint32_t> (listArrayTypeAndOffset.offset);
             CMAJ_ASSERT (eventArrayType.isArray() && eventArrayType.getNumElements() > 1);
@@ -461,22 +574,23 @@ getOutputEvent_ENDPOINT (index)
             auto eventEntryTypePair = TypePair { eventEntryASTType, eventEntryChocType };
 
             auto eventEntryPackedSize = static_cast<uint32_t> (eventEntryChocType.getValueDataSize());
-            auto eventArray0NativeOffset = stateStructLayout->convertPackedByteToNativeByte (eventArrayPackedOffsetFromState);
-            auto eventArray1NativeOffset = stateStructLayout->convertPackedByteToNativeByte (eventArrayPackedOffsetFromState + eventEntryPackedSize);
+            auto eventArray0NativeOffset = module.stateStructLayout->convertPackedByteToNativeByte (eventArrayPackedOffsetFromState);
+            auto eventArray1NativeOffset = module.stateStructLayout->convertPackedByteToNativeByte (eventArrayPackedOffsetFromState + eventEntryPackedSize);
             auto eventArrayNativeStride = eventArray1NativeOffset - eventArray0NativeOffset;
 
             auto readEventMember = [&] (uint32_t index)
             {
                 auto memberOffsetWithinState = eventArrayPackedOffsetFromState + static_cast<uint32_t> (eventEntryChocType.getElementTypeAndOffset (index).offset);
-                auto nativeMemberOffset = stateStructLayout->convertPackedByteToNativeByte (memberOffsetWithinState) - eventArray0NativeOffset;
+                auto nativeMemberOffset = module.stateStructLayout->convertPackedByteToNativeByte (memberOffsetWithinState) - eventArray0NativeOffset;
 
                 auto type = index >= 2 ? getEndpointTypePair (output, index - 2)
-                                       : eventEntryTypePair.getElementType (index);
+                                        : eventEntryTypePair.getElementType (index);
 
-                return getUnpackFunctionCall (type, addToValue ("eventAddress", nativeMemberOffset));
+                return getUnpackFunctionCall (module, type, addToValue ("eventAddress", nativeMemberOffset));
             };
 
-            out << "const eventAddress = " << (module.stateStructAddress + eventArray0NativeOffset) << " + (" << eventArrayNativeStride << " * index);" << newLine
+            out << "const eventAddress = " << (module.module.stateStructAddress + eventArray0NativeOffset)
+                << " + (" << eventArrayNativeStride << " * index);" << newLine
                 << "const frame = " << readEventMember (0) << ";" << newLine;
 
             auto numEventTypes = eventEntryChocType.getNumElements() - 2;
@@ -501,6 +615,8 @@ getOutputEvent_ENDPOINT (index)
                 out << "return { frame, typeIndex, event: null };" << newLine;
             }
         }
+
+        out << ";" << blankLine;
     }
 
     void emitOutputAccessorFunctions()
@@ -509,7 +625,8 @@ getOutputEvent_ENDPOINT (index)
         {
             auto details = findOriginalEndpointDetails (output);
             auto endpointID = details.endpointID.toString();
-            auto& stateStructType = AST::castToRef<AST::StructType> (*module.stateStructType);
+            auto& stateStructType = AST::castToRef<AST::StructType> (hasSIMD ? *moduleSIMD.module.stateStructType
+                                                                             : *moduleNonSIMD.module.stateStructType);
 
             if (details.isStream())
             {
@@ -520,19 +637,25 @@ getOutputEvent_ENDPOINT (index)
                 auto index = stateStructType.indexOfMember (StreamUtilities::getValueEndpointStructMemberName (endpointID));
                 CMAJ_ASSERT (index >= 0);
 
+                emitModuleSpecificFnSetup.push_back ([this, endpointID, index, output] (GeneratedModule& module)
+                {
+                    auto valueTypeAndOffset = module.stateStructChocType.getElementTypeAndOffset (static_cast<uint32_t> (index));
+                    auto packedOffsetInState = static_cast<uint32_t> (valueTypeAndOffset.offset);
+                    auto nativeOffsetInState = module.stateStructLayout->convertPackedByteToNativeByte (packedOffsetInState);
+                    auto typePair = getEndpointTypePair (output, 0);
+
+                    out << "this._unpackValueInternal_" << endpointID << " = () => { return "
+                        << getUnpackFunctionCall (module, typePair, std::to_string (module.module.stateStructAddress + nativeOffsetInState))
+                        << "; };" << newLine;
+                });
+
                 out << textWithEndpointReplacement (endpointID, R"(
 /** Returns the current value of endpoint "ENDPOINT" */
 getOutputValue_ENDPOINT()
 )");
                 {
                     auto indent = out.createIndentWithBraces();
-
-                    auto valueTypeAndOffset = stateStructChocType.getElementTypeAndOffset (static_cast<uint32_t> (index));
-                    auto packedOffsetInState = static_cast<uint32_t> (valueTypeAndOffset.offset);
-                    auto nativeOffsetInState = stateStructLayout->convertPackedByteToNativeByte (packedOffsetInState);
-                    auto typePair = getEndpointTypePair (output, 0);
-
-                    out << "return " << getUnpackFunctionCall (typePair, std::to_string (module.stateStructAddress + nativeOffsetInState)) << ";" << newLine;
+                    out << "return this._unpackValueInternal_" << endpointID << "();" << newLine;
                 }
             }
             else if (details.isEvent())
@@ -552,21 +675,46 @@ getOutputValue_ENDPOINT()
 
     void emitOutputStreamReadFunction (EndpointDetails& details)
     {
-        auto info = getStreamInfo (details);
-
-        auto write = [&] (std::string_view code)
+        emitModuleSpecificFnSetup.push_back ([this, details] (GeneratedModule& module)
         {
-            out << choc::text::replace (choc::text::trim (code),
-                                        "$ADDRESS$", std::to_string (info.address),
-                                        "$SRC_CHANS$", std::to_string (info.numChannels),
-                                        "$UNPACK_SAMPLE$", getUnpackFunctionCall (info.sampleType, "source + $SAMPLE_STRIDE$ * channel"),
-                                        "$MAX_NUM_FRAMES$", std::to_string (buildSettings.getMaxBlockSize()),
-                                        "$FRAME_STRIDE$", std::to_string (info.frameStride),
-                                        "$SAMPLE_STRIDE$", std::to_string (info.sampleStride))
-                << newLine;
-        };
+            auto info = getStreamInfo (module, details);
 
-        out << textWithEndpointReplacement (info.endpointID, R"(
+            auto write = [&] (std::string_view code)
+            {
+                out << choc::text::replace (choc::text::trim (code),
+                                            "$UNPACK_FRAME$", getUnpackFunctionCall (module, info.frameType, "$ADDRESS$ + frameIndex * $FRAME_STRIDE$"),
+                                            "$UNPACK_SAMPLE$", getUnpackFunctionCall (module, info.sampleType, "source + $SAMPLE_STRIDE$ * channel"),
+                                            "$ADDRESS$", std::to_string (info.address),
+                                            "$SRC_CHANS$", std::to_string (info.numChannels),
+                                            "$MAX_NUM_FRAMES$", std::to_string (buildSettings.getMaxBlockSize()),
+                                            "$FRAME_STRIDE$", std::to_string (info.frameStride),
+                                            "$SAMPLE_STRIDE$", std::to_string (info.sampleStride),
+                                            "$ENDPOINT$", info.endpointID)
+                    << blankLine;
+            };
+
+            write (R"(
+this._getOutputFrameInternal_$ENDPOINT$ = (frameIndex) => { return $UNPACK_FRAME$; };
+
+this._getOutputFramesInternal_$ENDPOINT$ = (destChannelArrays, maxNumFramesToRead, destChannel) => {
+  if (maxNumFramesToRead > $MAX_NUM_FRAMES$)
+    maxNumFramesToRead = $MAX_NUM_FRAMES$;
+
+  const channelsToCopy = Math.min ($SRC_CHANS$, destChannelArrays.length - destChannel);
+  let source = $ADDRESS$;
+
+  for (let frame = 0; frame < maxNumFramesToRead; ++frame)
+  {
+    for (let channel = 0; channel < channelsToCopy; ++channel)
+      destChannelArrays[destChannel + channel][frame] = $UNPACK_SAMPLE$;
+
+    source += $FRAME_STRIDE$;
+  }
+};
+)");
+        });
+
+        out << textWithEndpointReplacement (details.endpointID.toString(), R"(
 /** Returns a frame from the output stream "ENDPOINT"
  *
  * @param {number} frameIndex - the index of the frame to fetch
@@ -575,11 +723,11 @@ getOutputFrame_ENDPOINT (frameIndex)
 )");
         {
             auto indent = out.createIndentWithBraces();
-            write ("return " + getUnpackFunctionCall (info.frameType, "$ADDRESS$ + frameIndex * $FRAME_STRIDE$") + ";");
+            out << "return this._getOutputFrameInternal_" << details.endpointID.toString() << " (frameIndex);" << newLine;
         }
 
         out << blankLine
-            << textWithEndpointReplacement (info.endpointID, R"(
+            << textWithEndpointReplacement (details.endpointID.toString(), R"(
 /** Copies frames from the output stream "ENDPOINT" into a destination array.
  *
  * @param {Array} destChannelArrays   - An array of arrays (one per channel) into
@@ -591,31 +739,61 @@ getOutputFrames_ENDPOINT (destChannelArrays, maxNumFramesToRead, destChannel)
 )");
         {
             auto indent = out.createIndentWithBraces();
-
-            write (R"(
-let source = $ADDRESS$;
-
-if (maxNumFramesToRead > $MAX_NUM_FRAMES$)
-  maxNumFramesToRead = $MAX_NUM_FRAMES$;
-
-const channelsToCopy = Math.min ($SRC_CHANS$, destChannelArrays.length - destChannel);
-
-for (let frame = 0; frame < maxNumFramesToRead; ++frame)
-{
-  for (let channel = 0; channel < channelsToCopy; ++channel)
-    destChannelArrays[destChannel + channel][frame] = $UNPACK_SAMPLE$;
-
-  source += $FRAME_STRIDE$;
-}
-)");
+            out << "this._getOutputFramesInternal_" << details.endpointID.toString()
+                << " (destChannelArrays, maxNumFramesToRead, destChannel);" << newLine;
         }
+
+        out << blankLine;
     }
 
     void emitInputStreamWriteFunction (EndpointDetails& details)
     {
-        auto info = getStreamInfo (details);
+        emitModuleSpecificFnSetup.push_back ([this, details] (GeneratedModule& module)
+        {
+            auto info = getStreamInfo (module, details);
 
-        out << textWithEndpointReplacement (info.endpointID, R"(
+            auto write = [&] (std::string_view code)
+            {
+                out << choc::text::replace (choc::text::trim (code),
+                                            "$ADDRESS$", std::to_string (info.address),
+                                            "$DST_CHANS$", std::to_string (info.numChannels),
+                                            "$MAX_NUM_FRAMES$", std::to_string (buildSettings.getMaxBlockSize()),
+                                            "$PACK_SAMPLE$", std::string ("this.") + getPackerFunctionName (info.sampleType),
+                                            "$FRAME_STRIDE$", std::to_string (info.frameStride),
+                                            "$SAMPLE_STRIDE$", std::to_string (info.sampleStride),
+                                            "$ENDPOINT$", info.endpointID)
+                    << blankLine;
+            };
+
+            write (R"(
+this._setInputFramesInternal_$ENDPOINT$ = (sourceChannelArrays, numFramesToWrite, sourceChannel) => {
+  try
+  {
+    if (numFramesToWrite > $MAX_NUM_FRAMES$)
+      numFramesToWrite = $MAX_NUM_FRAMES$;
+
+    const channelsToCopy = Math.min ($DST_CHANS$, sourceChannelArrays.length - sourceChannel);
+    let dest = $ADDRESS$;
+
+    for (let frame = 0; frame < numFramesToWrite; ++frame)
+    {
+      for (let channel = 0; channel < channelsToCopy; ++channel)
+        $PACK_SAMPLE$ (dest + $SAMPLE_STRIDE$ * channel, sourceChannelArrays[sourceChannel + channel][frame]);
+
+      dest += $FRAME_STRIDE$;
+    }
+  }
+  catch (error)
+  {
+    // Sometimes, often at startup, Web Audio provides an empty buffer - causing TypeError on attempt to dereference
+    if (! (error instanceof TypeError))
+      throw (error);
+  }
+};
+)");
+        });
+
+        out << textWithEndpointReplacement (details.endpointID.toString(), R"(
 /** Stores frames for the input to endpoint "ENDPOINT"
  *
  * @param {Array} sourceChannelArrays - An array of channel arrays to read
@@ -626,55 +804,23 @@ setInputStreamFrames_ENDPOINT (sourceChannelArrays, numFramesToWrite, sourceChan
 )");
         {
             auto indent = out.createIndentWithBraces();
-
-            std::string_view code = R"(
-try
-{
-  if (numFramesToWrite > $MAX_NUM_FRAMES$)
-    numFramesToWrite = $MAX_NUM_FRAMES$;
-
-  let dest = $ADDRESS$;
-
-  const channelsToCopy = Math.min ($DST_CHANS$, sourceChannelArrays.length - sourceChannel);
-
-  for (let frame = 0; frame < numFramesToWrite; ++frame)
-  {
-    for (let channel = 0; channel < channelsToCopy; ++channel)
-      $PACK_SAMPLE$ (dest + $SAMPLE_STRIDE$ * channel, sourceChannelArrays[sourceChannel + channel][frame]);
-
-    dest += $FRAME_STRIDE$;
-  }
-}
-catch (error)
-{
-  // Sometimes, often at startup, Web Audio provides an empty buffer - causing TypeError on attempt to dereference
-  if (!(error instanceof TypeError))
-    throw(error);
-}
-)";
-
-            out << choc::text::replace (choc::text::trim (code),
-                                        "$ADDRESS$", std::to_string (info.address),
-                                        "$DST_CHANS$", std::to_string (info.numChannels),
-                                        "$MAX_NUM_FRAMES$", std::to_string (buildSettings.getMaxBlockSize()),
-                                        "$PACK_SAMPLE$", std::string ("this.") + getPackerFunctionName (info.sampleType),
-                                        "$FRAME_STRIDE$", std::to_string (info.frameStride),
-                                        "$SAMPLE_STRIDE$", std::to_string (info.sampleStride))
-                << newLine;
+            out << "this._setInputFramesInternal_" << details.endpointID.toString()
+                << " (sourceChannelArrays, numFramesToWrite, sourceChannel);" << newLine;
         }
     }
 
-    void emitWasmBytesFunction()
+    void emitWasmBytesFunction (std::string_view functionName, GeneratedModule& module)
     {
-        out << "/** @access private */" << newLine
-            << "_getWasmBytes()" << newLine;
+        out << blankLine
+            << "/** @access private */" << newLine
+            << functionName << "()" << newLine;
         {
             auto indent = out.createIndentWithBraces();
 
             std::string currentLine = "return new Uint8Array([";
             out << currentLine;
 
-            for (auto byte : module.binaryWASMData)
+            for (auto byte : module.module.binaryWASMData)
             {
                 if (currentLine.length() > 200)
                 {
@@ -693,18 +839,23 @@ catch (error)
         out << blankLine;
     }
 
-    void emitPackerFunctions()
+    void emitPackerFunctions (GeneratedModule& module)
     {
         for (auto& packer : packerFunctions)
-            writeTypePackerFunction (packer.type);
+            writeTypePackerFunction (module, packer.type);
 
         for (auto& unpacker : unpackerFunctions)
-            writeTypeUnpackerFunction (unpacker.type);
+            writeTypeUnpackerFunction (module, unpacker.type);
     }
 
     void emitStringHandleLookup()
     {
-        if (module.stringDictionary.strings.empty())
+        const auto& strings = hasSIMD ? moduleSIMD.module.stringDictionary.strings
+                                      : moduleNonSIMD.module.stringDictionary.strings;
+
+        CMAJ_ASSERT (! (hasSIMD && hasNonSIMD) || strings == moduleNonSIMD.module.stringDictionary.strings);
+
+        if (strings.empty())
             return;
 
         out << "/** @access private */" << newLine
@@ -716,8 +867,8 @@ catch (error)
             {
                 auto indent2 = out.createIndentWithBraces();
 
-                auto stringData = module.stringDictionary.strings.data();
-                auto totalLength = module.stringDictionary.strings.size();
+                auto stringData = strings.data();
+                auto totalLength = strings.size();
                 size_t offset = 0;
 
                 for (;;)
@@ -782,9 +933,9 @@ catch (error)
                  findOriginalEndpointDetails (endpoint).dataTypes[index] };
     }
 
-    TypePair createTypePair (const AST::TypeBase& type) const
+    static TypePair createTypePair (GeneratedModule& module, const AST::TypeBase& type)
     {
-        return { type, module.getChocType (type) };
+        return { type, module.module.getChocType (type) };
     }
 
     struct StreamInfo
@@ -794,33 +945,33 @@ catch (error)
         TypePair frameType, sampleType;
     };
 
-    StreamInfo getStreamInfo (const EndpointDetails& details)
+    StreamInfo getStreamInfo (GeneratedModule& module, const EndpointDetails& details)
     {
         StreamInfo info;
         info.endpointID = details.endpointID.toString();
 
-        const auto& ioStructType = AST::castToRef<AST::StructType> (module.ioStructType);
+        const auto& ioStructType = AST::castToRef<AST::StructType> (module.module.ioStructType);
         auto index = ioStructType.indexOfMember (info.endpointID);
         CMAJ_ASSERT (index >= 0);
 
-        auto memberTypeAndOffset = ioStructChocType.getElementTypeAndOffset (static_cast<uint32_t> (index));
+        auto memberTypeAndOffset = module.ioStructChocType.getElementTypeAndOffset (static_cast<uint32_t> (index));
         auto typePair = TypePair { ioStructType.getMemberType (static_cast<uint32_t> (index)), memberTypeAndOffset.elementType };
 
         auto packedOffsetInState = static_cast<uint32_t> (memberTypeAndOffset.offset);
-        auto nativeOffsetInState = ioStructLayout->convertPackedByteToNativeByte (packedOffsetInState);
-        info.address = module.ioStructAddress + nativeOffsetInState;
+        auto nativeOffsetInState = module.ioStructLayout->convertPackedByteToNativeByte (packedOffsetInState);
+        info.address = module.module.ioStructAddress + nativeOffsetInState;
 
         if (buildSettings.getMaxBlockSize() == 1)
         {
             info.frameType = typePair;
             auto packedStride = static_cast<uint32_t> (typePair.chocType.getValueDataSize());
-            info.frameStride = ioStructLayout->convertPackedByteToNativeByte (packedOffsetInState + packedStride) - nativeOffsetInState;
+            info.frameStride = module.ioStructLayout->convertPackedByteToNativeByte (packedOffsetInState + packedStride) - nativeOffsetInState;
         }
         else
         {
             info.frameType = typePair.getElementType (0);
             auto packedStride = static_cast<uint32_t> (typePair.chocType.getElementTypeAndOffset (1).offset);
-            info.frameStride = ioStructLayout->convertPackedByteToNativeByte (packedOffsetInState + packedStride) - nativeOffsetInState;
+            info.frameStride = module.ioStructLayout->convertPackedByteToNativeByte (packedOffsetInState + packedStride) - nativeOffsetInState;
         }
 
         if (info.frameType.chocType.isVector())
@@ -829,7 +980,7 @@ catch (error)
             info.sampleType = info.frameType.getElementType (0);
 
             auto packedStride = static_cast<uint32_t> (info.sampleType.chocType.getValueDataSize());
-            info.sampleStride = ioStructLayout->convertPackedByteToNativeByte (packedOffsetInState + packedStride) - nativeOffsetInState;
+            info.sampleStride = module.ioStructLayout->convertPackedByteToNativeByte (packedOffsetInState + packedStride) - nativeOffsetInState;
         }
         else
         {
@@ -859,10 +1010,10 @@ catch (error)
         return name;
     }
 
-    std::string getUnpackFunctionCall (const TypePair& type, const std::string& address)
+    std::string getUnpackFunctionCall (GeneratedModule& module, const TypePair& type, const std::string& address)
     {
         if (type.astType->isPrimitiveInt() || type.astType->isPrimitiveFloat())
-            return getTypeUnpacker (*type.astType, type.chocType, address, 0);
+            return getTypeUnpacker (module, *type.astType, type.chocType, address, 0);
 
         return "this." + getUnpackerFunctionName (type) + " (" + address + ")";
     }
@@ -879,37 +1030,35 @@ catch (error)
         return name;
     }
 
-    void writeTypePackerFunction (const TypePair& type)
+    void writeTypePackerFunction (GeneratedModule& module, const TypePair& type)
     {
-        out << "/** @access private */" << newLine
-            << getPackerFunctionName (type) << " (address, newValue)" << newLine;
+        out << "this." << getPackerFunctionName (type) << " = (address, newValue) => ";
         {
             auto indent = out.createIndentWithBraces();
-            writeTypePacker (*type.astType, type.chocType, "address", 0, "newValue");
+            writeTypePacker (module, *type.astType, type.chocType, "address", 0, "newValue");
         }
 
-        out << blankLine;
+        out << ";" << blankLine;
     }
 
-    void writeTypeUnpackerFunction (const TypePair& type)
+    void writeTypeUnpackerFunction (GeneratedModule& module, const TypePair& type)
     {
-        out << "/** @access private */" << newLine
-            << getUnpackerFunctionName (type) << " (address)" << newLine;
+        out << "this." << getUnpackerFunctionName (type) << " = (address) => ";
         {
             auto indent = out.createIndentWithBraces();
-            out << "return " << getTypeUnpacker (*type.astType, type.chocType, "address", 0) << ";" << newLine;
+            out << "return " << getTypeUnpacker (module, *type.astType, type.chocType, "address", 0) << ";" << newLine;
         }
 
-        out << blankLine;
+        out << ";" << blankLine;
     }
 
-    void writeTypePacker (const AST::TypeBase& baseType, const choc::value::Type& type,
+    void writeTypePacker (GeneratedModule& module, const AST::TypeBase& baseType, const choc::value::Type& type,
                           const std::string& baseAddressVariable, uint32_t packedOffsetFromBase, const std::string& newValue)
     {
         auto writePrimitivePacker = [&] (std::string_view typeName, const std::string& v)
         {
-            auto nativeOffset = module.nativeTypeLayouts.get (baseType)->convertPackedByteToNativeByte (packedOffsetFromBase);
-            out << "this.memoryDataView.set" << typeName << " (" << addToValue (baseAddressVariable, nativeOffset)
+            auto nativeOffset = module.module.nativeTypeLayouts.get (baseType)->convertPackedByteToNativeByte (packedOffsetFromBase);
+            out << "memoryDataView.set" << typeName << " (" << addToValue (baseAddressVariable, nativeOffset)
                 << ", " << v << ", " << (littleEndianPacking ? "true" : "false") << ");" << newLine;
         };
 
@@ -920,14 +1069,14 @@ catch (error)
 
         if (type.isBool())
         {
-            auto nativeBit = module.nativeTypeLayouts.get (baseType)->convertPackedByteToNativeBit (packedOffsetFromBase);
+            auto nativeBit = module.module.nativeTypeLayouts.get (baseType)->convertPackedByteToNativeBit (packedOffsetFromBase);
             auto address = addToValue (baseAddressVariable, nativeBit / 8);
             auto onMask = static_cast<uint8_t> (1u << (nativeBit & 7));
             uint8_t offMask = ~onMask;
 
-            out << "this.memoryDataView.setUint8 (" << address << ", " << newValue
-                << " ? (" << onMask << " | this.memoryDataView.getUint8(" << address << "))"
-                << " : (" << offMask << " & this.memoryDataView.getUint8(" << address << ")));" << newLine;
+            out << "memoryDataView.setUint8 (" << address << ", " << newValue
+                << " ? (" << onMask << " | memoryDataView.getUint8(" << address << "))"
+                << " : (" << offMask << " & memoryDataView.getUint8(" << address << ")));" << newLine;
 
             return;
         }
@@ -940,7 +1089,7 @@ catch (error)
                 auto indexSuffix = type.isObject() ? ("." + std::string (type.getObjectMember (i).name))
                                                             : ("[" + std::to_string (i) + "]");
 
-                writeTypePacker (baseType, element.elementType, baseAddressVariable,
+                writeTypePacker (module, baseType, element.elementType, baseAddressVariable,
                                  packedOffsetFromBase + static_cast<uint32_t> (element.offset),
                                  newValue + indexSuffix);
             }
@@ -951,14 +1100,14 @@ catch (error)
         CMAJ_ASSERT_FALSE;
     }
 
-    std::string getTypeUnpacker (const AST::TypeBase& baseType, const choc::value::Type& type,
+    std::string getTypeUnpacker (GeneratedModule& module, const AST::TypeBase& baseType, const choc::value::Type& type,
                                  const std::string& baseAddressVariable, uint32_t packedOffsetFromBase)
     {
         auto getPrimitiveUnpacker = [&] (const std::string& typeName)
         {
-            auto nativeOffset = module.nativeTypeLayouts.get (baseType)->convertPackedByteToNativeByte (packedOffsetFromBase);
+            auto nativeOffset = module.module.nativeTypeLayouts.get (baseType)->convertPackedByteToNativeByte (packedOffsetFromBase);
 
-            return "this.memoryDataView.get" + typeName + " (" + addToValue (baseAddressVariable, nativeOffset)
+            return "memoryDataView.get" + typeName + " (" + addToValue (baseAddressVariable, nativeOffset)
                      + (littleEndianPacking ? ", true)"
                                             : ", false)");
         };
@@ -971,11 +1120,11 @@ catch (error)
 
         if (type.isBool())
         {
-            auto nativeBit = module.nativeTypeLayouts.get (baseType)->convertPackedByteToNativeBit (packedOffsetFromBase);
+            auto nativeBit = module.module.nativeTypeLayouts.get (baseType)->convertPackedByteToNativeBit (packedOffsetFromBase);
             auto address = addToValue (baseAddressVariable, nativeBit / 8);
             auto mask = static_cast<uint8_t> (1u << (nativeBit & 7));
 
-            return "((this.memoryDataView.getUint8 (" + address + ") & " + std::to_string (mask) + ") !== 0)";
+            return "((memoryDataView.getUint8 (" + address + ") & " + std::to_string (mask) + ") !== 0)";
         }
 
         if (type.isArray() || type.isVector())
@@ -989,7 +1138,7 @@ catch (error)
                     s += ", ";
 
                 auto element = type.getElementTypeAndOffset (i);
-                s += getTypeUnpacker (baseType, element.elementType, baseAddressVariable,
+                s += getTypeUnpacker (module, baseType, element.elementType, baseAddressVariable,
                                       packedOffsetFromBase + static_cast<uint32_t> (element.offset));
             }
 
@@ -1010,7 +1159,7 @@ catch (error)
                 auto memberOffset = static_cast<uint32_t> (type.getElementTypeAndOffset (i).offset);
 
                 s += choc::json::getEscapedQuotedString (member.name)
-                       + ": " + getTypeUnpacker (baseType, member.type, baseAddressVariable, packedOffsetFromBase + memberOffset);
+                       + ": " + getTypeUnpacker (module, baseType, member.type, baseAddressVariable, packedOffsetFromBase + memberOffset);
             }
 
             return s + " }";
@@ -1031,13 +1180,51 @@ catch (error)
     static constexpr bool littleEndianPacking = true;
 
     const AST::Program& program;
-    WebAssemblyModule module;
     const BuildSettings& buildSettings;
-    const bool useBinaryen;
-    const bool useSimd;
+    const bool useBinaryen, generateSIMD, generateNonSIMD;
     std::string mainClassName;
-    ptr<const NativeTypeLayout> stateStructLayout, ioStructLayout;
-    choc::value::Type stateStructChocType, ioStructChocType;
+
+    struct GeneratedModule
+    {
+        bool generate (const AST::Program& p, const BuildSettings& settings, bool binaryen, bool useSIMD)
+        {
+            if (binaryen)
+            {
+               #if CMAJ_ENABLE_CODEGEN_BINARYEN
+                module = binaryen::generateWebAssembly (p, settings);
+               #else
+                CMAJ_ASSERT_FALSE;
+               #endif
+            }
+            else
+            {
+               #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
+                module = llvm::generateWebAssembly (p, settings, useSIMD);
+               #endif
+            }
+
+            if (module.binaryWASMData.empty())
+                return false;
+
+            stateStructLayout = module.nativeTypeLayouts.get (*module.stateStructType);
+            ioStructLayout = module.nativeTypeLayouts.get (*module.ioStructType);
+
+            stateStructChocType = module.getChocType (*module.stateStructType);
+            ioStructChocType = module.getChocType (*module.ioStructType);
+            return true;
+        }
+
+        WebAssemblyModule module;
+        ptr<const NativeTypeLayout> stateStructLayout, ioStructLayout;
+        choc::value::Type stateStructChocType, ioStructChocType;
+    };
+
+    GeneratedModule moduleSIMD, moduleNonSIMD;
+    bool hasSIMD = false, hasNonSIMD = false;
+    std::vector<std::function<void(GeneratedModule&)>> emitModuleSpecificFnSetup;
+    std::vector<std::function<void()>> moduleSetupFns;
+
+    choc::text::CodePrinter out;
 
     struct PackingFunction
     {
@@ -1046,8 +1233,6 @@ catch (error)
     };
 
     std::vector<PackingFunction> packerFunctions, unpackerFunctions;
-
-    choc::text::CodePrinter out;
 
     static constexpr choc::text::CodePrinter::NewLine newLine = {};
     static constexpr choc::text::CodePrinter::BlankLine blankLine = {};

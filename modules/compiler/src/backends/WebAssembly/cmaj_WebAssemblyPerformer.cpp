@@ -40,15 +40,9 @@ struct WebAssemblyEngine
 {
     WebAssemblyEngine (EngineBase<WebAssemblyEngine>& e) : engine (e)
     {
-
     }
 
     EngineBase<WebAssemblyEngine>& engine;
-
-    bool useSimd() const
-    {
-        return engine.options.isObject() && engine.options.hasObjectMember ("simd");
-    }
 
     static std::string getEngineVersion()   { return std::string ("wasm1"); }
 
@@ -71,7 +65,8 @@ struct WebAssemblyEngine
             : latency (latencyToUse)
         {
             JavascriptClassGenerator gen (AST::getProgram (*wasmEngine.engine.program),
-                                          wasmEngine.engine.buildSettings, {}, useBinaryen, wasmEngine.useSimd());
+                                          wasmEngine.engine.buildSettings, {}, useBinaryen,
+                                          SIMDMode (wasmEngine.engine.options));
 
             wrapperJavascript = gen.generate();
             mainClassName = gen.mainClassName;

@@ -71,7 +71,9 @@ cmaj <command> [options]    Runs the given command. Options can include the foll
     --debug                 Turn on debug output from the performer
     --sessionID=n           Set the session id to the given value
     --engine=<type>         Use the specified engine - e.g. llvm, webview, cpp
-    --simd                  Enable SIMD support in WASM generation
+    --simd                  WASM generation uses SIMD/non-SIMD at runtime (default)
+    --no-simd               WASM generation does not emit SIMD
+    --simd-only             WASM generation only emits SIMD
     --binaryen              Use the binaryen WASM generator
 
 Supported commands:
@@ -217,8 +219,9 @@ static choc::value::Value parseEngineArgs (juce::ArgumentList& args)
     if (args.removeOptionIfFound ("--binaryen"))
         engineOptions.addMember ("binaryen", true);
 
-    if (args.removeOptionIfFound ("--simd"))
-        engineOptions.addMember ("simd", true);
+    if (args.removeOptionIfFound ("--simd"))      engineOptions.addMember ("SIMD", "enable");
+    if (args.removeOptionIfFound ("--no-simd"))   engineOptions.addMember ("SIMD", "disable");
+    if (args.removeOptionIfFound ("--simd-only")) engineOptions.addMember ("SIMD", "simd-only");
 
     return engineOptions;
 }

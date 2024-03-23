@@ -39,9 +39,8 @@ JavascriptWrapper generateJavascriptWrapper (const ProgramInterface& p, std::str
     auto options = choc::json::parse (opts);
 
     bool useBinaryen = options.isObject() && options.hasObjectMember ("binaryen");
-    bool useSimd     = options.isObject() && options.hasObjectMember ("simd");
 
-    JavascriptClassGenerator gen (AST::getProgram (p), buildSettings, {}, useBinaryen, useSimd);
+    JavascriptClassGenerator gen (AST::getProgram (p), buildSettings, {}, useBinaryen, SIMDMode (options));
 
     JavascriptWrapper w;
     w.code = gen.generate();

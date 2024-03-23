@@ -345,7 +345,7 @@ struct LLVMCodeGenerator
             ::llvm::SmallVector<std::string, 16> attributes {};
             targetMachine.reset (::llvm::EngineBuilder().selectTarget (::llvm::Triple (targetModule->getTargetTriple()), {}, {}, attributes));
 
-            if (engineOptions.isObject() && engineOptions.hasObjectMember ("simd"))
+            if (engineOptions.isObject() && engineOptions.hasObjectMember ("wasm-simd"))
                 targetMachine->setTargetFeatureString ("+simd128");
         }
         else

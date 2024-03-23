@@ -803,7 +803,8 @@ static uint32_t roundUp (Type size, uint32_t granularity)
 }
 
 #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
-webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface& p, const BuildSettings& buildSettings, bool useSimd, bool createWAST)
+webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface& p, const BuildSettings& buildSettings,
+                                                    bool useSIMD, bool createWAST)
 {
     initialiseLLVM();
 
@@ -811,7 +812,7 @@ webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface& p, c
     ::llvm::SmallVector<std::string, 16> attributes {};
     targetMachine.reset (::llvm::EngineBuilder().selectTarget (::llvm::Triple ("wasm32"), {}, {}, attributes));
 
-    if (useSimd)
+    if (useSIMD)
         targetMachine->setTargetFeatureString ("+simd128");
 
     if (! targetMachine)
@@ -829,8 +830,8 @@ webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface& p, c
 
     auto options = choc::value::createObject ("options");
 
-    if (useSimd)
-        options.addMember ("simd", true);
+    if (useSIMD)
+        options.addMember ("wasm-simd", true);
 
     auto generator = std::make_shared<LLVMCodeGenerator> (program,
                                                           options,
