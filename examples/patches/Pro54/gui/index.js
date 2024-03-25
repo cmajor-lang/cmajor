@@ -823,6 +823,7 @@ class Pro54PatchView extends HTMLElement
 
 .pro54-about-box-inner {
     background: #eeeeeeee;
+    color: #222;
     position: fixed;
     top: 20%;
     left: 25%;
