@@ -12,7 +12,8 @@
     "plugin":
     {
         "manufacturerCode":  "-NI-",
-        "pluginCode":        "Pr54"
+        "pluginCode":        "Pr54",
+        "icon":              "icon.png"
     },
 
     "source":           "Pro54.cmajor",

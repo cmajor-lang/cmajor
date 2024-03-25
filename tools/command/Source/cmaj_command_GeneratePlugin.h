@@ -163,6 +163,7 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     std::string productName          = cmaj::makeSafeIdentifierName (choc::text::replace (loadParams.manifest.name, " ", ""));
     std::string pluginCode;
     std::string manufacturerCode;
+    std::string icon;
 
     auto plugin = loadParams.manifest.manifest["plugin"];
 
@@ -170,6 +171,7 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     {
         pluginCode       = plugin["pluginCode"].toString();
         manufacturerCode = plugin["manufacturerCode"].toString();
+        icon             = plugin["icon"].toString();
     }
 
     if (pluginCode.empty())
@@ -211,6 +213,14 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     }
 
     (void) hasAudioOut;
+
+    std::string pluginExtras;
+
+    if (! icon.empty())
+    {
+        generatedFiles.addFile (icon, choc::file::loadFileAsString (loadParams.manifest.getFullPathForFile (icon)));
+        pluginExtras += "ICON_BIG \"" + icon + "\"\n";
+    }
 
     auto mainCpp = choc::text::replace (R"(//
 //     ,ad888ba,                              88
@@ -288,6 +298,7 @@ juce_add_plugin(${productName}
     NEEDS_MIDI_OUTPUT ${hasMidiOut}
     MICROPHONE_PERMISSION_ENABLED ${hasAudioIn}
     IS_SYNTH ${isInstrument}
+    ${pluginExtras}
 )
 
 juce_generate_juce_header(${productName})
@@ -336,7 +347,8 @@ target_link_libraries(${productName}
         "${isInstrument}", manifest.isInstrument ? "TRUE" : "FALSE",
         "${jucePath}", jucePath.empty() ? std::string() : "set(JUCE_PATH " + choc::text::replace (jucePath, "\\", "\\\\") + ")",
         "${mainSourceFile}", mainSourceFile,
-        "${cmajorIncludePath}", cmajorIncludePath);
+        "${cmajorIncludePath}", cmajorIncludePath,
+        "${pluginExtras}", pluginExtras);
 
     generatedFiles.addFile (mainSourceFile, std::move (mainCpp));
     generatedFiles.addFile ("CMakeLists.txt", std::move (makefile));
