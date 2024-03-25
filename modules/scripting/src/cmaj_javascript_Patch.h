@@ -38,6 +38,8 @@ struct PatchLibrary
 
             enableQuickJSPatchWorker (patch);
 
+            patch.setHostDescription ("Cmajor Test");
+
             patch.createEngine = [this]
             {
                 auto engine = cmaj::Engine::create (engineType);

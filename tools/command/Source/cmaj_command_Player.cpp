@@ -100,6 +100,8 @@ void playFile (juce::ArgumentList& args,
         patch.patchChanged   = [] {};
         patch.statusChanged  = [] (const cmaj::Patch::Status& s)   { std::cout << s.statusMessage << std::endl; };
 
+        patch.setHostDescription ("Cmajor Player");
+
         {
             cmaj::Patch::PlaybackParams params;
             params.blockSize = audioOptions.blockSize == 0 ? 256 : audioOptions.blockSize;

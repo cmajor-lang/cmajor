@@ -149,6 +149,7 @@ struct Plugin::Impl
         // this, amongst other things, delivers the parameter value changes to the views.
         choc::messageloop::initialise();
         environment.initialisePatch (patch);
+        patch.setHostDescription ("CLAP");
         editorToProcessorEventQueue.reset (8192);
 
         if (environment.engineType == Environment::EngineType::AOT)

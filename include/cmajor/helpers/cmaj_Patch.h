@@ -116,6 +116,14 @@ struct Patch
     /// Returns the current playback parameters.
     PlaybackParams getPlaybackParams() const        { return currentPlaybackParams; }
 
+    /// The caller that is using this patch should call this to provide a description
+    /// of the host that is loading it. This string will be passed through to
+    /// the status that is reported via the javascript PatchConnection class.
+    void setHostDescription (const std::string& hostName);
+
+    /// Returns the host description that was previously set with setHostDescription().
+    std::string getHostDescription() const;
+
     /// Enables/disables use of a background thread to check for any changes
     /// to patch files, and to trigger a rebuild when that happens.
     /// This defaults to false.
@@ -314,6 +322,7 @@ private:
     LoadParams lastLoadParams;
     std::shared_ptr<PatchRenderer> renderer;
     PlaybackParams currentPlaybackParams;
+    std::string hostDescription;
     std::unordered_map<std::string, CustomAudioSourcePtr> customAudioInputSources;
     std::unique_ptr<PatchFileChangeChecker> fileChangeChecker;
     std::vector<PatchView*> activeViews;
@@ -2105,6 +2114,16 @@ inline void Patch::setPlaybackParams (PlaybackParams newParams)
     }
 }
 
+inline void Patch::setHostDescription (const std::string& h)
+{
+    hostDescription = h;
+}
+
+inline std::string Patch::getHostDescription() const
+{
+    return hostDescription;
+}
+
 inline std::string Patch::getUID() const
 {
     return isLoaded() ? renderer->manifest.ID
@@ -2290,7 +2309,8 @@ inline void Patch::sendPatchStatusChangeToViews() const
                                     "error", renderer->errors.toString(),
                                     "manifest", renderer->manifest.manifest,
                                     "details", renderer->programDetails,
-                                    "sampleRate", renderer->sampleRate));
+                                    "sampleRate", renderer->sampleRate,
+                                    "host", hostDescription));
     }
 }
 

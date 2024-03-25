@@ -80,6 +80,8 @@ static void initTestPatch (Patch& patch)
     patch.patchChanged      = [] {};
     patch.statusChanged     = [] (auto&&...) {};
     patch.handleOutputEvent = [] (auto&&...) {};
+
+    patch.setHostDescription ("Cmajor Test");
 }
 
 static bool runUnitTests (choc::test::TestProgress& progress)

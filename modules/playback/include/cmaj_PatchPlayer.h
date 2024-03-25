@@ -159,6 +159,8 @@ private:
 
         enableQuickJSPatchWorker (patch);
 
+        patch.setHostDescription ("Cmajor Player");
+
         patch.stopPlayback      = [this] { setPatchCallbacksActive (false); };
         patch.startPlayback     = [this] { setPatchCallbacksActive (true); };
         patch.patchChanged      = [this] { handlePatchChange(); };

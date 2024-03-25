@@ -4,9 +4,9 @@ import { PatchConnection } from "./cmaj-patch-connection.js"
 //==============================================================================
 // N.B. code will be serialised to a string, so all `registerWorkletProcessor`s
 // dependencies must be self contained and not capture things in the outer scope
-async function serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName)
+async function serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName, hostDescription)
 {
-    const serialisedInvocation = `(${registerWorkletProcessor.toString()}) ("${workletName}", ${WrapperClass.toString()});`
+    const serialisedInvocation = `(${registerWorkletProcessor.toString()}) ("${workletName}", ${WrapperClass.toString()}, "${hostDescription}");`
 
     let reader = new FileReader();
     reader.readAsDataURL (new Blob ([serialisedInvocation], { type: "text/javascript" }));
@@ -14,7 +14,7 @@ async function serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletN
     return await new Promise (res => { reader.onloadend = () => res (reader.result); });
 }
 
-function registerWorkletProcessor (workletName, WrapperClass)
+function registerWorkletProcessor (workletName, WrapperClass, hostDescription)
 {
     function makeConsumeOutputEvents ({ wrapper, eventOutputs, dispatchOutputEvent })
     {
@@ -27,6 +27,7 @@ function registerWorkletProcessor (workletName, WrapperClass)
             return () =>
             {
                 const count = readCount();
+
                 for (let i = 0; i < count; ++i)
                     dispatchOutputEvent (endpointID, readEventAtIndex (i));
 
@@ -57,6 +58,7 @@ function registerWorkletProcessor (workletName, WrapperClass)
         };
 
         const lookup = {};
+
         for (const { endpointID, endpointType, annotation, purpose } of endpoints)
         {
             const key = toKey ({ endpointType, endpointID });
@@ -104,14 +106,14 @@ function registerWorkletProcessor (workletName, WrapperClass)
         if (endpoints.length === 0)
             return () => {};
 
-        var handlers = [];
-        var targetChannels = [];
-
-        var channelCount = 0;
+        let handlers = [];
+        let targetChannels = [];
+        let channelCount = 0;
 
         for (const endpoint of endpoints)
         {
             const handleFrames = wrapper[`${wrapperMethodNamePrefix}_${endpoint.endpointID}`]?.bind (wrapper);
+
             if (! handleFrames)
                 return () => {};
 
@@ -122,7 +124,7 @@ function registerWorkletProcessor (workletName, WrapperClass)
 
         return (channels, blockSize) =>
         {
-            for (var i = 0; i < handlers.length; i++)
+            for (let i = 0; i < handlers.length; i++)
                 handlers[i] (channels, blockSize, targetChannels[i]);
         }
     }
@@ -288,6 +290,7 @@ function registerWorkletProcessor (workletName, WrapperClass)
                                         outputs: wrapper.getOutputEndpoints(),
                                     },
                                     sampleRate,
+                                    host: hostDescription ? hostDescription : "WebAudio"
                                 },
                             });
                             break;
@@ -509,16 +512,18 @@ export class AudioWorkletPatchConnection extends PatchConnection
      *   @param {number} sessionID - an integer to use for the session ID
      *   @param {Array} patchInputList - a list of the input endpoints that the patch provides
      *   @param {Object} initialValueOverrides - optional initial values for parameter endpoints
+     *   @param {string} hostDescription - a description of the host that is using the patch
      */
     async initialise (WrapperClass,
                       audioContext,
                       workletName,
                       sessionID,
-                      initialValueOverrides)
+                      initialValueOverrides,
+                      hostDescription)
     {
         this.audioContext = audioContext;
 
-        const dataURI = await serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName);
+        const dataURI = await serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName, hostDescription);
         await audioContext.audioWorklet.addModule (dataURI);
 
         this.inputEndpoints = WrapperClass.prototype.getInputEndpoints();
@@ -527,8 +532,8 @@ export class AudioWorkletPatchConnection extends PatchConnection
         const audioInputEndpoints  = this.inputEndpoints.filter (({ purpose }) => purpose === "audio in");
         const audioOutputEndpoints = this.outputEndpoints.filter (({ purpose }) => purpose === "audio out");
 
-        var inputChannelCount = 0;
-        var outputChannelCount = 0;
+        let inputChannelCount = 0;
+        let outputChannelCount = 0;
 
         audioInputEndpoints.forEach  ((endpoint) => { inputChannelCount = inputChannelCount + endpoint.numAudioChannels; });
         audioOutputEndpoints.forEach ((endpoint) => { outputChannelCount = outputChannelCount + endpoint.numAudioChannels; });

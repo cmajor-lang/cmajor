@@ -67,7 +67,8 @@ export function getInputEndpoints()  { return MAIN_CLASS_NAME.prototype.getInput
 export async function createAudioWorkletNodePatchConnection (audioContext, workletName)
 {
   const connection = new helpers.AudioWorkletPatchConnection (manifest);
-  await connection.initialise (MAIN_CLASS_NAME, audioContext, workletName, Date.now() & 0x7fffffff);
+  await connection.initialise (MAIN_CLASS_NAME, audioContext, workletName,
+                               Date.now() & 0x7fffffff, {}, "WebAudio");
   return connection;
 }
 

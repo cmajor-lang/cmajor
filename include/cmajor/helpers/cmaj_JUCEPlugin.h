@@ -60,9 +60,12 @@ public:
 
         if (dllLoadedSuccessfully)
         {
-            patch->stopPlayback    = [this] { suspendProcessing (true); };
-            patch->startPlayback   = [this] { suspendProcessing (false); };
-            patch->patchChanged    = [this]
+            patch->setHostDescription (std::string (getWrapperTypeDescription (wrapperType)));
+
+            patch->stopPlayback  = [this] { suspendProcessing (true); };
+            patch->startPlayback = [this] { suspendProcessing (false); };
+
+            patch->patchChanged = [this]
             {
                 const auto executeOrDeferToMessageThread = [] (auto&& fn) -> void
                 {
@@ -74,7 +77,8 @@ public:
 
                 executeOrDeferToMessageThread ([this] { handlePatchChange(); });
             };
-            patch->statusChanged   = [this] (const auto& s) { setStatusMessage (s.statusMessage, s.messageList.hasErrors()); };
+
+            patch->statusChanged = [this] (const auto& s) { setStatusMessage (s.statusMessage, s.messageList.hasErrors()); };
 
             patch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
             {
@@ -1349,9 +1353,11 @@ public:
     using PluginInstance = JUCEPluginBase<JUCEPluginType_SinglePatchJIT>;
 
     JUCEPluginFormat (CacheDatabaseInterface::Ptr compileCache,
-                      std::function<void(PluginInstance&)> patchChangeCallbackFn)
+                      std::function<void(PluginInstance&)> patchChangeCallbackFn,
+                      std::string hostDescriptionToUse)
        : cache (std::move (compileCache)),
-         patchChangeCallback (std::move (patchChangeCallbackFn))
+         patchChangeCallback (std::move (patchChangeCallbackFn)),
+         hostDescription (std::move (hostDescriptionToUse))
     {
     }
 
@@ -1491,6 +1497,8 @@ public:
             manifest.initialiseWithFile (PluginInstance::getFileFromPluginID (desc.fileOrIdentifier));
 
             auto patch = std::make_unique<Patch>();
+
+            patch->setHostDescription (hostDescription);
             patch->setAutoRebuildOnFileChange (true);
             patch->createEngine = +[] { return cmaj::Engine::create(); };
             enableQuickJSPatchWorker (*patch);
@@ -1522,6 +1530,7 @@ public:
 
     CacheDatabaseInterface::Ptr cache;
     std::function<void(PluginInstance&)> patchChangeCallback;
+    std::string hostDescription;
 };
 
 
