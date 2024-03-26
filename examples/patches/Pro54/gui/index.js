@@ -203,10 +203,16 @@ class Pro54FilterElement extends Pro54ImageStrip
         this.patchConnection.sendParameterGestureStart (this.id);
         this.patchConnection.sendEventOrValue (this.id, this.currentValue);
         this.patchConnection.sendParameterGestureEnd (this.id);
+        this.BPFElement.setCurrentValue (this.currentValue);
     }
 
     onEndDrag() {}
     onValueDragged (newValue) {}
+
+    setBPFElement (element)
+    {
+        this.BPFElement = element;
+    }
 }
 
 class Pro54VoicesElement extends Pro54ImageStrip
@@ -244,6 +250,25 @@ class Pro54OrangeButton extends Pro54Button
     constructor()
     {
         super ("./gui/assets/button_orange.png");
+    }
+}
+
+class Pro54BPF extends Pro54Button
+{
+    constructor()
+    {
+        super ("./gui/assets/BPF.png");
+    }
+
+    setCurrentValue (newValue)
+    {
+        this.isOn = newValue > 0.1;
+        this.updateImage();
+    }
+
+    buttonPress (event)
+    {
+        return;
     }
 }
 
@@ -575,6 +600,8 @@ class Pro54PatchView extends HTMLElement
 
         const woodenPanel = this.shadowRoot.getElementById ("pro54-wooden-panel");
         woodenPanel.onclick = () => this.showAboutBox();
+
+        this.shadowRoot.getElementById ("FilterVersion").setBPFElement (this.shadowRoot.getElementById ("BPF"));
     }
 
     getScaleFactorLimits()
@@ -787,6 +814,7 @@ class Pro54PatchView extends HTMLElement
 #ProgrammerFile           { left: 202px;  top: 164px; }
 #ProgrammerBank           { left: 222px;  top: 164px; }
 #PatchName                { left: 454px;  top: 166px; }
+#BPF                      { left: 573px;  top: 47px; }
 
 #Keyboard {
     position: absolute;
@@ -926,6 +954,7 @@ class Pro54PatchView extends HTMLElement
     <pro54-program-bank id="ProgramBank"></pro54-program-bank>
     <pro54-midi-light id="MidiBlink" min-value="0" max-value="1" label="Midi Blink"></pro54-midi-light>
     <pro54-keyboard id="Keyboard"></pro54-keyboard>
+    <pro54-bpf id="BPF" min-value="0"  max-value="1" label="BPF"></pro54-bpf>
 
     <div id="pro54-wooden-panel"></div>
 
@@ -959,3 +988,4 @@ window.customElements.define ("pro54-program-bank", Pro54ProgramBank);
 window.customElements.define ("pro54-program-name", Pro54ProgramName);
 window.customElements.define ("pro54-keyboard", Pro54Keyboard);
 window.customElements.define ("pro54-patch-view", Pro54PatchView);
+window.customElements.define ("pro54-bpf", Pro54BPF);
