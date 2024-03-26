@@ -161,9 +161,9 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     std::string projectName          = cmaj::makeSafeIdentifierName (cpp.mainClassName);
     std::string version              = loadParams.manifest.version;
     std::string productName          = cmaj::makeSafeIdentifierName (choc::text::replace (loadParams.manifest.name, " ", ""));
+    std::string icon                 = loadParams.manifest.manifest["icon"].toString();
     std::string pluginCode;
     std::string manufacturerCode;
-    std::string icon;
 
     auto plugin = loadParams.manifest.manifest["plugin"];
 
@@ -171,7 +171,6 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     {
         pluginCode       = plugin["pluginCode"].toString();
         manufacturerCode = plugin["manufacturerCode"].toString();
-        icon             = plugin["icon"].toString();
     }
 
     if (pluginCode.empty())
