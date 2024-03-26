@@ -92,6 +92,8 @@ cmaj play file [opts]       Plays a .cmajorpatch, or executes a .js javascript f
                             running and retry when files are modified)
     --dry-run               Doesn't attempt to play any audio, just builds the patch, emits
                             any errors that are found, and exits
+    --rate=<rate>           Use the specified sample rate
+    --block-size=<size>     Request the given block size
 
 cmaj server [opts] dir      Run cmaj as an http service, serving the patches within the given
                             directory. Connect to the server using a browser to the http address
