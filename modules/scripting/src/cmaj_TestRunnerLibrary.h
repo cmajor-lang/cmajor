@@ -794,6 +794,7 @@ R"TEXT(
 function runScript (options)
 {
     let testSection = getCurrentTestSection();
+    let resetEvery = options.resetEvery;
 
     if (options.subDir == null)
         options.subDir = ".";
@@ -938,9 +939,25 @@ R"(
         }
     }
 
+    let framesTillReset = resetEvery;
+
     while (outstandingSamples > 0)
     {
         let samplesThisBlock = (options.blockSize < outstandingSamples) ? options.blockSize : outstandingSamples;
+
+        if (framesTillReset != null)
+        {
+            if (framesTillReset == 0)
+            {
+                performer.reset();
+                framesTillReset = resetEvery;
+            }
+
+            if (samplesThisBlock > framesTillReset)
+                samplesThisBlock = framesTillReset;
+
+            framesTillReset -= samplesThisBlock;
+        }
 
         for (let i = 0; i < inputEndpoints.length; i++)
         {
@@ -958,7 +975,8 @@ R"(
 
                 if (inputEndpoints[i].nextEvent < arrayLength)
                 {
-                    let framesTillNextEvent = inputEndpoints[i].events[inputEndpoints[i].nextEvent].frameOffset - framesRendered;
+                    let framesTillNextEvent = inputEndpoints[i].events[inputEndpoints[i].nextEvent].frameOffset - framesRendered;)"
+R"(
 
                     if (framesTillNextEvent < samplesThisBlock)
                         samplesThisBlock = framesTillNextEvent;
@@ -966,8 +984,7 @@ R"(
             }
             else if (inputEndpoints[i].endpointType == "value")
             {
-                let arrayLength = inputEndpoints[i].values.length;)"
-R"(
+                let arrayLength = inputEndpoints[i].values.length;
 
                 while (inputEndpoints[i].nextValue < arrayLength && inputEndpoints[i].values[inputEndpoints[i].nextValue].frameOffset == framesRendered)
                 {
@@ -997,7 +1014,8 @@ R"(
             performer.setInputValue (valuesToApply[i].handle, valuesToApply[i].value, valuesToApply[i].frameCount);
 
         eventsToApply = [];
-        valuesToApply = [];
+        valuesToApply = [];)"
+R"(
 
         for (let i = 0; i < inputEndpoints.length; i++)
         {
@@ -1009,8 +1027,7 @@ R"(
             }
         }
 
-        performer.advance();)"
-R"(
+        performer.advance();
 
         for (let i = 0; i < outputEndpoints.length; i++)
         {
@@ -1047,7 +1064,8 @@ R"(
     let expectedOverruns = 0;
 
     if (options.expectedOverruns)
-        expectedOverruns = options.expectedOverruns;
+        expectedOverruns = options.expectedOverruns;)"
+R"(
 
     if (overruns != expectedOverruns)
     {
@@ -1063,8 +1081,7 @@ R"(
 
             // testSection.logMessage ("Got output data:" + JSON.stringify (outputEndpoints[i].frames));
 
-            let expectedData = testSection.readStreamData (expectedStreamFilename);)"
-R"(
+            let expectedData = testSection.readStreamData (expectedStreamFilename);
 
             if (isError (expectedData))
             {
@@ -1096,7 +1113,8 @@ R"(
             }
             else
             {
-                let result = eventDataComparison (outputEndpoints[i].values, expectedData);
+                let result = eventDataComparison (outputEndpoints[i].values, expectedData);)"
+R"(
 
                 if (result != null)
                 {
@@ -1108,8 +1126,7 @@ R"(
         else if (outputEndpoints[i].endpointType == "event")
         {
             let expectedEventFilename = options.subDir + "/expectedOutput-" + outputEndpoints[i].endpointID + ".json";
-            let expectedData = testSection.readEventData (expectedEventFilename);)"
-R"(
+            let expectedData = testSection.readEventData (expectedEventFilename);
 
             if (isError (expectedData))
             {
@@ -1153,7 +1170,8 @@ R"(
 //==============================================================================
 //
 // The remainder of this file just consists of helper functions used by the code above
-//
+//)"
+R"(
 
 function buildEngineWithLoadedProgram (testSection, options, timingInfo, engine)
 {
@@ -1169,8 +1187,7 @@ function buildEngineWithLoadedProgram (testSection, options, timingInfo, engine)
 
     if (options.patch != null)
     {
-        let patch = new PatchManifest (new File (testSection.getAbsolutePath (options.patch)));)"
-R"(
+        let patch = new PatchManifest (new File (testSection.getAbsolutePath (options.patch)));
 
         if (isError (patch.error))
             return patch.error;

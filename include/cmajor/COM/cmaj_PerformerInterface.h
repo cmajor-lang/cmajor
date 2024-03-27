@@ -120,6 +120,10 @@ struct PerformerInterface   : public choc::com::Object
     /// After calling advance(), this can be called to fetch events that were sent to the given endpoint.
     virtual void iterateOutputEvents (EndpointHandle, void* context, HandleOutputEventCallback) = 0;
 
+    /// Resets the processor.
+    /// Returns the processor to the state it was in before it processed any frames.
+    virtual void reset() = 0;
+
     /// Renders the next block.
     /// The number of frames rendered will be the number that was last specified by a call to setBlockSize().
     virtual void advance() = 0;

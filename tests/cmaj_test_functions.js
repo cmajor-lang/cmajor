@@ -779,6 +779,7 @@ function testPatch (file, expectedError)
 function runScript (options)
 {
     let testSection = getCurrentTestSection();
+    let resetEvery = options.resetEvery;
 
     if (options.subDir == null)
         options.subDir = ".";
@@ -920,9 +921,25 @@ function runScript (options)
         }
     }
 
+    let framesTillReset = resetEvery;
+
     while (outstandingSamples > 0)
     {
         let samplesThisBlock = (options.blockSize < outstandingSamples) ? options.blockSize : outstandingSamples;
+
+        if (framesTillReset != null)
+        {
+            if (framesTillReset == 0)
+            {
+                performer.reset();
+                framesTillReset = resetEvery;
+            }
+
+            if (samplesThisBlock > framesTillReset)
+                samplesThisBlock = framesTillReset;
+
+            framesTillReset -= samplesThisBlock;
+        }
 
         for (let i = 0; i < inputEndpoints.length; i++)
         {

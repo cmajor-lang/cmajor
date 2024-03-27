@@ -130,7 +130,7 @@ private:
     //==============================================================================
     struct Performer  : public choc::com::ObjectWithAtomicRefCount<PerformerInterface, Performer>
     {
-        Performer (int32_t sessionID, double frequency)
+        Performer (int32_t s, double f) : sessionID (s), frequency (f)
         {
             generatedObject.initialise (sessionID, frequency);
         }
@@ -142,6 +142,11 @@ private:
             currentBlockSize = numFramesForNextBlock;
         }
 
+        void reset() override
+        {
+            generatedObject.initialise (sessionID, frequency);
+        }
+        
         void advance() override
         {
             generatedObject.advance (static_cast<int32_t> (currentBlockSize));
@@ -213,6 +218,8 @@ private:
         GeneratedCppClass generatedObject;
         uint32_t currentBlockSize = 1;
         uint32_t xruns = 0;
+        int32_t sessionID;
+        double frequency;
     };
 };
 

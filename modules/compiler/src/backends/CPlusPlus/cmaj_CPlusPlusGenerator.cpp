@@ -270,6 +270,7 @@ struct CPlusPlusCodeGenerator
     {
         printMaxFrequencyFunction();
         printInitialiseFunction();
+        printResetFunction();
         printAdvanceFunction();
         printGetEndpointAddressesFunction();
         printIterateOutputEventsFunctions();
@@ -279,6 +280,8 @@ struct CPlusPlusCodeGenerator
 
         std::string properties = R"CPPGEN(
 // Rendering state values
+int32_t initSessionID;
+double initFrequency;
 STATE_STRUCT state = {};
 IO_STRUCT io = {};
 )CPPGEN";
@@ -311,13 +314,27 @@ IO_STRUCT io = {};
             auto indent = out.createIndentWithBraces();
 
             out << "assert (frequency <= getMaxFrequency());" << newLine;
-            out << blankLine;
-            out << "int32_t processorID = 0;" << newLine;
+            out << "initSessionID = sessionID;" << newLine;
+            out << "initFrequency = frequency;" << newLine;
+            out << "reset();" << newLine;
+        }
+
+        out << blankLine;
+    }
+
+    void printResetFunction()
+    {
+        out << "void reset()" << newLine;
+
+        {
+            auto indent = out.createIndentWithBraces();
 
             if (auto f = mainProcessor.findSystemInitFunction())
-                out << codeGenerator->getFunctionName (*f) + " (state, processorID, sessionID, frequency);" << newLine;
-            else
-                out << "(void) processorID; (void) sessionID; (void) frequency;" << newLine;
+            {
+                out << "std::memset (&state, 0, sizeof (state));" << newLine;
+                out << "int32_t processorID = 0;" << newLine;
+                out << codeGenerator->getFunctionName (*f) + " (state, processorID, initSessionID, initFrequency);" << newLine;
+            }
         }
 
         out << blankLine;

@@ -91,6 +91,12 @@ struct PerformerAllocationCheckWrapper  : public choc::com::ObjectWithAtomicRefC
         target = std::move (p);
     }
 
+    void reset() override
+    {
+        ScopedAllocationTracker allocationTracker;
+        target->reset();
+    }
+
     void setBlockSize (uint32_t numFramesForNextBlock) override
     {
         ScopedAllocationTracker allocationTracker;

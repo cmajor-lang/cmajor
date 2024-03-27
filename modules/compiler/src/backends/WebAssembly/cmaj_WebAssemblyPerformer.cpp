@@ -147,6 +147,12 @@ initialisePatch();
             return out.str();
         }
 
+        void reset()
+        {
+            ScopedDisableAllocationTracking disableTracking;
+            context.evaluate (instanceName + ".reset()");
+        }
+
         void advance (uint32_t framesToAdvance)
         {
             ScopedDisableAllocationTracking disableTracking;

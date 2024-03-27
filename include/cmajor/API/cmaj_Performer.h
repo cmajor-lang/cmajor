@@ -57,6 +57,10 @@ struct Performer
     bool operator== (decltype (nullptr)) const      { return ! performer; }
 
     //==============================================================================
+    /// Resets the performer to the state it was before it processed any data
+    void reset();
+
+    //==============================================================================
     /// Sets the number of frames which should be rendered during the next call to advance().
     void setBlockSize (uint32_t numFramesForNextBlock);
 
@@ -339,6 +343,11 @@ inline void Performer::iterateOutputEvents (EndpointHandle endpoint, HandlerFn&&
     };
 
     performer->iterateOutputEvents (endpoint, std::addressof (handler), Callback::handleEvent);
+}
+
+inline void Performer::reset()
+{
+    performer->reset();
 }
 
 inline void Performer::advance()

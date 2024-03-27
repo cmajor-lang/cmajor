@@ -268,6 +268,12 @@ exports.initialise?.(this.stateAddress, this.scratchSpaceAddress, sessionID, fre
 const advanceFn = exports.advanceBlock ? ((numFrames) => exports.advanceBlock ($STATE_ADDRESS$, $IO_ADDRESS$, numFrames))
                                        : (() => exports.advanceOneFrame ($STATE_ADDRESS$, $IO_ADDRESS$));
 
+this.reset = () => {
+   byteMemory.fill (0, $STATE_ADDRESS$, $IO_ADDRESS$);
+   byteMemory.fill (0, $SCRATCH_SPACE_ADDRESS$, $SCRATCH_SPACE_ADDRESS$ + 4);
+   exports.initialise?.(this.stateAddress, this.scratchSpaceAddress, sessionID, frequency);
+};
+
 this._advanceInternal = (numFrames) => )js"));
 
             {

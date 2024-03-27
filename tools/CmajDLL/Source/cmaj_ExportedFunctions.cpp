@@ -26,7 +26,7 @@
 #endif
 
 
-CMAJ_API_EXPORT cmaj::Library::EntryPoints* cmajor_getEntryPointsV9()
+CMAJ_API_EXPORT cmaj::Library::EntryPoints* cmajor_getEntryPointsV10()
 {
     struct EntryPointsImpl  : public cmaj::Library::EntryPoints
     {

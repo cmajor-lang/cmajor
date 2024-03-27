@@ -454,21 +454,18 @@ struct LLVMEngine
     //==============================================================================
     struct JITInstance
     {
-        JITInstance (std::shared_ptr<LinkedCode> cc, int32_t sessionID, double frequency) : code (std::move (cc))
+        JITInstance (std::shared_ptr<LinkedCode> cc, int32_t s, double f) : code (std::move (cc)), sessionID (s), frequency (f)
         {
             stateMemory.resize (code->stateSize);
-            stateMemory.clear();
             statePointer = static_cast<uint8_t*> (stateMemory.data());
 
             ioMemory.resize (code->ioSize);
-            ioMemory.clear();
             ioPointer = static_cast<uint8_t*> (ioMemory.data());
-
-            int processorID = 0;
-            code->initialiseFn (statePointer, &processorID, sessionID, frequency);
 
             advanceOneFrameFn = code->advanceOneFrameFn;
             advanceBlockFn = code->advanceBlockFn;
+
+            reset();
         }
 
         //==============================================================================
@@ -480,8 +477,19 @@ struct LLVMEngine
 
         uint8_t* statePointer = nullptr;
         uint8_t* ioPointer = nullptr;
+        const int sessionID;
+        const double frequency;
 
         //==============================================================================
+        void reset() noexcept
+        {
+            stateMemory.clear();
+            ioMemory.clear();
+
+            int processorID = 0;
+            code->initialiseFn (statePointer, &processorID, sessionID, frequency);
+        }
+
         void advance (uint32_t framesToAdvance) noexcept
         {
             if (advanceOneFrameFn)

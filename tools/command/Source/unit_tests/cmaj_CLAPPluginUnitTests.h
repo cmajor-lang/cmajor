@@ -553,6 +553,10 @@ struct StubGeneratedCppPerformer
       ]
     })JSON";
 
+    void reset()
+    {
+    }
+    
     void initialise (int32_t sessionID, double frequency)
     {
         (void) sessionID;

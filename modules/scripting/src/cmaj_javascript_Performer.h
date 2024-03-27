@@ -98,6 +98,7 @@ struct PerformerLibrary
         CMAJ_JAVASCRIPT_BINDING_METHOD (performerRelease)
         CMAJ_JAVASCRIPT_BINDING_METHOD (performerSetBlockSize)
         CMAJ_JAVASCRIPT_BINDING_METHOD (performerAdvance)
+        CMAJ_JAVASCRIPT_BINDING_METHOD (performerReset)
         CMAJ_JAVASCRIPT_BINDING_METHOD (performerGetOutputFrames)
         CMAJ_JAVASCRIPT_BINDING_METHOD (performerGetOutputEvents)
         CMAJ_JAVASCRIPT_BINDING_METHOD (performerGetOutputValue)
@@ -154,6 +155,24 @@ private:
         {
             performer.setBlockSize (frames);
             currentNumFrames = frames;
+            return {};
+        }
+
+        choc::value::Value reset()
+        {
+            try
+            {
+                performer.reset();
+            }
+            catch (const std::exception& e)
+            {
+                return createErrorObject (e.what());
+            }
+            catch (...)
+            {
+                return createErrorObject ("reset() failed");
+            }
+
             return {};
         }
 
@@ -828,6 +847,14 @@ private:
         return createErrorObject ("Cannot find performer");
     }
 
+    choc::value::Value performerReset (choc::javascript::ArgumentList args)
+    {
+        if (auto performer = getPerformer (args))
+            return performer->reset();
+
+        return createErrorObject ("Cannot find performer");
+    }
+
     choc::value::Value performerGetOutputFrames (choc::javascript::ArgumentList args)
     {
         if (auto performer = getPerformer (args))
@@ -996,6 +1023,7 @@ class Performer
 
     setBlockSize (frames)               { return _performerSetBlockSize (this.id, frames); }
     advance()                           { return _performerAdvance (this.id); }
+    reset()                             { return _performerReset (this.id); }
     getOutputFrames (h)                 { return _performerGetOutputFrames (this.id, h); }
     getOutputEvents (h)                 { return _performerGetOutputEvents (this.id, h); }
     getOutputValue (h)                  { return _performerGetOutputValue (this.id, h); }

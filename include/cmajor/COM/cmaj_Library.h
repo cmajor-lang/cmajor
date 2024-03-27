@@ -125,7 +125,7 @@ private:
 /// This is the name of the single entry point function to the DLL - when
 /// there's a breaking change to the API, this will be updated to prevent
 /// accidental use of older (or newer) library versions.
-static constexpr const char* entryPointFunction = "cmajor_getEntryPointsV9";
+static constexpr const char* entryPointFunction = "cmajor_getEntryPointsV10";
 
 inline Library::SharedLibraryPtr& Library::getSharedLibraryPtrRef()
 {
