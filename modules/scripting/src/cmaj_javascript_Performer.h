@@ -69,7 +69,7 @@ struct PerformerLibrary
 
     void bind (choc::javascript::Context& context)
     {
-        context.evaluate (getWrapperScript());
+        context.run (getWrapperScript());
 
         CMAJ_JAVASCRIPT_BINDING_METHOD (programNew)
         CMAJ_JAVASCRIPT_BINDING_METHOD (programRelease)

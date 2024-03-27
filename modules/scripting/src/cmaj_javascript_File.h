@@ -151,7 +151,7 @@ struct FileSystem  : public std::enable_shared_from_this<FileSystem>
             return result;
         });
 
-        context.evaluate (getWrapperCode());
+        context.run (getWrapperCode());
     }
 
 private:

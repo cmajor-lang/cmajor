@@ -475,9 +475,9 @@ namespace cmaj::test
             CMAJ_JAVASCRIPT_BINDING_METHOD (testWriteEventData)
             CMAJ_JAVASCRIPT_BINDING_METHOD (testGetAbsolutePath)
 
-            context.evaluate (getWrapperScript());
-            context.evaluate (getTestLibrary());
-            context.evaluate (suite.userScript);
+            context.run (getWrapperScript());
+            context.run (getTestLibrary());
+            context.run (suite.userScript);
         }
 
         choc::javascript::Context& getContext()     { return javascriptEngine->getContext(); }
@@ -543,7 +543,7 @@ namespace cmaj::test
                 if (runDisabled)
                     return performCommand (runDisabled, remainingHeader);
 
-                getContext().evaluate ("getCurrentTestSection().reportDisabled();");
+                getContext().run ("getCurrentTestSection().reportDisabled();");
             }
             else
             {
@@ -553,7 +553,7 @@ namespace cmaj::test
                     currentTest->section.setNewHeader ("## " + header);
                 }
 
-                getContext().evaluate (header);
+                getContext().run (header);
             }
         }
 

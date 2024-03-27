@@ -768,7 +768,7 @@ struct Patch::PatchWorker  : public PatchView
                 return {};
             });
 
-            context.evaluate (getGlueCode(), std::addressof (resolveModule));
+            context.runModule (getGlueCode(), resolveModule);
         }
         catch (const std::exception& e)
         {
@@ -780,7 +780,7 @@ struct Patch::PatchWorker  : public PatchView
     {
         try
         {
-            context.evaluate (code);
+            context.run (code);
         }
         catch (const std::exception& e)
         {

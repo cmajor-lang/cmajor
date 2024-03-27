@@ -42,7 +42,7 @@ void executeScript (const std::string& file,
                     const cmaj::audio_utils::AudioDeviceOptions&)
 {
     JavascriptEngine engine (buildSettings, engineOptions);
-    engine.getContext().evaluate (choc::file::loadFileAsString (file));
+    engine.getContext().run (choc::file::loadFileAsString (file));
     choc::messageloop::run();
 }
 

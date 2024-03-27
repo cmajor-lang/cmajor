@@ -99,6 +99,18 @@ struct PatchWebView::Impl
         CMAJ_ASSERT (boundOK);
     }
 
+    choc::ui::WebView::Options getWebviewOptions()
+    {
+        choc::ui::WebView::Options options;
+        options.enableDebugMode = allowWebviewDevMode;
+        options.acceptsFirstMouseClick = true;
+        options.fetchResource = [this] (const auto& path) { return onRequest (path); };
+        return options;
+    }
+
+    std::optional<choc::ui::WebView::Options::Resource> onRequest (const std::string&);
+    static std::string toMimeTypeDefaultImpl (std::string_view extension);
+
     PatchWebView* ownerView = nullptr;
     Patch& patch;
     MimeTypeMappingFn toMimeTypeCustomImpl;
@@ -109,13 +121,7 @@ struct PatchWebView::Impl
     static constexpr bool allowWebviewDevMode = false;
    #endif
 
-    choc::ui::WebView webview { { allowWebviewDevMode, true, {}, [this] (const auto& path) { return onRequest (path); } } };
-
-    using ResourcePath = choc::ui::WebView::Options::Path;
-    using OptionalResource = std::optional<choc::ui::WebView::Options::Resource>;
-    OptionalResource onRequest (const ResourcePath&);
-
-    static std::string toMimeTypeDefaultImpl (std::string_view extension);
+    choc::ui::WebView webview { getWebviewOptions() };
 };
 
 inline std::unique_ptr<PatchWebView> PatchWebView::create (Patch& p, const PatchManifest::View& view, MimeTypeMappingFn toMimeType)
@@ -219,7 +225,7 @@ createPatchView (patchConnection, viewInfo).then ((currentView) =>
 </html>
 )";
 
-inline PatchWebView::Impl::OptionalResource PatchWebView::Impl::onRequest (const ResourcePath& path)
+inline std::optional<choc::ui::WebView::Options::Resource> PatchWebView::Impl::onRequest (const std::string& path)
 {
     const auto toResource = [] (std::string_view content, const auto& mimeType) -> choc::ui::WebView::Options::Resource
     {
