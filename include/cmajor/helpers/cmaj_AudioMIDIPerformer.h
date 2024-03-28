@@ -409,7 +409,7 @@ void AudioMIDIPerformer::Builder::addOutputCopyFunction (EndpointHandle endpoint
             add (dest.getChannel (c.dest), source.getChannel (c.source));
     });
 
-    if (std::is_same<SampleType, float>::value && numChannelsInEndpoint == 1 && channelsToAddTo.empty())
+    if (numChannelsInEndpoint == 1 && channelsToAddTo.empty() && (std::is_same<SampleType, float>::value))
     {
         if (channelsToOverwrite.size() == 1)
         {
