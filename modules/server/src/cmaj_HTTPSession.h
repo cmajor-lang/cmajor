@@ -25,6 +25,7 @@
 #pragma once
 
 #include <optional>
+#include "choc/text/choc_MIMETypes.h"
 
 namespace cmaj::server
 {
@@ -165,48 +166,6 @@ private:
         do_read();
     }
 
-    // Return a reasonable mime type based on the extension of a file.
-    static std::string_view mime_type (std::string_view path)
-    {
-        if (auto question = path.rfind ("?"); question != std::string_view::npos)
-            path = path.substr (0, question);
-
-        auto const ext = [&path]
-        {
-            auto pos = path.rfind(".");
-
-            if (pos == std::string_view::npos)
-                return std::string_view{};
-
-            return path.substr(pos);
-        }();
-
-        if (beast::iequals (ext, ".htm"))   return "text/html";
-        if (beast::iequals (ext, ".html"))  return "text/html";
-        if (beast::iequals (ext, ".php"))   return "text/html";
-        if (beast::iequals (ext, ".css"))   return "text/css";
-        if (beast::iequals (ext, ".txt"))   return "text/plain";
-        if (beast::iequals (ext, ".js"))    return "application/javascript";
-        if (beast::iequals (ext, ".json"))  return "application/json";
-        if (beast::iequals (ext, ".xml"))   return "application/xml";
-        if (beast::iequals (ext, ".swf"))   return "application/x-shockwave-flash";
-        if (beast::iequals (ext, ".flv"))   return "video/x-flv";
-        if (beast::iequals (ext, ".png"))   return "image/png";
-        if (beast::iequals (ext, ".jpe"))   return "image/jpeg";
-        if (beast::iequals (ext, ".jpeg"))  return "image/jpeg";
-        if (beast::iequals (ext, ".jpg"))   return "image/jpeg";
-        if (beast::iequals (ext, ".gif"))   return "image/gif";
-        if (beast::iequals (ext, ".bmp"))   return "image/bmp";
-        if (beast::iequals (ext, ".ico"))   return "image/vnd.microsoft.icon";
-        if (beast::iequals (ext, ".tiff"))  return "image/tiff";
-        if (beast::iequals (ext, ".tif"))   return "image/tiff";
-        if (beast::iequals (ext, ".svg"))   return "image/svg+xml";
-        if (beast::iequals (ext, ".svgz"))  return "image/svg+xml";
-        if (beast::iequals (ext, ".woff2")) return "font/woff2";
-
-        return "application/text";
-    }
-
     // This function produces an HTTP response for the given
     // request. The type of the response object depends on the
     // contents of the request, so the interface requires the
@@ -245,7 +204,7 @@ private:
                 };
 
                 res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-                res.set(http::field::content_type, mime_type (subPath));
+                res.set(http::field::content_type, choc::web::getMIMETypeFromFilename (subPath));
                 res.content_length(size);
                 res.keep_alive(req.keep_alive());
 
@@ -280,7 +239,7 @@ private:
         {
             http::response<http::empty_body> res {http::status::ok, req.version()};
             res.set (http::field::server, BOOST_BEAST_VERSION_STRING);
-            res.set (http::field::content_type, mime_type(path));
+            res.set (http::field::content_type, choc::web::getMIMETypeFromFilename (path));
             res.content_length(size);
             res.keep_alive(req.keep_alive());
             return send_request_response (std::move(res));
@@ -295,7 +254,7 @@ private:
         };
 
         res.set (http::field::server, BOOST_BEAST_VERSION_STRING);
-        res.set (http::field::content_type, mime_type(path));
+        res.set (http::field::content_type, choc::web::getMIMETypeFromFilename (path));
         res.content_length (size);
         res.keep_alive (req.keep_alive());
         return send_request_response (std::move(res));

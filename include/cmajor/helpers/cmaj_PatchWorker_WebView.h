@@ -21,6 +21,7 @@
 #include "cmaj_Patch.h"
 #include "../../choc/javascript/choc_javascript.h"
 #include "../../choc/gui/choc_WebView.h"
+#include "../../choc/text/choc_MIMETypes.h"
 
 
 namespace cmaj
@@ -102,49 +103,17 @@ inline void enableWebViewPatchWorker (Patch& p)
         {
             if (auto manifest = patch.getManifest())
             {
-                choc::ui::WebView::Options::Resource result;
-                std::string text;
-
                 if (path == "/")
-                {
-                    text = getHTML (choc::json::toString (manifest->manifest),
-                                    choc::json::getEscapedQuotedString (manifest->patchWorker));
+                    return choc::ui::WebView::Options::Resource (getHTML (*manifest), "text/html");
 
-                    result.mimeType = "text/html";
-                }
-                else
-                {
-                    if (auto moduleText = readJavascriptResource (path, manifest))
-                    {
-                        text = *moduleText;
-                        result.mimeType = getMIMEType (path.substr (path.find_last_of (".")));
-                    }
-                }
-
-                auto src = reinterpret_cast<const uint8_t*> (text.data());
-                result.data.insert (result.data.end(), src, src + text.length());
-                return result;
+                if (auto moduleText = readJavascriptResource (path, manifest))
+                    return choc::ui::WebView::Options::Resource (*moduleText, choc::web::getMIMETypeFromFilename (path, "application/octet-stream"));
             }
 
             return {};
         }
 
-        static std::string getMIMEType (std::string_view extension)
-        {
-            if (extension == ".css")  return "text/css";
-            if (extension == ".html") return "text/html";
-            if (extension == ".js")   return "text/javascript";
-            if (extension == ".mjs")  return "text/javascript";
-            if (extension == ".svg")  return "image/svg+xml";
-            if (extension == ".wasm") return "application/wasm";
-            if (extension == ".ogg")  return "audio/ogg";
-            if (extension == ".wav")  return "audio/wav";
-            if (extension == ".flac") return "audio/flac";
-
-            return "application/octet-stream";
-        }
-
-        static std::string getHTML (const std::string& manifestJSON, const std::string& worker)
+        static std::string getHTML (const PatchManifest& manifest)
         {
             return choc::text::replace (R"(
 <!DOCTYPE html>
@@ -197,8 +166,8 @@ catch (e)
 
 </script>
 )",
-            "MANIFEST", manifestJSON,
-            "WORKER_MODULE", worker);
+            "MANIFEST", choc::json::toString (manifest.manifest),
+            "WORKER_MODULE", choc::json::getEscapedQuotedString (manifest.patchWorker));
         }
 
         Patch& patch;

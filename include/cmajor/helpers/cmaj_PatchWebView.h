@@ -18,10 +18,10 @@
 
 #pragma once
 
+#include <memory>
 #include "cmaj_Patch.h"
 #include "../../choc/gui/choc_WebView.h"
-
-#include <memory>
+#include "../../choc/text/choc_MIMETypes.h"
 
 namespace cmaj
 {
@@ -39,17 +39,14 @@ struct PatchWebView  : public PatchView
     ~PatchWebView() override;
 
     choc::ui::WebView& getWebView();
-
     void sendMessage (const choc::value::ValueView&) override;
-
     void reload();
 
 private:
     struct Impl;
+    std::unique_ptr<Impl> pimpl;
 
     PatchWebView (std::unique_ptr<Impl>, const PatchManifest::View&);
-
-    std::unique_ptr<Impl> pimpl;
 };
 
 
@@ -109,7 +106,6 @@ struct PatchWebView::Impl
     }
 
     std::optional<choc::ui::WebView::Options::Resource> onRequest (const std::string&);
-    static std::string toMimeTypeDefaultImpl (std::string_view extension);
 
     PatchWebView* ownerView = nullptr;
     Patch& patch;
@@ -227,20 +223,13 @@ createPatchView (patchConnection, viewInfo).then ((currentView) =>
 
 inline std::optional<choc::ui::WebView::Options::Resource> PatchWebView::Impl::onRequest (const std::string& path)
 {
-    const auto toResource = [] (std::string_view content, const auto& mimeType) -> choc::ui::WebView::Options::Resource
-    {
-        return
-        {
-            std::vector<uint8_t> (reinterpret_cast<const uint8_t*> (content.data()),
-                                  reinterpret_cast<const uint8_t*> (content.data()) + content.size()),
-            mimeType
-        };
-    };
-
     const auto toMimeType = [this] (const auto& extension)
     {
-        const auto mimeType = toMimeTypeCustomImpl ? toMimeTypeCustomImpl (extension) : std::string {};
-        return mimeType.empty() ? toMimeTypeDefaultImpl (extension) : mimeType;
+        if (toMimeTypeCustomImpl)
+            if (auto m = toMimeTypeCustomImpl (extension); ! m.empty())
+                return m;
+
+        return choc::web::getMIMETypeFromFilename (extension, "application/octet-stream");
     };
 
     auto relativePath = std::filesystem::path (path).relative_path();
@@ -259,29 +248,18 @@ inline std::optional<choc::ui::WebView::Options::Resource> PatchWebView::Impl::o
                 viewToUse = *v;
         }
 
-        return toResource (choc::text::replace (cmajor_patch_gui_html,
-                                                "$MANIFEST$", choc::json::toString (manifestObject, true),
-                                                "$VIEW_TO_USE$", choc::json::toString (viewToUse.view, true)),
-                           toMimeType (".html"));
+        return choc::ui::WebView::Options::Resource (choc::text::replace (cmajor_patch_gui_html,
+                                                        "$MANIFEST$", choc::json::toString (manifestObject, true),
+                                                        "$VIEW_TO_USE$", choc::json::toString (viewToUse.view, true)),
+                                                     "text/html");
     }
 
     if (auto content = readJavascriptResource (path, patch.getManifest()))
         if (! content->empty())
-            return toResource (*content, toMimeType (relativePath.extension().string()));
+            return choc::ui::WebView::Options::Resource (*content, toMimeType (relativePath.extension().string()));
 
     return {};
 }
 
-inline std::string PatchWebView::Impl::toMimeTypeDefaultImpl (std::string_view extension)
-{
-    if (extension == ".css")  return "text/css";
-    if (extension == ".html") return "text/html";
-    if (extension == ".js")   return "text/javascript";
-    if (extension == ".mjs")  return "text/javascript";
-    if (extension == ".svg")  return "image/svg+xml";
-    if (extension == ".wasm") return "application/wasm";
-
-    return "application/octet-stream";
-}
 
 } // namespace cmaj
