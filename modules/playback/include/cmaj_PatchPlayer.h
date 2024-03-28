@@ -33,9 +33,11 @@ namespace cmaj
 struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
 {
     PatchPlayer (const choc::value::Value& engineOptions,
-                 const cmaj::BuildSettings& buildSettings)
+                 const cmaj::BuildSettings& buildSettings,
+                 bool checkFilesForChanges)
     {
         initPatchCallbacks (engineOptions, buildSettings);
+        patch.setAutoRebuildOnFileChange (checkFilesForChanges);
     }
 
     ~PatchPlayer() override

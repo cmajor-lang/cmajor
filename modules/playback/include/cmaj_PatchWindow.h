@@ -30,7 +30,7 @@ struct PatchWindow
 {
     PatchWindow (const choc::value::Value& engineOptions,
                  const cmaj::BuildSettings& buildSettings)
-        : player (engineOptions, buildSettings)
+        : player (engineOptions, buildSettings, true)
     {
         openGUITimer = choc::messageloop::Timer (50, [this]
         {

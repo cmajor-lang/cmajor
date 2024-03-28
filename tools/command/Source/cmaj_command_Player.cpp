@@ -117,7 +117,7 @@ void playFile (juce::ArgumentList& args,
 
     if (noGUI)
     {
-        cmaj::PatchPlayer player (engineOptions, buildSettings);
+        cmaj::PatchPlayer player (engineOptions, buildSettings, true);
         player.setAudioMIDIPlayer (std::move (audioPlayer));
         player.startPlayback();
         runPatch (player, filename, framesToRender, stopOnError);

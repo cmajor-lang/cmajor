@@ -80,7 +80,7 @@ struct RenderState
     RenderState (const RenderOptions& options,
                  const choc::value::Value& engineOptions,
                  cmaj::BuildSettings& buildSettings)
-      : patchPlayer (engineOptions, buildSettings)
+      : patchPlayer (engineOptions, buildSettings, false)
     {
         auto audioOptions = options.audioOptions;
         audioOptions.createPlayer = cmaj::audio_utils::createRenderingPlayer;

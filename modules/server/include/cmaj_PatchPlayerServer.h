@@ -670,7 +670,7 @@ struct PatchPlayerServer
         {
             if (patchPlayer == nullptr)
             {
-                patchPlayer = std::make_unique<cmaj::PatchPlayer> (owner.engineOptions, owner.buildSettings);
+                patchPlayer = std::make_unique<cmaj::PatchPlayer> (owner.engineOptions, owner.buildSettings, true);
 
                 patchPlayer->setTempo (120.0f);
                 patchPlayer->setTimeSig (4, 4);
