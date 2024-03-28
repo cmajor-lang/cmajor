@@ -395,7 +395,7 @@ private:
 
     bool loadPatch (const std::filesystem::path& pathToManifest, FrequencyAndBlockSize frequencyAndBlockSize)
     {
-        const auto manifest = cmaj::plugin::makePatchManifest (pathToManifest, environment);
+        const auto manifest = environment.makePatchManifest (pathToManifest);
 
         using InitialParameterValues = std::unordered_map<std::string, float>;
         InitialParameterValues initialParameterValues {};
@@ -2007,21 +2007,11 @@ inline clap_plugin_descriptor toClapDescriptor (const StoredDescriptor& storage)
 }
 
 template <typename PatchClass>
-StoredDescriptor toStoredDescriptor()
+StoredDescriptor createGeneratedCppStoredDescriptor()
 {
-    const auto environment = createGeneratedCppEnvironment<PatchClass>();
-    const auto& vfs = *environment.vfs;
-
-    const auto engine = environment.createEngine();
-
-    cmaj::PatchManifest manifest;
-    manifest.initialiseWithVirtualFile (
-        PatchClass::filename,
-        vfs.createFileReader,
-        [getFullPathForFile = vfs.getFullPathForFile] (const auto& path) { return getFullPathForFile (path).string(); },
-        vfs.getFileModificationTime,
-        vfs.fileExists
-    );
+    auto environment = createGeneratedCppEnvironment<PatchClass>();
+    auto engine = environment.createEngine();
+    auto manifest = environment.makePatchManifest (PatchClass::filename);
 
     return toStoredDescriptor (manifest, engine.getInputEndpoints(), engine.getOutputEndpoints());
 }
@@ -2032,7 +2022,7 @@ clap_plugin_descriptor_t makeGeneratedCppPluginDescriptor()
     // TODO: this could all happen at generated time, which would avoid another roundtrip via
     // a `PatchManifest`, and avoid needing additional runtime storage, as we could just
     // generate string literals.
-    static const auto storedDescriptor = toStoredDescriptor<PatchClass>();
+    static const auto storedDescriptor = createGeneratedCppStoredDescriptor<PatchClass>();
 
     return toClapDescriptor (storedDescriptor);
 }

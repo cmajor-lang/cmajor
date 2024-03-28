@@ -52,6 +52,33 @@ struct Environment
     std::function<cmaj::Engine()> createEngine;
     std::optional<VirtualFileSystem> vfs; // will default to OS filesystem
 
+    PatchManifest makePatchManifest (const std::filesystem::path& path) const
+    {
+        try
+        {
+            PatchManifest manifest;
+            manifest.needsToBuildSource = engineType == EngineType::JIT;
+
+            if (vfs)
+            {
+                manifest.initialiseWithVirtualFile (path.generic_string(),
+                                                    vfs->createFileReader,
+                                                    [getFullPath = vfs->getFullPathForFile] (const auto& p) { return getFullPath (p).string(); },
+                                                    vfs->getFileModificationTime,
+                                                    vfs->fileExists);
+            }
+            else
+            {
+                manifest.initialiseWithFile (path);
+            }
+
+            return manifest;
+        }
+        catch (...) {}
+
+        return {};
+    }
+
     void initialisePatch (cmaj::Patch& patch) const
     {
         patch.createEngine = createEngine;
@@ -61,6 +88,7 @@ struct Environment
         patch.patchChanged = [] {};
         patch.statusChanged = [] (auto&&...) {};
         patch.handleOutputEvent = [] (auto&&...) {};
+        patch.setAutoRebuildOnFileChange (engineType == EngineType::JIT);
     }
 };
 
@@ -109,35 +137,6 @@ Environment createGeneratedCppEnvironment()
         [] { return cmaj::createEngineForGeneratedCppProgram<PerformerClass>(); },
         createVirtualFileSystem<PatchClass>(),
     };
-}
-
-inline cmaj::PatchManifest makePatchManifest (const std::filesystem::path& path,
-                                              const cmaj::plugin::Environment& environment)
-{
-    try
-    {
-        if (! environment.vfs)
-        {
-            cmaj::PatchManifest manifest;
-            manifest.initialiseWithFile (path);
-            return manifest;
-        }
-
-        cmaj::PatchManifest manifest;
-        manifest.needsToBuildSource = environment.engineType == cmaj::plugin::Environment::EngineType::JIT;
-
-        const auto& fs = environment.vfs;
-        manifest.initialiseWithVirtualFile (path.generic_string(),
-                                            fs->createFileReader,
-                                            [getFullPathForFile = fs->getFullPathForFile] (const auto& p)
-                                             { return getFullPathForFile (p).string(); },
-                                            fs->getFileModificationTime,
-                                            fs->fileExists);
-        return manifest;
-    }
-    catch (...) {}
-
-    return {};
 }
 
 inline cmaj::PatchManifest::View findDefaultViewForPatch (const cmaj::Patch& patch)
