@@ -31,55 +31,180 @@ namespace cmaj
 /// property so that it knows what kind of javascript context to create to run
 /// any patch workers that may be needed. This function sets up a QuickJS context
 /// for that purpose, and gives it the appropriate library functions that it needs.
-inline void enableQuickJSPatchWorker (Patch& patch)
+inline void enableQuickJSPatchWorker (Patch& p)
 {
-    patch.createContextForPatchWorker = [&patch]
+    struct Worker : Patch::WorkerContext
     {
-        auto context = choc::javascript::createQuickJSContext();
+        Worker (Patch& p) : patch (p) {}
+        ~Worker() override {}
 
-        registerTimerFunctions (context);
-        registerConsoleFunctions (context);
-
-        context.registerFunction ("_internalReadResource", [&patch] (choc::javascript::ArgumentList args) -> choc::value::Value
+        void initialise (std::function<void(const choc::value::ValueView&)> sendMessageToPatch,
+                         std::function<void(const std::string&)> reportError) override
         {
-            try
-            {
-                if (auto path = args.get<std::string>(0); ! path.empty())
-                {
-                    if (auto manifest = patch.getManifest())
-                    {
-                        if (auto content = manifest->readFileContent (path))
-                        {
-                            if (choc::text::findInvalidUTF8Data (content->data(), content->length()) == nullptr)
-                                return choc::value::Value (*content);
+            context = choc::javascript::createQuickJSContext();
 
-                            return choc::value::createArray (static_cast<uint32_t> (content->length()),
-                                                            [&] (uint32_t i) { return static_cast<int32_t> ((*content)[i]); });
+            registerTimerFunctions (context);
+            registerConsoleFunctions (context);
+
+            auto& p = patch;
+
+            context.registerFunction ("_internalReadResource", [&p] (choc::javascript::ArgumentList args) -> choc::value::Value
+            {
+                try
+                {
+                    if (auto path = args.get<std::string>(0); ! path.empty())
+                    {
+                        if (auto manifest = p.getManifest())
+                        {
+                            if (auto content = manifest->readFileContent (path))
+                            {
+                                if (choc::text::findInvalidUTF8Data (content->data(), content->length()) == nullptr)
+                                    return choc::value::Value (*content);
+
+                                return choc::value::createArray (static_cast<uint32_t> (content->length()),
+                                                                [&] (uint32_t i) { return static_cast<int32_t> ((*content)[i]); });
+                            }
                         }
                     }
                 }
-            }
-            catch (...)
-            {}
+                catch (...)
+                {}
 
-            return {};
-        });
+                return {};
+            });
 
-        context.registerFunction ("_internalReadResourceAsAudioData", [&patch] (choc::javascript::ArgumentList args) -> choc::value::Value
-        {
-            try
+            context.registerFunction ("_internalReadResourceAsAudioData", [&p] (choc::javascript::ArgumentList args) -> choc::value::Value
             {
-                if (auto path = args.get<std::string>(0); ! path.empty())
-                    if (auto manifest = patch.getManifest())
-                        return readManifestResourceAsAudioData (*manifest, path, args[1] != nullptr ? *args[1] : choc::value::Value());
+                try
+                {
+                    if (auto path = args.get<std::string>(0); ! path.empty())
+                        if (auto manifest = p.getManifest())
+                            return readManifestResourceAsAudioData (*manifest, path, args[1] != nullptr ? *args[1] : choc::value::Value());
+                }
+                catch (...)
+                {}
+
+                return {};
+            });
+
+            choc::javascript::Context::ReadModuleContentFn resolveModule = [&p] (std::string_view path) -> std::optional<std::string>
+            {
+                if (auto manifest = p.getManifest())
+                    return readJavascriptResource (path, manifest);
+
+                return {};
+            };
+
+            context.registerFunction ("cmaj_sendMessageToServer", [send = std::move (sendMessageToPatch)] (choc::javascript::ArgumentList args) -> choc::value::Value
+            {
+                if (auto message = args[0])
+                    send (*message);
+
+                return {};
+            });
+
+            if (auto manifest = p.getManifest())
+            {
+                context.runModule (getGlueCode (choc::json::toString (manifest->manifest),
+                                                choc::json::getEscapedQuotedString (manifest->patchWorker)),
+                                   resolveModule,
+                                   [reportError = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
+                                   {
+                                       if (! error.empty())
+                                           reportError (error);
+                                   });
             }
-            catch (...)
-            {}
+        }
 
-            return {};
-        });
+        void sendMessage (const std::string& msg, std::function<void(const std::string&)> reportError) override
+        {
+            context.run ("currentView?.deliverMessageFromServer(" + msg + ");",
+                         [reportError = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
+            {
+                if (! error.empty())
+                    reportError (error);
+            });
+        }
 
-        return context;
+        static std::string getGlueCode (const std::string& manifestJSON, const std::string& worker)
+        {
+            return choc::text::replace (R"(
+import { PatchConnection } from "./cmaj_api/cmaj-patch-connection.js"
+import runWorker from WORKER_MODULE
+
+class WorkerPatchConnection  extends PatchConnection
+{
+    constructor()
+    {
+        super();
+        this.manifest = MANIFEST;
+        globalThis.currentView = this;
+    }
+
+    getResourceAddress (path)
+    {
+        return path.startsWith ("/") ? path : ("/" + path);
+    }
+
+    sendMessageToServer (message)
+    {
+        cmaj_sendMessageToServer (message);
+    }
+}
+
+const connection = new WorkerPatchConnection();
+
+connection.readResource = (path) =>
+{
+    return {
+        then (resolve, reject)
+        {
+            const data = _internalReadResource (path);
+
+            if (data)
+                resolve (data);
+            else
+                reject ("Failed to load resource");
+
+            return this;
+        },
+        catch() {},
+        finally() {}
+    };
+}
+
+connection.readResourceAsAudioData = (path) =>
+{
+    return {
+        then (resolve, reject)
+        {
+            const data = _internalReadResourceAsAudioData (path);
+
+            if (data)
+                resolve (data);
+            else
+                reject ("Failed to load resource");
+
+            return this;
+        },
+        catch() {},
+        finally() {}
+    };
+}
+
+runWorker (connection);
+)",
+            "MANIFEST", manifestJSON,
+            "WORKER_MODULE", worker);
+        }
+
+        Patch& patch;
+        choc::javascript::Context context;
+    };
+
+    p.createContextForPatchWorker = [&p]
+    {
+        return std::make_unique<Worker> (p);
     };
 }
 

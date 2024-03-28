@@ -97,7 +97,7 @@ void generateFromPatch (juce::ArgumentList& args,
 
     patch.setHostDescription ("Cmajor Generate");
 
-    patch.createContextForPatchWorker = [] { return choc::javascript::Context(); };
+    patch.createContextForPatchWorker = [] { return std::unique_ptr<cmaj::Patch::WorkerContext>(); };
 
     patch.setPlaybackParams ({ 44100, buildSettings.getMaxBlockSize(), 0, 0 });
 

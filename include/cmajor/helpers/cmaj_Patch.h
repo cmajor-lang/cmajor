@@ -293,7 +293,19 @@ struct Patch
 
     CustomAudioSourcePtr getCustomAudioSourceForInput (const EndpointID&) const;
 
-    std::function<choc::javascript::Context()> createContextForPatchWorker;
+    /// This is a base class for contexts that can run a patch worker. The
+    /// createContextForPatchWorker functor is expected to return new instances
+    /// of this class. See enableWebViewPatchWorker() and enableQuickJSPatchWorker()
+    /// for examples.
+    struct WorkerContext
+    {
+        virtual ~WorkerContext() {}
+        virtual void initialise (std::function<void(const choc::value::ValueView&)> sendMessage,
+                                 std::function<void(const std::string&)> reportError) = 0;
+        virtual void sendMessage (const std::string& json, std::function<void(const std::string&)> reportError) = 0;
+    };
+
+    std::function<std::unique_ptr<WorkerContext>()> createContextForPatchWorker;
 
     /// A client can provide this callback to get a callback when something modifies
     /// one of the patches in the bundle
@@ -721,10 +733,17 @@ struct Patch::ClientEventQueue
 /// This class manages a javascript patch worker thread
 struct Patch::PatchWorker  : public PatchView
 {
-    PatchWorker (Patch& p, PatchManifest& m) : PatchView (p), manifest (m)
+    PatchWorker (Patch& p) : PatchView (p)
     {
+        setErrorCallback = [&p] (const std::string& error)
+        {
+            p.setErrorStatus ("Error in patch worker script: " + error, p.getManifest()->patchWorker, {}, true);
+        };
+
         initCallback = [this] { initialiseWorker(); };
-        runCodeCallback = [this] (const std::string& code) { runCode (code); };
+        sendMessageCallback = [this] (const std::string& msg) { context->sendMessage (msg, setError); };
+        setError = [f = setErrorCallback] (const std::string& error) { f (error); };
+
         running = true;
         choc::messageloop::postMessage ([f = initCallback] { f(); });
     }
@@ -732,140 +751,34 @@ struct Patch::PatchWorker  : public PatchView
     ~PatchWorker() override
     {
         initCallback.reset();
-        runCodeCallback.reset();
+        sendMessageCallback.reset();
+        setErrorCallback.reset();
         context = {};
     }
 
     void sendMessage (const choc::value::ValueView& msg) override
     {
         if (running)
-        {
-            auto code = "currentView?.deliverMessageFromServer(" + choc::json::toString (msg, true) + ");";
-            choc::messageloop::postMessage ([f = runCodeCallback, code = std::move (code)] { f (code); });
-        }
+            choc::messageloop::postMessage ([f = sendMessageCallback,
+                                             json = choc::json::toString (msg, true)] { f (json); });
     }
 
     void initialiseWorker()
     {
-        try
-        {
-            // NB: Some types of context need to be created by the thread that uses it
-            context = patch.createContextForPatchWorker();
+        // NB: Some types of context need to be created by the thread that uses it
+        context = patch.createContextForPatchWorker();
 
-            if (! context)
-                return; // If a client deliberately provides a null context, we'll just not run the worker
+        if (! context)
+            return; // If a client deliberately provides a null context, we'll just not run the worker
 
-            choc::javascript::Context::ReadModuleContentFn resolveModule = [this] (std::string_view path) -> std::optional<std::string>
-            {
-                return readJavascriptResource (path, std::addressof (manifest));
-            };
-
-            context.registerFunction ("cmaj_sendMessageToServer", [this] (choc::javascript::ArgumentList args) -> choc::value::Value
-            {
-                if (auto message = args[0])
-                    patch.handleClientMessage (*this, *message);
-
-                return {};
-            });
-
-            context.runModule (getGlueCode(), resolveModule);
-        }
-        catch (const std::exception& e)
-        {
-            patch.setErrorStatus (std::string ("Error in patch worker script: ") + e.what(), manifest.patchWorker, {}, true);
-        }
+        context->initialise ([this] (const choc::value::ValueView& msg) { patch.handleClientMessage (*this, msg); }, setError);
     }
-
-    void runCode (const std::string& code)
-    {
-        try
-        {
-            context.run (code);
-        }
-        catch (const std::exception& e)
-        {
-            patch.setErrorStatus (std::string ("Error in patch worker script: ") + e.what(), manifest.patchWorker, {}, true);
-        }
-    }
-
-    std::string getGlueCode() const
-    {
-        return choc::text::replace (R"(
-import { PatchConnection } from "./cmaj_api/cmaj-patch-connection.js"
-import runWorker from WORKER_MODULE
-
-class WorkerPatchConnection  extends PatchConnection
-{
-    constructor()
-    {
-        super();
-        this.manifest = MANIFEST;
-        globalThis.currentView = this;
-    }
-
-    getResourceAddress (path)
-    {
-        return path.startsWith ("/") ? path : ("/" + path);
-    }
-
-    sendMessageToServer (message)
-    {
-        cmaj_sendMessageToServer (message);
-    }
-}
-
-const connection = new WorkerPatchConnection();
-
-connection.readResource = (path) =>
-{
-    return {
-        then (resolve, reject)
-        {
-            const data = _internalReadResource (path);
-
-            if (data)
-                resolve (data);
-            else
-                reject ("Failed to load resource");
-
-            return this;
-        },
-        catch() {},
-        finally() {}
-    };
-}
-
-connection.readResourceAsAudioData = (path) =>
-{
-    return {
-        then (resolve, reject)
-        {
-            const data = _internalReadResourceAsAudioData (path);
-
-            if (data)
-                resolve (data);
-            else
-                reject ("Failed to load resource");
-
-            return this;
-        },
-        catch() {},
-        finally() {}
-    };
-}
-
-runWorker (connection);
-)",
-        "MANIFEST", choc::json::toString (manifest.manifest),
-        "WORKER_MODULE", choc::json::getEscapedQuotedString (manifest.patchWorker));
-    }
-
-    PatchManifest& manifest;
-    choc::javascript::Context context;
-    choc::threading::ThreadSafeFunctor<std::function<void()>> initCallback;
-    choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> runCodeCallback;
 
 private:
+    std::unique_ptr<WorkerContext> context;
+    std::function<void(const std::string&)> setError;
+    choc::threading::ThreadSafeFunctor<std::function<void()>> initCallback;
+    choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> sendMessageCallback, setErrorCallback;
     bool running = false;
 };
 
@@ -1561,7 +1474,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         {
             // You must provide a function to create a patch worker context before building
             CMAJ_ASSERT (patch.createContextForPatchWorker != nullptr);
-            patchWorker = std::make_unique<PatchWorker> (patch, manifest);
+            patchWorker = std::make_unique<PatchWorker> (patch);
         }
     }
 

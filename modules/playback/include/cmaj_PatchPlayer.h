@@ -23,6 +23,7 @@
 #include "../../compiler/include/cmaj_ErrorHandling.h"
 #include "cmajor/helpers/cmaj_Patch.h"
 #include "cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
+#include "cmajor/helpers/cmaj_PatchWorker_WebView.h"
 #include "choc/text/choc_JSON.h"
 #include "cmaj_AudioPlayer.h"
 
@@ -157,7 +158,7 @@ private:
             return engine;
         };
 
-        enableQuickJSPatchWorker (patch);
+        enableWebViewPatchWorker (patch);
 
         patch.setHostDescription ("Cmajor Player");
 

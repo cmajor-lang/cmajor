@@ -639,7 +639,7 @@ struct PatchPlayerServer
                         cmaj::Patch p;
                         p.setPlaybackParams (patchPlayer->patch.getPlaybackParams());
                         p.createEngine = [] { return cmaj::Engine::create(); };
-                        p.createContextForPatchWorker = [] { return choc::javascript::Context(); };
+                        p.createContextForPatchWorker = [] { return std::unique_ptr<Patch::WorkerContext>(); };
                         auto output = p.generateCode (params, type, choc::json::toString (options));
 
                         sendMessageToClient (replyType,

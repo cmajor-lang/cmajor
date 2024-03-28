@@ -74,7 +74,7 @@ static constexpr bool hasStaticallyLinkedPerformer()
 static void initTestPatch (Patch& patch)
 {
     patch.createEngine      = [] { return Engine::create(); };
-    patch.createContextForPatchWorker = [] { return choc::javascript::Context(); };
+    patch.createContextForPatchWorker = [] { return std::unique_ptr<Patch::WorkerContext>(); };
     patch.stopPlayback      = [] {};
     patch.startPlayback     = [] {};
     patch.patchChanged      = [] {};
