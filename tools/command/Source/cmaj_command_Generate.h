@@ -133,7 +133,7 @@ void generateFromPatch (juce::ArgumentList& args,
 }
 
 //==============================================================================
-void generate (juce::ArgumentList& args, 
+void generate (juce::ArgumentList& args,
                const choc::value::Value& engineOptions,
                cmaj::BuildSettings& buildSettings)
 {

@@ -189,7 +189,7 @@ struct Cast  : public ValueBase
             {
                 if (destType->containsSlice())
                     return {};
-                
+
                 return castConstantList (context.allocator, *destType, arguments.iterateAs<const Object>(), onlySilentCastsAllowed);
             }
         }

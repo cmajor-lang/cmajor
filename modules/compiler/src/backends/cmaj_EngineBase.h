@@ -453,7 +453,7 @@ struct PerformerBase  : public choc::com::ObjectWithAtomicRefCount<cmaj::Perform
     {
         jit.reset();
     }
-    
+
     void setBlockSize (uint32_t numFramesForNextBlock) override
     {
         CMAJ_ASSERT (numFramesForNextBlock != 0 && numFramesForNextBlock <= maxBlockSize);

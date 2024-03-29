@@ -1195,7 +1195,7 @@ setInputStreamFrames_ENDPOINT (sourceChannelArrays, numFramesToWrite, sourceChan
         bool generate (const AST::Program& p, const BuildSettings& settings, bool binaryen, bool useSIMD)
         {
             (void) useSIMD;
-            
+
             if (binaryen)
             {
                #if CMAJ_ENABLE_CODEGEN_BINARYEN

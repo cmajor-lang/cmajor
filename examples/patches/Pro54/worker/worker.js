@@ -122,4 +122,3 @@ export default function runWorker (pc)
     patchConnection.requestStoredStateValue ("patchDetails");
     patchConnection.requestStoredStateValue ("currentProgram");
 }
-

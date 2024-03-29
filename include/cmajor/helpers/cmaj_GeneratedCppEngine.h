@@ -146,7 +146,7 @@ private:
         {
             generatedObject.initialise (sessionID, frequency);
         }
-        
+
         void advance() override
         {
             generatedObject.advance (static_cast<int32_t> (currentBlockSize));

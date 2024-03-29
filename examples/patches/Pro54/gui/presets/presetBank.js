@@ -654,4 +654,3 @@ export function getIDWithNewDigit (oldID, digitIndex, newDigit)
 
     return combineDigits (digits);
 }
-

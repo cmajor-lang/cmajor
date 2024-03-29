@@ -98,7 +98,7 @@ inline void createSystemInitFunctions (AST::Program& program,
             auto& mainBlock = *f.getMainBlock();
 
             (void) processorIDParam;
-            
+
             if (sessionIDVariable != nullptr)
                 AST::addAssignment (mainBlock, AST::createVariableReference (mainBlock.context, *sessionIDVariable), sessionIDParam);
 
