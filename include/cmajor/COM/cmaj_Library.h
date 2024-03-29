@@ -90,8 +90,10 @@ struct Library
     };
 
    #if CMAJOR_DLL
+    static constexpr bool isUsingDLL = true;
     using SharedLibraryPtr = std::shared_ptr<choc::file::DynamicLibrary>;
    #else
+    static constexpr bool isUsingDLL = false;
     struct SharedLibraryPtr {};
    #endif
 
