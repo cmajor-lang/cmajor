@@ -177,7 +177,7 @@ public:
             d.category            = patch->getCategory();
             d.manufacturerName    = patch->getManufacturer();
             d.version             = patch->getVersion();
-            d.lastFileModTime     = juce::File (patch->getPatchFile()).getLastModificationTime();
+            d.lastFileModTime     = getManifestFile (*patch).getLastModificationTime();
             d.isInstrument        = patch->isInstrument();
             d.uniqueId            = static_cast<int> (std::hash<std::string>{} (patch->getUID()));
         }
@@ -204,7 +204,7 @@ public:
         return getIdentifierPrefix()
                  + choc::json::toString (choc::json::create ("ID", m.ID,
                                                              "name", m.name,
-                                                             "location", m.manifestFile),
+                                                             "location", m.getFullPathForFile (m.manifestFile)),
                                          false);
     }
 
@@ -219,6 +219,14 @@ public:
     static bool isCmajorIdentifier (const juce::String& fileOrIdentifier)
     {
         return fileOrIdentifier.startsWith (getIdentifierPrefix());
+    }
+
+    static juce::File getManifestFile (const Patch& p)
+    {
+        if (auto m = p.getManifest())
+            return juce::File (m->getFullPathForFile (m->manifestFile));
+
+        return {};
     }
 
     static choc::value::Value getPropertyFromPluginID (const juce::String& fileOrIdentifier, std::string_view property)
@@ -357,7 +365,7 @@ private:
     //==============================================================================
     static bool initialiseDLL()
     {
-        if constexpr (! EngineType::isPrecompiled)
+        if constexpr (cmaj::Library::isUsingDLL && ! EngineType::isPrecompiled)
         {
             static bool initialised = false;
 
