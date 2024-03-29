@@ -10,7 +10,7 @@ We're aiming to improve on the current status-quo for audio development in quite
 
 - To match (and often beat) the performance of traditional C/C++
 - To make the same code portable across diverse processor architectures (CPU, DSP, GPU, TPU etc)
-- To offer enough power and flexibility to satify professional audio tech industry users
+- To offer enough power and flexibility to satisfy professional audio tech industry users
 - To speed-up commercial product cycles by enabling sound-designers to be more independent from the instrument platforms
 - To attract students and beginners by being vastly easier to learn than C/C++
 
