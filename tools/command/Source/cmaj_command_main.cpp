@@ -75,6 +75,7 @@ cmaj <command> [options]    Runs the given command. Options can include the foll
     --no-simd               WASM generation does not emit SIMD
     --simd-only             WASM generation only emits SIMD
     --binaryen              Use the binaryen WASM generator
+    --worker=<webview|quickjs>  Specify the type of javascript engine to use for patch workers
 
 Supported commands:
 
@@ -224,6 +225,9 @@ static choc::value::Value parseEngineArgs (juce::ArgumentList& args)
     if (args.removeOptionIfFound ("--simd"))      engineOptions.addMember ("SIMD", "enable");
     if (args.removeOptionIfFound ("--no-simd"))   engineOptions.addMember ("SIMD", "disable");
     if (args.removeOptionIfFound ("--simd-only")) engineOptions.addMember ("SIMD", "simd-only");
+
+    if (args.containsOption ("--worker"))
+        engineOptions.addMember ("worker", args.removeValueForOption ("--worker").toStdString());
 
     return engineOptions;
 }

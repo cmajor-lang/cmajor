@@ -158,7 +158,10 @@ private:
             return engine;
         };
 
-        enableWebViewPatchWorker (patch);
+        if (engineOptions.isObject() && engineOptions["worker"].toString() == "webview")
+            enableWebViewPatchWorker (patch);
+        else
+            enableQuickJSPatchWorker (patch);
 
         patch.setHostDescription ("Cmajor Player");
 
