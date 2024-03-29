@@ -123,7 +123,7 @@ public:
         {
             Patch::LoadParams loadParams;
             loadParams.manifest = manifest;
-            patch->loadPatch (loadParams);
+            patch->loadPatch (loadParams, EngineType::isPrecompiled);
         }
     }
 
@@ -625,7 +625,7 @@ private:
             }
         }
 
-        patch->loadPatch (loadParams);
+        patch->loadPatch (loadParams, EngineType::isPrecompiled);
     }
 
     static choc::value::Value convertVarToValue (const juce::var& v)
