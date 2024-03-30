@@ -735,16 +735,21 @@ struct Patch::PatchWorker  : public PatchView
 {
     PatchWorker (Patch& p) : PatchView (p)
     {
+        initCallback = [this] { initialiseWorker(); };
+
         setErrorCallback = [&p] (const std::string& error)
         {
-            p.setErrorStatus ("Error in patch worker script: " + error, p.getManifest()->patchWorker, {}, true);
+            p.setErrorStatus ("Error in patch worker script: " + error,
+                              p.getManifest() != nullptr ? p.getManifest()->patchWorker : std::string(),
+                              {}, true);
         };
 
-        initCallback = [this] { initialiseWorker(); };
-        sendMessageCallback = [this] (const std::string& msg) { context->sendMessage (msg, setError); };
-        setError = [f = setErrorCallback] (const std::string& error) { f (error); };
+        sendMessageCallback = [this, setError = setErrorCallback] (const std::string& msg)
+        {
+            if (context)
+                context->sendMessage (msg, [setError] (const std::string& error) { setError (error); });
+        };
 
-        running = true;
         choc::messageloop::postMessage ([f = initCallback] { f(); });
     }
 
@@ -758,9 +763,8 @@ struct Patch::PatchWorker  : public PatchView
 
     void sendMessage (const choc::value::ValueView& msg) override
     {
-        if (running)
-            choc::messageloop::postMessage ([f = sendMessageCallback,
-                                             json = choc::json::toString (msg, true)] { f (json); });
+        choc::messageloop::postMessage ([f = sendMessageCallback,
+                                         json = choc::json::toString (msg, true)] { f (json); });
     }
 
     void initialiseWorker()
@@ -768,18 +772,15 @@ struct Patch::PatchWorker  : public PatchView
         // NB: Some types of context need to be created by the thread that uses it
         context = patch.createContextForPatchWorker();
 
-        if (! context)
-            return; // If a client deliberately provides a null context, we'll just not run the worker
-
-        context->initialise ([this] (const choc::value::ValueView& msg) { patch.handleClientMessage (*this, msg); }, setError);
+        if (context)
+            context->initialise ([this] (const choc::value::ValueView& msg) { patch.handleClientMessage (*this, msg); },
+                                 [f = setErrorCallback] (const std::string& error) { f (error); });
     }
 
 private:
     std::unique_ptr<WorkerContext> context;
-    std::function<void(const std::string&)> setError;
     choc::threading::ThreadSafeFunctor<std::function<void()>> initCallback;
     choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> sendMessageCallback, setErrorCallback;
-    bool running = false;
 };
 
 //==============================================================================
