@@ -318,6 +318,14 @@ function (MAKE_CMAJ_LIBRARY)
         ${CMAJOR_SOURCE}
     )
 
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        foreach(LIB ${LLVM_LIBS} ${LLVM_EXTRA_LIBS})
+            target_link_options(${CMAJ_LIBRARY_NAME} INTERFACE "LINKER:-hidden-l${LIB}")
+        endforeach()
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        target_link_options(${CMAJ_LIBRARY_NAME} INTERFACE "-Wl,--exclude-libs,ALL")
+    endif()
+
     target_sources(${CMAJ_LIBRARY_NAME} PRIVATE ${CMAJ_MODULE_DIR}/../3rdParty/graphviz/cmaj_GraphViz.cpp)
 
     target_compile_features (${CMAJ_LIBRARY_NAME} PRIVATE cxx_std_17)
