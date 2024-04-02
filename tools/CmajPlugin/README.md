@@ -17,7 +17,7 @@ make .
 ### Building with VSCode
 1) Copy the .vscode.example directory in this CmajPlugin directory to .vscode:
 ```
-cp .vscode.example .vscode
+cp -r .vscode.example .vscode
 ```
 2) Ensure that the CMAJ_VERSION under `cmake.configureSettings` in settings.json matches the version of Cmajor you have checked out in this repo
 3) Open this CmajPlugin directory in VSCode. Navigate to the 'Run and Debug' panel on the left and press the play button next to Launch CmajPlugin
