@@ -94,11 +94,12 @@ void playFile (juce::ArgumentList& args,
     {
         cmaj::Patch patch;
 
-        patch.createEngine   = [] { return cmaj::Engine::create(); };
-        patch.stopPlayback   = [] {};
-        patch.startPlayback  = [] {};
-        patch.patchChanged   = [] {};
-        patch.statusChanged  = [] (const cmaj::Patch::Status& s)   { std::cout << s.statusMessage << std::endl; };
+        patch.createEngine                = [] { return cmaj::Engine::create(); };
+        patch.stopPlayback                = [] {};
+        patch.startPlayback               = [] {};
+        patch.patchChanged                = [] {};
+        patch.statusChanged               = [] (const cmaj::Patch::Status& s)   { std::cout << s.statusMessage << std::endl; };
+        patch.createContextForPatchWorker = [] { return std::unique_ptr<cmaj::Patch::WorkerContext>(); };
 
         patch.setHostDescription ("Cmajor Player");
 
