@@ -28,7 +28,7 @@ juce_add_plugin(CmajPlugin
     BUNDLE_ID "dev.cmajor.plugin"
     COMPANY_NAME "Cmajor Software Ltd"
     COMPANY_COPYRIGHT "(C)2024 Cmajor Software Ltd"
-    PLUGIN_CODE Sssp
+    PLUGIN_CODE Cmaj
     FORMATS Standalone AU VST3
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE
@@ -47,6 +47,7 @@ add_compile_definitions (
     JUCE_DISABLE_JUCE_VERSION_PRINTING=1
     JUCE_VST3_CAN_REPLACE_VST2=0
     JUCE_USE_CURL=0
+    CMAJOR_DLL=0
 )
 
 file(GLOB_RECURSE SOURCE
@@ -67,8 +68,17 @@ target_sources(CmajPlugin PRIVATE ${SOURCE})
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" PREFIX "Source" FILES ${SOURCE})
 
+add_subdirectory(../../modules cmajor)
+
+MAKE_CMAJ_LIBRARY (
+    LIBRARY_NAME cmajor_lib
+    INCLUDE_PLAYBACK
+    ENABLE_PERFORMER_LLVM
+)
+
 target_link_libraries(CmajPlugin
     PRIVATE
+        cmajor_lib
         juce::juce_audio_utils
         $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
 )
