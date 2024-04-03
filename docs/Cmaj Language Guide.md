@@ -216,7 +216,11 @@ var y = int[4]();
 The size of an array must be a compile-time constant, and arrays cannot be re-sized.
 You can read the size of an array using the `.size` pseudo-property.
 
-Access into arrays uses the familiar `[]` operator. To prevent out-of-bounds access at runtime, any dynamic indexes which are not proven to always be in-range will need to be wrapped. So the compiler will emit a performance warning for an `int` index, but if you provide it with an index `wrap<N>` where `N` is less than the size of the array, it can avoid the overhead
+Use the familiar `[]` operator to get an element from an array.
+
+If the compiler can't prove that the element index is guaranteed to be in-range, it will generate code to wrap any out-of-bounds index values to within the array size at runtime. When the compiler does this, it'll emit a warning: `Performance warning: the type of this array index could not be proven to be safe, so a runtime check was added`.
+
+To avoid this warning, either make sure that you pass a `wrap<N>` type as your index (where `N` is less than the size of the array), or a constant. Because a `wrap` type can never be out-of-range, this avoids any runtime overhead. Or, if you don't mind the fact that the index is being checked, and you want to hide the warning, use the `.at(index)` operator instead of `[]` to read the element.
 
 ```cpp
 int[8] x;
