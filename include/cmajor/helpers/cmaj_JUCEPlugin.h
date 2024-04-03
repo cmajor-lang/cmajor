@@ -637,6 +637,7 @@ private:
             }
         }
 
+        patch->setPlaybackParams (getPlaybackParams (getSampleRate(), static_cast<uint32_t> (getBlockSize())));
         patch->loadPatch (loadParams, EngineType::isPrecompiled);
     }
 
