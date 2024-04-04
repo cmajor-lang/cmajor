@@ -404,6 +404,42 @@ struct Graph  : public ProcessorBase
         }
     }
 
+    void removeConnections (const std::unordered_set<const AST::Connection*>& connectionsToRemove)
+    {
+        visitConnectionPropertyLists (connections, [&] (ListProperty& connectionList)
+        {
+            connectionList.removeIf ([&] (const AST::Property& conn)
+            {
+                if (auto connection = AST::castTo<AST::Connection> (conn))
+                    return connectionsToRemove.find (connection.get()) != connectionsToRemove.end();
+
+                return false;
+            });
+        });
+    }
+
+    static void visitConnectionPropertyLists (ListProperty& connections, std::function<void(ListProperty&)> visit)
+    {
+        visit (connections);
+
+        for (auto& c : connections)
+        {
+            if (auto connectionList = AST::castTo<AST::ConnectionList> (c))
+            {
+                visitConnectionPropertyLists (connectionList->connections, visit);
+            }
+            else if (auto connectionIf = AST::castTo<AST::ConnectionIf> (c))
+            {
+                if (auto v = AST::castTo<AST::ConnectionList> (connectionIf->trueConnections))
+                    visitConnectionPropertyLists (v->connections, visit);
+
+                if (auto v = AST::castTo<AST::ConnectionList> (connectionIf->falseConnections))
+                    visitConnectionPropertyLists (v->connections, visit);
+            }
+        }
+    }
+
+
     ListProperty connections { *this };
 
     #define CMAJ_PROPERTIES(X) \

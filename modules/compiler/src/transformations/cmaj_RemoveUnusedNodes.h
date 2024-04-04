@@ -41,10 +41,10 @@ static inline void removeUnusedNodes (AST::Program& program)
                 {
                     graph.nodes.removeObject (node.node);
 
-                    for (size_t i = graph.connections.size(); i > 0; --i)
-                    {
-                        auto& conn = AST::castToRefSkippingReferences<AST::Connection> (graph.connections[i - 1]);
+                    std::unordered_set<const AST::Connection*> connectionsToRemove;
 
+                    graph.visitConnections ([&] (AST::Connection& conn)
+                    {
                         conn.dests.removeIf ([&] (const AST::Property& dest)
                         {
                             ptr<AST::EndpointInstance> endpoint;
@@ -65,8 +65,10 @@ static inline void removeUnusedNodes (AST::Program& program)
                         });
 
                         if (conn.dests.empty())
-                            graph.connections.remove (i - 1);
-                    }
+                            connectionsToRemove.insert (&conn);
+                    });
+
+                    graph.removeConnections (connectionsToRemove);
 
                     auto* nodeBeingRemoved = std::addressof (node.node);
 

@@ -154,3 +154,76 @@ processor Test [[ main ]]
         }
     }
 }
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node
+    {
+        blit = Blit;
+        outputGain = Gain;
+        inputFilter = Filter;
+        outputFilterLeft = Filter;
+        outputFilterRight = Filter;
+        toMono = Mono;
+        toStereo = Stereo;
+    }
+
+    let useFilters = false;
+
+    connection
+    {
+        if (useFilters)
+        {
+            in -> inputFilter.in;
+            inputFilter.out -> blit.in;
+            blit.out -> toMono.in;
+            toMono.outLeft -> outputFilterLeft.in;
+            toMono.outRight -> outputFilterRight.in;
+            outputFilterLeft.out -> toStereo.inLeft;
+            outputFilterRight.out -> toStereo.inRight;
+            toStereo.out -> outputGain.in;
+            outputGain.out -> out;
+        }
+        else
+        {
+            in -> blit.in;
+            blit.out -> outputGain.in;
+            outputGain.out -> out;
+        }
+    }
+}
+
+graph Blit
+{
+    input stream float in;
+    output stream float out;
+}
+
+graph Gain
+{
+    input stream float in;
+    output stream float out;
+}
+
+graph Filter
+{
+    input stream float in;
+    output stream float out;
+}
+
+graph Mono
+{
+    input stream float in;
+    output stream float outLeft, outRight;
+}
+
+graph Stereo
+{
+    input stream float inLeft, inRight;
+    output stream float out;
+}
