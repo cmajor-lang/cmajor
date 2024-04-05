@@ -450,7 +450,7 @@ The `--target=javascript` option exports only the patch's core DSP code, it does
 
 This exports a folder containing both the javascript class for this patch (as created by `--target=javascript`) but also creates a set of helper modules for connecting it to web audio and MIDI.
 
-This gives you a simple function `createAudioWorkletNodePatchConnection()` that returns both a Web Audio `AudioWorklet` object, and a `PatchConnection` object that can be used to control it remotely.
+This gives you a simple function `createAudioWorkletNodePatchConnection()` that returns a `PatchConnection` object that can be used to control it remotely.
 
 The helpers also include a function to automatically connect this node to the browser's default audio and MIDI devices.
 

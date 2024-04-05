@@ -40,7 +40,7 @@ inline std::string generateJavascriptWorklet (cmaj::Patch& patch, const cmaj::Pa
 //
 //==============================================================================
 
-import * as helpers from "./cmaj_api/cmaj_audio_worklet_helper.js"
+import * as helpers from "./cmaj_api/cmaj-audio-worklet-helper.js"
 
 
 //==============================================================================
@@ -346,7 +346,6 @@ loadPatch();
     generatedFiles.addFile (patchModuleFile, generateJavascriptWorklet (patch, loadParams, engineOptions));
     generatedFiles.addFile ("index.html", html);
     generatedFiles.addFile ("README.md", readme);
-    generatedFiles.addFile ("cmaj_api/cmaj_audio_worklet_helper.js", cmaj::EmbeddedAssets::getInstance().findContent ("cmaj_audio_worklet_helper.js"));
 
     generatedFiles.addPatchResources (manifest);
     generatedFiles.sort();
