@@ -18,8 +18,8 @@
 
 #pragma once
 
+#include "../../choc/platform/choc_Platform.h"
 #include "../../choc/text/choc_Files.h"
-#include "../../choc/gui/choc_MessageLoop.h"
 #include "../../choc/threading/choc_ThreadSafeFunctor.h"
 #include "../../choc/threading/choc_TaskThread.h"
 #include "../../choc/audio/choc_AudioFileFormat_WAV.h"
@@ -27,10 +27,16 @@
 #include "../../choc/audio/choc_AudioFileFormat_FLAC.h"
 #include "../../choc/audio/choc_AudioFileFormat_MP3.h"
 #include "../../choc/platform/choc_HighResolutionSteadyClock.h"
-#include "../../choc/javascript/choc_javascript_Timer.h"
-#include "../../choc/javascript/choc_javascript_Console.h"
+
+#if ! CHOC_EMSCRIPTEN
+ #include "../../choc/gui/choc_MessageLoop.h"
+ #define CMAJ_HAS_MESSAGE_LOOP 1
+#else
+ #define CMAJ_HAS_MESSAGE_LOOP 0
+#endif
 
 #include "../API/cmaj_Endpoints.h"
+#include "../API/cmaj_Program.h"
 #include "../API/cmaj_ExternalVariables.h"
 
 #include "cmaj_EmbeddedWebAssets.h"
@@ -171,6 +177,11 @@ struct PatchManifest
     /// can be passed straight into the Engine::load() method.
     std::function<choc::value::Value(const cmaj::ExternalVariable&)> createExternalResolverFunction() const;
 
+    /// Parses and adds all the source files from this patch to the given Program,
+    /// returning true if no errors were encountered.
+    bool addSourceFilesToProgram (Program&, DiagnosticMessageList&,
+                                  const std::function<void()>& checkForStopSignal);
+
 private:
     static void addStrings (std::vector<std::string>&, const choc::value::ValueView&);
     void addView (const choc::value::ValueView&);
@@ -285,6 +296,7 @@ struct PatchFileChangeChecker
     ChangeType checkAndReset();
 
 private:
+   #if CMAJ_HAS_MESSAGE_LOOP
     struct SourceFilesWithTimes
     {
         SourceFilesWithTimes() = default;
@@ -315,6 +327,7 @@ private:
     SourceFilesWithTimes manifestFiles, cmajorFiles, assetFiles;
     choc::threading::ThreadSafeFunctor<std::function<void(ChangeType)>> callback;
     choc::threading::TaskThread fileChangeCheckThread;
+   #endif
 };
 
 //==============================================================================
@@ -612,6 +625,32 @@ inline std::function<choc::value::Value(const cmaj::ExternalVariable&)> PatchMan
 
         return {};
     };
+}
+
+inline bool PatchManifest::addSourceFilesToProgram (Program& program,
+                                                    DiagnosticMessageList& errors,
+                                                    const std::function<void()>& checkForStopSignal)
+{
+    if (needsToBuildSource)
+    {
+        for (auto& file : sourceFiles)
+        {
+            checkForStopSignal();
+
+            if (auto content = readFileContent (file))
+            {
+                if (! program.parse (errors, getFullPathForFile (file), std::move (*content)))
+                    return false;
+            }
+            else
+            {
+                errors.add (cmaj::DiagnosticMessage::createError ("Could not open source file: " + file, {}));
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 //==============================================================================
@@ -934,7 +973,8 @@ inline uint64_t PatchParameterProperties::getNumDiscreteOptions() const
 inline size_t PatchParameterProperties::toDiscreteOptionIndex (float value) const
 {
     auto numDiscreteSteps = getNumDiscreteOptions();
-    return std::min (static_cast<size_t> (convertTo0to1 (value) * numDiscreteSteps), static_cast<size_t> (numDiscreteSteps > 0 ? numDiscreteSteps - 1 : 0));
+    return std::min (static_cast<size_t> (convertTo0to1 (value) * (float) numDiscreteSteps),
+                     static_cast<size_t> (numDiscreteSteps > 0 ? numDiscreteSteps - 1 : 0));
 }
 
 inline std::optional<float> PatchParameterProperties::toValueFromDiscreteOptionIndex (size_t i) const
@@ -1005,6 +1045,7 @@ inline void CPUMonitor::endProcess (uint32_t numFrames)
 }
 
 //==============================================================================
+#if CMAJ_HAS_MESSAGE_LOOP
 inline PatchFileChangeChecker::PatchFileChangeChecker (const PatchManifest& m, std::function<void(ChangeType)>&& onChange)
     : manifest (m), callback (std::move (onChange))
 {
@@ -1048,5 +1089,10 @@ inline PatchFileChangeChecker::ChangeType PatchFileChangeChecker::checkAndReset(
 
     return changes;
 }
+#else
+inline PatchFileChangeChecker::PatchFileChangeChecker (const PatchManifest&, std::function<void(ChangeType)>&&) {}
+inline PatchFileChangeChecker::~PatchFileChangeChecker() {}
+inline PatchFileChangeChecker::ChangeType PatchFileChangeChecker::checkAndReset() { return {}; }
+#endif
 
 } // namespace cmaj

@@ -1048,24 +1048,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     {
         cmaj::Program program;
 
-        if (manifest.needsToBuildSource)
-        {
-            for (auto& file : manifest.sourceFiles)
-            {
-                checkForStopSignal();
-
-                if (auto content = manifest.readFileContent (file))
-                {
-                    if (! program.parse (errors, manifest.getFullPathForFile (file), std::move (*content)))
-                        return false;
-                }
-                else
-                {
-                    errors.add (cmaj::DiagnosticMessage::createError ("Could not open source file: " + file, {}));
-                    return false;
-                }
-            }
-        }
+        if (! manifest.addSourceFilesToProgram (program, errors, checkForStopSignal))
+            return false;
 
         engine.setBuildSettings (engine.getBuildSettings()
                                    .setFrequency (playbackParams.sampleRate)
