@@ -324,6 +324,7 @@ function (MAKE_CMAJ_LIBRARY)
         endforeach()
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         target_link_options(${CMAJ_LIBRARY_NAME} INTERFACE "-Wl,--exclude-libs,ALL")
+        set_property(TARGET ${CMAJ_LIBRARY_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
     endif()
 
     target_sources(${CMAJ_LIBRARY_NAME} PRIVATE ${CMAJ_MODULE_DIR}/../3rdParty/graphviz/cmaj_GraphViz.cpp)
