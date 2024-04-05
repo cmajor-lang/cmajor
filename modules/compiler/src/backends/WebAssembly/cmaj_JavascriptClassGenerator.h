@@ -57,6 +57,9 @@ struct JavascriptClassGenerator
           generateNonSIMD (simdMode.allowNonSIMD),
           mainClassName (std::move (optionalMainClassName))
     {
+       #if CMAJ_ENABLE_CODEGEN_BINARYEN && ! CMAJ_ENABLE_CODEGEN_LLVM_WASM
+        useBinaryen = true;
+       #endif
     }
 
     std::string generate()
@@ -1187,7 +1190,7 @@ setInputStreamFrames_ENDPOINT (sourceChannelArrays, numFramesToWrite, sourceChan
 
     const AST::Program& program;
     const BuildSettings& buildSettings;
-    const bool useBinaryen, generateSIMD, generateNonSIMD;
+    bool useBinaryen, generateSIMD, generateNonSIMD;
     std::string mainClassName;
 
     struct GeneratedModule
