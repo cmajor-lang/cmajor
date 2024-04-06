@@ -24,9 +24,9 @@ import { PatchConnection } from "./cmaj-patch-connection.js"
 //==============================================================================
 // N.B. code will be serialised to a string, so all `registerWorkletProcessor`s
 // dependencies must be self contained and not capture things in the outer scope
-async function serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName, hostDescription)
+async function serialiseWorkletProcessorFactoryToDataURI (CmajorClass, workletName, hostDescription)
 {
-    const serialisedInvocation = `(${registerWorkletProcessor.toString()}) ("${workletName}", ${WrapperClass.toString()}, "${hostDescription}");`
+    const serialisedInvocation = `(${registerWorkletProcessor.toString()}) ("${workletName}", ${CmajorClass.toString()}, "${hostDescription}");`
 
     let reader = new FileReader();
     reader.readAsDataURL (new Blob ([serialisedInvocation], { type: "text/javascript" }));
@@ -34,7 +34,7 @@ async function serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletN
     return await new Promise (res => { reader.onloadend = () => res (reader.result); });
 }
 
-function registerWorkletProcessor (workletName, WrapperClass, hostDescription)
+function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
 {
     function makeConsumeOutputEvents ({ wrapper, eventOutputs, dispatchOutputEvent })
     {
@@ -183,7 +183,7 @@ function registerWorkletProcessor (workletName, WrapperClass, hostDescription)
 
             const { sessionID = Date.now() & 0x7fffffff, initialValueOverrides = {} } = processorOptions;
 
-            const wrapper = new WrapperClass();
+            const wrapper = new CmajorClass();
 
             wrapper.initialise (sessionID, sampleRate)
                 .then (() => this.initialisePatch (wrapper, initialValueOverrides))
@@ -526,28 +526,45 @@ export class AudioWorkletPatchConnection extends PatchConnection
     //==============================================================================
     /**  Initialises this connection to load and control the given Cmajor class.
      *
-     *   @param {Object} WrapperClass - the generated Cmajor class
-     *   @param {AudioContext} audioContext - a web audio AudioContext object
-     *   @param {string} workletName - the name to give the new worklet that is created
-     *   @param {number} sessionID - an integer to use for the session ID
-     *   @param {Array} patchInputList - a list of the input endpoints that the patch provides
-     *   @param {Object} initialValueOverrides - optional initial values for parameter endpoints
-     *   @param {string} hostDescription - a description of the host that is using the patch
+     *   @param {Object} parameters - the parameters to use
+     *   @param {Object} parameters.CmajorClass - the generated Cmajor class
+     *   @param {AudioContext} parameters.audioContext - a web audio AudioContext object
+     *   @param {string} parameters.workletName - the name to give the new worklet that is created
+     *   @param {string} parameters.hostDescription - a description of the host that is using the patch
+     *   @param {number} [parameters.sessionID] - an integer to use for the session ID, or undefined to use a default
+     *   @param {Object} [parameters.initialValueOverrides] - optional initial values for parameter endpoints
+     *   @param {string} [parameters.rootResourcePath] - optionally, a root to use when resolving resource paths
      */
-    async initialise (WrapperClass,
-                      audioContext,
-                      workletName,
-                      sessionID,
-                      initialValueOverrides,
-                      hostDescription)
+    async initialise ({ CmajorClass,
+                        audioContext,
+                        workletName,
+                        hostDescription,
+                        sessionID,
+                        initialValueOverrides,
+                        rootResourcePath })
     {
         this.audioContext = audioContext;
 
-        const dataURI = await serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName, hostDescription);
+        if (rootResourcePath)
+        {
+            this.rootResourcePath = rootResourcePath;
+
+            if (! this.rootResourcePath.endsWith ("/"))
+                this.rootResourcePath += "/";
+        }
+        else
+        {
+            this.rootResourcePath = window.location.href;
+
+            if (! this.rootResourcePath.endsWith ("/"))
+                this.rootResourcePath += "/../";
+        }
+
+        const dataURI = await serialiseWorkletProcessorFactoryToDataURI (CmajorClass, workletName, hostDescription);
         await audioContext.audioWorklet.addModule (dataURI);
 
-        this.inputEndpoints = WrapperClass.prototype.getInputEndpoints();
-        this.outputEndpoints = WrapperClass.prototype.getOutputEndpoints();
+        this.inputEndpoints = CmajorClass.prototype.getInputEndpoints();
+        this.outputEndpoints = CmajorClass.prototype.getOutputEndpoints();
 
         const audioInputEndpoints  = this.inputEndpoints.filter (({ purpose }) => purpose === "audio in");
         const audioOutputEndpoints = this.outputEndpoints.filter (({ purpose }) => purpose === "audio out");
@@ -611,7 +628,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
             }
         });
 
-        this.startPatchWorker();
+        await this.startPatchWorker();
     }
 
     //==============================================================================
@@ -699,10 +716,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
 
     getResourceAddress (path)
     {
-        if (window.location.href.endsWith ("/"))
-            return window.location.href + path;
-
-        return window.location.href + "/../" + path;
+        return this.rootResourcePath + path;
     }
 
     async readResource (path)

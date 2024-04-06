@@ -2699,23 +2699,44 @@ export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo
 }
 )";
     static constexpr const char* cmajaudioworklethelper_js =
-        R"(
+        R"(//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  This file may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 import { PatchConnection } from "./cmaj-patch-connection.js"
 
 //==============================================================================
 // N.B. code will be serialised to a string, so all `registerWorkletProcessor`s
 // dependencies must be self contained and not capture things in the outer scope
-async function serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName, hostDescription)
+async function serialiseWorkletProcessorFactoryToDataURI (CmajorClass, workletName, hostDescription)
 {
-    const serialisedInvocation = `(${registerWorkletProcessor.toString()}) ("${workletName}", ${WrapperClass.toString()}, "${hostDescription}");`
+    const serialisedInvocation = `(${registerWorkletProcessor.toString()}) ("${workletName}", ${CmajorClass.toString()}, "${hostDescription}");`
 
     let reader = new FileReader();
     reader.readAsDataURL (new Blob ([serialisedInvocation], { type: "text/javascript" }));
 
     return await new Promise (res => { reader.onloadend = () => res (reader.result); });
-}
+})"
+R"(
 
-function registerWorkletProcessor (workletName, WrapperClass, hostDescription)
+function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
 {
     function makeConsumeOutputEvents ({ wrapper, eventOutputs, dispatchOutputEvent })
     {
@@ -2743,8 +2764,7 @@ function registerWorkletProcessor (workletName, WrapperClass, hostDescription)
     {
         for (const { initialise } of Object.values (parametersMap))
             initialise();
-    })"
-R"(
+    }
 
     function makeEndpointMap (wrapper, endpoints, initialValueOverrides)
     {
@@ -2769,7 +2789,8 @@ R"(
             const snapAndConstrainValue = (value) =>
             {
                 if (annotation.step != null)
-                    value = Math.round (value / annotation.step) * annotation.step;
+                    value = Math.round (value / annotation.step) * annotation.step;)"
+R"(
 
                 if (annotation.min != null && annotation.max != null)
                     value = Math.min (Math.max (value, annotation.min), annotation.max);
@@ -2800,8 +2821,7 @@ R"(
         }
 
         return lookup;
-    })"
-R"(
+    }
 
     function makeStreamEndpointHandler ({ wrapper, toEndpoints, wrapperMethodNamePrefix })
     {
@@ -2830,7 +2850,8 @@ R"(
             for (let i = 0; i < handlers.length; i++)
                 handlers[i] (channels, blockSize, targetChannels[i]);
         }
-    }
+    })"
+R"(
 
     function makeInputStreamEndpointHandler (wrapper)
     {
@@ -2866,8 +2887,7 @@ R"(
 
             const { sessionID = Date.now() & 0x7fffffff, initialValueOverrides = {} } = processorOptions;
 
-            const wrapper = new WrapperClass();)"
-R"(
+            const wrapper = new CmajorClass();
 
             wrapper.initialise (sessionID, sampleRate)
                 .then (() => this.initialisePatch (wrapper, initialValueOverrides))
@@ -2896,7 +2916,8 @@ R"(
                 type: "param_value",
                 message: { endpointID, value }
             });
-        }
+        })"
+R"(
 
         initialisePatch (wrapper, initialValueOverrides)
         {
@@ -2922,8 +2943,7 @@ R"(
 
                     // N.B. update cache used for `req_param_value` messages (we don't currently read from the wasm heap)
                     setInitialParameterValues (parametersMap);
-                };)"
-R"(
+                };
 
                 const isNonAudioOrParameterEndpoint = ({ purpose }) => ! ["audio in", "parameter"].includes (purpose);
                 const otherInputs = wrapper.getInputEndpoints().filter (isNonAudioOrParameterEndpoint);
@@ -2938,7 +2958,8 @@ R"(
                     const listeners = {};
 
                     for (const { endpointID } of eventEndpoints)
-                        listeners[endpointID] = [];
+                        listeners[endpointID] = [];)"
+R"(
 
                     return listeners;
                 };
@@ -2963,8 +2984,7 @@ R"(
 
                 const blockSize = 128;
                 const prepareInputFrames = makeInputStreamEndpointHandler (wrapper);
-                const processOutputFrames = makeOutputStreamEndpointHandler (wrapper);)"
-R"(
+                const processOutputFrames = makeOutputStreamEndpointHandler (wrapper);
 
                 this.processImpl = (input, output) =>
                 {
@@ -2982,7 +3002,8 @@ R"(
                     if (e.data.type !== "patch")
                         return;
 
-                    const msg = e.data.payload;
+                    const msg = e.data.payload;)"
+R"(
 
                     switch (msg.type)
                     {
@@ -3007,8 +3028,7 @@ R"(
                             resetState();
                             initialValues.forEach (v => this.sendParameterValueChanged (v.endpointID, v.value));
                             break;
-                        })"
-R"(
+                        }
 
                         case "req_param_value":
                         {
@@ -3027,7 +3047,8 @@ R"(
                         case "send_value":
                         {
                             const endpointID = msg.id;
-                            const parameter = parametersMap[endpointID];
+                            const parameter = parametersMap[endpointID];)"
+R"(
 
                             if (parameter)
                             {
@@ -3053,8 +3074,7 @@ R"(
                                 }
                             }
                             break;
-                        })"
-R"(
+                        }
 
                         case "send_gesture_start": break;
                         case "send_gesture_end": break;
@@ -3074,7 +3094,8 @@ R"(
 
                             for (const [endpointID, parameter] of Object.entries (parametersMap))
                             {
-                                const namedNextValue = parameters.find (({ name }) => name === endpointID);
+                                const namedNextValue = parameters.find (({ name }) => name === endpointID);)"
+R"(
 
                                 if (namedNextValue)
                                     parameter.update (namedNextValue.value);
@@ -3097,8 +3118,7 @@ R"(
                                     return false;
 
                                 return listeners.push ({ replyType: msg?.replyType }) > 0;
-                            };)"
-R"(
+                            };
 
                             if (! insertIfValidEndpoint (inputEventListeners, msg))
                                 insertIfValidEndpoint (outputEventListeners, msg)
@@ -3122,7 +3142,8 @@ R"(
                                     return false;
 
                                 return listeners.splice (index, 1).length === 1;
-                            };
+                            };)"
+R"(
 
                             if (! removeIfValidReplyType (inputEventListeners, msg))
                                 removeIfValidReplyType (outputEventListeners, msg)
@@ -3161,8 +3182,7 @@ async function connectToAudioIn (audioContext, node)
         }});
 
         if (! input)
-            throw new Error();)"
-R"(
+            throw new Error();
 
         const source = audioContext.createMediaStreamSource (input);
 
@@ -3197,7 +3217,8 @@ async function connectToMIDI (connection, midiEndpointID)
         console.warn (`Could not open MIDI devices: ${e}`);
     }
 }
-
+)"
+R"(
 
 //==============================================================================
 /**  This class provides a PatchConnection that controls a Cmajor audio worklet
@@ -3211,34 +3232,51 @@ export class AudioWorkletPatchConnection extends PatchConnection
 
         this.manifest = manifest;
         this.cachedState = {};
-    })"
-R"(
+    }
 
     //==============================================================================
     /**  Initialises this connection to load and control the given Cmajor class.
      *
-     *   @param {Object} WrapperClass - the generated Cmajor class
-     *   @param {AudioContext} audioContext - a web audio AudioContext object
-     *   @param {string} workletName - the name to give the new worklet that is created
-     *   @param {number} sessionID - an integer to use for the session ID
-     *   @param {Array} patchInputList - a list of the input endpoints that the patch provides
-     *   @param {Object} initialValueOverrides - optional initial values for parameter endpoints
-     *   @param {string} hostDescription - a description of the host that is using the patch
+     *   @param {Object} parameters - the parameters to use
+     *   @param {Object} parameters.CmajorClass - the generated Cmajor class
+     *   @param {AudioContext} parameters.audioContext - a web audio AudioContext object
+     *   @param {string} parameters.workletName - the name to give the new worklet that is created
+     *   @param {string} parameters.hostDescription - a description of the host that is using the patch
+     *   @param {number} [parameters.sessionID] - an integer to use for the session ID, or undefined to use a default
+     *   @param {Object} [parameters.initialValueOverrides] - optional initial values for parameter endpoints
+     *   @param {string} [parameters.rootResourcePath] - optionally, a root to use when resolving resource paths
      */
-    async initialise (WrapperClass,
-                      audioContext,
-                      workletName,
-                      sessionID,
-                      initialValueOverrides,
-                      hostDescription)
+    async initialise ({ CmajorClass,
+                        audioContext,
+                        workletName,
+                        hostDescription,
+                        sessionID,
+                        initialValueOverrides,
+                        rootResourcePath })
     {
         this.audioContext = audioContext;
 
-        const dataURI = await serialiseWorkletProcessorFactoryToDataURI (WrapperClass, workletName, hostDescription);
+        if (rootResourcePath)
+        {
+            this.rootResourcePath = rootResourcePath;
+
+            if (! this.rootResourcePath.endsWith ("/"))
+                this.rootResourcePath += "/";
+        }
+        else
+        {
+            this.rootResourcePath = window.location.href;)"
+R"(
+
+            if (! this.rootResourcePath.endsWith ("/"))
+                this.rootResourcePath += "/../";
+        }
+
+        const dataURI = await serialiseWorkletProcessorFactoryToDataURI (CmajorClass, workletName, hostDescription);
         await audioContext.audioWorklet.addModule (dataURI);
 
-        this.inputEndpoints = WrapperClass.prototype.getInputEndpoints();
-        this.outputEndpoints = WrapperClass.prototype.getOutputEndpoints();
+        this.inputEndpoints = CmajorClass.prototype.getInputEndpoints();
+        this.outputEndpoints = CmajorClass.prototype.getOutputEndpoints();
 
         const audioInputEndpoints  = this.inputEndpoints.filter (({ purpose }) => purpose === "audio in");
         const audioOutputEndpoints = this.outputEndpoints.filter (({ purpose }) => purpose === "audio out");
@@ -3250,8 +3288,7 @@ R"(
         audioOutputEndpoints.forEach ((endpoint) => { outputChannelCount = outputChannelCount + endpoint.numAudioChannels; });
 
         const hasInput = inputChannelCount > 0;
-        const hasOutput = outputChannelCount > 0;)"
-R"(
+        const hasOutput = outputChannelCount > 0;
 
         const node = new AudioWorkletNode (audioContext, workletName, {
             numberOfInputs: +hasInput,
@@ -3278,7 +3315,8 @@ R"(
                         node.port.removeEventListener ("message", filterForInitialised);
                         resolve();
                     }
-                };
+                };)"
+R"TEXT(
 
                 node.port.addEventListener ("message", filterForInitialised);
             });
@@ -3303,9 +3341,8 @@ R"(
             }
         });
 
-        this.startPatchWorker();
-    })"
-R"TEXT(
+        await this.startPatchWorker();
+    }
 
     //==============================================================================
     /**  Attempts to connect this connection to the default audio and MIDI channels.
@@ -3340,7 +3377,8 @@ R"TEXT(
     sendMessageToServer (msg)
     {
         this.audioNode.port.postMessage ({ type: "patch", payload: msg });
-    }
+    })TEXT"
+R"(
 
     requestStoredStateValue (key)
     {
@@ -3364,8 +3402,7 @@ R"TEXT(
             // N.B. notifying the client only when updating matches behaviour of the patch player
             this.dispatchEvent ("state_key_value", { key, value: newValue });
         }
-    })TEXT"
-R"(
+    }
 
     sendFullStoredState (fullState)
     {
@@ -3393,10 +3430,7 @@ R"(
 
     getResourceAddress (path)
     {
-        if (window.location.href.endsWith ("/"))
-            return window.location.href + path;
-
-        return window.location.href + "/../" + path;
+        return this.rootResourcePath + path;
     }
 
     async readResource (path)
@@ -3412,7 +3446,8 @@ R"(
         let frames = [];
 
         for (let i = 0; i < buffer.length; ++i)
-            frames.push ([]);
+            frames.push ([]);)"
+R"(
 
         for (let chan = 0; chan < buffer.numberOfChannels; ++chan)
         {
@@ -3423,8 +3458,7 @@ R"(
         }
 
         return { frames, sampleRate: buffer.sampleRate };
-    })"
-R"(
+    }
 
     //==============================================================================
     /** @private */
@@ -3460,7 +3494,7 @@ R"(3.948a102.566,102.566,0,0,1,19.979,2V382.85A74.364,74.364,0,0,0,1657.854,381.
         File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 15540) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6186) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4941) },
-        File { "cmaj-audio-worklet-helper.js", std::string_view (cmajaudioworklethelper_js, 26218) },
+        File { "cmaj-audio-worklet-helper.js", std::string_view (cmajaudioworklethelper_js, 27963) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
     };
 
