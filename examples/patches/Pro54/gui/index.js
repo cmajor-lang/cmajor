@@ -16,30 +16,40 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-import PianoKeyboard from "../cmaj_api/cmaj-piano-keyboard.js"
 import ImageStripControl from "./helpers/cmaj-image-strip-control.js"
 import * as presets from "./presets/presetBank.js"
 
 export default function createPatchView (patchConnection)
 {
+    defineKeyboardElement (patchConnection);
     return new Pro54PatchView (patchConnection);
 }
 
 //==============================================================================
-class Pro54Keyboard extends PianoKeyboard
-{
-    constructor()
-    {
-        super ({ naturalNoteWidth: 18.58,
-                 accidentalWidth: 11,
-                 accidentalPercentageHeight: 62,
-                 naturalNoteBorder: "none",
-                 accidentalNoteBorder: "none",
-                 pressedNoteColour: "#00000044" });
-    }
+let Pro54Keyboard;
 
-    getNoteColour (note)    { return "none"; }
-    getNoteLabel (note)     { return ""; }
+function defineKeyboardElement (patchConnection)
+{
+    if (! Pro54Keyboard)
+    {
+        Pro54Keyboard = class extends patchConnection.utilities.PianoKeyboard
+        {
+            constructor()
+            {
+                super ({ naturalNoteWidth: 18.58,
+                        accidentalWidth: 11,
+                        accidentalPercentageHeight: 62,
+                        naturalNoteBorder: "none",
+                        accidentalNoteBorder: "none",
+                        pressedNoteColour: "#00000044" });
+            }
+
+            getNoteColour (note)    { return "none"; }
+            getNoteLabel (note)     { return ""; }
+        }
+
+        window.customElements.define ("pro54-keyboard", Pro54Keyboard);
+    }
 }
 
 //==============================================================================
@@ -103,8 +113,9 @@ class Pro54ImageStrip extends ImageStripControl
 
     setPatchConnection (patchConnection)
     {
-        this.setImage ({ imageURL: patchConnection.getResourceAddress (this.imageSettings.imageURL),
-                          ...this.imageSettings });
+        let settings = { ...this.imageSettings };
+        settings.imageURL = patchConnection.getResourceAddress (settings.imageURL);
+        this.setImage (settings);
 
         this.patchConnection = patchConnection;
         this.patchConnection.requestParameterValue?.(this.id);
@@ -986,6 +997,5 @@ window.customElements.define ("pro54-midi-light", Pro54MIDIActivityLight);
 window.customElements.define ("pro54-program-digit", Pro54ProgramDigitElement);
 window.customElements.define ("pro54-program-bank", Pro54ProgramBank);
 window.customElements.define ("pro54-program-name", Pro54ProgramName);
-window.customElements.define ("pro54-keyboard", Pro54Keyboard);
 window.customElements.define ("pro54-patch-view", Pro54PatchView);
 window.customElements.define ("pro54-bpf", Pro54BPF);

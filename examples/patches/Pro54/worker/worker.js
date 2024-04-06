@@ -20,14 +20,13 @@
 // executed when the patch is created.
 
 import * as presets from "../gui/presets/presetBank.js"
-import * as midi from "../cmaj_api/cmaj-midi-helpers.js"
 
-var patchConnection;
-var presetBank = new presets.PresetBank();
+let patchConnection;
+let presetBank = new presets.PresetBank();
 
-var currentParameterValues = new Map();
-var programNumber = 0;
-var recording = 0;
+let currentParameterValues = new Map();
+let programNumber = 0;
+let recording = 0;
 
 let isSessionConnected = false;
 
@@ -92,19 +91,6 @@ const statusListener = status =>
 
 let lastBank = 0;
 
-const midiInListener = event =>
-{
-    if (midi.isController (event.message))
-        if (midi.getControllerNumber (event.message) == 0) // bank select
-            lastBank = midi.getControllerValue (event.message);
-
-    if (midi.isProgramChange (event.message))
-    {
-        const programIndex = lastBank * 128 + midi.getProgramChangeNumber (event.message);
-        patchConnection.sendStoredStateValue ("currentProgram", presets.getIDOfIndex (programIndex));
-    }
-};
-
 const parameterListener = event =>
 {
     currentParameterValues.set (event.endpointID, event.value);
@@ -113,6 +99,21 @@ const parameterListener = event =>
 export default function runWorker (pc)
 {
     patchConnection = pc;
+
+    const midi = patchConnection.utilities.midi;
+
+    const midiInListener = event =>
+    {
+        if (midi.isController (event.message))
+            if (midi.getControllerNumber (event.message) == 0) // bank select
+                lastBank = midi.getControllerValue (event.message);
+
+        if (midi.isProgramChange (event.message))
+        {
+            const programIndex = lastBank * 128 + midi.getProgramChangeNumber (event.message);
+            patchConnection.sendStoredStateValue ("currentProgram", presets.getIDOfIndex (programIndex));
+        }
+    };
 
     patchConnection.addStatusListener (statusListener);
     patchConnection.addStoredStateValueListener (stateValueChangeListener);

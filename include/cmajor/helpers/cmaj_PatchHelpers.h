@@ -663,8 +663,15 @@ inline std::optional<std::string> readJavascriptResource (std::string_view path,
             return content;
 
     if (choc::text::startsWith (pathToFind, "cmaj_api/"))
-        if (auto content = EmbeddedWebAssets::findResource (pathToFind.substr (std::string_view ("cmaj_api/").length())); ! content.empty())
+    {
+        auto subPath = pathToFind.substr (std::string_view ("cmaj_api/").length());
+
+        if (subPath == "cmaj-version.js")
+            return std::string ("export function getCmajorVersion() { return \"") + cmaj::Library::getVersion() + "\"; }";
+
+        if (auto content = EmbeddedWebAssets::findResource (subPath); ! content.empty())
             return std::string (content);
+    }
 
     return {};
 }

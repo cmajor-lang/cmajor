@@ -1,13 +1,16 @@
 # Cmajor javascript API
 
-This folder contains a set of javascript modules which are available for a patch's GUI code to import and use.
+This folder contains a set of javascript modules which are provided for a patch's GUI code to use.
 
-To import one of the modules, use a path starting with `./cmaj_api/`, e.g.
+These are available via the `PatchConnection` object that is passed to your GUI or worker module when it is being created. The `PatchConnection` object has a `utilities` property containing various javascript objects for the modules in the API. To see what's available, have a look at the class in `cmajor/javascript/cmaj_api/cmaj-patch-connection.js`, and the various files in the `cmajor/javascript/cmaj_api` folder.
 
 ```js
-import { getCmajorVersion } from "./cmaj_api/cmaj-version.js"
-import * as midi from ./cmaj_api/cmaj-midi-helpers.js"
+// In your GUI module:
+export default function createPatchView (patchConnection)
+{
+    console.log (`Cmajor version: ${patchConnection.getCmajorVersion()}`);
+    console.log (`MIDI message: ${patchConnection.midi.getMIDIDescription (0x924030)}`);
 
-console.log (`Cmajor version: ${getCmajorVersion()}`);
-console.log ("MIDI message: " + midi.getMIDIDescription (0x924030));
+    const keyboard = new patchConnection.utilities.PianoKeyboard();
+}
 ```

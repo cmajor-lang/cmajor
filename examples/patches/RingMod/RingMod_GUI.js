@@ -1,6 +1,4 @@
 
-// this imports the built-in Cmajor parameter library
-import * as Controls from "./cmaj_api/cmaj-parameter-controls.js"
 
 // This is the web-component that we'll return for our patch's view
 class DalekView extends HTMLElement
@@ -9,6 +7,7 @@ class DalekView extends HTMLElement
     {
         super();
         this.patchConnection = patchConnection;
+        this.Controls = this.patchConnection.utilities.ParameterControls;
         this.classList = "ringmod-main";
         this.innerHTML = this.getHTML();
     }
@@ -26,10 +25,10 @@ class DalekView extends HTMLElement
             const paramControlHolder = this.querySelector ("#ringmod-parameters");
             paramControlHolder.innerHTML = ""; // delete any old controls before adding new ones
 
-            const drive = Controls.createLabelledControlForEndpointID (this.patchConnection, status, "drive");
+            const drive = this.Controls.createLabelledControlForEndpointID (this.patchConnection, status, "drive");
             paramControlHolder.appendChild (drive);
 
-            const freq = Controls.createLabelledControlForEndpointID (this.patchConnection, status, "modulationFrequency");
+            const freq = this.Controls.createLabelledControlForEndpointID (this.patchConnection, status, "modulationFrequency");
             paramControlHolder.appendChild (freq);
         };
 
@@ -75,7 +74,7 @@ class DalekView extends HTMLElement
                 display: inline;
             }
 
-            ${Controls.getAllCSS()}
+            ${this.Controls.getAllCSS()}
         </style>
 
         <div class="ringmod-controls">

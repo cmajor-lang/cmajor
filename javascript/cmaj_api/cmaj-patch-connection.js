@@ -20,6 +20,10 @@
 //  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import { EventListenerList } from "./cmaj-event-listener-list.js"
+import * as midi from "./cmaj-midi-helpers.js"
+import PianoKeyboard from "./cmaj-piano-keyboard.js"
+import GenericPatchView from "./cmaj-generic-patch-view.js"
+import * as ParameterControls from "./cmaj-parameter-controls.js"
 
 //==============================================================================
 /** This class implements the API and much of the logic for communicating with
@@ -30,6 +34,13 @@ export class PatchConnection  extends EventListenerList
     constructor()
     {
         super();
+    }
+
+    /** Returns the current Cmajor version */
+    getCmajorVersion()
+    {
+        const version = import ("./cmaj-version.js");
+        return version.getCmajorVersion();
     }
 
     //==============================================================================
@@ -197,6 +208,22 @@ export class PatchConnection  extends EventListenerList
      *  @param {string} path
      */
     getResourceAddress (path)                           { return path; }
+
+    //==============================================================================
+    /**
+     *  This property contains various utility classes and functions from the Cmajor API,
+     *  for use in your GUI or worker code.
+     */
+    utilities = {
+        /** MIDI utility functions from cmaj-midi-helpers.js */
+        midi,
+        /** On-screen keyboard class from cmaj-piano-keyboard.js */
+        PianoKeyboard,
+        /** Basic parameter control GUI elements, from cmaj-parameter-controls.js */
+        ParameterControls,
+        /** The default view GUI, from cmaj-generic-patch-view.js */
+        GenericPatchView
+    };
 
     //==============================================================================
     // Private methods follow this point..

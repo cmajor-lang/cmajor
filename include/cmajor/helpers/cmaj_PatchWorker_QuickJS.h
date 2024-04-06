@@ -89,6 +89,12 @@ inline void enableQuickJSPatchWorker (Patch& p)
 
             choc::javascript::Context::ReadModuleContentFn resolveModule = [&p] (std::string_view path) -> std::optional<std::string>
             {
+                const std::string_view guiModulesToAvoid[] = { "/cmaj-piano-keyboard", "/cmaj-parameter-controls", "/cmaj-generic-patch-view" };
+
+                for (auto& moduleName : guiModulesToAvoid)
+                    if (choc::text::contains (path, moduleName))
+                        return "export default function dummy() {}";
+
                 if (auto manifest = p.getManifest())
                     return readJavascriptResource (path, manifest);
 

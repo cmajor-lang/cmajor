@@ -21,6 +21,7 @@
 #include <filesystem>
 #include <array>
 #include <string_view>
+#include <iostream>
 #include "choc/text/choc_Files.h"
 #include "cmajor/helpers/cmaj_EmbeddedWebAssets.h"
 #include "cmajor/COM/cmaj_Library.h"
