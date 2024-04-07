@@ -146,11 +146,6 @@ void generate (juce::ArgumentList& args,
     else
         buildSettings.setMaxBlockSize (512);
 
-    if (args.containsOption ("--eventBufferSize"))
-        buildSettings.setEventBufferSize (static_cast<uint32_t> (args.removeValueForOption ("--eventBufferSize").getIntValue()));
-    else
-        buildSettings.setEventBufferSize (32);
-
     if (args.containsOption ("--target"))
         target = args.removeValueForOption ("--target").toStdString();
     else

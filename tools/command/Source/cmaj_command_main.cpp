@@ -70,6 +70,7 @@ cmaj <command> [options]    Runs the given command. Options can include the foll
     -O0|1|2|3|4             Set the optimisation level to the given value
     --debug                 Turn on debug output from the performer
     --sessionID=n           Set the session id to the given value
+    --eventBufferSize=n     Set the max number of events per buffer
     --engine=<type>         Use the specified engine - e.g. llvm, webview, cpp
     --simd                  WASM generation uses SIMD/non-SIMD at runtime (default)
     --no-simd               WASM generation does not emit SIMD
@@ -134,7 +135,6 @@ CODE_GEN_TARGETS
     --clapIncludePath=<folder>  If generating a CLAP plugin, this is the path to your CLAP include folder
     --cmajorIncludePath=<folder>  If generating a plugin, this is the path to your cmajor/include folder
     --maxFramesPerBlock=n   Specify the maximum block size when generating code
-    --eventBufferSize=n     Specify an event buffer size when generating code
 
 cmaj create [opts] <folder> Creates a folder containing files for a new empty patch
 
@@ -167,6 +167,9 @@ static cmaj::BuildSettings parseBuildArgs (juce::ArgumentList& args)
 
     if (args.containsOption ("--sessionID"))
         buildSettings.setSessionID (args.removeValueForOption ("--sessionID").getIntValue());
+
+    if (args.containsOption ("--eventBufferSize"))
+        buildSettings.setEventBufferSize (static_cast<uint32_t> (args.removeValueForOption ("--eventBufferSize").getIntValue()));
 
     return buildSettings;
 }
