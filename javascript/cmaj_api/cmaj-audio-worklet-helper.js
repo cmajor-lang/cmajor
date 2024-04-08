@@ -547,7 +547,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
 
         if (rootResourcePath)
         {
-            this.rootResourcePath = rootResourcePath;
+            this.rootResourcePath = rootResourcePath.toString();
 
             if (! this.rootResourcePath.endsWith ("/"))
                 this.rootResourcePath += "/";
