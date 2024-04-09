@@ -656,7 +656,7 @@ private:
         if (v.isVoid() || v.isUndefined())  return {};
         if (v.isString())                   return choc::value::createString (v.toString().toStdString());
         if (v.isBool())                     return choc::value::createBool (static_cast<bool> (v));
-        if (v.isInt() || v.isInt64())       return choc::value::createInt64 (static_cast<int64_t> (v));
+        if (v.isInt() || v.isInt64())       return choc::value::createInt64 (static_cast<juce::int64> (v));
         if (v.isDouble())                   return choc::value::createFloat64 (static_cast<double> (v));
 
         if (v.isArray())
