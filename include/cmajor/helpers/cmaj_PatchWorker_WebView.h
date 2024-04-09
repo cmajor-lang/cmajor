@@ -20,6 +20,7 @@
 
 #include "cmaj_Patch.h"
 #include "../../choc/javascript/choc_javascript.h"
+#include "../../choc/javascript/choc_javascript_Console.h"
 #include "../../choc/gui/choc_WebView.h"
 #include "../../choc/text/choc_MIMETypes.h"
 
