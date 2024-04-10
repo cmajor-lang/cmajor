@@ -161,20 +161,17 @@ static constexpr auto cmajor_patch_gui_html = R"(
   * { box-sizing: border-box; padding: 0; margin: 0; border: 0; }
   html { background: black; overflow: hidden; }
   body { display: block; position: absolute; width: 100%; height: 100%; }
-  #cmaj-outer-container { display: block; position: relative; width: 100%; height: 100%; overflow: auto; }
-  #cmaj-inner-container { display: block; position: relative; width: 100%; height: 100%; overflow: visible; transform-origin: 0% 0%; }
+  #cmaj-view-container { display: block; position: relative; width: 100%; height: 100%; overflow: auto; }
 </style>
 
 <body>
-  <div id="cmaj-outer-container">
-    <div id="cmaj-inner-container"></div>
-  </div>
+  <div id="cmaj-view-container"></div>
 </body>
 
 <script type="module">
 
 import { PatchConnection } from "../cmaj_api/cmaj-patch-connection.js"
-import { createPatchView, scalePatchViewToFit } from "./cmaj_api/cmaj-patch-view.js"
+import { createPatchViewHolder } from "./cmaj_api/cmaj-patch-view.js"
 
 //==============================================================================
 const patchManifest = $MANIFEST$;
@@ -203,19 +200,16 @@ class EmbeddedPatchConnection  extends PatchConnection
 }
 
 //==============================================================================
-const outer = document.getElementById ("cmaj-outer-container");
-const inner = document.getElementById ("cmaj-inner-container");
-
-const patchConnection = new EmbeddedPatchConnection();
-createPatchView (patchConnection, viewInfo).then ((currentView) =>
+async function createView()
 {
-    inner.appendChild (currentView);
+    const patchConnection = new EmbeddedPatchConnection();
 
-    const resizeObserver = new ResizeObserver (() => scalePatchViewToFit (currentView, inner, outer));
-    resizeObserver.observe (document.body);
+    const view = await createPatchViewHolder (patchConnection, viewInfo);
 
-    scalePatchViewToFit (currentView, inner, outer);
-});
+    document.getElementById ("cmaj-view-container").appendChild (view);
+}
+
+createView();
 
 </script>
 </html>

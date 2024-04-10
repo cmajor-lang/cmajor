@@ -21,6 +21,7 @@
 
 import { PatchConnection } from "./cmaj-patch-connection.js"
 
+//==============================================================================
 /** Returns a list of types of view that can be created for this patch.
  */
 export function getAvailableViewTypes (patchConnection)
@@ -34,6 +35,7 @@ export function getAvailableViewTypes (patchConnection)
     return ["generic"];
 }
 
+//==============================================================================
 /** Creates and returns a HTMLElement view which can be shown to control this patch.
  *
  *  If no preferredType argument is supplied, this will return either a custom patch-specific
@@ -80,6 +82,7 @@ export async function createPatchView (patchConnection, preferredType)
     return undefined;
 }
 
+//==============================================================================
 /** If a patch view declares itself to be scalable, this will attempt to scale it to fit
  *  into a given parent element.
  *
@@ -103,7 +106,7 @@ export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo
 
     const scaleLimits = view.getScaleFactorLimits?.();
 
-    if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
+    if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale) && parentContainerToFitTo)
     {
         const minScale = scaleLimits.minScale || 0.25;
         const maxScale = scaleLimits.maxScale || 5.0;
@@ -122,4 +125,55 @@ export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo
     {
         parentToScale.style.transform = "none";
     }
+}
+
+//==============================================================================
+class PatchViewHolder extends HTMLElement
+{
+    constructor (view)
+    {
+        super();
+        this.view = view;
+        this.style = `display: block; position: relative; width: 100%; height: 100%; overflow: visible; transform-origin: 0% 0%;`;
+    }
+
+    connectedCallback()
+    {
+        this.appendChild (this.view);
+        this.resizeObserver = new ResizeObserver (() => scalePatchViewToFit (this.view, this, this.parentElement));
+        this.resizeObserver.observe (this.parentElement);
+        scalePatchViewToFit (this.view, this, this.parentElement);
+    }
+
+    disconnectedCallback()
+    {
+        this.resizeObserver = undefined;
+        this.innerHTML = "";
+    }
+}
+
+window.customElements.define ("cmaj-patch-view-holder", PatchViewHolder);
+
+//==============================================================================
+/** Creates and returns a HTMLElement view which can be shown to control this patch.
+ *
+ *  Unlike createPatchView(), this will return a holder element that handles scaling
+ *  and resizing, and which follows changes to the size of the parent that you
+ *  append it to.
+ *
+ *  If no preferredType argument is supplied, this will return either a custom patch-specific
+ *  view (if the manifest specifies one), or a generic view if not. The preferredType argument
+ *  can be used to choose one of the types of view returned by getAvailableViewTypes().
+ *
+ *  @param {PatchConnection} patchConnection - the connection to use
+ *  @param {string} preferredType - the name of the type of view to open, e.g. "generic"
+ *                                  or the name of one of the views in the manifest
+ *  @returns {HTMLElement} a HTMLElement that can be displayed as the patch GUI
+ */
+export async function createPatchViewHolder (patchConnection, preferredType)
+{
+    const view = await createPatchView (patchConnection, preferredType);
+
+    if (view)
+        return new PatchViewHolder (view);
 }

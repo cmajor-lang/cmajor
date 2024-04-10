@@ -144,19 +144,16 @@ To learn more about Cmajor, visit [cmajor.dev](cmajor.dev)
 
 <body>
   <div id="cmaj-main">
-    <div id="cmaj-outer-container">
-      <div id="cmaj-inner-container">
+    <div id="cmaj-view-container"></div>
+    <div id="cmaj-overlay">
+      <div id="cmaj-info">
+        <span>PATCH_NAME</span>
+        PATCH_DESC
+        PATCH_LINK
+        <span id="cmaj-click-to-start">- Click to Start -</span>
       </div>
-      <div id="cmaj-overlay">
-        <div id="cmaj-info">
-          <span>PATCH_NAME</span>
-          PATCH_DESC
-          PATCH_LINK
-          <span id="cmaj-click-to-start">- Click to Start -</span>
-        </div>
-      </div>
-      <button id="cmaj-reset-button">Stop Audio</button>
     </div>
+    <button id="cmaj-reset-button">Stop Audio</button>
   </div>
 </body>
 
@@ -174,20 +171,12 @@ To learn more about Cmajor, visit [cmajor.dev](cmajor.dev)
       height: 100%;
     }
 
-    #cmaj-outer-container {
+    #cmaj-view-container {
       display: block;
       position: relative;
       width: 100%;
       height: 100%;
       overflow: auto;
-    }
-
-    #cmaj-inner-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      overflow: visible;
-      transform-origin: 0% 0%;
     }
 
     .cmaj-piano-keyboard {
@@ -237,7 +226,7 @@ To learn more about Cmajor, visit [cmajor.dev](cmajor.dev)
 <script type="module">
 
 import * as patch from "./PATCH_MODULE_FILE"
-import { createPatchView, scalePatchViewToFit } from "./cmaj_api/cmaj-patch-view.js"
+import { createPatchViewHolder } from "./cmaj_api/cmaj-patch-view.js"
 import PianoKeyboard from "./cmaj_api/cmaj-piano-keyboard.js"
 
 customElements.define ("cmaj-panel-piano-keyboard", PianoKeyboard);
@@ -287,23 +276,16 @@ async function loadPatch()
     audioContext.suspend();
     const connection = await patch.createAudioWorkletNodePatchConnection (audioContext, "cmaj-worklet-processor");
 
-    const outer = document.getElementById ("cmaj-outer-container");
-    const inner = document.getElementById ("cmaj-inner-container");
+    const viewContainer = document.getElementById ("cmaj-view-container");
     const startOverlay = document.getElementById ("cmaj-overlay");
     const resetButton = document.getElementById ("cmaj-reset-button");
 
-    const view = await createPatchView (connection);
+    viewContainer.innerHTML = "";
+
+    const view = await createPatchViewHolder (connection);
 
     if (view)
-    {
-        inner.innerHTML = "";
-        inner.appendChild (view);
-
-        const resizeObserver = new ResizeObserver (() => scalePatchViewToFit (view, inner, outer));
-        resizeObserver.observe (outer);
-
-        scalePatchViewToFit (view, inner, outer);
-    }
+        viewContainer.appendChild (view)
 
     resetButton.onclick = () =>
     {
@@ -311,8 +293,8 @@ async function loadPatch()
         audioContext?.close();
         connection?.close?.();
 
-        inner.innerHTML = "";
-        inner.style.transform = "none";
+        viewContainer.innerHTML = "";
+        viewContainer.style.transform = "none";
         startOverlay.style.display = "flex";
         resetButton.style.display = "none";
 

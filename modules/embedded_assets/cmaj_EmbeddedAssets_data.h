@@ -277,156 +277,6 @@ R"(
 
 customElements.define ("cmaj-patch-graph", PatchGraph);
 )";
-    static constexpr const char* panel_api_cmajpatchviewholder_js =
-        R"(//
-//     ,ad888ba,                              88
-//    d8"'    "8b
-//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
-//   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
-//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
-//                                           ,88
-//                                        888P"
-//
-//  The Cmajor project is subject to commercial or open-source licensing.
-//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
-//  visit https://cmajor.dev to learn about our commercial licence options.
-//
-//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
-//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
-//  DISCLAIMED.
-
-import { createPatchView } from "../cmaj_api/cmaj-patch-view.js"
-
-
-export default class PatchViewHolder extends HTMLElement
-{
-    constructor()
-    {
-        super();
-        this.innerHTML = this.getHTML();
-        this.container = this.querySelector ("#cmaj-view-container");
-        this.viewSizeAdjustment = 2;
-    }
-
-    connectedCallback()
-    {
-        this.resizeObserver = new ResizeObserver (() => this.updateViewScale());
-
-        this.resizeObserver.observe (this.parentElement);
-        this.updateViewScale();
-    }
-
-    disconnectedCallback()
-    {
-        this.resizeObserver?.disconnect();
-        this.resizeObserver = undefined;
-        this.clear();
-    }
-
-    updateViewScale()
-    {
-        if (this.currentView && this.parentElement)
-        {
-            const viewStyle = getComputedStyle (this.currentView);
-            const viewW = this.currentView.scrollWidth - parseFloat (viewStyle.paddingLeft) - parseFloat (viewStyle.paddingRight) + this.viewSizeAdjustment;
-            const viewH = this.currentView.scrollHeight - parseFloat (viewStyle.paddingTop) - parseFloat (viewStyle.paddingBottom) + this.viewSizeAdjustment;)"
-R"(
-
-            const scale = this.getScaleToApplyToView (this.currentView, viewW, viewH, this.parentElement);
-
-            if (scale)
-                this.container.style.transform = `scale(${scale})`;
-            else
-                this.container.style.transform = "none";
-        }
-    }
-
-    getScaleToApplyToView (view, originalViewW, originalViewH, parentToFitTo)
-    {
-        if (view && parentToFitTo)
-        {
-            const scaleLimits = view.getScaleFactorLimits?.();
-
-            if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
-            {
-                const minScale = scaleLimits.minScale || 0.25;
-                const maxScale = scaleLimits.maxScale || 5.0;
-
-                const parentStyle = getComputedStyle (parentToFitTo);
-                const parentW = parentToFitTo.clientWidth - parseFloat (parentStyle.paddingLeft) - parseFloat (parentStyle.paddingRight);
-                const parentH = parentToFitTo.clientHeight - parseFloat (parentStyle.paddingTop) - parseFloat (parentStyle.paddingBottom);
-
-                const scaleW = parentW / originalViewW;
-                const scaleH = parentH / originalViewH;
-
-                return Math.min (maxScale, Math.max (minScale, Math.min (scaleW, scaleH)));
-            }
-        }
-
-        return undefined;
-    }
-
-    async refreshView (session, viewType)
-    {
-        this.clear();
-
-        this.viewPatchConnection = session.createPatchConnection();
-
-        this.currentView = await createPatchView (this.viewPatchConnection, viewType);
-
-        if (this.currentView)
-        {
-            this.container.appendChild (this.currentView);
-            this.updateViewScale();
-        }
-        else
-        {
-            this.clear();
-        }
-    }
-
-    clear()
-    {
-        this.viewPatchConnection?.dispose?.();
-        this.viewPatchConnection = undefined;
-
-        if (this.currentView)
-        {
-            this.container.removeChild (this.currentView);
-            this.currentView = undefined;
-        })"
-R"(
-
-        this.container.style.transform = "none";
-    }
-
-    getHTML()
-    {
-        return `
-<style>
-    * {
-        box-sizing: border-box;
-    }
-
-    :host {
-        position: relative;
-        display: block;
-    }
-
-    #cmaj-view-container {
-        position: absolute;
-        overflow: visible;
-        transform-origin: 0% 0%;
-        width: 100%;
-        height: 100%;
-    }
-</style>
-<div id="cmaj-view-container"></div>
-`;
-    }
-}
-)";
     static constexpr const char* panel_api_cmajpatchpanel_js =
         R"(//
 //     ,ad888ba,                              88
@@ -449,9 +299,8 @@ R"(
 import * as cmajor from "/cmaj-patch-server.js";
 import PianoKeyboard from "../cmaj_api/cmaj-piano-keyboard.js"
 import LevelMeter from "./helpers/cmaj-level-meter.js"
-import PatchViewHolder from "./cmaj-patch-view-holder.js"
 import WaveformDisplay from "./helpers/cmaj-waveform-display.js";
-import { getAvailableViewTypes } from "../cmaj_api/cmaj-patch-view.js"
+import * as patchViewUtils from "../cmaj_api/cmaj-patch-view.js"
 import * as midi from "../cmaj_api/cmaj-midi-helpers.js"
 import "./cmaj-cpu-meter.js"
 import "./cmaj-graph.js"
@@ -474,15 +323,15 @@ window.openSourceFile = (file) =>
     else
         // probably blocked by the browser, but this would at least open the file..
         window.open ("file://" + file.split(":")[0], "_blank");
-})"
-R"(
+}
 
 function createFileLink (s)
 {
     s = JSON.stringify (s);
     s = s.substring (1, s.length - 1);
     return `javascript:openSourceFile('${s}');`;
-}
+})"
+R"(
 
 window.openURLInNewWindow = (url) =>
 {
@@ -1297,7 +1146,7 @@ R"(
 
         this.controlsContainer   = this.shadowRoot.getElementById ("cmaj-control-container");
         this.logoElement         = this.shadowRoot.getElementById ("cmaj-logo")
-        this.guiHolderElement    = this.shadowRoot.getElementById ("cmaj-gui");
+        this.viewHolderElement   = this.shadowRoot.getElementById ("cmaj-patch-view-holder");
         this.viewSelectorElement = this.shadowRoot.getElementById ("cmaj-view-selector");
         this.toggleAudioButton   = this.shadowRoot.getElementById ("cmaj-toggle-audio-button");
         this.unloadButton        = this.shadowRoot.getElementById ("cmaj-unload-button");
@@ -1381,7 +1230,7 @@ R"(
 
     unloadPatch()
     {
-        this.guiHolderElement.clear();
+        this.viewHolderElement.innerHTML = "";
         this.session.loadPatch (null);
     })"
 R"(
@@ -1887,12 +1736,21 @@ R"(
         }
     }
 
-    async refreshViewElement (type)
+    async refreshViewElement (viewType)
     {
         if (this.patchConnection)
-            this.guiHolderElement.refreshView (this.session, type);
+        {
+            const view = await patchViewUtils.createPatchViewHolder (this.patchConnection, viewType);
+
+            this.viewHolderElement.innerHTML = "";
+
+            if (view)
+                this.viewHolderElement.appendChild (view);
+        }
         else
-            this.guiHolderElement.clear();
+        {
+            this.viewHolderElement.innerHTML = "";
+        }
     }
 
     updateErrorList (errorText)
@@ -1908,7 +1766,8 @@ R"(
             {
                 let i = line.indexOf (": error:");
                 if (i < 0) i = line.indexOf (": warning:");
-                if (i < 0) i = line.indexOf (": note:");
+                if (i < 0) i = line.indexOf (": note:");)"
+R"(
 
                 if (i >= 0)
                 {
@@ -1921,13 +1780,12 @@ R"(
         }
 
         this.errorListElement.innerHTML = list;
-    })"
-R"(
+    }
 
     updateViewSelectorList (isLoaded)
     {
         const viewSelector = this.viewSelectorElement;
-        const availableViews = getAvailableViewTypes (this.patchConnection);
+        const availableViews = patchViewUtils.getAvailableViewTypes (this.patchConnection);
 
         if (isLoaded && availableViews && availableViews.length > 1)
         {
@@ -1972,14 +1830,14 @@ R"(
                     panel.style.maxHeight = "0rem";
             }
 
-            updatePanelSize (button);
+            updatePanelSize (button);)"
+R"(
 
             button.onclick = (event) =>
             {
                 if (event.target == button)
                 {
-                    const panel = button.nextElementSibling;)"
-R"(
+                    const panel = button.nextElementSibling;
 
                     if (button.classList.contains ("cmaj-accordian-open"))
                         button.classList.remove ("cmaj-accordian-open");
@@ -2045,7 +1903,8 @@ R"(
         flex-flow: column nowrap;
         align-items: center;
         margin-right: 1.2rem;
-    }
+    })"
+R"(
 
     .cmajor-logo {
         user-select: none;
@@ -2063,8 +1922,7 @@ R"(
         -webkit-mask-repeat: no-repeat;
         -webkit-mask-position: center;
         cursor: pointer;
-    })"
-R"(
+    }
 
     .cmaj-version-number {
         color: #999;
@@ -2131,7 +1989,8 @@ R"(
         width: 6rem;
         height: 1.5rem;
         align-self: flex-center;
-    }
+    })"
+R"(
 
     .cmaj-divider {
         width: 100%;
@@ -2162,8 +2021,7 @@ R"(
     #cmaj-available-patch-list button:hover {
         background-color: #ddddff40;
         cursor: pointer;
-    })"
-R"(
+    }
 
     .cmaj-io-panel {
         display: flex;
@@ -2179,13 +2037,6 @@ R"(
         min-width: 10rem;
         flex-basis: 20rem;
         flex-grow: 1;
-    }
-
-    cmaj-patch-view {
-        position: relative;
-        display: block;
-        width: 100%;
-        height: 100%;
     }
 
     #cmaj-patch-view-holder {
@@ -2229,7 +2080,8 @@ R"(
 
     .cmaj-action-button-holder button {
         margin-bottom: 0.6rem;
-    }
+    })"
+R"(
 
     .cmaj-accordion-button {
         background-color: #ffffff40;
@@ -2259,8 +2111,7 @@ R"(
         background-color: #ffffff20;
         overflow: hidden;
         transition: max-height 0.25s ease-out;
-    })"
-R"(
+    }
 
     #cmaj-view-selector {
         font-size: 0.8rem;
@@ -2299,15 +2150,14 @@ R"(
       <button id="cmaj-reset-button">Reset patch</button>
       <button id="cmaj-copy-state">Copy state to clipboard</button>
       <button id="cmaj-restore-state">Paste state from clipboard</button>
-    </div>
+    </div>)"
+R"(
 
     <button class="cmaj-accordion-button cmaj-accordian-open">GUI
       <select id="cmaj-view-selector"></select>
     </button>
     <div class="cmaj-accordion-panel">
-      <div id="cmaj-patch-view-holder">
-        <cmaj-patch-view id="cmaj-gui"></cmaj-patch-view>
-      </div>
+      <div id="cmaj-patch-view-holder"></div>
     </div>
 
     <button class="cmaj-accordion-button cmaj-accordian-open">Inputs</button>
@@ -2318,8 +2168,7 @@ R"(
     <button class="cmaj-accordion-button cmaj-accordian-open">Outputs</button>
     <div class="cmaj-accordion-panel">
       <div id="cmaj-outputs-panel" class="cmaj-io-panel"></div>
-    </div>)"
-R"(
+    </div>
 
     <button class="cmaj-accordion-button">Graph</button>
     <div class="cmaj-accordion-panel">
@@ -2365,10 +2214,10 @@ function printMIDI (message)
             + " " + hex.substring (len - 2, len);
 }
 
-customElements.define ("cmaj-patch-view", PatchViewHolder);
 customElements.define ("cmaj-level-meter", LevelMeter);
 customElements.define ("cmaj-waveform-display", WaveformDisplay);
-customElements.define ("cmaj-panel-piano-keyboard", PianoKeyboard);
+customElements.define ("cmaj-panel-piano-keyboard", PianoKeyboard);)"
+R"(
 
 customElements.define ("cmaj-control-console", ConsoleEventControl);
 customElements.define ("cmaj-control-in-midi", MIDIInputControl);
@@ -3079,8 +2928,7 @@ R"(
         File { "embedded_patch_chooser_template.html", std::string_view (embedded_patch_chooser_template_html, 300) },
         File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2052) },
         File { "panel_api/cmaj-graph.js", std::string_view (panel_api_cmajgraph_js, 2940) },
-        File { "panel_api/cmaj-patch-view-holder.js", std::string_view (panel_api_cmajpatchviewholder_js, 4461) },
-        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 56468) },
+        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 56412) },
         File { "panel_api/cmaj-cpu-meter.js", std::string_view (panel_api_cmajcpumeter_js, 3617) },
         File { "panel_api/helpers/cmaj-image-strip-control.js", std::string_view (panel_api_helpers_cmajimagestripcontrol_js, 5648) },
         File { "panel_api/helpers/cmaj-level-meter.js", std::string_view (panel_api_helpers_cmajlevelmeter_js, 6758) },

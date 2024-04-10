@@ -19,9 +19,8 @@
 import * as cmajor from "/cmaj-patch-server.js";
 import PianoKeyboard from "../cmaj_api/cmaj-piano-keyboard.js"
 import LevelMeter from "./helpers/cmaj-level-meter.js"
-import PatchViewHolder from "./cmaj-patch-view-holder.js"
 import WaveformDisplay from "./helpers/cmaj-waveform-display.js";
-import { getAvailableViewTypes } from "../cmaj_api/cmaj-patch-view.js"
+import * as patchViewUtils from "../cmaj_api/cmaj-patch-view.js"
 import * as midi from "../cmaj_api/cmaj-midi-helpers.js"
 import "./cmaj-cpu-meter.js"
 import "./cmaj-graph.js"
@@ -854,7 +853,7 @@ export default class PatchPanel  extends HTMLElement
 
         this.controlsContainer   = this.shadowRoot.getElementById ("cmaj-control-container");
         this.logoElement         = this.shadowRoot.getElementById ("cmaj-logo")
-        this.guiHolderElement    = this.shadowRoot.getElementById ("cmaj-gui");
+        this.viewHolderElement   = this.shadowRoot.getElementById ("cmaj-patch-view-holder");
         this.viewSelectorElement = this.shadowRoot.getElementById ("cmaj-view-selector");
         this.toggleAudioButton   = this.shadowRoot.getElementById ("cmaj-toggle-audio-button");
         this.unloadButton        = this.shadowRoot.getElementById ("cmaj-unload-button");
@@ -937,7 +936,7 @@ export default class PatchPanel  extends HTMLElement
 
     unloadPatch()
     {
-        this.guiHolderElement.clear();
+        this.viewHolderElement.innerHTML = "";
         this.session.loadPatch (null);
     }
 
@@ -1435,12 +1434,21 @@ export default class PatchPanel  extends HTMLElement
         }
     }
 
-    async refreshViewElement (type)
+    async refreshViewElement (viewType)
     {
         if (this.patchConnection)
-            this.guiHolderElement.refreshView (this.session, type);
+        {
+            const view = await patchViewUtils.createPatchViewHolder (this.patchConnection, viewType);
+
+            this.viewHolderElement.innerHTML = "";
+
+            if (view)
+                this.viewHolderElement.appendChild (view);
+        }
         else
-            this.guiHolderElement.clear();
+        {
+            this.viewHolderElement.innerHTML = "";
+        }
     }
 
     updateErrorList (errorText)
@@ -1474,7 +1482,7 @@ export default class PatchPanel  extends HTMLElement
     updateViewSelectorList (isLoaded)
     {
         const viewSelector = this.viewSelectorElement;
-        const availableViews = getAvailableViewTypes (this.patchConnection);
+        const availableViews = patchViewUtils.getAvailableViewTypes (this.patchConnection);
 
         if (isLoaded && availableViews && availableViews.length > 1)
         {
@@ -1725,13 +1733,6 @@ export default class PatchPanel  extends HTMLElement
         flex-grow: 1;
     }
 
-    cmaj-patch-view {
-        position: relative;
-        display: block;
-        width: 100%;
-        height: 100%;
-    }
-
     #cmaj-patch-view-holder {
         position: relative;
         display: block;
@@ -1848,9 +1849,7 @@ export default class PatchPanel  extends HTMLElement
       <select id="cmaj-view-selector"></select>
     </button>
     <div class="cmaj-accordion-panel">
-      <div id="cmaj-patch-view-holder">
-        <cmaj-patch-view id="cmaj-gui"></cmaj-patch-view>
-      </div>
+      <div id="cmaj-patch-view-holder"></div>
     </div>
 
     <button class="cmaj-accordion-button cmaj-accordian-open">Inputs</button>
@@ -1907,7 +1906,6 @@ function printMIDI (message)
             + " " + hex.substring (len - 2, len);
 }
 
-customElements.define ("cmaj-patch-view", PatchViewHolder);
 customElements.define ("cmaj-level-meter", LevelMeter);
 customElements.define ("cmaj-waveform-display", WaveformDisplay);
 customElements.define ("cmaj-panel-piano-keyboard", PianoKeyboard);

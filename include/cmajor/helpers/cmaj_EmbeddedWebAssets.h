@@ -2620,6 +2620,7 @@ export default function createPatchView (patchConnection)
 
 import { PatchConnection } from "./cmaj-patch-connection.js"
 
+//==============================================================================
 /** Returns a list of types of view that can be created for this patch.
  */
 export function getAvailableViewTypes (patchConnection)
@@ -2634,6 +2635,7 @@ export function getAvailableViewTypes (patchConnection)
 })"
 R"(
 
+//==============================================================================
 /** Creates and returns a HTMLElement view which can be shown to control this patch.
  *
  *  If no preferredType argument is supplied, this will return either a custom patch-specific
@@ -2681,6 +2683,7 @@ export async function createPatchView (patchConnection, preferredType)
 })"
 R"(
 
+//==============================================================================
 /** If a patch view declares itself to be scalable, this will attempt to scale it to fit
  *  into a given parent element.
  *
@@ -2704,7 +2707,7 @@ export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo
 
     const scaleLimits = view.getScaleFactorLimits?.();
 
-    if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale))
+    if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale) && parentContainerToFitTo)
     {
         const minScale = scaleLimits.minScale || 0.25;
         const maxScale = scaleLimits.maxScale || 5.0;
@@ -2723,6 +2726,58 @@ export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo
     {
         parentToScale.style.transform = "none";
     }
+})"
+R"(
+
+//==============================================================================
+class PatchViewHolder extends HTMLElement
+{
+    constructor (view)
+    {
+        super();
+        this.view = view;
+        this.style = `display: block; position: relative; width: 100%; height: 100%; overflow: visible; transform-origin: 0% 0%;`;
+    }
+
+    connectedCallback()
+    {
+        this.appendChild (this.view);
+        this.resizeObserver = new ResizeObserver (() => scalePatchViewToFit (this.view, this, this.parentElement));
+        this.resizeObserver.observe (this.parentElement);
+        scalePatchViewToFit (this.view, this, this.parentElement);
+    }
+
+    disconnectedCallback()
+    {
+        this.resizeObserver = undefined;
+        this.innerHTML = "";
+    }
+}
+
+window.customElements.define ("cmaj-patch-view-holder", PatchViewHolder);
+
+//==============================================================================
+/** Creates and returns a HTMLElement view which can be shown to control this patch.
+ *
+ *  Unlike createPatchView(), this will return a holder element that handles scaling
+ *  and resizing, and which follows changes to the size of the parent that you
+ *  append it to.
+ *
+ *  If no preferredType argument is supplied, this will return either a custom patch-specific
+ *  view (if the manifest specifies one), or a generic view if not. The preferredType argument
+ *  can be used to choose one of the types of view returned by getAvailableViewTypes().
+ *
+ *  @param {PatchConnection} patchConnection - the connection to use
+ *  @param {string} preferredType - the name of the type of view to open, e.g. "generic"
+ *                                  or the name of one of the views in the manifest
+ *  @returns {HTMLElement} a HTMLElement that can be displayed as the patch GUI
+ */
+export async function createPatchViewHolder (patchConnection, preferredType)
+{
+    const view = await createPatchView (patchConnection, preferredType);
+
+    if (view)
+        return new PatchViewHolder (view);
 }
 )";
     static constexpr const char* cmajaudioworklethelper_js =
@@ -3285,7 +3340,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
 
         if (rootResourcePath)
         {
-            this.rootResourcePath = rootResourcePath;
+            this.rootResourcePath = rootResourcePath.toString();
 
             if (! this.rootResourcePath.endsWith ("/"))
                 this.rootResourcePath += "/";
@@ -3520,8 +3575,8 @@ R"(3.948a102.566,102.566,0,0,1,19.979,2V382.85A74.364,74.364,0,0,0,1657.854,381.
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
         File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 15540) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6186) },
-        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 4941) },
-        File { "cmaj-audio-worklet-helper.js", std::string_view (cmajaudioworklethelper_js, 27963) },
+        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 7221) },
+        File { "cmaj-audio-worklet-helper.js", std::string_view (cmajaudioworklethelper_js, 27974) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
     };
 
