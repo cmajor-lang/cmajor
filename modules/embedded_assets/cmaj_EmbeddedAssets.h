@@ -41,8 +41,8 @@ namespace cmaj
         /// Globally overrides the embedded assets with a local file path
         void setLocalAssetFolder (std::filesystem::path localFolder)
         {
-            // This needs to be pointed at the root of the cmajor-dev repo
-            CMAJ_ASSERT (exists (localFolder / "cmajor"));
+            // This needs to be pointed at the root of the cmajor repo
+            CMAJ_ASSERT (exists (localFolder / "include"));
             localAssetFolder = std::move (localFolder);
             std::cout << "Using local asset folder: " << localAssetFolder << std::endl;
         }
@@ -56,7 +56,7 @@ namespace cmaj
                     return choc::file::loadFileAsString (local.string());
 
                 if (choc::text::startsWith (path, "cmaj_api/"))
-                    if (auto local = localAssetFolder / "cmajor/javascript" / path; exists (local))
+                    if (auto local = localAssetFolder / "javascript" / path; exists (local))
                         return choc::file::loadFileAsString (local.string());
             }
 
