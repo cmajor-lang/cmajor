@@ -108,7 +108,7 @@ private:
     {
         if (window != nullptr && player.patch.isPlayable() && view == nullptr)
         {
-            view = cmaj::PatchWebView::create (player.patch, extractView (player.patch));
+            view = std::make_unique<cmaj::PatchWebView> (player.patch, extractView (player.patch));
             refreshWindow();
         }
     }

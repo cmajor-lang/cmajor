@@ -965,7 +965,7 @@ private:
     {
         Editor (JUCEPluginBase& p)
             : juce::AudioProcessorEditor (p), owner (p),
-              patchGUIHolder (PatchWebView::create (*p.patch, derivePatchViewSize (p)))
+              patchGUIHolder (std::make_unique<cmaj::PatchWebView> (*p.patch, derivePatchViewSize (p)))
         {
             lookAndFeel.setColour (juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
             lookAndFeel.setColour (juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);

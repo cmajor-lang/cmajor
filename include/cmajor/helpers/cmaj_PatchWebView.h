@@ -30,24 +30,32 @@ namespace cmaj
 /// A HTML patch GUI implementation.
 struct PatchWebView  : public PatchView
 {
-    /// Map a file extension (".html", ".js") to a MIME type (i.e. "text/html", "text/javascript").
-    /// A default implementation is provided, but it is non-exhaustive. If a custom mapping function is given,
-    /// it will be called first, falling back to the default implementation if an empty result is returned.
-    using MimeTypeMappingFn = std::function<std::string(std::string_view extension)>;
-
-    static std::unique_ptr<PatchWebView> create (Patch&, const PatchManifest::View&, MimeTypeMappingFn = {});
+    PatchWebView (Patch&, const PatchManifest::View&);
     ~PatchWebView() override;
 
-    choc::ui::WebView& getWebView();
     void sendMessage (const choc::value::ValueView&) override;
     void reload();
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> pimpl;
+    choc::ui::WebView& getWebView();
 
-    PatchWebView (std::unique_ptr<Impl>, const PatchManifest::View&);
+    /// Provides a chunk of javascript that goes in a function which is run before the
+    /// view element is added to its parent element.
+    std::string extraSetupCode;
+
+    /// Map a file extension (".html", ".js") to a MIME type (i.e. "text/html", "text/javascript").
+    /// A default implementation is provided, but it is non-exhaustive. If a custom mapping function is given,
+    /// it will be called first, falling back to the default implementation if an empty result is returned.
+    std::function<std::string(std::string_view extension)> getMIMETypeForExtension;
+
+private:
+    void createBindings();
+    choc::ui::WebView::Options getWebviewOptions();
+    std::optional<choc::ui::WebView::Options::Resource> onRequest (const std::string&);
+
+    choc::ui::WebView webview { getWebviewOptions() };
 };
+
+
 
 
 //==============================================================================
@@ -61,92 +69,64 @@ private:
 //
 //==============================================================================
 
-struct PatchWebView::Impl
+inline PatchWebView::PatchWebView (Patch& p, const PatchManifest::View& view)
+    : PatchView (p, view)
 {
-    Impl (Patch& p, MimeTypeMappingFn toMimeTypeFn)
-        : patch (p), toMimeTypeCustomImpl (std::move (toMimeTypeFn))
-    {
-        createBindings();
-    }
-
-    void sendMessage (const choc::value::ValueView& msg)
-    {
-        if (! webview.evaluateJavascript ("window.cmaj_deliverMessageFromServer?.(" + choc::json::toString (msg, true) + ");"))
-            CMAJ_ASSERT_FALSE;
-    }
-
-    void createBindings()
-    {
-        bool boundOK = webview.bind ("cmaj_sendMessageToServer", [this] (const choc::value::ValueView& args) -> choc::value::Value
-        {
-            try
-            {
-                if (args.isArray() && args.size() != 0)
-                    patch.handleClientMessage (*ownerView, args[0]);
-            }
-            catch (const std::exception& e)
-            {
-                std::cout << "Error processing message from client: " << e.what() << std::endl;
-            }
-
-            return {};
-        });
-
-        (void) boundOK;
-        CMAJ_ASSERT (boundOK);
-    }
-
-    choc::ui::WebView::Options getWebviewOptions()
-    {
-        choc::ui::WebView::Options options;
-        options.enableDebugMode = allowWebviewDevMode;
-        options.acceptsFirstMouseClick = true;
-        options.fetchResource = [this] (const auto& path) { return onRequest (path); };
-        return options;
-    }
-
-    std::optional<choc::ui::WebView::Options::Resource> onRequest (const std::string&);
-
-    PatchWebView* ownerView = nullptr;
-    Patch& patch;
-    MimeTypeMappingFn toMimeTypeCustomImpl;
-
-   #if CMAJ_ENABLE_WEBVIEW_DEV_TOOLS
-    static constexpr bool allowWebviewDevMode = true;
-   #else
-    static constexpr bool allowWebviewDevMode = false;
-   #endif
-
-    choc::ui::WebView webview { getWebviewOptions() };
-};
-
-inline std::unique_ptr<PatchWebView> PatchWebView::create (Patch& p, const PatchManifest::View& view, MimeTypeMappingFn toMimeType)
-{
-    auto impl = std::make_unique <PatchWebView::Impl> (p, std::move (toMimeType));
-    return std::unique_ptr<PatchWebView> (new PatchWebView (std::move (impl), view));
-}
-
-inline PatchWebView::PatchWebView (std::unique_ptr<Impl> impl, const PatchManifest::View& view)
-    : PatchView (impl->patch, view), pimpl (std::move (impl))
-{
-    pimpl->ownerView = this;
+    createBindings();
 }
 
 inline PatchWebView::~PatchWebView() = default;
 
-inline choc::ui::WebView& PatchWebView::getWebView()
-{
-    return pimpl->webview;
-}
-
 inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
 {
-    return pimpl->sendMessage (msg);
+    if (! webview.evaluateJavascript ("window.cmaj_deliverMessageFromServer?.(" + choc::json::toString (msg, true) + ");"))
+        CMAJ_ASSERT_FALSE;
+}
+
+inline void PatchWebView::createBindings()
+{
+    bool boundOK = webview.bind ("cmaj_sendMessageToServer", [this] (const choc::value::ValueView& args) -> choc::value::Value
+    {
+        try
+        {
+            if (args.isArray() && args.size() != 0)
+                patch.handleClientMessage (*this, args[0]);
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << "Error processing message from client: " << e.what() << std::endl;
+        }
+
+        return {};
+    });
+
+    (void) boundOK;
+    CMAJ_ASSERT (boundOK);
+}
+
+inline choc::ui::WebView::Options PatchWebView::getWebviewOptions()
+{
+    choc::ui::WebView::Options options;
+
+   #if CMAJ_ENABLE_WEBVIEW_DEV_TOOLS
+    options.enableDebugMode = true;
+   #else
+    options.enableDebugMode = false;
+   #endif
+
+    options.acceptsFirstMouseClick = true;
+    options.fetchResource = [this] (const auto& path) { return onRequest (path); };
+    return options;
+}
+
+inline choc::ui::WebView& PatchWebView::getWebView()
+{
+    return webview;
 }
 
 inline void PatchWebView::reload()
 {
-    getWebView().evaluateJavascript ("document.location.reload()");
+    webview.evaluateJavascript ("document.location.reload()");
 }
 
 static constexpr auto cmajor_patch_gui_html = R"(
@@ -160,8 +140,9 @@ static constexpr auto cmajor_patch_gui_html = R"(
 <style>
   * { box-sizing: border-box; padding: 0; margin: 0; border: 0; }
   html { background: black; overflow: hidden; }
-  body { display: block; position: absolute; width: 100%; height: 100%; }
+  body { display: block; position: absolute; width: 100%; height: 100%; color: white; font-family: Arial, Helvetica, sans-serif; }
   #cmaj-view-container { display: block; position: relative; width: 100%; height: 100%; overflow: auto; }
+  #cmaj-error-text { display: block; position: relative; width: 100%; height: 100%; text-align: center; padding: 1rem; }
 </style>
 
 <body>
@@ -200,36 +181,45 @@ class EmbeddedPatchConnection  extends PatchConnection
 }
 
 //==============================================================================
-async function createView()
+async function initialiseContainer (container)
 {
-    const patchConnection = new EmbeddedPatchConnection();
-
-    const view = await createPatchViewHolder (patchConnection, viewInfo);
-
-    document.getElementById ("cmaj-view-container").appendChild (view);
+$EXTRA_SETUP_CODE$
 }
 
-createView();
+async function initialiseView()
+{
+    const container = document.getElementById ("cmaj-view-container");
+    await initialiseContainer (container);
+
+    const patchConnection = new EmbeddedPatchConnection();
+    const view = await createPatchViewHolder (patchConnection, viewInfo);
+
+    if (view)
+        container.appendChild (view);
+    else
+        container.innerHTML = `<div id="cmaj-error-text">No view available</div>`;
+}
+
+initialiseView();
 
 </script>
 </html>
 )";
 
-inline std::optional<choc::ui::WebView::Options::Resource> PatchWebView::Impl::onRequest (const std::string& path)
+inline std::optional<choc::ui::WebView::Options::Resource> PatchWebView::onRequest (const std::string& path)
 {
     const auto toMimeType = [this] (const auto& extension)
     {
-        if (toMimeTypeCustomImpl)
-            if (auto m = toMimeTypeCustomImpl (extension); ! m.empty())
+        if (getMIMETypeForExtension)
+            if (auto m = getMIMETypeForExtension (extension); ! m.empty())
                 return m;
 
         return choc::web::getMIMETypeFromFilename (extension, "application/octet-stream");
     };
 
     auto relativePath = std::filesystem::path (path).relative_path();
-    bool wantsRootHTMLPage = relativePath.empty();
 
-    if (wantsRootHTMLPage)
+    if (relativePath.empty())
     {
         choc::value::Value manifestObject;
         cmaj::PatchManifest::View viewToUse;
@@ -244,7 +234,8 @@ inline std::optional<choc::ui::WebView::Options::Resource> PatchWebView::Impl::o
 
         return choc::ui::WebView::Options::Resource (choc::text::replace (cmajor_patch_gui_html,
                                                         "$MANIFEST$", choc::json::toString (manifestObject, true),
-                                                        "$VIEW_TO_USE$", choc::json::toString (viewToUse.view, true)),
+                                                        "$VIEW_TO_USE$", choc::json::toString (viewToUse.view, true),
+                                                        "$EXTRA_SETUP_CODE$", extraSetupCode),
                                                      "text/html");
     }
 

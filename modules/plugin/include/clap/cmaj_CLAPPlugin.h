@@ -325,7 +325,7 @@ private:
     struct ViewHolder
     {
         ViewHolder (cmaj::Patch& patchToUse, std::optional<double> initialScaleFactorToUse)
-            : webview (cmaj::PatchWebView::create (patchToUse, findDefaultViewForPatch (patchToUse)))
+            : webview (std::make_unique<cmaj::PatchWebView> (patchToUse, findDefaultViewForPatch (patchToUse)))
         {
             if (initialScaleFactorToUse)
                 setScaleFactor (*initialScaleFactorToUse);
