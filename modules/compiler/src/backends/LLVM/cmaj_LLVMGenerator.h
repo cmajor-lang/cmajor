@@ -670,11 +670,11 @@ struct LLVMCodeGenerator
 
     const ::llvm::DataLayout& getDataLayout()           { return dataLayout; }
 
-    size_t getTypeSize (::llvm::Type* type)             { return getDataLayout().getTypeStoreSize (type); }
-    size_t getTypeSize (const AST::TypeBase& type)      { return getTypeSize (getLLVMType (type)); }
+    size_t getTypeSize (::llvm::Type* type)             { return static_cast<size_t> (getDataLayout().getTypeStoreSize (type)); }
+    size_t getTypeSize (const AST::TypeBase& type)      { return static_cast<size_t> (getTypeSize (getLLVMType (type))); }
 
-    size_t getTypeAlignment (::llvm::Type* type)        { return getDataLayout().getABITypeAlign (type).value(); }
-    size_t getTypeAlignment (const AST::TypeBase& type) { return getTypeAlignment (getLLVMType (type)); }
+    size_t getTypeAlignment (::llvm::Type* type)        { return static_cast<size_t> (getDataLayout().getABITypeAlign (type).value()); }
+    size_t getTypeAlignment (const AST::TypeBase& type) { return static_cast<size_t> (getTypeAlignment (getLLVMType (type))); }
 
     static bool isZero (::llvm::Value* value)
     {
@@ -730,7 +730,7 @@ struct LLVMCodeGenerator
 
     size_t getPaddedTypeSize (const AST::TypeBase& type)
     {
-        return getDataLayout().getTypeAllocSize (getLLVMType (type));
+        return static_cast<size_t> (getDataLayout().getTypeAllocSize (getLLVMType (type)));
     }
 
     void addStruct (const AST::StructType&) {}

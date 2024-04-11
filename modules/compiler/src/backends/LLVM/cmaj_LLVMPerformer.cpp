@@ -342,7 +342,7 @@ struct LLVMEngine
                 if (auto cachedSize = cache->reload (key, nullptr, 0))
                 {
                     std::vector<char> loaded;
-                    loaded.resize (cachedSize);
+                    loaded.resize (static_cast<size_t> (cachedSize));
 
                     if (cache->reload (key, loaded.data(), cachedSize) == cachedSize)
                         return codeGen.generateFromBitcode (loaded);
