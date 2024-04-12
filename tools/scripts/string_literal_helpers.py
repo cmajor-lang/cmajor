@@ -22,35 +22,63 @@ import struct
 # MSVC struggles with longer literals than this
 maxStringLiteralSize = 2040
 
-def createCppStringLiteral (text, guard = ""):
+def hexDigitToInt (digit):
+    if digit >= '0' and digit <= '9': return digit - '0'
+    if digit >= 'a' and digit <= 'f': return digit - 'a'
+    if digit >= 'A' and digit <= 'F': return digit - 'A'
+    return -1
 
-    if len (text) > maxStringLiteralSize:
-        split = getSplitPoint (text)
-        return createCppStringLiteral (text[:split], guard) + "\n" + createCppStringLiteral (text[split:], guard)
-
-    isAscii = True
+def escapeCppStringLiteral (text):
+    avoidHexDigit = False
+    lastChar = 0
+    result = ""
 
     for c in text:
-        if not isNonEscapedAsciiStringChar (c):
-            isAscii = False
-            break
+        if c == '\t': result += "\\t"
+        elif c == '\n': result += "\\n"
+        elif c == '\r': result += "\\r"
+        elif c == '\"': result += "\\\""
+        elif c == '\\': result += "\\\\"
 
-    if isAscii:
-        return "\"" + text + "\""
+        elif c == '?':
+            # NB: two consecutive unescaped question-marks would form a trigraph
+            result += "\\?" if lastChar == '?' else "?"
 
-    i = 0
-    originalGuard = guard
+        elif c >= ' ' and ord(c) < 127:
+            if avoidHexDigit and hexDigitToInt (c) >= 0:
+                result += "\"\""
 
-    while text.find (")" + guard + "\"") >= 0:
-        if originalGuard == "":
-            originalGuard = "TEXT"
-            guard = originalGuard
+            result += c
         else:
-            i = i + 1
-            guard = originalGuard + str (i)
+            result += ("\\x0" if ord(c) < 16 else "\\x") + format (ord(c), 'x')
+            avoidHexDigit = True
+            lastChar = c
+            continue
 
-    return "R\"" + guard + "(" + text + ")" + guard + "\""
+        avoidHexDigit = False
+        lastChar = c
 
+    return result
+
+def createCppStringLiteral (text, indent):
+    result = ""
+
+    if text == "":
+        result = '""'
+    else:
+        line = ""
+
+        for c in text:
+            line += c
+
+            if c == '\n' or len (line) >= maxStringLiteralSize:
+                result += indent + '"' + escapeCppStringLiteral (line) + '"\n'
+                line = ""
+
+        if line != "":
+            result += indent + '"' + escapeCppStringLiteral (line) + '"\n'
+
+    return result.strip()
 
 def createCppDataLiteralFromFile (file, indent = "    "):
     with open (file, "rb") as f:
@@ -93,21 +121,6 @@ def replaceFileIfDifferent (file, newContent):
             f.write (newContent)
     else:
         print ("Skipping unchanged file: " + file)
-
-
-def getSplitPoint (text):
-    pos = text[:maxStringLiteralSize].rfind ('\n\n')
-
-    if pos > maxStringLiteralSize / 2:
-        return pos
-
-    pos = text[:maxStringLiteralSize].rfind ('\n')
-
-    if pos > maxStringLiteralSize / 2:
-        return pos
-
-    return maxStringLiteralSize
-
 
 def isDigit (c):
     return (c >= '0' and c <= '9')
@@ -160,12 +173,12 @@ def createCppFileData (files):
             fileList += ",\n"
 
         if (len (content) < 65536 and content.find (0) < 0 and isValidUTF8 (content)):
-            result += "    static constexpr const char* " + identifier + " =\n        " + createCppStringLiteral (content.decode('utf-8')) + ";\n"
+            result += "    static constexpr const char* " + identifier + " = " + createCppStringLiteral (content.decode('utf-8'), "        ") + ";\n"
         else:
             result += "    static constexpr const char " + identifier + "[] = {\n        " + createCppDataLiteralFromData (content, True) + " };\n"
 
         asString = "std::string_view (" + identifier + ", " + str (len (content)) + ")"
 
-        fileList += "        File { " + createCppStringLiteral (name) + ", " + asString + " }"
+        fileList += "        File { " + createCppStringLiteral (name, "            ") + ", " + asString + " }"
 
     return result + "\n" + fileList + "\n    };\n"

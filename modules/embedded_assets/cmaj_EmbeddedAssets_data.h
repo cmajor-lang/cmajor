@@ -22,2904 +22,2847 @@ struct Files
 {
     struct File { std::string_view name, content; };
 
-    static constexpr const char* embedded_patch_runner_template_html =
-        R"(<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8" /><title>Cmajor Patch Controls</title></head>
-
-<script type="module">
-
-import "/panel_api/cmaj-patch-panel.js"
-
-window.addEventListener ("message", (event) =>
-{
-    const message = event.data;
-
-    if (message?.messageFromVScode)
-    {
-        const panel = document.getElementById ("cmaj-patch-panel");
-
-        if (! window.sendMessageToVSCode)
-        {
-            window.sendMessageToVSCode = (m) =>
-            {
-                event.source.postMessage ({ messageToVScode: m }, "*");
-            };
-        }
-
-        panel.handleMessageFromVSCode?.(message.messageFromVScode);
-    }
-});
-
-</script>
-
-<style>
-  body {
-    margin: 0;
-    padding: 0;
-  }
-
-  cmaj-patch-panel {
-    display: block;
-  }
-</style>
-
-<body>
-  <cmaj-patch-panel id="cmaj-patch-panel" fixed-patch="true" session-id="SESSION_ID"></cmaj-patch-panel>
-</body>
-</html>
-)";
-    static constexpr const char* embedded_patch_chooser_template_html =
-        R"(<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Cmajor Patch Controls</title>
-</head>
-
-<script type="module">
-import "/panel_api/cmaj-patch-panel.js"
-</script>
-
- <body>
-  <cmaj-patch-panel id="cmaj-patch-panel" session-id="SESSION_ID"></cmaj-patch-panel>
- </body>
-</html>
-)";
-    static constexpr const char* embedded_patch_session_template_js =
-        R"(//
-//     ,ad888ba,                              88
-//    d8"'    "8b
-//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
-//   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
-//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
-//                                           ,88
-//                                        888P"
-//
-//  The Cmajor project is subject to commercial or open-source licensing.
-//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
-//  visit https://cmajor.dev to learn about our commercial licence options.
-//
-//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
-//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
-//  DISCLAIMED.
-
-/**
-    Classes for providing a ServerSession and PatchConnection via a HTTP/websocket
-    connection to a cmajor server
-*/
-
-import { ServerSession } from "../cmaj_api/cmaj-server-session.js"
-
-
-//==============================================================================
-/// An implementation of a ServerSession which communicates via a WebSocket.
-class WebSocketServerSession  extends ServerSession
-{
-    constructor (sessionID)
-    {
-        super (sessionID);
-
-        this.socket = new WebSocket (SOCKET_URL + "/" + sessionID);
-
-        this.socket.onopen = () => this.handleSessionConnection();
-
-        this.socket.onmessage = msg =>
-        {
-            const message = JSON.parse (msg.data);
-
-            if (message)
-                this.handleMessageFromServer (message);
-        };
-    }
-
-    dispose()
-    {
-        super.dispose();
-        this.socket.close();
-    }
-
-    sendMessageToServer (msg)
-    {
-        if (this.socket?.readyState == 1)
-        {
-            this.socket.send (JSON.stringify (msg));
-            return true;
-        }
-
-        return false;
-    }
-})"
-R"(
-
-export function createServerSession (sessionID)
-{
-    return new WebSocketServerSession (sessionID);
-}
-)";
-    static constexpr const char* panel_api_cmajgraph_js =
-        R"(//
-//     ,ad888ba,                              88
-//    d8"'    "8b
-//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
-//   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
-//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
-//                                           ,88
-//                                        888P"
-//
-//  The Cmajor project is subject to commercial or open-source licensing.
-//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
-//  visit https://cmajor.dev to learn about our commercial licence options.
-//
-//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
-//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
-//  DISCLAIMED.
-
-export default class PatchGraph extends HTMLElement
-{
-    constructor()
-    {
-        super();
-
-        this.isActive = false;
-        this.pendingTimer = null;
-        this.root = this.attachShadow({ mode: "open" });
-        this.root.innerHTML = `<style>${this.getCSS()}</style>${this.getHTML()}`;
-        this.holder = this.shadowRoot.getElementById ("holder");
-    }
-
-    dispose()
-    {
-        setSession (undefined);
-    }
-
-    connectedCallback()
-    {
-        this.isActive = true;
-        this.refresh();
-    }
-
-    disconnectedCallback()
-    {
-        this.isActive = false;
-        this.clearGraph();
-        this.cancelRefresh();
-    }
-
-    setSession (session)
-    {
-        this.cancelRefresh();
-        this.session = session;
-        this.refresh();
-    }
-
-    clearGraph()
-    {
-        this.holder.innerHTML = "";
-    }
-
-    refresh()
-    {
-        if (this.session && this.isActive && ! this.pendingTimer)
-        {
-            this.clearGraph();)"
-R"(
-
-            this.pendingTimer = setTimeout (() =>
-            {
-                this.session.requestGeneratedCode ("graph", {},
-                    message => {
-                        if (typeof message.code == "string")
-                            this.holder.innerHTML = message.code;
-                    });
-
-                this.pendingTimer = undefined;
-            }, 100);
-        }
-    }
-
-    cancelRefresh()
-    {
-        if (this.pendingTimer)
-        {
-            clearTimeout (this.pendingTimer);
-            this.pendingTimer = undefined;
-        }
-    }
-
-    getHTML()
-    {
-        return `<div id="holder"></div>`;
-    }
-
-    getCSS()
-    {
-        return `
-            :host {
-                --bar-color: #aaffaa;
-                display: block;
-                overflow: auto;
-            }
-
-            #holder {
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                transform: scale(0.7);
-                transform-origin: 0% 0%;
-            }
-            `;
-    }
-}
-
-customElements.define ("cmaj-patch-graph", PatchGraph);
-)";
-    static constexpr const char* panel_api_cmajpatchpanel_js =
-        R"(//
-//     ,ad888ba,                              88
-//    d8"'    "8b
-//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
-//   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
-//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
-//                                           ,88
-//                                        888P"
-//
-//  The Cmajor project is subject to commercial or open-source licensing.
-//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
-//  visit https://cmajor.dev to learn about our commercial licence options.
-//
-//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
-//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
-//  DISCLAIMED.
-
-import * as cmajor from "/cmaj-patch-server.js";
-import PianoKeyboard from "../cmaj_api/cmaj-piano-keyboard.js"
-import LevelMeter from "./helpers/cmaj-level-meter.js"
-import WaveformDisplay from "./helpers/cmaj-waveform-display.js";
-import * as patchViewUtils from "../cmaj_api/cmaj-patch-view.js"
-import * as midi from "../cmaj_api/cmaj-midi-helpers.js"
-import "./cmaj-cpu-meter.js"
-import "./cmaj-graph.js"
-import { getCmajorVersion } from "../cmaj_api/cmaj-version.js"
-
-const maxUploadFileSize = 1024 * 1024 * 50;
-
-function showErrorAlert (message)
-{
-    if (window.sendMessageToVSCode)
-        window.sendMessageToVSCode ({ showErrorAlert: message });
-    else
-        alert (message);
-}
-
-window.openSourceFile = (file) =>
-{
-    if (window.sendMessageToVSCode)
-        window.sendMessageToVSCode ({ showSourceFile: file });
-    else
-        // probably blocked by the browser, but this would at least open the file..
-        window.open ("file://" + file.split(":")[0], "_blank");
-}
-
-function createFileLink (s)
-{
-    s = JSON.stringify (s);
-    s = s.substring (1, s.length - 1);
-    return `javascript:openSourceFile('${s}');`;
-})"
-R"(
-
-window.openURLInNewWindow = (url) =>
-{
-    if (window.sendMessageToVSCode)
-        window.sendMessageToVSCode ({ openURLInNewWindow: url });
-    else
-        window.open (url, "_blank");
-}
-
-function openTextDocument (content, language)
-{
-    window.sendMessageToVSCode?.({ openTextDocument: content,
-                                   language: language });
-}
-
-function handleInfiniteLoopAlert()
-{
-    window.sendMessageToVSCode?.({ serverFailedWithInfiniteLoop: true });
-}
-
-function getMessageListAsString (messages)
-{
-    if (Array.isArray (messages))
-    {
-        let result = "";
-
-        for (let i = 0; i < messages.length; ++i)
-        {
-            if (i != 0)
-                result += "\n";
-
-            result += getmessagesDescription (messages[i]);
-        }
-
-        return result;
-    }
-
-    let desc = messages.fullDescription ? messages.fullDescription
-                                        : messages.message;
-
-    if (messages.annotatedLine)
-        desc += "\n" + messages.annotatedLine;
-
-    return desc;
-}
-
-//==============================================================================
-class EndpointControlBase  extends HTMLElement
-{
-    constructor (patchConnection, endpointInfo)
-    {
-        super();
-
-        this.patchConnection = patchConnection;
-        this.endpointInfo = endpointInfo;
-    }
-
-    initialise (controls, bottomControl)
-    {
-        let name = this.endpointInfo.endpointID;
-        const annotation = this.endpointInfo.annotation;
-
-        if (annotation)
-            if (typeof annotation.name == "string" && annotation.name != "")
-                name = annotation.name;
-
-        if (this.endpointInfo.source)
-            name = `<a href="${createFileLink (this.endpointInfo.source.toString())}">${name}</a>`;)"
-R"(
-
-        this.innerHTML =
-         `<div class="cmaj-io-control">
-            <div class="cmaj-io-control-content">
-              ${controls}
-            </div>
-            <div class="cmaj-io-label-holder">
-            ${bottomControl ? bottomControl : ""}
-            <div class="cmaj-io-label"><p>${name}</p></div>
-            </div>
-          </div>`;
-    }
-
-    static getCSS()
-    {
-        return `
-        .cmaj-io-control {
-            display: flex;
-            padding: 0.2rem;
-            margin: 0.6rem;
-            background: #22222288;
-            box-shadow: 0 0.3rem 0.4rem 0 #00000030;
-            flex-flow: column nowrap;
-            justify-content: flex-start;
-            align-items: center;
-        }
-
-        .cmaj-io-control-content {
-            flex-basis: 6.5rem;
-        }
-
-        .cmaj-io-label-holder {
-            padding: 0 0.8rem;
-        }
-
-        .cmaj-io-label {
-            display: inline-block;
-            padding: 0.2rem 1.2rem;
-        }
-
-        .cmaj-io-label p {
-            margin: 0;
-            font-size: 0.8rem;
-            color: #eee;
-        }
-
-        cmaj-level-meter {
-            display: inline-block;
-            width: 3.5rem;
-            height: 6.5rem;
-            min-width: 3.5rem;
-            margin: 0.1rem;
-            flex-basis: 6.5rem;
-            flex-grow: 0;
-        }
-
-        cmaj-waveform-display {
-            display: inline-block;
-            width: 12rem;
-            height: 6.5rem;
-            min-width: 12rem;
-            margin: 0.1rem;
-            flex-basis: 24rem;
-            flex-grow: 0;
-        }`;
-    }
-}
-
-//==============================================================================
-class ConsoleEventControl  extends EndpointControlBase
-{
-    constructor (patchConnection, endpointInfo)
-    {
-        super (patchConnection, endpointInfo);)"
-R"(
-
-        this.initialise (`<textarea class="cmaj-console" rows="20" cols="100" readonly=true></textarea>`,
-                         `<button class="cmaj-clear-button">Clear</button>`);
-        this.textArea = this.querySelector ("textarea");
-        this.newLineForEachItem = endpointInfo.endpointID != "console";
-
-        const clearButton = this.querySelector (".cmaj-clear-button");
-        clearButton.onclick = () => { this.textArea.value = ""; this.textArea.scrollTop = this.textArea.scrollHeight; }
-    }
-
-    connectedCallback()
-    {
-        this.callback = event => this.write (event);
-        this.patchConnection.addEndpointListener (this.endpointInfo.endpointID, this.callback);
-    }
-
-    disconnectedCallback()
-    {
-        this.patchConnection.removeEndpointListener (this.endpointInfo.endpointID, this.callback);
-    }
-
-    write()
-    {
-        let message = "";
-
-        for (let arg of arguments)
-        {
-            let m = this.formatMessage (arg);
-
-            if (this.newLineForEachItem && ! m.endsWith ("\n"))
-                m += "\n";
-
-            message += m;
-        }
-
-        let text = "";
-
-        // look for an ESC char, and clear the console if found
-        const lastEscChar = message.lastIndexOf ("\u001b");
-
-        if (lastEscChar >= 0)
-        {
-            message = message.substring (lastEscChar + 1);
-        }
-        else
-        {
-            text = this.textArea.value;
-            const maxConsoleSize = 5000;
-
-            while (text.length > maxConsoleSize)
-            {
-                let breakPoint = text.indexOf ("\n", text.length - maxConsoleSize) + 1;
-
-                if (breakPoint <= 0)
-                    breakPoint = text.length - maxConsoleSize;
-
-                text = text.substring (breakPoint);
-            }
-        }
-
-        this.textArea.value = text + message;
-        this.textArea.scrollTop = this.textArea.scrollHeight;
-    }
-
-    formatMessage (m)
-    {
-        if (typeof m == "string")
-            return m;)"
-R"(
-
-        if (m._type)
-        {
-            if (m._type == "Message" && m.message)
-                return midi.getMIDIDescription (m.message);
-
-            const type = m._type;
-            delete m._type;
-            return type + " " + JSON.stringify (m) + "\n";
-        }
-
-        return JSON.stringify (m);
-    }
-
-    static getCSS()
-    {
-        return `
-        .cmaj-console {
-            display: inline-block;
-            width: 100%;
-            height: 8rem;
-            min-height: 5rem;
-            resize: vertical;
-            background: #222;
-            color: #5e5;
-        }`;
-    }
-}
-
-//==============================================================================
-class MIDIInputControl  extends EndpointControlBase
-{
-    constructor (patchConnection, endpointInfo)
-    {
-        super (patchConnection, endpointInfo);
-
-        this.initialise ("<cmaj-panel-piano-keyboard></cmaj-panel-piano-keyboard>");
-        this.keyboard = this.querySelector ("cmaj-panel-piano-keyboard");
-
-        this.keyboard.setAttribute ("root-note", 24);
-        this.keyboard.setAttribute ("note-count", 63);
-    }
-
-    connectedCallback()
-    {
-        this.keyboard.attachToPatchConnection (this.patchConnection, this.endpointInfo.endpointID);
-    }
-
-    disconnectedCallback()
-    {
-        this.keyboard.detachPatchConnection (this.patchConnection);
-    }
-}
-
-//==============================================================================
-class AudioLevelControl  extends EndpointControlBase
-{
-    constructor (patchConnection, endpointInfo)
-    {
-        super (patchConnection, endpointInfo);
-
-        this.initialise (`<cmaj-level-meter></cmaj-level-meter>
-                          <cmaj-waveform-display></cmaj-waveform-display>`);
-
-        this.meter = this.querySelector ("cmaj-level-meter");
-        this.waveform = this.querySelector ("cmaj-waveform-display");
-
-        this.meter.setNumChans (endpointInfo.numAudioChannels);
-        this.waveform.setNumChans (endpointInfo.numAudioChannels);
-    })"
-R"(
-
-    connectedCallback()
-    {
-        this.callback = event =>
-        {
-            for (let chan = 0; chan < event.min.length; ++chan)
-            {
-                this.meter.setChannelMinMax (chan, event.min[chan], event.max[chan]);
-                this.waveform.setChannelMinMax (chan, event.min[chan], event.max[chan]);
-            }
-        };
-
-        this.patchConnection.addEndpointListener (this.endpointInfo.endpointID, this.callback, 400);
-    }
-
-    disconnectedCallback()
-    {
-        this.patchConnection.removeEndpointListener (this.endpointInfo.endpointID, this.callback);
-    }
-}
-
-//==============================================================================
-class AudioInputControl  extends EndpointControlBase
-{
-    constructor (patchConnection, endpointInfo)
-    {
-        super (patchConnection, endpointInfo);
-        this.session = patchConnection.session;
-
-        this.initialise (`<cmaj-level-meter></cmaj-level-meter>
-                          <cmaj-waveform-display></cmaj-waveform-display>`,
-                          `<button class="cmaj-live-button">Live</button>
-                           <button class="cmaj-file-button">File</button>
-                           <button class="cmaj-mute-button">Mute</button>
-                           <input type="file" hidden>`);
-
-        this.meter = this.querySelector ("cmaj-level-meter");
-        this.waveform = this.querySelector ("cmaj-waveform-display");
-        this.fileButton = this.querySelector (".cmaj-file-button");
-        this.liveButton = this.querySelector (".cmaj-live-button");
-        this.muteButton = this.querySelector (".cmaj-mute-button");
-        this.fileSelector = this.querySelector ("input");
-
-        this.ondragover = e => this.handleDragOver (e);
-        this.ondrop = e => this.handleDrop (e);
-
-        this.meter.setNumChans (endpointInfo.numAudioChannels);
-        this.waveform.setNumChans (endpointInfo.numAudioChannels);)"
-R"(
-
-        this.modeButtons = [
-            { button: this.fileButton, mode: "file" },
-            { button: this.liveButton, mode: "live" },
-            { button: this.muteButton, mode: "mute" }
-        ];
-
-        this.fileButton.onclick = () => this.fileSelector.click();
-        this.liveButton.onclick = () => this.setAudioInputSource (false);
-        this.muteButton.onclick = () => this.setAudioInputSource (true);
-
-        this.fileSelector.onchange = () => this.fileChosen();
-
-        this.audioCallback = event => {
-            for (let chan = 0; chan < event.min.length; ++chan)
-            {
-                this.meter.setChannelMinMax (chan, event.min[chan], event.max[chan]);
-                this.waveform.setChannelMinMax (chan, event.min[chan], event.max[chan]);
-            }
-        };
-
-        this.modeCallback = mode => this.updateMode (mode);
-    }
-
-    connectedCallback()
-    {
-        this.patchConnection.addEndpointListener (this.endpointInfo.endpointID, this.audioCallback, 400);
-        this.session.addAudioInputModeListener (this.endpointInfo.endpointID, this.modeCallback);
-        this.session.requestAudioInputMode (this.endpointInfo.endpointID);
-    }
-
-    disconnectedCallback()
-    {
-        this.patchConnection.removeEndpointListener (this.endpointInfo.endpointID, this.audioCallback);
-        this.session.removeAudioInputModeListener (this.endpointInfo.endpointID, this.modeCallback);
-    }
-
-    updateMode (mode)
-    {
-        for (const b of this.modeButtons)
-        {
-            if (mode == b.mode)
-                b.button.classList.add ("cmaj-selected-button");
-            else
-                b.button.classList.remove ("cmaj-selected-button");
-        }
-    }
-
-    setAudioInputSource (shouldMute, fileToPlay)
-    {
-        this.session.setAudioInputSource (this.endpointInfo.endpointID, shouldMute, fileToPlay);
-    }
-
-    setSourceFile (file)
-    {
-        if (file)
-        {
-            const reader = new FileReader();)"
-R"(
-
-            reader.onloadend = (e) =>
-            {
-                if (e.total > maxUploadFileSize)
-                    showErrorAlert ("File too big to upload!");
-                else
-                    this.setAudioInputSource (false, e.target.result);
-            }
-
-            reader.readAsArrayBuffer (file);
-        }
-    }
-
-    fileChosen()
-    {
-        this.setSourceFile (this.fileSelector.files[0]);
-        this.fileSelector.value = "";
-    }
-
-    handleDragOver (e)
-    {
-        e.preventDefault();
-    }
-
-    handleDrop (e)
-    {
-        e.preventDefault();
-
-        for (const file of e.dataTransfer?.files)
-        {
-            console.log (file);
-            this.setSourceFile (file);
-            break;
-        }
-    }
-}
-
-//==============================================================================
-class AudioDevicePropertiesPanel  extends HTMLElement
-{
-    constructor (session)
-    {
-        super();
-        this.session = session;
-        this.listener = p => this.handleAudioDevicePropertiesChanged (p);
-    }
-
-    connectedCallback()
-    {
-        this.session.addAudioDevicePropertiesListener (this.listener);
-        this.session.requestAudioDeviceProperties();
-    }
-
-    disconnectedCallback()
-    {
-        this.session.removeAudioDevicePropertiesListener (this.listener);
-    }
-
-    handleAudioDevicePropertiesChanged (p)
-    {
-        this.currentProperties = p;
-        let html = "";
-
-        function addItem (label, id, list, current)
-        {
-            let options = "";
-
-            for (let item of list)
-                options += `<option value="${item}" ${item == current ? "selected" : ""}>${item}</option>`;
-
-            html += `<div class="cmaj-device-io-item">
-                      <label for="${id}">${label}:</label>
-                      <select id="${id}" name="${label}">${options}</select>
-                     </div>`;
-        }
-
-        if (p.availableAPIs)
-            addItem ("Audio API", "cmaj-device-io-api", p.availableAPIs, p.audioAPI);)"
-R"(
-
-        if (p.availableOutputDevices)
-            addItem ("Output Device", "cmaj-device-io-out", p.availableOutputDevices, p.output);
-
-        if (p.availableInputDevices)
-            addItem ("Input Device", "cmaj-device-io-in", p.availableInputDevices, p.input);
-
-        if (p.sampleRates)
-            addItem ("Sample Rate", "cmaj-device-io-rate", p.sampleRates, p.rate);
-
-        if (p.blockSizes)
-            addItem ("Block Size", "cmaj-device-io-blocksize", p.blockSizes, p.blockSize);
-
-        this.innerHTML = html;
-
-        this.querySelector ("#cmaj-device-io-api").onchange       = e => { this.setAudioAPI (e.target.value); };
-        this.querySelector ("#cmaj-device-io-out").onchange       = e => { this.setOutputDevice (e.target.value); };
-        this.querySelector ("#cmaj-device-io-in").onchange        = e => { this.setInputDevice (e.target.value); };
-        this.querySelector ("#cmaj-device-io-rate").onchange      = e => { this.setRate (e.target.value); };
-        this.querySelector ("#cmaj-device-io-blocksize").onchange = e => { this.setBlockSize (e.target.value); };
-    }
-
-    setAudioAPI (newAPI)
-    {
-        this.currentProperties.audioAPI = newAPI;
-        this.session.setAudioDeviceProperties (this.currentProperties);
-    }
-
-    setOutputDevice (newDevice)
-    {
-        this.currentProperties.output = newDevice;
-        this.session.setAudioDeviceProperties (this.currentProperties);
-    }
-
-    setInputDevice (newDevice)
-    {
-        this.currentProperties.input = newDevice;
-        this.session.setAudioDeviceProperties (this.currentProperties);
-    }
-
-    setRate (newRate)
-    {
-        this.currentProperties.rate = newRate;
-        this.session.setAudioDeviceProperties (this.currentProperties);
-    }
-
-    setBlockSize (newSize)
-    {
-        this.currentProperties.blockSize = newSize;
-        this.session.setAudioDeviceProperties (this.currentProperties);
-    })"
-R"(
-
-    static getCSS()
-    {
-        return `
-        .cmaj-audio-device-panel {
-            color: var(--foreground);
-            display: block;
-            margin-top: 0.8rem;
-            margin-bottom: 0.8rem;
-        }
-
-        .cmaj-audio-device-panel label {
-            display: inline-block;
-            width: 8rem;
-            text-align: right;
-        }
-
-        .cmaj-device-io-item {
-            display: block;
-            margin-bottom: 0.4rem;
-        }
-    `;
-    }
-}
-
-//==============================================================================
-class CodeGenPanel  extends HTMLElement
-{
-    constructor (session)
-    {
-        super();
-
-        this.codeGenTabs = [];
-
-        this.innerHTML = `<div class="cmaj-codegen-tabs"></div>
-                          <div class="cmaj-codegen-listing"></div>
-                          <button class="cmaj-open-codegen-button">Open with editor</button>`;
-
-        this.codeGenTabsHolder   = this.querySelector (".cmaj-codegen-tabs");
-        this.codeGenListing      = this.querySelector (".cmaj-codegen-listing");
-        this.showCodeButton      = this.querySelector (".cmaj-open-codegen-button");
-
-        this.showCodeButton.onclick = () => this.openCodeEditor();
-    }
-
-    setSession (session)
-    {
-        this.session = session;
-    }
-
-    getDisplayNameForCodeGenTarget (target)
-    {
-        switch (target)
-        {
-            case "cpp":             return "C++";
-            case "javascript":      return "Javascript/WebAssembly";
-            case "wast":            return "WAST";
-            case "llvm":            return "LLVM native";
-            default:                return target;
-        }
-    }
-
-    getVScodeLanguageName (target)
-    {
-        switch (target)
-        {
-            case "cpp":           return "cpp";
-            case "wast":          return "wat";
-            case "javascript":    return "javascript";
-            default: break;
-        }
-    })"
-R"(
-
-    refreshCodeGenTabs (status)
-    {
-        let targetList = status.codeGenTargets;
-        this.style.display = targetList?.length > 0 ? "flex" : "none";
-
-        while (this.codeGenTabsHolder.firstChild)
-            this.codeGenTabsHolder.removeChild (this.codeGenTabsHolder.lastChild);
-
-        while (this.codeGenListing.firstChild)
-            this.codeGenListing.removeChild (this.codeGenListing.lastChild);
-
-        this.codeGenTabs = [];
-
-        if (targetList?.length > 0)
-        {
-            for (const name of targetList)
-            {
-                const tab = document.createElement ("div");
-                tab.classList.add ("cmaj-codegen-tab");
-                tab.innerHTML = `<p>${this.getDisplayNameForCodeGenTarget (name)}</p>`;
-                tab.onclick = () => this.selectCodeGenTab (name);
-                this.codeGenTabsHolder.appendChild (tab);
-
-                const listing = document.createElement ("textarea");
-                listing.rows = 20;
-                listing.cols = 100;
-                listing.readOnly = true;
-                listing.wrap = "off";
-                this.codeGenListing.appendChild (listing);
-
-                this.codeGenTabs.push ({ name: name,
-                                        tab: tab,
-                                        listing: listing });
-            }
-        }
-
-        this.updateActiveCodeGenTab();
-    }
-
-    updateActiveCodeGenTab()
-    {
-        this.activeTab = null;
-
-        for (const tab of this.codeGenTabs)
-        {
-            if (this.activeCodeGenName == tab.name)
-            {
-                this.activeTab = tab;
-                tab.tab.classList.add ("cmaj-active-tab");
-            }
-            else
-            {
-                tab.tab.classList.remove ("cmaj-active-tab");
-            }
-
-            tab.listing.style.display = (this.activeCodeGenName == tab.name) ? "block" : "none";
-        }
-
-        this.refreshButtonState();
-    })"
-R"(
-
-    selectCodeGenTab (codeGenType)
-    {
-        this.activeCodeGenName = codeGenType;
-        this.updateActiveCodeGenTab();
-
-        for (const tab of this.codeGenTabs)
-        {
-            if (this.activeCodeGenName == tab.name)
-            {
-                this.postCodeGenRequest (tab);
-                break;
-            }
-        }
-    }
-
-    postCodeGenRequest (tab)
-    {
-        if (! tab.isCodeGenPending)
-        {
-            tab.isCodeGenPending = true;
-
-            this.session.requestGeneratedCode (tab.name, {},
-                message => {
-                    tab.isCodeGenPending = false;
-
-                    if (message.code)
-                        tab.listing.value = message.code;
-                    else if (message.messages)
-                        tab.listing.value = getMessageListAsString (message.messages);
-
-                    this.refreshButtonState();
-                });
-        }
-    }
-
-    refreshButtonState()
-    {
-        const canShow = window.sendMessageToVSCode && this.activeTab?.listing?.value?.length > 0;
-
-        this.showCodeButton.style.display = canShow ? "block" : "none";
-    }
-
-    openCodeEditor()
-    {
-        const text = this.activeTab?.listing?.value;
-
-        if (text?.length > 0)
-            openTextDocument (text, this.getVScodeLanguageName (this.activeCodeGenName));
-    }
-
-    static getCSS()
-    {
-        return `
-        cmaj-codegen-panel {
-            position: relative;
-            display: flex;
-            flex-flow: row nowrap;
-            align-items: stretch;
-            min-height: 30rem;
-            margin-bottom: 6rem;
-            padding-top: 0.5rem;
-            overflow: hidden;
-            resize: vertical;
-        })"
-R"(
-
-        .cmaj-codegen-tabs {
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            display: flex;
-            flex-flow: column nowrap;
-            align-items: stretch;
-            align-self: flex-start;
-            min-width: 8rem;
-            min-height: 30rem;
-        }
-
-        .cmaj-codegen-tab {
-            background-color: #00000030;
-            color: var(--foreground);
-            cursor: pointer;
-            padding: 0 1rem;
-            text-align: left;
-            display: inline-block;
-            font-size: 0.8rem;
-            height: 3rem;
-        }
-
-        .cmaj-active-tab {
-            background: #222;
-        }
-
-        .cmaj-codegen-listing {
-            flex-grow: 2;
-            border: none;
-            display: block;
-            width: 100%;
-            background: none;
-            color: #5e5;
-            background: #222;
-        }
-
-        .cmaj-codegen-listing textarea {
-            font-family: Monaco, Consolas, monospace;
-            position: relative;
-            border: none;
-            outline: none;
-            display: block;
-            background: #222;
-            color: #5e5;
-            min-width: 100%;
-            height: 100%;
-            resize: none;
-            padding-left: 1rem;
-        }
-
-        .cmaj-open-codegen-button {
-            display: block;
-            position: absolute;
-            right: 3%;
-            height: 2rem;
-            top: 1.5rem;
-            z-index: 3;
-        }`;
-    }
-}
-
-//==============================================================================
-export default class PatchPanel  extends HTMLElement
-{
-    constructor()
-    {
-        super();
-
-        this.root = this.attachShadow ({ mode: "open" });
-
-        this.session = cmajor.createServerSession (this.getSessionID());
-        this.patchConnection = null;
-        this.isSessionConnected = false;
-
-        this.root.innerHTML = this.getHTML();)"
-R"(
-
-        this.statusListener = status => this.updateStatus (status);
-        this.session.addStatusListener (this.statusListener);
-
-        this.fileChangeListener = message => this.handlePatchFilesChanged (message);
-        this.session.addFileChangeListener (this.fileChangeListener);
-
-        this.session.addInfiniteLoopListener (handleInfiniteLoopAlert);
-
-        this.controlsContainer   = this.shadowRoot.getElementById ("cmaj-control-container");
-        this.logoElement         = this.shadowRoot.getElementById ("cmaj-logo")
-        this.viewHolderElement   = this.shadowRoot.getElementById ("cmaj-patch-view-holder");
-        this.viewSelectorElement = this.shadowRoot.getElementById ("cmaj-view-selector");
-        this.toggleAudioButton   = this.shadowRoot.getElementById ("cmaj-toggle-audio-button");
-        this.unloadButton        = this.shadowRoot.getElementById ("cmaj-unload-button");
-        this.resetButton         = this.shadowRoot.getElementById ("cmaj-reset-button");
-        this.copyStateButton     = this.shadowRoot.getElementById ("cmaj-copy-state");
-        this.restoreStateButton  = this.shadowRoot.getElementById ("cmaj-restore-state");
-        this.statusElement       = this.shadowRoot.getElementById ("cmaj-patch-status");
-        this.inputsPanel         = this.shadowRoot.getElementById ("cmaj-inputs-panel");
-        this.outputsPanel        = this.shadowRoot.getElementById ("cmaj-outputs-panel");
-        this.cpuElement          = this.shadowRoot.getElementById ("cmaj-cpu");
-        this.graphElement        = this.shadowRoot.getElementById ("cmaj-graph");
-        this.errorListElement    = this.shadowRoot.getElementById ("cmaj-error-list");
-        this.audioDevicePanel    = this.shadowRoot.getElementById ("cmaj-audio-device-panel");
-        this.codeGenPanel        = this.shadowRoot.getElementById ("cmaj-codegen-panel");
-        this.availablePatchList  = this.shadowRoot.getElementById ("cmaj-available-patch-list-holder");)"
-R"(
-        this.availablePatches    = this.shadowRoot.getElementById ("cmaj-available-patch-list");
-
-        this.logoElement.onclick = () => openURLInNewWindow ("https://cmajor.dev");
-        this.toggleAudioButton.onclick = () => this.toggleAudio();
-        this.unloadButton.onclick = () => this.unloadPatch();
-        this.resetButton.onclick = () => this.resetPatch();
-        this.copyStateButton.onclick = () => this.copyState();
-        this.restoreStateButton.onclick = () => this.restoreState();
-
-        if (! this.isShowingFixedPatch())
-        {
-            const main = this.shadowRoot.querySelector (".cmaj-main");
-            main.ondragover = e => this.handleDragOver (e);
-            main.ondrop = e => this.handleDragAndDrop (e);
-        }
-
-        this.cpuElement.setSession (this.session);
-        this.graphElement.setSession (this.session);
-        this.codeGenPanel.setSession (this.session);
-
-        this.initAccordionButtons();
-        this.session.requestSessionStatus();
-    }
-
-    dispose()
-    {
-        unloadPatch();
-        this.session.removeFileChangeListener (this.fileChangeListener);
-        this.session.removeStatusListener (this.statusListener);
-        this.session.dispose();
-    }
-
-    static get observedAttributes()
-    {
-        return ["session-id", "fixed-patch"];
-    }
-
-    disconnectedCallback()
-    {
-        this.unloadPatch();
-    }
-
-    getSessionID()
-    {
-        let sessionID = this.getAttribute("session-id");
-
-        if (! sessionID)
-        {
-            sessionID = "";
-
-            for (let i = 0; i < 3; ++i)
-                sessionID += Math.floor (Math.random() * 65536).toString (16);
-        }
-
-        return sessionID;
-    }
-
-    loadPatch (patchURL)
-    {
-        if (patchURL && typeof patchURL == "string")
-            this.session.loadPatch (patchURL);
-        else
-            this.unloadPatch();
-    }
-
-    unloadPatch()
-    {
-        this.viewHolderElement.innerHTML = "";
-        this.session.loadPatch (null);
-    })"
-R"(
-
-    resetPatch()
-    {
-        this.session.setAudioPlaybackActive (true);
-        this.patchConnection?.resetToInitialState();
-    }
-
-    isShowingFixedPatch()
-    {
-        return this.getAttribute("fixed-patch");
-    }
-
-    updateAvailablePatches (availablePatches)
-    {
-        this.availablePatches.innerHTML = "";
-        this.availablePatchList.style.display = availablePatches?.length > 0 ? "inline-block" : "none";
-
-        for (const manifest of availablePatches)
-        {
-            const button = document.createElement ("button");
-            button.innerText = manifest.name || manifest.manifestFile;
-            button.onclick = () =>
-            {
-                this.unloadPatch();
-                this.loadPatch (manifest.manifestFile);
-            }
-
-            this.availablePatches.appendChild (button);
-        }
-    }
-
-    toggleAudio()
-    {
-        this.session.setAudioPlaybackActive (! this.audioActive);
-    }
-
-    handleMessageFromVSCode (message)
-    {
-        if (message?.patchToLoad)
-            this.loadPatch (message.patchToLoad);
-        else if (message?.clipboardText)
-            this.handleClipboardContent (message.clipboardText);
-        else if (message?.unload)
-            this.unloadPatch();
-        else if (message?.reloaded)
-            this.session?.requestSessionStatus(); // after a reload, VScode needs an update
-    }
-
-    disposePatchConnection()
-    {
-        if (this.patchConnection)
-        {
-            this.patchConnection.dispose();
-            this.patchConnection = undefined;
-        }
-    }
-
-    //==============================================================================
-    updateStatus (status)
-    {
-        if (status.connected != this.isSessionConnected)
-        {
-            this.isSessionConnected = !! status.connected;
-
-            if (this.isSessionConnected && ! this.isShowingFixedPatch())
-                this.session.requestAvailablePatchList (list => this.updateAvailablePatches (list));
-        })"
-R"(
-
-        if (status.loaded && ! this.patchConnection)
-        {
-            this.patchConnection = this.session.createPatchConnection();
-            this.refreshViewElement();
-            this.graphElement.refresh();
-            this.initAudioDevicePanel();
-            this.codeGenPanel.refreshCodeGenTabs (status);
-        }
-        else if (this.patchConnection && ! status.loaded)
-        {
-            this.disposePatchConnection();
-            this.refreshViewElement();
-            this.graphElement.refresh();
-            this.codeGenPanel.refreshCodeGenTabs (status);
-        }
-
-        this.populateInputsPanel (status);
-        this.populateOutputsPanel (status);
-        this.statusElement.innerHTML = this.getStatusHTML (status).trim();
-        this.updateErrorList (status.error);
-        this.updateViewSelectorList (status.loaded);
-
-        this.audioActive = status.playing;
-        this.toggleAudioButton.innerText = (status.playing ? "Stop Audio" : "Start Audio");
-
-        this.toggleAudioButton.style.display = status.loaded ? "inline" : "none";
-        this.unloadButton.style.display = (! this.isShowingFixedPatch() && status.loaded) ? "inline" : "none";
-        this.copyStateButton.style.display = status.loaded ? "inline" : "none";
-        this.restoreStateButton.style.display = status.loaded ? "inline" : "none";
-
-        this.controlsContainer.style.display = status.loaded ? "block" : "none";
-        this.cpuElement.style.display = (status.playing && status.loaded) ? "inline-block" : "none";
-
-        window.sendMessageToVSCode?.({ newServerStatus: status });
-    }
-
-    populateInputsPanel (status)
-    {
-        while (this.inputsPanel.firstChild)
-            this.inputsPanel.removeChild (this.inputsPanel.lastChild);
-
-        const inputs = status.details?.inputs;
-        let anyAdded = false;
-
-        if (inputs && this.patchConnection)
-        {
-            for (let e of inputs)
-            {
-                const control = this.createControlForInputEndpoint (e);)"
-R"(
-
-                if (control)
-                {
-                    this.inputsPanel.appendChild (control);
-                    anyAdded = true;
-                }
-            }
-        }
-
-        if (! anyAdded)
-            this.inputsPanel.innerHTML = "<p>This processor has no input endpoints</p>";
-    }
-
-    populateOutputsPanel (status)
-    {
-        while (this.outputsPanel.firstChild)
-            this.outputsPanel.removeChild (this.outputsPanel.lastChild);
-
-        const outputs = status.details?.outputs;
-
-        if (outputs && this.patchConnection)
-        {
-            for (let e of outputs)
-            {
-                const control = this.createControlForOutputEndpoint (e);
-
-                if (control)
-                    this.outputsPanel.appendChild (control);
-            }
-        }
-    }
-
-    createControlForInputEndpoint (e)
-    {
-        switch (e.purpose)
-        {
-            case "midi in":            return new MIDIInputControl (this.patchConnection, e);
-            case "audio in":           return new AudioInputControl (this.patchConnection, e);
-            case "parameter":          return undefined;
-            case "time signature":     return undefined;
-            case "tempo":              return undefined;
-            case "transport state":    return undefined;
-            case "timeline position":  return undefined;
-            default:                   return new ConsoleEventControl (this.patchConnection, e);
-        }
-    }
-
-    createControlForOutputEndpoint (e)
-    {
-        switch (e.purpose)
-        {
-            case "audio out":        return new AudioLevelControl (this.patchConnection, e);
-            default:                 return new ConsoleEventControl (this.patchConnection, e);
-        }
-    }
-
-    initAudioDevicePanel()
-    {
-        this.audioDevicePanel.innerHTML = "";
-        this.audioDevicePanel.appendChild (new AudioDevicePropertiesPanel (this.session));
-    })"
-R"(
-
-    writeToClipboard (value)
-    {
-        try
-        {
-            const text = JSON.stringify (value);
-
-            if (window.sendMessageToVSCode)
-                window.sendMessageToVSCode ({ writeClipboard: text });
-            else
-                navigator.clipboard.writeText (text);
-        }
-        catch (e) {}
-    }
-
-    copyState()
-    {
-        this.patchConnection?.requestFullStoredState (state => this.writeToClipboard (state));
-    }
-
-    async restoreState()
-    {
-        try
-        {
-            if (window.sendMessageToVSCode)
-                window.sendMessageToVSCode ({ readClipboard: true });
-            else
-                this.handleClipboardContent (await navigator.clipboard.readText());
-        }
-        catch (e) {}
-    }
-
-    handleClipboardContent (clipboardText)
-    {
-        if (clipboardText && this.patchConnection)
-        {
-            try
-            {
-                const state = JSON.parse (clipboardText);
-
-                if (state)
-                    this.patchConnection.sendFullStoredState (state);
-            }
-            catch (e) {}
-        }
-    }
-
-    getStatusHTML (status)
-    {
-        let name = undefined;
-
-        if (status.manifest?.name)
-        {
-            if (status.manifestFile)
-                name = `<a href="${createFileLink (status.manifestFile)}">${status.manifest.name}</a>`;
-            else
-                name = status.manifest.name;
-        }
-
-        if (! name)
-            name = status.manifestFile;
-
-        if (! name)
-            name = "unknown";
-
-        if (status.loaded && status.details)
-        {
-            let text = ""
-
-            const addDescriptionItem = (label, content) =>
-            {
-                if (content)
-                {
-                    if (typeof content == "string" && content.length == 0)
-                        return;
-
-                    text += `<p>${label}: ${content}</p>`;
-                }
-            };)"
-R"(
-
-            addDescriptionItem ("Loaded", name);
-            addDescriptionItem ("Description", status.manifest?.description);
-            addDescriptionItem ("Version", status.manifest?.version);
-            addDescriptionItem ("Manufacturer", status.manifest?.manufacturer);
-            addDescriptionItem ("Category", status.manifest?.category);
-
-            if (status.details.mainProcessor)
-            {
-                let name = status.details.mainProcessor;
-
-                if (status.details.mainProcessorLocation)
-                    name = `<a href="${createFileLink (status.details.mainProcessorLocation)}">${name}</a>`;
-
-                addDescriptionItem ("Main processor", name);
-            }
-
-            let audioOuts = 0, audioIns = 0;
-
-            for (let e of status.details.outputs)
-                if (e.purpose && e.purpose == "audio out")
-                    audioOuts += e.numAudioChannels;
-
-            for (let e of status.details.inputs)
-                if (e.purpose && e.purpose == "audio in")
-                    audioIns += e.numAudioChannels;
-
-            const midiIns  = countEndpointsWithPurpose (status.details.inputs,  "midi in");
-            const midiOuts = countEndpointsWithPurpose (status.details.outputs, "midi out");
-
-            if (audioOuts + audioIns > 0)
-            {
-                let desc = "";
-
-                if (audioIns > 0)
-                    desc += audioIns + " input channel" + (audioIns != 1 ? "s" : "");
-
-                if (audioOuts > 0)
-                {
-                    if (audioIns > 0)
-                        desc += ", ";
-
-                    desc += audioOuts + " output channel" + (audioOuts != 1 ? "s" : "");
-                }
-
-                addDescriptionItem ("Audio", desc);
-            }
-
-            if (midiIns + midiOuts > 0)
-            {
-                let desc = "";
-
-                if (midiIns > 0)
-                    desc += midiIns + " input" + (midiIns != 1 ? "s" : "");)"
-R"(
-
-                if (midiOuts > 0)
-                {
-                    if (midiIns > 0)
-                        desc += ", ";
-
-                    desc += midiOuts + " output" + (midiOuts != 1 ? "s" : "");
-                }
-
-                addDescriptionItem ("MIDI", desc);
-            }
-
-            const numParameters = countEndpointsWithPurpose (status.details.inputs, "parameter");
-
-            if (numParameters > 0)
-                addDescriptionItem ("Parameters", numParameters.toString());
-
-            const numTimelineInputs = countEndpointsWithPurpose (status.details.inputs, "time signature")
-                                    + countEndpointsWithPurpose (status.details.inputs, "tempo")
-                                    + countEndpointsWithPurpose (status.details.inputs, "transport state")
-                                    + countEndpointsWithPurpose (status.details.inputs, "timeline position");
-
-            if (numTimelineInputs > 0)
-                text += `<p>Uses timeline events</p>`;
-
-            return text;
-        }
-
-        if (status.error)
-            return `<p>Error when building: ${name}</p>`;
-
-        if (status.status)
-            return status.status;
-
-        if (status.connected)
-            return "No patch loaded";
-
-        return "Connecting to server...";
-    }
-
-    onStatusChange (status) {}
-
-    handlePatchFilesChanged (message)
-    {
-        if (message.assetFilesChanged || message.manifestChanged)
-        {
-            window.sendMessageToVSCode?.({ reloading: true });
-            document.location.reload();
-        }
-    }
-
-    handleDragOver (e)
-    {
-        e.preventDefault();
-    }
-
-    async getDragAndDroppedFiles (e, maxNumItems)
-    {
-        let items = [];
-        let tooManyItems = false;
-
-        const addItem = async (item) =>
-        {
-            if (item.isDirectory)
-            {
-                const reader = item.createReader();)"
-R"(
-
-                const getNextBatch = () => new Promise ((resolve, reject) =>
-                {
-                    reader.readEntries (resolve, reject);
-                });
-
-                for (;;)
-                {
-                    if (items.length >= maxNumItems)
-                    {
-                        tooManyItems = true;
-                        return;
-                    }
-
-                    const entries = await getNextBatch();
-
-                    if (entries.length === 0)
-                        break;
-
-                    for (const e of entries)
-                        await addItem (e);
-                }
-            }
-            else if (item.isFile)
-            {
-                if (items.length < maxNumItems)
-                    items.push (item);
-                else
-                    tooManyItems = true;
-            }
-        }
-
-        for (const item of e.dataTransfer?.items)
-        {
-            const entry = item.getAsEntry?.() || item.webkitGetAsEntry?.();
-
-            if (tooManyItems || ! entry)
-                return [];
-
-            await addItem (entry);
-        }
-
-        return items;
-    }
-
-    getDroppedFilePromises (e, files)
-    {
-        let promises = [];
-
-        for (const file of files)
-        {
-            promises.push (new Promise ((resolve, reject) =>
-            {
-                file.file (f =>
-                {
-                    const reader = new FileReader();
-
-                    reader.onloadend = (e) =>
-                    {
-                        resolve ({ file: file,
-                                   size: e.total,
-                                   content: e.target.result
-                                 });
-                    }
-
-                    reader.readAsArrayBuffer (f);
-                });
-            }));
-        }
-
-        return promises;
-    }
-
-    async handleDragAndDrop (e)
-    {
-        e.preventDefault();
-
-        const files = await this.getDragAndDroppedFiles (e, 200);)"
-R"(
-
-        if (files?.length == 0)
-            return;
-
-        let manifest = null;
-        let readers = [];
-
-        for (const p of this.getDroppedFilePromises (e, files))
-        {
-            const reader = await p;
-
-            if (! reader)
-                return;
-
-            readers.push (reader);
-
-            if (reader.file.fullPath.endsWith (".cmajorpatch"))
-                manifest = reader.file.fullPath;
-        }
-
-        if (manifest)
-        {
-            const prefix = "/uploaded-session-files";
-
-            for (const reader of readers)
-            {
-                this.session.registerFile (prefix + reader.file.fullPath, {
-                    size: reader.size,
-                    read: (offset, numBytes) =>
-                    {
-                        const data = reader.content.slice (offset, offset + numBytes);
-                        return new Blob ([data]);
-                    }
-                });
-            }
-
-            this.loadPatch (prefix + manifest);
-        }
-    }
-
-    async refreshViewElement (viewType)
-    {
-        if (this.patchConnection)
-        {
-            const view = await patchViewUtils.createPatchViewHolder (this.patchConnection, viewType);
-
-            this.viewHolderElement.innerHTML = "";
-
-            if (view)
-                this.viewHolderElement.appendChild (view);
-        }
-        else
-        {
-            this.viewHolderElement.innerHTML = "";
-        }
-    }
-
-    updateErrorList (errorText)
-    {
-        this.errorListElement.style.display = errorText ? "block" : "none";
-        let list = "";
-
-        if (errorText)
-        {
-            const lines = errorText.toString().split ("\n");
-
-            for (let line of lines)
-            {
-                let i = line.indexOf (": error:");
-                if (i < 0) i = line.indexOf (": warning:");
-                if (i < 0) i = line.indexOf (": note:");)"
-R"(
-
-                if (i >= 0)
-                {
-                    const file = line.substring (0, i);
-                    line = `<a href="${createFileLink (file)}">${file}</a>${line.substring (i)}`;
-                }
-
-                list += `<p>${line}</p>`;
-            }
-        }
-
-        this.errorListElement.innerHTML = list;
-    }
-
-    updateViewSelectorList (isLoaded)
-    {
-        const viewSelector = this.viewSelectorElement;
-        const availableViews = patchViewUtils.getAvailableViewTypes (this.patchConnection);
-
-        if (isLoaded && availableViews && availableViews.length > 1)
-        {
-            let items = "";
-
-            for (let viewName of availableViews)
-                items += `<option value="${viewName}">${viewName}</option>`;
-
-            viewSelector.innerHTML = items;
-            viewSelector.style.display = "block";
-
-            viewSelector.onchange = async (event) =>
-            {
-                const index = viewSelector.selectedIndex;
-
-                if (index >= 0 && index < availableViews.length)
-                    this.refreshViewElement (availableViews[index]);
-            };
-        }
-        else
-        {
-            while (viewSelector.firstChild)
-                viewSelector.removeChild (viewSelector.lastChild);
-
-            viewSelector.style.display = "none"
-            viewSelector.onchange = undefined;
-        }
-    }
-
-    //==============================================================================
-    initAccordionButtons()
-    {
-        for (let button of this.shadowRoot.querySelectorAll (".cmaj-accordion-button"))
-        {
-            function updatePanelSize (button)
-            {
-                const panel = button.nextElementSibling;
-
-                if (button.classList.contains ("cmaj-accordian-open"))
-                    panel.style.maxHeight = "400rem";
-                else
-                    panel.style.maxHeight = "0rem";
-            }
-
-            updatePanelSize (button);)"
-R"(
-
-            button.onclick = (event) =>
-            {
-                if (event.target == button)
-                {
-                    const panel = button.nextElementSibling;
-
-                    if (button.classList.contains ("cmaj-accordian-open"))
-                        button.classList.remove ("cmaj-accordian-open");
-                    else
-                        button.classList.add ("cmaj-accordian-open");
-
-                    updatePanelSize (button);
-                }
-            };
-        }
-    }
-
-    //==============================================================================
-    getHTML()
-    {
-        return `
-<style>
-    * {
-        box-sizing: border-box;
-        font-family: Monaco, Consolas, monospace;
-        font-size: 95%;
-    }
-
-    :host {
-        --background: #445550;
-        --foreground: #dddddd;
-        --header-height: 6rem;
-
-        background: var(--background);
-        display: block;
-    }
-
-    .cmaj-main {
-        min-height: 100vh;
-    }
-
-    .cmaj-header {
-        width: 100%;
-        min-height: 6rem;
-        font-size: 0.9rem;
-        padding: 0.5rem;
-        padding-top: 0.6rem;
-        margin-bottom: 0.6rem;
-
-        display: flex;
-        flex-flow: row nowrap;
-        justify-content: left;
-        align-items: stretch;
-        overflow: hidden;
-    }
-
-    .cmaj-header p {
-        margin-block-start: 0;
-        margin-block-end: 0;
-    }
-
-    a {
-        color: var(--foreground);
-    }
-
-    .cmaj-logo-and-version-holder {
-        display: flex;
-        flex-flow: column nowrap;
-        align-items: center;
-        margin-right: 1.2rem;
-    })"
-R"(
-
-    .cmajor-logo {
-        user-select: none;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        min-width: 8rem;
-        min-height: 4rem;
-        align-self: flex-center;
-        background-color: var(--foreground);
-        mask: url(/cmaj_api/assets/cmajor-logo.svg);
-        mask-repeat: no-repeat;
-        mask-position: center;
-        -webkit-mask: url(/cmaj_api/assets/cmajor-logo.svg);
-        -webkit-mask-repeat: no-repeat;
-        -webkit-mask-position: center;
-        cursor: pointer;
-    }
-
-    .cmaj-version-number {
-        color: #999;
-        font-size: 0.7rem;
-        padding: 0 0 1rem 0;
-        margin: 0;
-    }
-
-    button {
-        border: none;
-        padding: 0.2rem 0.6rem;
-        background-color: #ccccff30;
-        color: #ddd;
-        border-radius: 0.3rem;
-    }
-
-    button:hover {
-        background-color: #ddddff70;
-    }
-
-    .cmaj-selected-button {
-        background-color: #44ee4450;
-    }
-
-    .cmaj-selected-button:hover {
-        background-color: #44ee4480;
-    }
-
-    select {
-        background-color: #ccccff30;
-        color: #ddd;
-        padding: 0.3rem;
-        margin: 0;
-        border-radius: 0.3rem;
-    }
-
-    select:hover {
-        background-color: #ddddff60;
-    }
-
-    #cmaj-patch-status {
-        color: var(--foreground);
-        flex: 2;
-        height: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        padding-left: 0.5rem;
-        margin-block-start: 0;
-        margin-block-end: 0;
-    }
-
-    .cmaj-top-panel-buttons {
-        display: flex;
-        flex-flow: column nowrap;
-        justify-content: space-between;
-        align-items: flex-end;
-    }
-
-    .cmaj-top-panel-buttons button {
-        margin-left: 1rem;
-    }
-
-    cmaj-cpu-meter {
-        width: 6rem;
-        height: 1.5rem;
-        align-self: flex-center;
-    })"
-R"(
-
-    .cmaj-divider {
-        width: 100%;
-        height: 0.05rem;
-        border-top: 0.05rem solid var(--foreground);
-        margin: 0;
-        padding: 0;
-    }
-
-    .cmaj-control-container {
-        padding: 0.5rem 0.2rem;
-        margin: 0 0.6rem;
-    }
-
-    #cmaj-available-patch-list-holder {
-        background: solid;
-        background-color: #00000044;
-        padding-top: 0.5rem;
-        margin: 0;
-    }
-
-    #cmaj-available-patch-list button {
-        background: none;
-        cursor: pointer;
-        margin: 0 0 0.3rem 0.3rem;
-    }
-
-    #cmaj-available-patch-list button:hover {
-        background-color: #ddddff40;
-        cursor: pointer;
-    }
-
-    .cmaj-io-panel {
-        display: flex;
-        padding: 0.5rem 0;
-        flex-flow: row wrap;
-        justify-content: center;
-        align-items: center;
-    }
-
-    cmaj-panel-piano-keyboard {
-        display: inline-block;
-        height: 6rem;
-        min-width: 10rem;
-        flex-basis: 20rem;
-        flex-grow: 1;
-    }
-
-    #cmaj-patch-view-holder {
-        position: relative;
-        display: block;
-        overflow: auto;
-        padding-top: 0.3rem;
-        padding-bottom: 0.5rem;
-        resize: vertical;
-        height: 400px;
-    }
-
-    #cmaj-graph {
-        max-height: 50rem;
-    }
-
-    #cmaj-error-list {
-        display: block;
-        white-space: pre-wrap;
-        font-size: 0.9rem;
-        min-height: 18rem;
-        background: #222222;
-        color: #bbbbbb;
-        padding: 0.8rem;
-        margin: 0.8rem;
-        overflow: auto;
-        resize: vertical;
-    }
-
-    #cmaj-error-list p {
-        margin: 0;
-    }
-
-    #cmaj-error-list a {
-        color: #aaa;
-    }
-
-    .cmaj-action-button-holder {
-        padding: 0.6rem 0;
-    }
-
-    .cmaj-action-button-holder button {
-        margin-bottom: 0.6rem;
-    })"
-R"(
-
-    .cmaj-accordion-button {
-        background-color: #ffffff40;
-        color: var(--foreground);
-        cursor: pointer;
-        padding: 0 1rem;
-        height: 2.5rem;
-        width: 100%;
-        border: none;
-        outline: none;
-        text-align: left;
-        font-size: 1rem;
-        transition: 0.2s;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 0.1rem solid #00000033;
-        border-radius: 0.1rem;
-    }
-
-    .cmaj-accordion-button:hover {
-        background-color: #ffffff60;
-    }
-
-    .cmaj-accordion-panel {
-        padding: 0 0.8rem;
-        background-color: #ffffff20;
-        overflow: hidden;
-        transition: max-height 0.25s ease-out;
-    }
-
-    #cmaj-view-selector {
-        font-size: 0.8rem;
-    }
-
-    ${AudioDevicePropertiesPanel.getCSS()}
-    ${ConsoleEventControl.getCSS()}
-    ${EndpointControlBase.getCSS()}
-    ${CodeGenPanel.getCSS()}
-
-</style>
-
-<div class="cmaj-main">
-  <div id="cmaj-available-patch-list-holder" hidden>
-    <div id="cmaj-available-patch-list"></div>
-    <div class="cmaj-divider"></div>
-  </div>
-
-  <div class="cmaj-header">
-    <div class="cmaj-logo-and-version-holder">
-      <span id="cmaj-logo" class="cmajor-logo"></span>
-      <p class="cmaj-version-number">version ${getCmajorVersion()}</p>
-    </div>
-    <p id="cmaj-patch-status"></p>
-    <cmaj-cpu-meter id="cmaj-cpu"></cmaj-cpu-meter>
-    <div class="cmaj-top-panel-buttons">
-      <button id="cmaj-toggle-audio-button">Stop Audio</button>
-      <button id="cmaj-unload-button">Unload Patch</button>
-    </div>
-  </div>
-
-  <div class="cmaj-divider"></div>
-
-  <div class="cmaj-control-container" id="cmaj-control-container">
-    <div class="cmaj-action-button-holder">
-      <button id="cmaj-reset-button">Reset patch</button>
-      <button id="cmaj-copy-state">Copy state to clipboard</button>
-      <button id="cmaj-restore-state">Paste state from clipboard</button>
-    </div>)"
-R"(
-
-    <button class="cmaj-accordion-button cmaj-accordian-open">GUI
-      <select id="cmaj-view-selector"></select>
-    </button>
-    <div class="cmaj-accordion-panel">
-      <div id="cmaj-patch-view-holder"></div>
-    </div>
-
-    <button class="cmaj-accordion-button cmaj-accordian-open">Inputs</button>
-    <div class="cmaj-accordion-panel">
-      <div id="cmaj-inputs-panel" class="cmaj-io-panel"></div>
-    </div>
-
-    <button class="cmaj-accordion-button cmaj-accordian-open">Outputs</button>
-    <div class="cmaj-accordion-panel">
-      <div id="cmaj-outputs-panel" class="cmaj-io-panel"></div>
-    </div>
-
-    <button class="cmaj-accordion-button">Graph</button>
-    <div class="cmaj-accordion-panel">
-      <cmaj-patch-graph id="cmaj-graph"></cmaj-patch-graph>
-    </div>
-
-    <button class="cmaj-accordion-button">Audio Device Settings</button>
-    <div class="cmaj-accordion-panel">
-      <div id="cmaj-audio-device-panel" class="cmaj-audio-device-panel"></div>
-    </div>
-
-    <button class="cmaj-accordion-button">Generated Code</button>
-    <div class="cmaj-accordion-panel">
-      <cmaj-codegen-panel id="cmaj-codegen-panel"></cmaj-codegen-panel>
-    </div>
-
-  </div>
-  <pre id="cmaj-error-list"></pre>
-</div>
-</html>`;
-    }
-};
-
-function countEndpointsWithPurpose (endpoints, purpose)
-{
-    let count = 0;
-
-    if (endpoints)
-        for (let e of endpoints)
-            if (e.purpose && e.purpose == purpose)
-                ++count;
-
-    return count;
-}
-
-function printMIDI (message)
-{
-    const hex = "00000" + message.toString (16);
-    const len = hex.length;
-
-    return hex.substring (len - 6, len - 4)
-            + " " + hex.substring (len - 4, len - 2)
-            + " " + hex.substring (len - 2, len);
-}
-
-customElements.define ("cmaj-level-meter", LevelMeter);
-customElements.define ("cmaj-waveform-display", WaveformDisplay);
-customElements.define ("cmaj-panel-piano-keyboard", PianoKeyboard);)"
-R"(
-
-customElements.define ("cmaj-control-console", ConsoleEventControl);
-customElements.define ("cmaj-control-in-midi", MIDIInputControl);
-customElements.define ("cmaj-control-audio", AudioLevelControl);
-customElements.define ("cmaj-control-audio-in", AudioInputControl);
-customElements.define ("cmaj-codegen-panel", CodeGenPanel);
-
-customElements.define ("cmaj-audio-device-panel", AudioDevicePropertiesPanel);
-customElements.define ("cmaj-patch-panel", PatchPanel);
-)";
-    static constexpr const char* panel_api_cmajcpumeter_js =
-        R"TEXT(//
-//     ,ad888ba,                              88
-//    d8"'    "8b
-//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
-//   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
-//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
-//                                           ,88
-//                                        888P"
-//
-//  The Cmajor project is subject to commercial or open-source licensing.
-//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
-//  visit https://cmajor.dev to learn about our commercial licence options.
-//
-//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
-//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
-//  DISCLAIMED.
-
-export default class CPUMeter extends HTMLElement
-{
-    constructor()
-    {
-        super();
-
-        this.root = this.attachShadow({ mode: "open" });
-        this.root.innerHTML = `<style>${this.getCSS()}</style>${this.getHTML()}`;
-        this.bar = this.root.getElementById ("meter-bar");
-        this.text = this.root.getElementById ("text");
-
-        this.cpuListener = e => this.setLevel (e.level);
-    }
-
-    dispose()
-    {
-        setSession (undefined);
-    }
-
-    setSession (session)
-    {
-        this.session?.removeCPUListener (this.cpuListener);
-        this.session = session;
-        this.session?.setCPULevelUpdateRate (20000);
-        this.session?.addCPUListener (this.cpuListener);
-    }
-
-    setLevel (newLevel)
-    {
-        const percentage = Math.min (newLevel * 100.0, 100.0).toFixed (1) + "%";
-        this.text.innerText = "CPU: " + percentage;
-        this.bar.style.width = percentage;
-        this.bar.style.background = newLevel < 0.8 ? "var(--bar-color-low)" : "var(--bar-color-high)";
-    })TEXT"
-R"(
-
-    getHTML()
-    {
-        return `<div id="holder">
-                 <div id="meter-bar"></div>
-                 <p id="text">CPU: 0%</p>
-                </div>`;
-    }
-
-    getCSS()
-    {
-        return `
-            * {
-                box-sizing: border-box;
-                user-select: none;
-                -webkit-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-            }
-
-            :host {
-                --bar-color-low: #8c8;
-                --bar-color-high: #f44;
-                --background-color: #00000055;
-                --text-color: #787;
-                display: block;
-            }
-
-            #holder {
-                display: flex;
-                position: relative;
-                justify-content: center;
-                align-items: center;
-                top: 0rem;
-                left: 0rem;
-                width: 100%;
-                height: 100%;
-                background: var(--background-color);
-                border: 0.1rem solid var(--background-color);
-            }
-
-            #meter-bar {
-                position: absolute;
-                display: block;
-                background: var(--bar-color-low);
-                left: 0%;
-                top: 0%;
-                width: 0%;
-                height: 100%;
-                transition: width 0.2s ease-out, background 0.1s;
-            }
-
-            p {
-                position: relative;
-                pointer-events: none;
-                align-self: center;
-                font-size: 0.7rem;
-                color: var(--text-color);
-                overflow: hidden;
-            }
-            `;
-    }
-}
-
-customElements.define ("cmaj-cpu-meter", CPUMeter);
-)";
-    static constexpr const char* panel_api_helpers_cmajimagestripcontrol_js =
-        R"(//
-//     ,ad888ba,                              88
-//    d8"'    "8b
-//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
-//   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
-//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
-//                                           ,88
-//                                        888P"
-//
-//  The Cmajor project is subject to commercial or open-source licensing.
-//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
-//  visit https://cmajor.dev to learn about our commercial licence options.
-//
-//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
-//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
-//  DISCLAIMED.
-
-
-export default class ImageStripControl extends HTMLElement
-{
-    constructor()
-    {
-        super();
-
-        this.currentValue = 0;
-        this.rangeMin       = this.getAttribute ("min-value");
-        this.rangeMax       = this.getAttribute ("max-value");
-        this.default        = this.getAttribute ("default-value");
-        this.label          = this.getAttribute ("label");
-        this.horizontalMode = this.getAttribute ("horizontalMode");
-
-        this.addEventListener ('mousedown', this.startDrag);
-        this.addEventListener ('touchstart', this.handleTouch);
-        this.addEventListener ("dblclick", this.onReset);
-    }
-
-    setImage ({ imageURL, numImagesPerStrip, imageHeightPixels, sensitivity })
-    {
-        this.imageURL = imageURL;
-        this.numImagesPerStrip = numImagesPerStrip;
-        this.imageHeightPixels = imageHeightPixels;
-        this.sensitivity = sensitivity;
-
-        this.innerHTML = `<img draggable="false" class="strip" style="display:block; position: absolute;" src="${imageURL}"></img>`;
-        this.imageStrip = this.children[0];
-        this.updateKnobImage();
-    })"
-R"(
-
-    /// This updates the knob with a new value
-    setCurrentValue (newValue)
-    {
-        this.currentValue = newValue;
-        this.updateKnobImage();
-    }
-
-    /// These are called when the user drags the knob - override them to handle it
-    onStartDrag() {}
-    onEndDrag() {}
-    onValueDragged (newValue)   {}
-    onReset() {}
-
-    updateKnobImage()
-    {
-        const proportion = (this.currentValue - this.rangeMin) / (this.rangeMax - this.rangeMin);
-        const imageIndex = Math.max (0, Math.min (this.numImagesPerStrip - 1, Math.floor (this.numImagesPerStrip * proportion)));
-        this.imageStrip.style.top = `${imageIndex * -this.imageHeightPixels}px`;
-    }
-
-    handleTouch (event)
-    {
-        this.dragStartValue = this.currentValue;
-        this.dragStartPos = this.horizontalMode ? -event.changedTouches[0].clientX : event.changedTouches[0].clientY;
-        this.dragging = true;
-        this.touchIdentifier = event.changedTouches[0].identifier;
-
-        const dragTo = (event) =>
-        {
-            for (const touch of event.changedTouches)
-            {
-                if (touch.identifier == this.touchIdentifier)
-                {
-                    let currentPos = this.horizontalMode ? -touch.clientX : touch.clientY;
-                    const delta = currentPos - this.dragStartPos;
-                    const deltaProportion = delta / -this.sensitivity;
-                    const newValue = this.dragStartValue + deltaProportion * (this.rangeMax - this.rangeMin);
-                    const clippedValue = Math.min (this.rangeMax, Math.max (this.rangeMin, newValue));
-                    this.onValueDragged (clippedValue);
-                }
-            }
-        })"
-R"(
-
-        const endDrag = (event) =>
-        {
-            for (const touch of event.changedTouches)
-            {
-                if (touch.identifier == this.touchIdentifier)
-                {
-                    this.dragging = false;
-                    this.onEndDrag();
-                    window.removeEventListener('touchmove', dragTo);
-                    window.removeEventListener('touchend', endDrag);
-                    event.preventDefault();
-                }
-            }
-        }
-
-        this.onStartDrag();
-        window.addEventListener('touchmove', dragTo);
-        window.addEventListener('touchend', endDrag);
-        event.preventDefault();
-    }
-
-    startDrag (event)
-    {
-        this.dragStartValue = this.currentValue;
-        this.dragStartPos = this.horizontalMode ? -event.screenX  : event.screenY;
-        this.dragging = true;
-
-        const dragTo = (event) =>
-        {
-            let currentPos = this.horizontalMode ? -event.screenX : event.screenY;
-            const delta = currentPos - this.dragStartPos;
-            const deltaProportion = delta / -this.sensitivity;
-            const newValue = this.dragStartValue + deltaProportion * (this.rangeMax - this.rangeMin);
-            const clippedValue = Math.min (this.rangeMax, Math.max (this.rangeMin, newValue));
-            this.onValueDragged (clippedValue);
-            event.preventDefault();
-        }
-
-        const endDrag = (event) =>
-        {
-            this.dragging = false;
-            this.onEndDrag();
-            window.removeEventListener('mousemove', dragTo);
-            window.removeEventListener('mouseup', endDrag);
-            event.preventDefault();
-        }
-
-        this.onStartDrag();
-        window.addEventListener('mousemove', dragTo);
-        window.addEventListener('mouseup', endDrag);
-        event.preventDefault();
-    }
-
-    static get observedAttributes()
-    {
-        return ["min-value", "max-value", "label"];
-    }
-}
-)";
-    static constexpr const char* panel_api_helpers_cmajlevelmeter_js =
-        R"(//
-//     ,ad888ba,                              88
-//    d8"'    "8b
-//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
-//   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
-//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
-//                                           ,88
-//                                        888P"
-//
-//  The Cmajor project is subject to commercial or open-source licensing.
-//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
-//  visit https://cmajor.dev to learn about our commercial licence options.
-//
-//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
-//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
-//  DISCLAIMED.
-
-export default class LevelMeter extends HTMLElement
-{
-    constructor()
-    {
-        super();
-
-        this.setScaleRange (-65.0, 0.0);
-        this.setDecayTime (700, 1000);
-
-        this.root = this.attachShadow({ mode: "open" });
-        this.setNumChans (1);
-    }
-
-    connectedCallback()
-    {
-        this.timer = setInterval (() => this.refreshAllChannelLevels(), 25);
-    }
-
-    disconnectedCallback()
-    {
-        clearInterval (this.timer);
-    }
-
-    setScaleRange (lowDB, highDB)
-    {
-        this.scaleMinDB = lowDB;
-        this.scaleMaxDB = highDB;
-    }
-
-    setDecayTime (decayMs, peakHoldMs)
-    {
-        this.peakHoldMs = peakHoldMs;
-        this.percentageDecayPerMs = 100.0 / decayMs;
-    }
-
-    setNumChans (numChans)
-    {
-        if (this.numChans != numChans)
-        {
-            this.numChans = numChans;
-            this.refreshContent();
-
-            this.channels = [];)"
-R"(
-
-            for (let i = 0; i < numChans; ++i)
-                this.channels.push ({
-                    currentLevel: 0,
-                    currentBar: 0,
-                    lastPeakPercentage: 0,
-                    lastPeakTime: Date.now(),
-                    peakBarPercentage: 0,
-                    peakBarTime: Date.now(),
-                    element: this.root.querySelector(`[data-chan="${i}"]`)
-                });
-        }
-    }
-
-    setChannelLevel (channel, newLevel)
-    {
-        const now = Date.now();
-        const chan = this.channels[channel];
-        const newPercent = this.levelToPercentageHeight (newLevel);
-
-        if (newPercent > chan.currentLevel)
-        {
-            chan.currentLevel = newPercent;
-            chan.lastPeakPercentage = newPercent;
-            chan.lastPeakTime = now;
-        }
-
-        if (newPercent > chan.peakBarPercentage)
-        {
-            chan.peakBarPercentage = newPercent;
-            chan.peakBarTime = now;
-        }
-
-        this.refreshChannelLevel (channel, now);
-    }
-
-    setChannelMinMax (channel, minSample, maxSample)
-    {
-        this.setChannelLevel (channel, Math.max (Math.abs (minSample), Math.abs (maxSample)));
-    }
-
-    levelToPercentageHeight (level)
-    {
-        if (level <= 0)
-            return 0;
-
-        const dB = Math.log10 (level) * 20;
-        const percentage = 100 * (dB - this.scaleMinDB) / (this.scaleMaxDB - this.scaleMinDB);
-
-        return Math.max (0, Math.min (100.0, percentage));
-    }
-
-    refreshChannelLevel (channel, currentTime)
-    {
-        const chan = this.channels[channel];
-        const elem = chan.element;
-
-        if (elem)
-        {
-            const timeSincePeak = currentTime - chan.lastPeakTime;
-            const initialDecayDelay = 100;
-
-            if (timeSincePeak > initialDecayDelay)
-            {
-                let percent = chan.lastPeakPercentage - this.percentageDecayPerMs * (timeSincePeak - initialDecayDelay);
-
-                if (percent < 0.5)
-                    percent = 0;)"
-R"(
-
-                chan.currentLevel = percent;
-            }
-
-            const timeSincePeakBar = currentTime - chan.peakBarTime;
-
-            if (timeSincePeakBar > this.peakHoldMs)
-            {
-                chan.peakBarTime = currentTime;
-                chan.peakBarPercentage = chan.currentLevel;
-            }
-
-            const topGap = 2;
-            const w = elem.clientWidth;
-            const h = elem.clientHeight - topGap;
-            const bottom = topGap + h;
-            const levelY = topGap + h * (100 - chan.currentLevel) / 100.0;
-
-            let path = `M0 ${levelY} L ${w}, ${levelY} L${w} ${bottom} L 0 ${bottom} Z`;
-
-            if (chan.peakBarPercentage > 0)
-            {
-                const peakY1 = topGap + h * (100 - chan.peakBarPercentage) / 100.0;
-                const peakY2 = Math.min (bottom, peakY1 + 2);
-                path += ` M0 ${peakY1} L ${w} ${peakY1} L ${w} ${peakY2} L 0 ${peakY2} Z`;
-            }
-
-            elem.style.clipPath = `path("${path}")`;
-        }
-    }
-
-    refreshAllChannelLevels()
-    {
-        const now = Date.now();
-
-        for (let i = 0; i < this.numChans; ++i)
-            this.refreshChannelLevel (i, now);
-    }
-
-    refreshContent()
-    {
-        let bars = "";
-
-        for (let chan = 0; chan < this.numChans; ++chan)
-            bars += `<div class="meter-bar" data-chan="${chan}"></div>`;
-
-        this.root.innerHTML = `<style>${this.getCSS()}</style><div class="holder">${bars}</div>`;
-    }
-
-    getCSS (numChans)
-    {
-        return `
-            * {
-                box-sizing: border-box;
-                pointer-events: none;
-                user-select: none;
-                -webkit-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-                padding: 0;
-                margin: 0;
-            })"
-R"(
-
-            :host {
-                --background-color: #222222;
-                display: block;
-                overflow: hidden;
-                background: var(--background-color);
-                padding: 0.1rem;
-            }
-
-            .meter-bar {
-                display: flex;
-                flex-flow: row nowrap;
-                align-items: flex-end;
-                justify-content: center;
-                background-image: linear-gradient(to bottom, #f22 0%, #f22 17%, #ff2 18%, #ff2 35%, #2f2 36%, #2f2 100%);
-                background-position: bottom;
-                background-size: 100% 100%;
-                background-repeat: no-repeat;
-                clip-path: polygon(0% 0%, 0% 0%, 0% 0%);
-                top: 0%;
-                width: 1.4rem;
-                height: 100%;
-                color: #777;
-            }
-
-            .holder {
-                display: flex;
-                min-width: 2.5rem;
-                height: 100%;
-                flex-flow: row nowrap;
-                align-items: flex-end;
-                justify-content: space-around;
-            }
-`;
-    }
-}
-)";
-    static constexpr const char* panel_api_helpers_cmajwaveformdisplay_js =
-        R"(//
-//     ,ad888ba,                              88
-//    d8"'    "8b
-//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
-//   Y8,           88    88    88  88     88  88
-//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
-//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
-//                                           ,88
-//                                        888P"
-//
-//  The Cmajor project is subject to commercial or open-source licensing.
-//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
-//  visit https://cmajor.dev to learn about our commercial licence options.
-//
-//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
-//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
-//  DISCLAIMED.
-
-export default class WaveformDisplay extends HTMLElement
-{
-    constructor()
-    {
-        super();
-
-        this.root = this.attachShadow({ mode: "open" });
-
-        this.setNumFrames (100);
-        this.setNumChans (1);
-    }
-
-    connectedCallback()
-    {
-    }
-
-    disconnectedCallback()
-    {
-    }
-
-    setNumFrames (numFrames)
-    {
-        if (this.numFrames != numFrames)
-        {
-            this.numFrames = numFrames;
-            this.refreshChannelData();
-        }
-    }
-
-    setNumChans (numChans)
-    {
-        if (this.numChans != numChans)
-        {
-            this.numChans = numChans;
-            this.refreshChannelData();
-        }
-    }
-
-    refreshChannelData()
-    {
-        this.channels = [];
-        this.refreshContent();
-
-        if (this.numFrames)
-        {
-            for (let i = 0; i < this.numChans; ++i)
-                this.channels.push ({
-                    samples: new Float32Array(this.numFrames * 2),
-                    index: 0,
-                    canvas: this.root.querySelector(`[data-chan="${i}"]`)
-                });
-        }
-    })"
-R"(
-
-    setChannelMinMax (channel, minSample, maxSample)
-    {
-        const chan = this.channels[channel];
-        chan.samples[chan.index++] = minSample;
-        chan.samples[chan.index++] = maxSample;
-
-        if (chan.index >= this.numFrames * 2)
-            chan.index = 0;
-
-        this.updateChannelCurve (chan);
-    }
-
-    updateChannelCurve (channel)
-    {
-        const ctx = channel.canvas.getContext("2d");
-
-        const canvasW = channel.canvas.width;
-        const canvasH = channel.canvas.height;
-        const centreY = canvasH * 0.5;
-        const vScale = (canvasH - 2) * -0.5;
-        const xScale = canvasW / this.numFrames;
-
-        ctx.clearRect (0, 0, canvasW, canvasH);
-        ctx.fillStyle = "#aca";
-
-        let index = channel.index;
-
-        for (let i = 0; i < this.numFrames; ++i)
-        {
-            const minLevel = channel.samples[index++];
-            const maxLevel = channel.samples[index++];
-
-            if (index >= this.numFrames * 2)
-                index = 0;
-
-            const y1 = centreY + vScale * Math.max (-1.0, Math.min (1.0, maxLevel));
-            const y2 = centreY + vScale * Math.max (-1.0, Math.min (1.0, minLevel));
-
-            if (y2 > y1 + 0.5)
-            {
-                const peak = Math.max (Math.abs (minLevel), Math.abs (maxLevel));
-
-                if (peak > 0.98)
-                    ctx.fillStyle = "#f22";
-                else if (peak > 0.8)
-                    ctx.fillStyle = "#ff2";
-                else
-                    ctx.fillStyle = "#2f2";
-
-                ctx.fillRect (xScale * i, y1, xScale, y2 - y1);
-            }
-        }
-    }
-
-    sampleToY (sample)
-    {
-        return 20.0 - 20.0 * sample;
-    }
-
-    refreshContent()
-    {
-        let waveforms = "";
-
-        for (let chan = 0; chan < this.numChans; ++chan)
-            waveforms += `<canvas class="waveform" data-chan="${chan}"></canvas>`;
-
-        this.root.innerHTML = `<style>${this.getCSS()}</style> <div class="waveforms">${waveforms}</div>`;
-    })"
-R"(
-
-    getCSS (numChans)
-    {
-        return `
-            * {
-                box-sizing: border-box;
-                pointer-events: none;
-                user-select: none;
-                -webkit-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-                padding: 0;
-                margin: 0;
-            }
-
-            :host {
-                --background-color: #222222;
-                display: block;
-                overflow: hidden;
-                background: var(--background-color);
-                padding: 0.1rem;
-            }
-
-            .waveforms {
-                display: flex;
-                min-width: 3rem;
-                height: 100%;
-                flex-flow: column nowrap;
-                align-items: stretch;
-                align-content: stretch;
-                justify-content: space-around;
-            }
-
-            .waveform {
-                left: 0%;
-                width: 100%;
-                min-height: 1rem;
-                flex: 1 1 auto;
-            }
-`;
-    }
-}
-)";
+    static constexpr const char* embedded_patch_runner_template_html = "<!DOCTYPE html>\n"
+        "<html lang=\"en\">\n"
+        "<head><meta charset=\"utf-8\" /><title>Cmajor Patch Controls</title></head>\n"
+        "\n"
+        "<script type=\"module\">\n"
+        "\n"
+        "import \"/panel_api/cmaj-patch-panel.js\"\n"
+        "\n"
+        "window.addEventListener (\"message\", (event) =>\n"
+        "{\n"
+        "    const message = event.data;\n"
+        "\n"
+        "    if (message?.messageFromVScode)\n"
+        "    {\n"
+        "        const panel = document.getElementById (\"cmaj-patch-panel\");\n"
+        "\n"
+        "        if (! window.sendMessageToVSCode)\n"
+        "        {\n"
+        "            window.sendMessageToVSCode = (m) =>\n"
+        "            {\n"
+        "                event.source.postMessage ({ messageToVScode: m }, \"*\");\n"
+        "            };\n"
+        "        }\n"
+        "\n"
+        "        panel.handleMessageFromVSCode?.(message.messageFromVScode);\n"
+        "    }\n"
+        "});\n"
+        "\n"
+        "</script>\n"
+        "\n"
+        "<style>\n"
+        "  body {\n"
+        "    margin: 0;\n"
+        "    padding: 0;\n"
+        "  }\n"
+        "\n"
+        "  cmaj-patch-panel {\n"
+        "    display: block;\n"
+        "  }\n"
+        "</style>\n"
+        "\n"
+        "<body>\n"
+        "  <cmaj-patch-panel id=\"cmaj-patch-panel\" fixed-patch=\"true\" session-id=\"SESSION_ID\"></cmaj-patch-panel>\n"
+        "</body>\n"
+        "</html>\n";
+    static constexpr const char* embedded_patch_chooser_template_html = "<!DOCTYPE html>\n"
+        "<html lang=\"en\">\n"
+        "<head>\n"
+        "  <meta charset=\"utf-8\" />\n"
+        "  <title>Cmajor Patch Controls</title>\n"
+        "</head>\n"
+        "\n"
+        "<script type=\"module\">\n"
+        "import \"/panel_api/cmaj-patch-panel.js\"\n"
+        "</script>\n"
+        "\n"
+        " <body>\n"
+        "  <cmaj-patch-panel id=\"cmaj-patch-panel\" session-id=\"SESSION_ID\"></cmaj-patch-panel>\n"
+        " </body>\n"
+        "</html>\n";
+    static constexpr const char* embedded_patch_session_template_js = "//\n"
+        "//     ,ad888ba,                              88\n"
+        "//    d8\"'    \"8b\n"
+        "//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit\n"
+        "//   Y8,           88    88    88  88     88  88\n"
+        "//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd\n"
+        "//     '\"Y888Y\"'   88    88    88  '\"8bbP\"Y8  88     https://cmajor.dev\n"
+        "//                                           ,88\n"
+        "//                                        888P\"\n"
+        "//\n"
+        "//  The Cmajor project is subject to commercial or open-source licensing.\n"
+        "//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or\n"
+        "//  visit https://cmajor.dev to learn about our commercial licence options.\n"
+        "//\n"
+        "//  CMAJOR IS PROVIDED \"AS IS\" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER\n"
+        "//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE\n"
+        "//  DISCLAIMED.\n"
+        "\n"
+        "/**\n"
+        "    Classes for providing a ServerSession and PatchConnection via a HTTP/websocket\n"
+        "    connection to a cmajor server\n"
+        "*/\n"
+        "\n"
+        "import { ServerSession } from \"../cmaj_api/cmaj-server-session.js\"\n"
+        "\n"
+        "\n"
+        "//==============================================================================\n"
+        "/// An implementation of a ServerSession which communicates via a WebSocket.\n"
+        "class WebSocketServerSession  extends ServerSession\n"
+        "{\n"
+        "    constructor (sessionID)\n"
+        "    {\n"
+        "        super (sessionID);\n"
+        "\n"
+        "        this.socket = new WebSocket (SOCKET_URL + \"/\" + sessionID);\n"
+        "\n"
+        "        this.socket.onopen = () => this.handleSessionConnection();\n"
+        "\n"
+        "        this.socket.onmessage = msg =>\n"
+        "        {\n"
+        "            const message = JSON.parse (msg.data);\n"
+        "\n"
+        "            if (message)\n"
+        "                this.handleMessageFromServer (message);\n"
+        "        };\n"
+        "    }\n"
+        "\n"
+        "    dispose()\n"
+        "    {\n"
+        "        super.dispose();\n"
+        "        this.socket.close();\n"
+        "    }\n"
+        "\n"
+        "    sendMessageToServer (msg)\n"
+        "    {\n"
+        "        if (this.socket?.readyState == 1)\n"
+        "        {\n"
+        "            this.socket.send (JSON.stringify (msg));\n"
+        "            return true;\n"
+        "        }\n"
+        "\n"
+        "        return false;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "export function createServerSession (sessionID)\n"
+        "{\n"
+        "    return new WebSocketServerSession (sessionID);\n"
+        "}\n";
+    static constexpr const char* panel_api_cmajgraph_js = "//\n"
+        "//     ,ad888ba,                              88\n"
+        "//    d8\"'    \"8b\n"
+        "//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit\n"
+        "//   Y8,           88    88    88  88     88  88\n"
+        "//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd\n"
+        "//     '\"Y888Y\"'   88    88    88  '\"8bbP\"Y8  88     https://cmajor.dev\n"
+        "//                                           ,88\n"
+        "//                                        888P\"\n"
+        "//\n"
+        "//  The Cmajor project is subject to commercial or open-source licensing.\n"
+        "//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or\n"
+        "//  visit https://cmajor.dev to learn about our commercial licence options.\n"
+        "//\n"
+        "//  CMAJOR IS PROVIDED \"AS IS\" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER\n"
+        "//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE\n"
+        "//  DISCLAIMED.\n"
+        "\n"
+        "export default class PatchGraph extends HTMLElement\n"
+        "{\n"
+        "    constructor()\n"
+        "    {\n"
+        "        super();\n"
+        "\n"
+        "        this.isActive = false;\n"
+        "        this.pendingTimer = null;\n"
+        "        this.root = this.attachShadow({ mode: \"open\" });\n"
+        "        this.root.innerHTML = `<style>${this.getCSS()}</style>${this.getHTML()}`;\n"
+        "        this.holder = this.shadowRoot.getElementById (\"holder\");\n"
+        "    }\n"
+        "\n"
+        "    dispose()\n"
+        "    {\n"
+        "        setSession (undefined);\n"
+        "    }\n"
+        "\n"
+        "    connectedCallback()\n"
+        "    {\n"
+        "        this.isActive = true;\n"
+        "        this.refresh();\n"
+        "    }\n"
+        "\n"
+        "    disconnectedCallback()\n"
+        "    {\n"
+        "        this.isActive = false;\n"
+        "        this.clearGraph();\n"
+        "        this.cancelRefresh();\n"
+        "    }\n"
+        "\n"
+        "    setSession (session)\n"
+        "    {\n"
+        "        this.cancelRefresh();\n"
+        "        this.session = session;\n"
+        "        this.refresh();\n"
+        "    }\n"
+        "\n"
+        "    clearGraph()\n"
+        "    {\n"
+        "        this.holder.innerHTML = \"\";\n"
+        "    }\n"
+        "\n"
+        "    refresh()\n"
+        "    {\n"
+        "        if (this.session && this.isActive && ! this.pendingTimer)\n"
+        "        {\n"
+        "            this.clearGraph();\n"
+        "\n"
+        "            this.pendingTimer = setTimeout (() =>\n"
+        "            {\n"
+        "                this.session.requestGeneratedCode (\"graph\", {},\n"
+        "                    message => {\n"
+        "                        if (typeof message.code == \"string\")\n"
+        "                            this.holder.innerHTML = message.code;\n"
+        "                    });\n"
+        "\n"
+        "                this.pendingTimer = undefined;\n"
+        "            }, 100);\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    cancelRefresh()\n"
+        "    {\n"
+        "        if (this.pendingTimer)\n"
+        "        {\n"
+        "            clearTimeout (this.pendingTimer);\n"
+        "            this.pendingTimer = undefined;\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    getHTML()\n"
+        "    {\n"
+        "        return `<div id=\"holder\"></div>`;\n"
+        "    }\n"
+        "\n"
+        "    getCSS()\n"
+        "    {\n"
+        "        return `\n"
+        "            :host {\n"
+        "                --bar-color: #aaffaa;\n"
+        "                display: block;\n"
+        "                overflow: auto;\n"
+        "            }\n"
+        "\n"
+        "            #holder {\n"
+        "                top: 0;\n"
+        "                left: 0;\n"
+        "                width: 100%;\n"
+        "                height: 100%;\n"
+        "                transform: scale(0.7);\n"
+        "                transform-origin: 0% 0%;\n"
+        "            }\n"
+        "            `;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "customElements.define (\"cmaj-patch-graph\", PatchGraph);\n";
+    static constexpr const char* panel_api_cmajpatchpanel_js = "//\n"
+        "//     ,ad888ba,                              88\n"
+        "//    d8\"'    \"8b\n"
+        "//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit\n"
+        "//   Y8,           88    88    88  88     88  88\n"
+        "//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd\n"
+        "//     '\"Y888Y\"'   88    88    88  '\"8bbP\"Y8  88     https://cmajor.dev\n"
+        "//                                           ,88\n"
+        "//                                        888P\"\n"
+        "//\n"
+        "//  The Cmajor project is subject to commercial or open-source licensing.\n"
+        "//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or\n"
+        "//  visit https://cmajor.dev to learn about our commercial licence options.\n"
+        "//\n"
+        "//  CMAJOR IS PROVIDED \"AS IS\" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER\n"
+        "//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE\n"
+        "//  DISCLAIMED.\n"
+        "\n"
+        "import * as cmajor from \"/cmaj-patch-server.js\";\n"
+        "import PianoKeyboard from \"../cmaj_api/cmaj-piano-keyboard.js\"\n"
+        "import LevelMeter from \"./helpers/cmaj-level-meter.js\"\n"
+        "import WaveformDisplay from \"./helpers/cmaj-waveform-display.js\";\n"
+        "import * as patchViewUtils from \"../cmaj_api/cmaj-patch-view.js\"\n"
+        "import * as midi from \"../cmaj_api/cmaj-midi-helpers.js\"\n"
+        "import \"./cmaj-cpu-meter.js\"\n"
+        "import \"./cmaj-graph.js\"\n"
+        "import { getCmajorVersion } from \"../cmaj_api/cmaj-version.js\"\n"
+        "\n"
+        "const maxUploadFileSize = 1024 * 1024 * 50;\n"
+        "\n"
+        "function showErrorAlert (message)\n"
+        "{\n"
+        "    if (window.sendMessageToVSCode)\n"
+        "        window.sendMessageToVSCode ({ showErrorAlert: message });\n"
+        "    else\n"
+        "        alert (message);\n"
+        "}\n"
+        "\n"
+        "window.openSourceFile = (file) =>\n"
+        "{\n"
+        "    if (window.sendMessageToVSCode)\n"
+        "        window.sendMessageToVSCode ({ showSourceFile: file });\n"
+        "    else\n"
+        "        // probably blocked by the browser, but this would at least open the file..\n"
+        "        window.open (\"file://\" + file.split(\":\")[0], \"_blank\");\n"
+        "}\n"
+        "\n"
+        "function createFileLink (s)\n"
+        "{\n"
+        "    s = JSON.stringify (s);\n"
+        "    s = s.substring (1, s.length - 1);\n"
+        "    return `javascript:openSourceFile('${s}');`;\n"
+        "}\n"
+        "\n"
+        "window.openURLInNewWindow = (url) =>\n"
+        "{\n"
+        "    if (window.sendMessageToVSCode)\n"
+        "        window.sendMessageToVSCode ({ openURLInNewWindow: url });\n"
+        "    else\n"
+        "        window.open (url, \"_blank\");\n"
+        "}\n"
+        "\n"
+        "function openTextDocument (content, language)\n"
+        "{\n"
+        "    window.sendMessageToVSCode?.({ openTextDocument: content,\n"
+        "                                   language: language });\n"
+        "}\n"
+        "\n"
+        "function handleInfiniteLoopAlert()\n"
+        "{\n"
+        "    window.sendMessageToVSCode?.({ serverFailedWithInfiniteLoop: true });\n"
+        "}\n"
+        "\n"
+        "function getMessageListAsString (messages)\n"
+        "{\n"
+        "    if (Array.isArray (messages))\n"
+        "    {\n"
+        "        let result = \"\";\n"
+        "\n"
+        "        for (let i = 0; i < messages.length; ++i)\n"
+        "        {\n"
+        "            if (i != 0)\n"
+        "                result += \"\\n\";\n"
+        "\n"
+        "            result += getmessagesDescription (messages[i]);\n"
+        "        }\n"
+        "\n"
+        "        return result;\n"
+        "    }\n"
+        "\n"
+        "    let desc = messages.fullDescription ? messages.fullDescription\n"
+        "                                        : messages.message;\n"
+        "\n"
+        "    if (messages.annotatedLine)\n"
+        "        desc += \"\\n\" + messages.annotatedLine;\n"
+        "\n"
+        "    return desc;\n"
+        "}\n"
+        "\n"
+        "//==============================================================================\n"
+        "class EndpointControlBase  extends HTMLElement\n"
+        "{\n"
+        "    constructor (patchConnection, endpointInfo)\n"
+        "    {\n"
+        "        super();\n"
+        "\n"
+        "        this.patchConnection = patchConnection;\n"
+        "        this.endpointInfo = endpointInfo;\n"
+        "    }\n"
+        "\n"
+        "    initialise (controls, bottomControl)\n"
+        "    {\n"
+        "        let name = this.endpointInfo.endpointID;\n"
+        "        const annotation = this.endpointInfo.annotation;\n"
+        "\n"
+        "        if (annotation)\n"
+        "            if (typeof annotation.name == \"string\" && annotation.name != \"\")\n"
+        "                name = annotation.name;\n"
+        "\n"
+        "        if (this.endpointInfo.source)\n"
+        "            name = `<a href=\"${createFileLink (this.endpointInfo.source.toString())}\">${name}</a>`;\n"
+        "\n"
+        "        this.innerHTML =\n"
+        "         `<div class=\"cmaj-io-control\">\n"
+        "            <div class=\"cmaj-io-control-content\">\n"
+        "              ${controls}\n"
+        "            </div>\n"
+        "            <div class=\"cmaj-io-label-holder\">\n"
+        "            ${bottomControl ? bottomControl : \"\"}\n"
+        "            <div class=\"cmaj-io-label\"><p>${name}</p></div>\n"
+        "            </div>\n"
+        "          </div>`;\n"
+        "    }\n"
+        "\n"
+        "    static getCSS()\n"
+        "    {\n"
+        "        return `\n"
+        "        .cmaj-io-control {\n"
+        "            display: flex;\n"
+        "            padding: 0.2rem;\n"
+        "            margin: 0.6rem;\n"
+        "            background: #22222288;\n"
+        "            box-shadow: 0 0.3rem 0.4rem 0 #00000030;\n"
+        "            flex-flow: column nowrap;\n"
+        "            justify-content: flex-start;\n"
+        "            align-items: center;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-io-control-content {\n"
+        "            flex-basis: 6.5rem;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-io-label-holder {\n"
+        "            padding: 0 0.8rem;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-io-label {\n"
+        "            display: inline-block;\n"
+        "            padding: 0.2rem 1.2rem;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-io-label p {\n"
+        "            margin: 0;\n"
+        "            font-size: 0.8rem;\n"
+        "            color: #eee;\n"
+        "        }\n"
+        "\n"
+        "        cmaj-level-meter {\n"
+        "            display: inline-block;\n"
+        "            width: 3.5rem;\n"
+        "            height: 6.5rem;\n"
+        "            min-width: 3.5rem;\n"
+        "            margin: 0.1rem;\n"
+        "            flex-basis: 6.5rem;\n"
+        "            flex-grow: 0;\n"
+        "        }\n"
+        "\n"
+        "        cmaj-waveform-display {\n"
+        "            display: inline-block;\n"
+        "            width: 12rem;\n"
+        "            height: 6.5rem;\n"
+        "            min-width: 12rem;\n"
+        "            margin: 0.1rem;\n"
+        "            flex-basis: 24rem;\n"
+        "            flex-grow: 0;\n"
+        "        }`;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "//==============================================================================\n"
+        "class ConsoleEventControl  extends EndpointControlBase\n"
+        "{\n"
+        "    constructor (patchConnection, endpointInfo)\n"
+        "    {\n"
+        "        super (patchConnection, endpointInfo);\n"
+        "\n"
+        "        this.initialise (`<textarea class=\"cmaj-console\" rows=\"20\" cols=\"100\" readonly=true></textarea>`,\n"
+        "                         `<button class=\"cmaj-clear-button\">Clear</button>`);\n"
+        "        this.textArea = this.querySelector (\"textarea\");\n"
+        "        this.newLineForEachItem = endpointInfo.endpointID != \"console\";\n"
+        "\n"
+        "        const clearButton = this.querySelector (\".cmaj-clear-button\");\n"
+        "        clearButton.onclick = () => { this.textArea.value = \"\"; this.textArea.scrollTop = this.textArea.scrollHeight; }\n"
+        "    }\n"
+        "\n"
+        "    connectedCallback()\n"
+        "    {\n"
+        "        this.callback = event => this.write (event);\n"
+        "        this.patchConnection.addEndpointListener (this.endpointInfo.endpointID, this.callback);\n"
+        "    }\n"
+        "\n"
+        "    disconnectedCallback()\n"
+        "    {\n"
+        "        this.patchConnection.removeEndpointListener (this.endpointInfo.endpointID, this.callback);\n"
+        "    }\n"
+        "\n"
+        "    write()\n"
+        "    {\n"
+        "        let message = \"\";\n"
+        "\n"
+        "        for (let arg of arguments)\n"
+        "        {\n"
+        "            let m = this.formatMessage (arg);\n"
+        "\n"
+        "            if (this.newLineForEachItem && ! m.endsWith (\"\\n\"))\n"
+        "                m += \"\\n\";\n"
+        "\n"
+        "            message += m;\n"
+        "        }\n"
+        "\n"
+        "        let text = \"\";\n"
+        "\n"
+        "        // look for an ESC char, and clear the console if found\n"
+        "        const lastEscChar = message.lastIndexOf (\"\\u001b\");\n"
+        "\n"
+        "        if (lastEscChar >= 0)\n"
+        "        {\n"
+        "            message = message.substring (lastEscChar + 1);\n"
+        "        }\n"
+        "        else\n"
+        "        {\n"
+        "            text = this.textArea.value;\n"
+        "            const maxConsoleSize = 5000;\n"
+        "\n"
+        "            while (text.length > maxConsoleSize)\n"
+        "            {\n"
+        "                let breakPoint = text.indexOf (\"\\n\", text.length - maxConsoleSize) + 1;\n"
+        "\n"
+        "                if (breakPoint <= 0)\n"
+        "                    breakPoint = text.length - maxConsoleSize;\n"
+        "\n"
+        "                text = text.substring (breakPoint);\n"
+        "            }\n"
+        "        }\n"
+        "\n"
+        "        this.textArea.value = text + message;\n"
+        "        this.textArea.scrollTop = this.textArea.scrollHeight;\n"
+        "    }\n"
+        "\n"
+        "    formatMessage (m)\n"
+        "    {\n"
+        "        if (typeof m == \"string\")\n"
+        "            return m;\n"
+        "\n"
+        "        if (m._type)\n"
+        "        {\n"
+        "            if (m._type == \"Message\" && m.message)\n"
+        "                return midi.getMIDIDescription (m.message);\n"
+        "\n"
+        "            const type = m._type;\n"
+        "            delete m._type;\n"
+        "            return type + \" \" + JSON.stringify (m) + \"\\n\";\n"
+        "        }\n"
+        "\n"
+        "        return JSON.stringify (m);\n"
+        "    }\n"
+        "\n"
+        "    static getCSS()\n"
+        "    {\n"
+        "        return `\n"
+        "        .cmaj-console {\n"
+        "            display: inline-block;\n"
+        "            width: 100%;\n"
+        "            height: 8rem;\n"
+        "            min-height: 5rem;\n"
+        "            resize: vertical;\n"
+        "            background: #222;\n"
+        "            color: #5e5;\n"
+        "        }`;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "//==============================================================================\n"
+        "class MIDIInputControl  extends EndpointControlBase\n"
+        "{\n"
+        "    constructor (patchConnection, endpointInfo)\n"
+        "    {\n"
+        "        super (patchConnection, endpointInfo);\n"
+        "\n"
+        "        this.initialise (\"<cmaj-panel-piano-keyboard></cmaj-panel-piano-keyboard>\");\n"
+        "        this.keyboard = this.querySelector (\"cmaj-panel-piano-keyboard\");\n"
+        "\n"
+        "        this.keyboard.setAttribute (\"root-note\", 24);\n"
+        "        this.keyboard.setAttribute (\"note-count\", 63);\n"
+        "    }\n"
+        "\n"
+        "    connectedCallback()\n"
+        "    {\n"
+        "        this.keyboard.attachToPatchConnection (this.patchConnection, this.endpointInfo.endpointID);\n"
+        "    }\n"
+        "\n"
+        "    disconnectedCallback()\n"
+        "    {\n"
+        "        this.keyboard.detachPatchConnection (this.patchConnection);\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "//==============================================================================\n"
+        "class AudioLevelControl  extends EndpointControlBase\n"
+        "{\n"
+        "    constructor (patchConnection, endpointInfo)\n"
+        "    {\n"
+        "        super (patchConnection, endpointInfo);\n"
+        "\n"
+        "        this.initialise (`<cmaj-level-meter></cmaj-level-meter>\n"
+        "                          <cmaj-waveform-display></cmaj-waveform-display>`);\n"
+        "\n"
+        "        this.meter = this.querySelector (\"cmaj-level-meter\");\n"
+        "        this.waveform = this.querySelector (\"cmaj-waveform-display\");\n"
+        "\n"
+        "        this.meter.setNumChans (endpointInfo.numAudioChannels);\n"
+        "        this.waveform.setNumChans (endpointInfo.numAudioChannels);\n"
+        "    }\n"
+        "\n"
+        "    connectedCallback()\n"
+        "    {\n"
+        "        this.callback = event =>\n"
+        "        {\n"
+        "            for (let chan = 0; chan < event.min.length; ++chan)\n"
+        "            {\n"
+        "                this.meter.setChannelMinMax (chan, event.min[chan], event.max[chan]);\n"
+        "                this.waveform.setChannelMinMax (chan, event.min[chan], event.max[chan]);\n"
+        "            }\n"
+        "        };\n"
+        "\n"
+        "        this.patchConnection.addEndpointListener (this.endpointInfo.endpointID, this.callback, 400);\n"
+        "    }\n"
+        "\n"
+        "    disconnectedCallback()\n"
+        "    {\n"
+        "        this.patchConnection.removeEndpointListener (this.endpointInfo.endpointID, this.callback);\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "//==============================================================================\n"
+        "class AudioInputControl  extends EndpointControlBase\n"
+        "{\n"
+        "    constructor (patchConnection, endpointInfo)\n"
+        "    {\n"
+        "        super (patchConnection, endpointInfo);\n"
+        "        this.session = patchConnection.session;\n"
+        "\n"
+        "        this.initialise (`<cmaj-level-meter></cmaj-level-meter>\n"
+        "                          <cmaj-waveform-display></cmaj-waveform-display>`,\n"
+        "                          `<button class=\"cmaj-live-button\">Live</button>\n"
+        "                           <button class=\"cmaj-file-button\">File</button>\n"
+        "                           <button class=\"cmaj-mute-button\">Mute</button>\n"
+        "                           <input type=\"file\" hidden>`);\n"
+        "\n"
+        "        this.meter = this.querySelector (\"cmaj-level-meter\");\n"
+        "        this.waveform = this.querySelector (\"cmaj-waveform-display\");\n"
+        "        this.fileButton = this.querySelector (\".cmaj-file-button\");\n"
+        "        this.liveButton = this.querySelector (\".cmaj-live-button\");\n"
+        "        this.muteButton = this.querySelector (\".cmaj-mute-button\");\n"
+        "        this.fileSelector = this.querySelector (\"input\");\n"
+        "\n"
+        "        this.ondragover = e => this.handleDragOver (e);\n"
+        "        this.ondrop = e => this.handleDrop (e);\n"
+        "\n"
+        "        this.meter.setNumChans (endpointInfo.numAudioChannels);\n"
+        "        this.waveform.setNumChans (endpointInfo.numAudioChannels);\n"
+        "\n"
+        "        this.modeButtons = [\n"
+        "            { button: this.fileButton, mode: \"file\" },\n"
+        "            { button: this.liveButton, mode: \"live\" },\n"
+        "            { button: this.muteButton, mode: \"mute\" }\n"
+        "        ];\n"
+        "\n"
+        "        this.fileButton.onclick = () => this.fileSelector.click();\n"
+        "        this.liveButton.onclick = () => this.setAudioInputSource (false);\n"
+        "        this.muteButton.onclick = () => this.setAudioInputSource (true);\n"
+        "\n"
+        "        this.fileSelector.onchange = () => this.fileChosen();\n"
+        "\n"
+        "        this.audioCallback = event => {\n"
+        "            for (let chan = 0; chan < event.min.length; ++chan)\n"
+        "            {\n"
+        "                this.meter.setChannelMinMax (chan, event.min[chan], event.max[chan]);\n"
+        "                this.waveform.setChannelMinMax (chan, event.min[chan], event.max[chan]);\n"
+        "            }\n"
+        "        };\n"
+        "\n"
+        "        this.modeCallback = mode => this.updateMode (mode);\n"
+        "    }\n"
+        "\n"
+        "    connectedCallback()\n"
+        "    {\n"
+        "        this.patchConnection.addEndpointListener (this.endpointInfo.endpointID, this.audioCallback, 400);\n"
+        "        this.session.addAudioInputModeListener (this.endpointInfo.endpointID, this.modeCallback);\n"
+        "        this.session.requestAudioInputMode (this.endpointInfo.endpointID);\n"
+        "    }\n"
+        "\n"
+        "    disconnectedCallback()\n"
+        "    {\n"
+        "        this.patchConnection.removeEndpointListener (this.endpointInfo.endpointID, this.audioCallback);\n"
+        "        this.session.removeAudioInputModeListener (this.endpointInfo.endpointID, this.modeCallback);\n"
+        "    }\n"
+        "\n"
+        "    updateMode (mode)\n"
+        "    {\n"
+        "        for (const b of this.modeButtons)\n"
+        "        {\n"
+        "            if (mode == b.mode)\n"
+        "                b.button.classList.add (\"cmaj-selected-button\");\n"
+        "            else\n"
+        "                b.button.classList.remove (\"cmaj-selected-button\");\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    setAudioInputSource (shouldMute, fileToPlay)\n"
+        "    {\n"
+        "        this.session.setAudioInputSource (this.endpointInfo.endpointID, shouldMute, fileToPlay);\n"
+        "    }\n"
+        "\n"
+        "    setSourceFile (file)\n"
+        "    {\n"
+        "        if (file)\n"
+        "        {\n"
+        "            const reader = new FileReader();\n"
+        "\n"
+        "            reader.onloadend = (e) =>\n"
+        "            {\n"
+        "                if (e.total > maxUploadFileSize)\n"
+        "                    showErrorAlert (\"File too big to upload!\");\n"
+        "                else\n"
+        "                    this.setAudioInputSource (false, e.target.result);\n"
+        "            }\n"
+        "\n"
+        "            reader.readAsArrayBuffer (file);\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    fileChosen()\n"
+        "    {\n"
+        "        this.setSourceFile (this.fileSelector.files[0]);\n"
+        "        this.fileSelector.value = \"\";\n"
+        "    }\n"
+        "\n"
+        "    handleDragOver (e)\n"
+        "    {\n"
+        "        e.preventDefault();\n"
+        "    }\n"
+        "\n"
+        "    handleDrop (e)\n"
+        "    {\n"
+        "        e.preventDefault();\n"
+        "\n"
+        "        for (const file of e.dataTransfer?.files)\n"
+        "        {\n"
+        "            console.log (file);\n"
+        "            this.setSourceFile (file);\n"
+        "            break;\n"
+        "        }\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "//==============================================================================\n"
+        "class AudioDevicePropertiesPanel  extends HTMLElement\n"
+        "{\n"
+        "    constructor (session)\n"
+        "    {\n"
+        "        super();\n"
+        "        this.session = session;\n"
+        "        this.listener = p => this.handleAudioDevicePropertiesChanged (p);\n"
+        "    }\n"
+        "\n"
+        "    connectedCallback()\n"
+        "    {\n"
+        "        this.session.addAudioDevicePropertiesListener (this.listener);\n"
+        "        this.session.requestAudioDeviceProperties();\n"
+        "    }\n"
+        "\n"
+        "    disconnectedCallback()\n"
+        "    {\n"
+        "        this.session.removeAudioDevicePropertiesListener (this.listener);\n"
+        "    }\n"
+        "\n"
+        "    handleAudioDevicePropertiesChanged (p)\n"
+        "    {\n"
+        "        this.currentProperties = p;\n"
+        "        let html = \"\";\n"
+        "\n"
+        "        function addItem (label, id, list, current)\n"
+        "        {\n"
+        "            let options = \"\";\n"
+        "\n"
+        "            for (let item of list)\n"
+        "                options += `<option value=\"${item}\" ${item == current ? \"selected\" : \"\"}>${item}</option>`;\n"
+        "\n"
+        "            html += `<div class=\"cmaj-device-io-item\">\n"
+        "                      <label for=\"${id}\">${label}:</label>\n"
+        "                      <select id=\"${id}\" name=\"${label}\">${options}</select>\n"
+        "                     </div>`;\n"
+        "        }\n"
+        "\n"
+        "        if (p.availableAPIs)\n"
+        "            addItem (\"Audio API\", \"cmaj-device-io-api\", p.availableAPIs, p.audioAPI);\n"
+        "\n"
+        "        if (p.availableOutputDevices)\n"
+        "            addItem (\"Output Device\", \"cmaj-device-io-out\", p.availableOutputDevices, p.output);\n"
+        "\n"
+        "        if (p.availableInputDevices)\n"
+        "            addItem (\"Input Device\", \"cmaj-device-io-in\", p.availableInputDevices, p.input);\n"
+        "\n"
+        "        if (p.sampleRates)\n"
+        "            addItem (\"Sample Rate\", \"cmaj-device-io-rate\", p.sampleRates, p.rate);\n"
+        "\n"
+        "        if (p.blockSizes)\n"
+        "            addItem (\"Block Size\", \"cmaj-device-io-blocksize\", p.blockSizes, p.blockSize);\n"
+        "\n"
+        "        this.innerHTML = html;\n"
+        "\n"
+        "        this.querySelector (\"#cmaj-device-io-api\").onchange       = e => { this.setAudioAPI (e.target.value); };\n"
+        "        this.querySelector (\"#cmaj-device-io-out\").onchange       = e => { this.setOutputDevice (e.target.value); };\n"
+        "        this.querySelector (\"#cmaj-device-io-in\").onchange        = e => { this.setInputDevice (e.target.value); };\n"
+        "        this.querySelector (\"#cmaj-device-io-rate\").onchange      = e => { this.setRate (e.target.value); };\n"
+        "        this.querySelector (\"#cmaj-device-io-blocksize\").onchange = e => { this.setBlockSize (e.target.value); };\n"
+        "    }\n"
+        "\n"
+        "    setAudioAPI (newAPI)\n"
+        "    {\n"
+        "        this.currentProperties.audioAPI = newAPI;\n"
+        "        this.session.setAudioDeviceProperties (this.currentProperties);\n"
+        "    }\n"
+        "\n"
+        "    setOutputDevice (newDevice)\n"
+        "    {\n"
+        "        this.currentProperties.output = newDevice;\n"
+        "        this.session.setAudioDeviceProperties (this.currentProperties);\n"
+        "    }\n"
+        "\n"
+        "    setInputDevice (newDevice)\n"
+        "    {\n"
+        "        this.currentProperties.input = newDevice;\n"
+        "        this.session.setAudioDeviceProperties (this.currentProperties);\n"
+        "    }\n"
+        "\n"
+        "    setRate (newRate)\n"
+        "    {\n"
+        "        this.currentProperties.rate = newRate;\n"
+        "        this.session.setAudioDeviceProperties (this.currentProperties);\n"
+        "    }\n"
+        "\n"
+        "    setBlockSize (newSize)\n"
+        "    {\n"
+        "        this.currentProperties.blockSize = newSize;\n"
+        "        this.session.setAudioDeviceProperties (this.currentProperties);\n"
+        "    }\n"
+        "\n"
+        "    static getCSS()\n"
+        "    {\n"
+        "        return `\n"
+        "        .cmaj-audio-device-panel {\n"
+        "            color: var(--foreground);\n"
+        "            display: block;\n"
+        "            margin-top: 0.8rem;\n"
+        "            margin-bottom: 0.8rem;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-audio-device-panel label {\n"
+        "            display: inline-block;\n"
+        "            width: 8rem;\n"
+        "            text-align: right;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-device-io-item {\n"
+        "            display: block;\n"
+        "            margin-bottom: 0.4rem;\n"
+        "        }\n"
+        "    `;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "//==============================================================================\n"
+        "class CodeGenPanel  extends HTMLElement\n"
+        "{\n"
+        "    constructor (session)\n"
+        "    {\n"
+        "        super();\n"
+        "\n"
+        "        this.codeGenTabs = [];\n"
+        "\n"
+        "        this.innerHTML = `<div class=\"cmaj-codegen-tabs\"></div>\n"
+        "                          <div class=\"cmaj-codegen-listing\"></div>\n"
+        "                          <button class=\"cmaj-open-codegen-button\">Open with editor</button>`;\n"
+        "\n"
+        "        this.codeGenTabsHolder   = this.querySelector (\".cmaj-codegen-tabs\");\n"
+        "        this.codeGenListing      = this.querySelector (\".cmaj-codegen-listing\");\n"
+        "        this.showCodeButton      = this.querySelector (\".cmaj-open-codegen-button\");\n"
+        "\n"
+        "        this.showCodeButton.onclick = () => this.openCodeEditor();\n"
+        "    }\n"
+        "\n"
+        "    setSession (session)\n"
+        "    {\n"
+        "        this.session = session;\n"
+        "    }\n"
+        "\n"
+        "    getDisplayNameForCodeGenTarget (target)\n"
+        "    {\n"
+        "        switch (target)\n"
+        "        {\n"
+        "            case \"cpp\":             return \"C++\";\n"
+        "            case \"javascript\":      return \"Javascript/WebAssembly\";\n"
+        "            case \"wast\":            return \"WAST\";\n"
+        "            case \"llvm\":            return \"LLVM native\";\n"
+        "            default:                return target;\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    getVScodeLanguageName (target)\n"
+        "    {\n"
+        "        switch (target)\n"
+        "        {\n"
+        "            case \"cpp\":           return \"cpp\";\n"
+        "            case \"wast\":          return \"wat\";\n"
+        "            case \"javascript\":    return \"javascript\";\n"
+        "            default: break;\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    refreshCodeGenTabs (status)\n"
+        "    {\n"
+        "        let targetList = status.codeGenTargets;\n"
+        "        this.style.display = targetList?.length > 0 ? \"flex\" : \"none\";\n"
+        "\n"
+        "        while (this.codeGenTabsHolder.firstChild)\n"
+        "            this.codeGenTabsHolder.removeChild (this.codeGenTabsHolder.lastChild);\n"
+        "\n"
+        "        while (this.codeGenListing.firstChild)\n"
+        "            this.codeGenListing.removeChild (this.codeGenListing.lastChild);\n"
+        "\n"
+        "        this.codeGenTabs = [];\n"
+        "\n"
+        "        if (targetList?.length > 0)\n"
+        "        {\n"
+        "            for (const name of targetList)\n"
+        "            {\n"
+        "                const tab = document.createElement (\"div\");\n"
+        "                tab.classList.add (\"cmaj-codegen-tab\");\n"
+        "                tab.innerHTML = `<p>${this.getDisplayNameForCodeGenTarget (name)}</p>`;\n"
+        "                tab.onclick = () => this.selectCodeGenTab (name);\n"
+        "                this.codeGenTabsHolder.appendChild (tab);\n"
+        "\n"
+        "                const listing = document.createElement (\"textarea\");\n"
+        "                listing.rows = 20;\n"
+        "                listing.cols = 100;\n"
+        "                listing.readOnly = true;\n"
+        "                listing.wrap = \"off\";\n"
+        "                this.codeGenListing.appendChild (listing);\n"
+        "\n"
+        "                this.codeGenTabs.push ({ name: name,\n"
+        "                                        tab: tab,\n"
+        "                                        listing: listing });\n"
+        "            }\n"
+        "        }\n"
+        "\n"
+        "        this.updateActiveCodeGenTab();\n"
+        "    }\n"
+        "\n"
+        "    updateActiveCodeGenTab()\n"
+        "    {\n"
+        "        this.activeTab = null;\n"
+        "\n"
+        "        for (const tab of this.codeGenTabs)\n"
+        "        {\n"
+        "            if (this.activeCodeGenName == tab.name)\n"
+        "            {\n"
+        "                this.activeTab = tab;\n"
+        "                tab.tab.classList.add (\"cmaj-active-tab\");\n"
+        "            }\n"
+        "            else\n"
+        "            {\n"
+        "                tab.tab.classList.remove (\"cmaj-active-tab\");\n"
+        "            }\n"
+        "\n"
+        "            tab.listing.style.display = (this.activeCodeGenName == tab.name) ? \"block\" : \"none\";\n"
+        "        }\n"
+        "\n"
+        "        this.refreshButtonState();\n"
+        "    }\n"
+        "\n"
+        "    selectCodeGenTab (codeGenType)\n"
+        "    {\n"
+        "        this.activeCodeGenName = codeGenType;\n"
+        "        this.updateActiveCodeGenTab();\n"
+        "\n"
+        "        for (const tab of this.codeGenTabs)\n"
+        "        {\n"
+        "            if (this.activeCodeGenName == tab.name)\n"
+        "            {\n"
+        "                this.postCodeGenRequest (tab);\n"
+        "                break;\n"
+        "            }\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    postCodeGenRequest (tab)\n"
+        "    {\n"
+        "        if (! tab.isCodeGenPending)\n"
+        "        {\n"
+        "            tab.isCodeGenPending = true;\n"
+        "\n"
+        "            this.session.requestGeneratedCode (tab.name, {},\n"
+        "                message => {\n"
+        "                    tab.isCodeGenPending = false;\n"
+        "\n"
+        "                    if (message.code)\n"
+        "                        tab.listing.value = message.code;\n"
+        "                    else if (message.messages)\n"
+        "                        tab.listing.value = getMessageListAsString (message.messages);\n"
+        "\n"
+        "                    this.refreshButtonState();\n"
+        "                });\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    refreshButtonState()\n"
+        "    {\n"
+        "        const canShow = window.sendMessageToVSCode && this.activeTab?.listing?.value?.length > 0;\n"
+        "\n"
+        "        this.showCodeButton.style.display = canShow ? \"block\" : \"none\";\n"
+        "    }\n"
+        "\n"
+        "    openCodeEditor()\n"
+        "    {\n"
+        "        const text = this.activeTab?.listing?.value;\n"
+        "\n"
+        "        if (text?.length > 0)\n"
+        "            openTextDocument (text, this.getVScodeLanguageName (this.activeCodeGenName));\n"
+        "    }\n"
+        "\n"
+        "    static getCSS()\n"
+        "    {\n"
+        "        return `\n"
+        "        cmaj-codegen-panel {\n"
+        "            position: relative;\n"
+        "            display: flex;\n"
+        "            flex-flow: row nowrap;\n"
+        "            align-items: stretch;\n"
+        "            min-height: 30rem;\n"
+        "            margin-bottom: 6rem;\n"
+        "            padding-top: 0.5rem;\n"
+        "            overflow: hidden;\n"
+        "            resize: vertical;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-codegen-tabs {\n"
+        "            user-select: none;\n"
+        "            -webkit-user-select: none;\n"
+        "            -moz-user-select: none;\n"
+        "            -ms-user-select: none;\n"
+        "            display: flex;\n"
+        "            flex-flow: column nowrap;\n"
+        "            align-items: stretch;\n"
+        "            align-self: flex-start;\n"
+        "            min-width: 8rem;\n"
+        "            min-height: 30rem;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-codegen-tab {\n"
+        "            background-color: #00000030;\n"
+        "            color: var(--foreground);\n"
+        "            cursor: pointer;\n"
+        "            padding: 0 1rem;\n"
+        "            text-align: left;\n"
+        "            display: inline-block;\n"
+        "            font-size: 0.8rem;\n"
+        "            height: 3rem;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-active-tab {\n"
+        "            background: #222;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-codegen-listing {\n"
+        "            flex-grow: 2;\n"
+        "            border: none;\n"
+        "            display: block;\n"
+        "            width: 100%;\n"
+        "            background: none;\n"
+        "            color: #5e5;\n"
+        "            background: #222;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-codegen-listing textarea {\n"
+        "            font-family: Monaco, Consolas, monospace;\n"
+        "            position: relative;\n"
+        "            border: none;\n"
+        "            outline: none;\n"
+        "            display: block;\n"
+        "            background: #222;\n"
+        "            color: #5e5;\n"
+        "            min-width: 100%;\n"
+        "            height: 100%;\n"
+        "            resize: none;\n"
+        "            padding-left: 1rem;\n"
+        "        }\n"
+        "\n"
+        "        .cmaj-open-codegen-button {\n"
+        "            display: block;\n"
+        "            position: absolute;\n"
+        "            right: 3%;\n"
+        "            height: 2rem;\n"
+        "            top: 1.5rem;\n"
+        "            z-index: 3;\n"
+        "        }`;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "//==============================================================================\n"
+        "export default class PatchPanel  extends HTMLElement\n"
+        "{\n"
+        "    constructor()\n"
+        "    {\n"
+        "        super();\n"
+        "\n"
+        "        this.root = this.attachShadow ({ mode: \"open\" });\n"
+        "\n"
+        "        this.session = cmajor.createServerSession (this.getSessionID());\n"
+        "        this.patchConnection = null;\n"
+        "        this.isSessionConnected = false;\n"
+        "\n"
+        "        this.root.innerHTML = this.getHTML();\n"
+        "\n"
+        "        this.statusListener = status => this.updateStatus (status);\n"
+        "        this.session.addStatusListener (this.statusListener);\n"
+        "\n"
+        "        this.fileChangeListener = message => this.handlePatchFilesChanged (message);\n"
+        "        this.session.addFileChangeListener (this.fileChangeListener);\n"
+        "\n"
+        "        this.session.addInfiniteLoopListener (handleInfiniteLoopAlert);\n"
+        "\n"
+        "        this.controlsContainer   = this.shadowRoot.getElementById (\"cmaj-control-container\");\n"
+        "        this.logoElement         = this.shadowRoot.getElementById (\"cmaj-logo\")\n"
+        "        this.viewHolderElement   = this.shadowRoot.getElementById (\"cmaj-patch-view-holder\");\n"
+        "        this.viewSelectorElement = this.shadowRoot.getElementById (\"cmaj-view-selector\");\n"
+        "        this.toggleAudioButton   = this.shadowRoot.getElementById (\"cmaj-toggle-audio-button\");\n"
+        "        this.unloadButton        = this.shadowRoot.getElementById (\"cmaj-unload-button\");\n"
+        "        this.resetButton         = this.shadowRoot.getElementById (\"cmaj-reset-button\");\n"
+        "        this.copyStateButton     = this.shadowRoot.getElementById (\"cmaj-copy-state\");\n"
+        "        this.restoreStateButton  = this.shadowRoot.getElementById (\"cmaj-restore-state\");\n"
+        "        this.statusElement       = this.shadowRoot.getElementById (\"cmaj-patch-status\");\n"
+        "        this.inputsPanel         = this.shadowRoot.getElementById (\"cmaj-inputs-panel\");\n"
+        "        this.outputsPanel        = this.shadowRoot.getElementById (\"cmaj-outputs-panel\");\n"
+        "        this.cpuElement          = this.shadowRoot.getElementById (\"cmaj-cpu\");\n"
+        "        this.graphElement        = this.shadowRoot.getElementById (\"cmaj-graph\");\n"
+        "        this.errorListElement    = this.shadowRoot.getElementById (\"cmaj-error-list\");\n"
+        "        this.audioDevicePanel    = this.shadowRoot.getElementById (\"cmaj-audio-device-panel\");\n"
+        "        this.codeGenPanel        = this.shadowRoot.getElementById (\"cmaj-codegen-panel\");\n"
+        "        this.availablePatchList  = this.shadowRoot.getElementById (\"cmaj-available-patch-list-holder\");\n"
+        "        this.availablePatches    = this.shadowRoot.getElementById (\"cmaj-available-patch-list\");\n"
+        "\n"
+        "        this.logoElement.onclick = () => openURLInNewWindow (\"https://cmajor.dev\");\n"
+        "        this.toggleAudioButton.onclick = () => this.toggleAudio();\n"
+        "        this.unloadButton.onclick = () => this.unloadPatch();\n"
+        "        this.resetButton.onclick = () => this.resetPatch();\n"
+        "        this.copyStateButton.onclick = () => this.copyState();\n"
+        "        this.restoreStateButton.onclick = () => this.restoreState();\n"
+        "\n"
+        "        if (! this.isShowingFixedPatch())\n"
+        "        {\n"
+        "            const main = this.shadowRoot.querySelector (\".cmaj-main\");\n"
+        "            main.ondragover = e => this.handleDragOver (e);\n"
+        "            main.ondrop = e => this.handleDragAndDrop (e);\n"
+        "        }\n"
+        "\n"
+        "        this.cpuElement.setSession (this.session);\n"
+        "        this.graphElement.setSession (this.session);\n"
+        "        this.codeGenPanel.setSession (this.session);\n"
+        "\n"
+        "        this.initAccordionButtons();\n"
+        "        this.session.requestSessionStatus();\n"
+        "    }\n"
+        "\n"
+        "    dispose()\n"
+        "    {\n"
+        "        unloadPatch();\n"
+        "        this.session.removeFileChangeListener (this.fileChangeListener);\n"
+        "        this.session.removeStatusListener (this.statusListener);\n"
+        "        this.session.dispose();\n"
+        "    }\n"
+        "\n"
+        "    static get observedAttributes()\n"
+        "    {\n"
+        "        return [\"session-id\", \"fixed-patch\"];\n"
+        "    }\n"
+        "\n"
+        "    disconnectedCallback()\n"
+        "    {\n"
+        "        this.unloadPatch();\n"
+        "    }\n"
+        "\n"
+        "    getSessionID()\n"
+        "    {\n"
+        "        let sessionID = this.getAttribute(\"session-id\");\n"
+        "\n"
+        "        if (! sessionID)\n"
+        "        {\n"
+        "            sessionID = \"\";\n"
+        "\n"
+        "            for (let i = 0; i < 3; ++i)\n"
+        "                sessionID += Math.floor (Math.random() * 65536).toString (16);\n"
+        "        }\n"
+        "\n"
+        "        return sessionID;\n"
+        "    }\n"
+        "\n"
+        "    loadPatch (patchURL)\n"
+        "    {\n"
+        "        if (patchURL && typeof patchURL == \"string\")\n"
+        "            this.session.loadPatch (patchURL);\n"
+        "        else\n"
+        "            this.unloadPatch();\n"
+        "    }\n"
+        "\n"
+        "    unloadPatch()\n"
+        "    {\n"
+        "        this.viewHolderElement.innerHTML = \"\";\n"
+        "        this.session.loadPatch (null);\n"
+        "    }\n"
+        "\n"
+        "    resetPatch()\n"
+        "    {\n"
+        "        this.session.setAudioPlaybackActive (true);\n"
+        "        this.patchConnection?.resetToInitialState();\n"
+        "    }\n"
+        "\n"
+        "    isShowingFixedPatch()\n"
+        "    {\n"
+        "        return this.getAttribute(\"fixed-patch\");\n"
+        "    }\n"
+        "\n"
+        "    updateAvailablePatches (availablePatches)\n"
+        "    {\n"
+        "        this.availablePatches.innerHTML = \"\";\n"
+        "        this.availablePatchList.style.display = availablePatches?.length > 0 ? \"inline-block\" : \"none\";\n"
+        "\n"
+        "        for (const manifest of availablePatches)\n"
+        "        {\n"
+        "            const button = document.createElement (\"button\");\n"
+        "            button.innerText = manifest.name || manifest.manifestFile;\n"
+        "            button.onclick = () =>\n"
+        "            {\n"
+        "                this.unloadPatch();\n"
+        "                this.loadPatch (manifest.manifestFile);\n"
+        "            }\n"
+        "\n"
+        "            this.availablePatches.appendChild (button);\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    toggleAudio()\n"
+        "    {\n"
+        "        this.session.setAudioPlaybackActive (! this.audioActive);\n"
+        "    }\n"
+        "\n"
+        "    handleMessageFromVSCode (message)\n"
+        "    {\n"
+        "        if (message?.patchToLoad)\n"
+        "            this.loadPatch (message.patchToLoad);\n"
+        "        else if (message?.clipboardText)\n"
+        "            this.handleClipboardContent (message.clipboardText);\n"
+        "        else if (message?.unload)\n"
+        "            this.unloadPatch();\n"
+        "        else if (message?.reloaded)\n"
+        "            this.session?.requestSessionStatus(); // after a reload, VScode needs an update\n"
+        "    }\n"
+        "\n"
+        "    disposePatchConnection()\n"
+        "    {\n"
+        "        if (this.patchConnection)\n"
+        "        {\n"
+        "            this.patchConnection.dispose();\n"
+        "            this.patchConnection = undefined;\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    //==============================================================================\n"
+        "    updateStatus (status)\n"
+        "    {\n"
+        "        if (status.connected != this.isSessionConnected)\n"
+        "        {\n"
+        "            this.isSessionConnected = !! status.connected;\n"
+        "\n"
+        "            if (this.isSessionConnected && ! this.isShowingFixedPatch())\n"
+        "                this.session.requestAvailablePatchList (list => this.updateAvailablePatches (list));\n"
+        "        }\n"
+        "\n"
+        "        if (status.loaded && ! this.patchConnection)\n"
+        "        {\n"
+        "            this.patchConnection = this.session.createPatchConnection();\n"
+        "            this.refreshViewElement();\n"
+        "            this.graphElement.refresh();\n"
+        "            this.initAudioDevicePanel();\n"
+        "            this.codeGenPanel.refreshCodeGenTabs (status);\n"
+        "        }\n"
+        "        else if (this.patchConnection && ! status.loaded)\n"
+        "        {\n"
+        "            this.disposePatchConnection();\n"
+        "            this.refreshViewElement();\n"
+        "            this.graphElement.refresh();\n"
+        "            this.codeGenPanel.refreshCodeGenTabs (status);\n"
+        "        }\n"
+        "\n"
+        "        this.populateInputsPanel (status);\n"
+        "        this.populateOutputsPanel (status);\n"
+        "        this.statusElement.innerHTML = this.getStatusHTML (status).trim();\n"
+        "        this.updateErrorList (status.error);\n"
+        "        this.updateViewSelectorList (status.loaded);\n"
+        "\n"
+        "        this.audioActive = status.playing;\n"
+        "        this.toggleAudioButton.innerText = (status.playing ? \"Stop Audio\" : \"Start Audio\");\n"
+        "\n"
+        "        this.toggleAudioButton.style.display = status.loaded ? \"inline\" : \"none\";\n"
+        "        this.unloadButton.style.display = (! this.isShowingFixedPatch() && status.loaded) ? \"inline\" : \"none\";\n"
+        "        this.copyStateButton.style.display = status.loaded ? \"inline\" : \"none\";\n"
+        "        this.restoreStateButton.style.display = status.loaded ? \"inline\" : \"none\";\n"
+        "\n"
+        "        this.controlsContainer.style.display = status.loaded ? \"block\" : \"none\";\n"
+        "        this.cpuElement.style.display = (status.playing && status.loaded) ? \"inline-block\" : \"none\";\n"
+        "\n"
+        "        window.sendMessageToVSCode?.({ newServerStatus: status });\n"
+        "    }\n"
+        "\n"
+        "    populateInputsPanel (status)\n"
+        "    {\n"
+        "        while (this.inputsPanel.firstChild)\n"
+        "            this.inputsPanel.removeChild (this.inputsPanel.lastChild);\n"
+        "\n"
+        "        const inputs = status.details?.inputs;\n"
+        "        let anyAdded = false;\n"
+        "\n"
+        "        if (inputs && this.patchConnection)\n"
+        "        {\n"
+        "            for (let e of inputs)\n"
+        "            {\n"
+        "                const control = this.createControlForInputEndpoint (e);\n"
+        "\n"
+        "                if (control)\n"
+        "                {\n"
+        "                    this.inputsPanel.appendChild (control);\n"
+        "                    anyAdded = true;\n"
+        "                }\n"
+        "            }\n"
+        "        }\n"
+        "\n"
+        "        if (! anyAdded)\n"
+        "            this.inputsPanel.innerHTML = \"<p>This processor has no input endpoints</p>\";\n"
+        "    }\n"
+        "\n"
+        "    populateOutputsPanel (status)\n"
+        "    {\n"
+        "        while (this.outputsPanel.firstChild)\n"
+        "            this.outputsPanel.removeChild (this.outputsPanel.lastChild);\n"
+        "\n"
+        "        const outputs = status.details?.outputs;\n"
+        "\n"
+        "        if (outputs && this.patchConnection)\n"
+        "        {\n"
+        "            for (let e of outputs)\n"
+        "            {\n"
+        "                const control = this.createControlForOutputEndpoint (e);\n"
+        "\n"
+        "                if (control)\n"
+        "                    this.outputsPanel.appendChild (control);\n"
+        "            }\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    createControlForInputEndpoint (e)\n"
+        "    {\n"
+        "        switch (e.purpose)\n"
+        "        {\n"
+        "            case \"midi in\":            return new MIDIInputControl (this.patchConnection, e);\n"
+        "            case \"audio in\":           return new AudioInputControl (this.patchConnection, e);\n"
+        "            case \"parameter\":          return undefined;\n"
+        "            case \"time signature\":     return undefined;\n"
+        "            case \"tempo\":              return undefined;\n"
+        "            case \"transport state\":    return undefined;\n"
+        "            case \"timeline position\":  return undefined;\n"
+        "            default:                   return new ConsoleEventControl (this.patchConnection, e);\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    createControlForOutputEndpoint (e)\n"
+        "    {\n"
+        "        switch (e.purpose)\n"
+        "        {\n"
+        "            case \"audio out\":        return new AudioLevelControl (this.patchConnection, e);\n"
+        "            default:                 return new ConsoleEventControl (this.patchConnection, e);\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    initAudioDevicePanel()\n"
+        "    {\n"
+        "        this.audioDevicePanel.innerHTML = \"\";\n"
+        "        this.audioDevicePanel.appendChild (new AudioDevicePropertiesPanel (this.session));\n"
+        "    }\n"
+        "\n"
+        "    writeToClipboard (value)\n"
+        "    {\n"
+        "        try\n"
+        "        {\n"
+        "            const text = JSON.stringify (value);\n"
+        "\n"
+        "            if (window.sendMessageToVSCode)\n"
+        "                window.sendMessageToVSCode ({ writeClipboard: text });\n"
+        "            else\n"
+        "                navigator.clipboard.writeText (text);\n"
+        "        }\n"
+        "        catch (e) {}\n"
+        "    }\n"
+        "\n"
+        "    copyState()\n"
+        "    {\n"
+        "        this.patchConnection?.requestFullStoredState (state => this.writeToClipboard (state));\n"
+        "    }\n"
+        "\n"
+        "    async restoreState()\n"
+        "    {\n"
+        "        try\n"
+        "        {\n"
+        "            if (window.sendMessageToVSCode)\n"
+        "                window.sendMessageToVSCode ({ readClipboard: true });\n"
+        "            else\n"
+        "                this.handleClipboardContent (await navigator.clipboard.readText());\n"
+        "        }\n"
+        "        catch (e) {}\n"
+        "    }\n"
+        "\n"
+        "    handleClipboardContent (clipboardText)\n"
+        "    {\n"
+        "        if (clipboardText && this.patchConnection)\n"
+        "        {\n"
+        "            try\n"
+        "            {\n"
+        "                const state = JSON.parse (clipboardText);\n"
+        "\n"
+        "                if (state)\n"
+        "                    this.patchConnection.sendFullStoredState (state);\n"
+        "            }\n"
+        "            catch (e) {}\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    getStatusHTML (status)\n"
+        "    {\n"
+        "        let name = undefined;\n"
+        "\n"
+        "        if (status.manifest?.name)\n"
+        "        {\n"
+        "            if (status.manifestFile)\n"
+        "                name = `<a href=\"${createFileLink (status.manifestFile)}\">${status.manifest.name}</a>`;\n"
+        "            else\n"
+        "                name = status.manifest.name;\n"
+        "        }\n"
+        "\n"
+        "        if (! name)\n"
+        "            name = status.manifestFile;\n"
+        "\n"
+        "        if (! name)\n"
+        "            name = \"unknown\";\n"
+        "\n"
+        "        if (status.loaded && status.details)\n"
+        "        {\n"
+        "            let text = \"\"\n"
+        "\n"
+        "            const addDescriptionItem = (label, content) =>\n"
+        "            {\n"
+        "                if (content)\n"
+        "                {\n"
+        "                    if (typeof content == \"string\" && content.length == 0)\n"
+        "                        return;\n"
+        "\n"
+        "                    text += `<p>${label}: ${content}</p>`;\n"
+        "                }\n"
+        "            };\n"
+        "\n"
+        "            addDescriptionItem (\"Loaded\", name);\n"
+        "            addDescriptionItem (\"Description\", status.manifest?.description);\n"
+        "            addDescriptionItem (\"Version\", status.manifest?.version);\n"
+        "            addDescriptionItem (\"Manufacturer\", status.manifest?.manufacturer);\n"
+        "            addDescriptionItem (\"Category\", status.manifest?.category);\n"
+        "\n"
+        "            if (status.details.mainProcessor)\n"
+        "            {\n"
+        "                let name = status.details.mainProcessor;\n"
+        "\n"
+        "                if (status.details.mainProcessorLocation)\n"
+        "                    name = `<a href=\"${createFileLink (status.details.mainProcessorLocation)}\">${name}</a>`;\n"
+        "\n"
+        "                addDescriptionItem (\"Main processor\", name);\n"
+        "            }\n"
+        "\n"
+        "            let audioOuts = 0, audioIns = 0;\n"
+        "\n"
+        "            for (let e of status.details.outputs)\n"
+        "                if (e.purpose && e.purpose == \"audio out\")\n"
+        "                    audioOuts += e.numAudioChannels;\n"
+        "\n"
+        "            for (let e of status.details.inputs)\n"
+        "                if (e.purpose && e.purpose == \"audio in\")\n"
+        "                    audioIns += e.numAudioChannels;\n"
+        "\n"
+        "            const midiIns  = countEndpointsWithPurpose (status.details.inputs,  \"midi in\");\n"
+        "            const midiOuts = countEndpointsWithPurpose (status.details.outputs, \"midi out\");\n"
+        "\n"
+        "            if (audioOuts + audioIns > 0)\n"
+        "            {\n"
+        "                let desc = \"\";\n"
+        "\n"
+        "                if (audioIns > 0)\n"
+        "                    desc += audioIns + \" input channel\" + (audioIns != 1 ? \"s\" : \"\");\n"
+        "\n"
+        "                if (audioOuts > 0)\n"
+        "                {\n"
+        "                    if (audioIns > 0)\n"
+        "                        desc += \", \";\n"
+        "\n"
+        "                    desc += audioOuts + \" output channel\" + (audioOuts != 1 ? \"s\" : \"\");\n"
+        "                }\n"
+        "\n"
+        "                addDescriptionItem (\"Audio\", desc);\n"
+        "            }\n"
+        "\n"
+        "            if (midiIns + midiOuts > 0)\n"
+        "            {\n"
+        "                let desc = \"\";\n"
+        "\n"
+        "                if (midiIns > 0)\n"
+        "                    desc += midiIns + \" input\" + (midiIns != 1 ? \"s\" : \"\");\n"
+        "\n"
+        "                if (midiOuts > 0)\n"
+        "                {\n"
+        "                    if (midiIns > 0)\n"
+        "                        desc += \", \";\n"
+        "\n"
+        "                    desc += midiOuts + \" output\" + (midiOuts != 1 ? \"s\" : \"\");\n"
+        "                }\n"
+        "\n"
+        "                addDescriptionItem (\"MIDI\", desc);\n"
+        "            }\n"
+        "\n"
+        "            const numParameters = countEndpointsWithPurpose (status.details.inputs, \"parameter\");\n"
+        "\n"
+        "            if (numParameters > 0)\n"
+        "                addDescriptionItem (\"Parameters\", numParameters.toString());\n"
+        "\n"
+        "            const numTimelineInputs = countEndpointsWithPurpose (status.details.inputs, \"time signature\")\n"
+        "                                    + countEndpointsWithPurpose (status.details.inputs, \"tempo\")\n"
+        "                                    + countEndpointsWithPurpose (status.details.inputs, \"transport state\")\n"
+        "                                    + countEndpointsWithPurpose (status.details.inputs, \"timeline position\");\n"
+        "\n"
+        "            if (numTimelineInputs > 0)\n"
+        "                text += `<p>Uses timeline events</p>`;\n"
+        "\n"
+        "            return text;\n"
+        "        }\n"
+        "\n"
+        "        if (status.error)\n"
+        "            return `<p>Error when building: ${name}</p>`;\n"
+        "\n"
+        "        if (status.status)\n"
+        "            return status.status;\n"
+        "\n"
+        "        if (status.connected)\n"
+        "            return \"No patch loaded\";\n"
+        "\n"
+        "        return \"Connecting to server...\";\n"
+        "    }\n"
+        "\n"
+        "    onStatusChange (status) {}\n"
+        "\n"
+        "    handlePatchFilesChanged (message)\n"
+        "    {\n"
+        "        if (message.assetFilesChanged || message.manifestChanged)\n"
+        "        {\n"
+        "            window.sendMessageToVSCode?.({ reloading: true });\n"
+        "            document.location.reload();\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    handleDragOver (e)\n"
+        "    {\n"
+        "        e.preventDefault();\n"
+        "    }\n"
+        "\n"
+        "    async getDragAndDroppedFiles (e, maxNumItems)\n"
+        "    {\n"
+        "        let items = [];\n"
+        "        let tooManyItems = false;\n"
+        "\n"
+        "        const addItem = async (item) =>\n"
+        "        {\n"
+        "            if (item.isDirectory)\n"
+        "            {\n"
+        "                const reader = item.createReader();\n"
+        "\n"
+        "                const getNextBatch = () => new Promise ((resolve, reject) =>\n"
+        "                {\n"
+        "                    reader.readEntries (resolve, reject);\n"
+        "                });\n"
+        "\n"
+        "                for (;;)\n"
+        "                {\n"
+        "                    if (items.length >= maxNumItems)\n"
+        "                    {\n"
+        "                        tooManyItems = true;\n"
+        "                        return;\n"
+        "                    }\n"
+        "\n"
+        "                    const entries = await getNextBatch();\n"
+        "\n"
+        "                    if (entries.length === 0)\n"
+        "                        break;\n"
+        "\n"
+        "                    for (const e of entries)\n"
+        "                        await addItem (e);\n"
+        "                }\n"
+        "            }\n"
+        "            else if (item.isFile)\n"
+        "            {\n"
+        "                if (items.length < maxNumItems)\n"
+        "                    items.push (item);\n"
+        "                else\n"
+        "                    tooManyItems = true;\n"
+        "            }\n"
+        "        }\n"
+        "\n"
+        "        for (const item of e.dataTransfer?.items)\n"
+        "        {\n"
+        "            const entry = item.getAsEntry?.() || item.webkitGetAsEntry?.();\n"
+        "\n"
+        "            if (tooManyItems || ! entry)\n"
+        "                return [];\n"
+        "\n"
+        "            await addItem (entry);\n"
+        "        }\n"
+        "\n"
+        "        return items;\n"
+        "    }\n"
+        "\n"
+        "    getDroppedFilePromises (e, files)\n"
+        "    {\n"
+        "        let promises = [];\n"
+        "\n"
+        "        for (const file of files)\n"
+        "        {\n"
+        "            promises.push (new Promise ((resolve, reject) =>\n"
+        "            {\n"
+        "                file.file (f =>\n"
+        "                {\n"
+        "                    const reader = new FileReader();\n"
+        "\n"
+        "                    reader.onloadend = (e) =>\n"
+        "                    {\n"
+        "                        resolve ({ file: file,\n"
+        "                                   size: e.total,\n"
+        "                                   content: e.target.result\n"
+        "                                 });\n"
+        "                    }\n"
+        "\n"
+        "                    reader.readAsArrayBuffer (f);\n"
+        "                });\n"
+        "            }));\n"
+        "        }\n"
+        "\n"
+        "        return promises;\n"
+        "    }\n"
+        "\n"
+        "    async handleDragAndDrop (e)\n"
+        "    {\n"
+        "        e.preventDefault();\n"
+        "\n"
+        "        const files = await this.getDragAndDroppedFiles (e, 200);\n"
+        "\n"
+        "        if (files?.length == 0)\n"
+        "            return;\n"
+        "\n"
+        "        let manifest = null;\n"
+        "        let readers = [];\n"
+        "\n"
+        "        for (const p of this.getDroppedFilePromises (e, files))\n"
+        "        {\n"
+        "            const reader = await p;\n"
+        "\n"
+        "            if (! reader)\n"
+        "                return;\n"
+        "\n"
+        "            readers.push (reader);\n"
+        "\n"
+        "            if (reader.file.fullPath.endsWith (\".cmajorpatch\"))\n"
+        "                manifest = reader.file.fullPath;\n"
+        "        }\n"
+        "\n"
+        "        if (manifest)\n"
+        "        {\n"
+        "            const prefix = \"/uploaded-session-files\";\n"
+        "\n"
+        "            for (const reader of readers)\n"
+        "            {\n"
+        "                this.session.registerFile (prefix + reader.file.fullPath, {\n"
+        "                    size: reader.size,\n"
+        "                    read: (offset, numBytes) =>\n"
+        "                    {\n"
+        "                        const data = reader.content.slice (offset, offset + numBytes);\n"
+        "                        return new Blob ([data]);\n"
+        "                    }\n"
+        "                });\n"
+        "            }\n"
+        "\n"
+        "            this.loadPatch (prefix + manifest);\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    async refreshViewElement (viewType)\n"
+        "    {\n"
+        "        if (this.patchConnection)\n"
+        "        {\n"
+        "            const view = await patchViewUtils.createPatchViewHolder (this.patchConnection, viewType);\n"
+        "\n"
+        "            this.viewHolderElement.innerHTML = \"\";\n"
+        "\n"
+        "            if (view)\n"
+        "                this.viewHolderElement.appendChild (view);\n"
+        "        }\n"
+        "        else\n"
+        "        {\n"
+        "            this.viewHolderElement.innerHTML = \"\";\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    updateErrorList (errorText)\n"
+        "    {\n"
+        "        this.errorListElement.style.display = errorText ? \"block\" : \"none\";\n"
+        "        let list = \"\";\n"
+        "\n"
+        "        if (errorText)\n"
+        "        {\n"
+        "            const lines = errorText.toString().split (\"\\n\");\n"
+        "\n"
+        "            for (let line of lines)\n"
+        "            {\n"
+        "                let i = line.indexOf (\": error:\");\n"
+        "                if (i < 0) i = line.indexOf (\": warning:\");\n"
+        "                if (i < 0) i = line.indexOf (\": note:\");\n"
+        "\n"
+        "                if (i >= 0)\n"
+        "                {\n"
+        "                    const file = line.substring (0, i);\n"
+        "                    line = `<a href=\"${createFileLink (file)}\">${file}</a>${line.substring (i)}`;\n"
+        "                }\n"
+        "\n"
+        "                list += `<p>${line}</p>`;\n"
+        "            }\n"
+        "        }\n"
+        "\n"
+        "        this.errorListElement.innerHTML = list;\n"
+        "    }\n"
+        "\n"
+        "    updateViewSelectorList (isLoaded)\n"
+        "    {\n"
+        "        const viewSelector = this.viewSelectorElement;\n"
+        "        const availableViews = patchViewUtils.getAvailableViewTypes (this.patchConnection);\n"
+        "\n"
+        "        if (isLoaded && availableViews && availableViews.length > 1)\n"
+        "        {\n"
+        "            let items = \"\";\n"
+        "\n"
+        "            for (let viewName of availableViews)\n"
+        "                items += `<option value=\"${viewName}\">${viewName}</option>`;\n"
+        "\n"
+        "            viewSelector.innerHTML = items;\n"
+        "            viewSelector.style.display = \"block\";\n"
+        "\n"
+        "            viewSelector.onchange = async (event) =>\n"
+        "            {\n"
+        "                const index = viewSelector.selectedIndex;\n"
+        "\n"
+        "                if (index >= 0 && index < availableViews.length)\n"
+        "                    this.refreshViewElement (availableViews[index]);\n"
+        "            };\n"
+        "        }\n"
+        "        else\n"
+        "        {\n"
+        "            while (viewSelector.firstChild)\n"
+        "                viewSelector.removeChild (viewSelector.lastChild);\n"
+        "\n"
+        "            viewSelector.style.display = \"none\"\n"
+        "            viewSelector.onchange = undefined;\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    //==============================================================================\n"
+        "    initAccordionButtons()\n"
+        "    {\n"
+        "        for (let button of this.shadowRoot.querySelectorAll (\".cmaj-accordion-button\"))\n"
+        "        {\n"
+        "            function updatePanelSize (button)\n"
+        "            {\n"
+        "                const panel = button.nextElementSibling;\n"
+        "\n"
+        "                if (button.classList.contains (\"cmaj-accordian-open\"))\n"
+        "                    panel.style.maxHeight = \"400rem\";\n"
+        "                else\n"
+        "                    panel.style.maxHeight = \"0rem\";\n"
+        "            }\n"
+        "\n"
+        "            updatePanelSize (button);\n"
+        "\n"
+        "            button.onclick = (event) =>\n"
+        "            {\n"
+        "                if (event.target == button)\n"
+        "                {\n"
+        "                    const panel = button.nextElementSibling;\n"
+        "\n"
+        "                    if (button.classList.contains (\"cmaj-accordian-open\"))\n"
+        "                        button.classList.remove (\"cmaj-accordian-open\");\n"
+        "                    else\n"
+        "                        button.classList.add (\"cmaj-accordian-open\");\n"
+        "\n"
+        "                    updatePanelSize (button);\n"
+        "                }\n"
+        "            };\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    //==============================================================================\n"
+        "    getHTML()\n"
+        "    {\n"
+        "        return `\n"
+        "<style>\n"
+        "    * {\n"
+        "        box-sizing: border-box;\n"
+        "        font-family: Monaco, Consolas, monospace;\n"
+        "        font-size: 95%;\n"
+        "    }\n"
+        "\n"
+        "    :host {\n"
+        "        --background: #445550;\n"
+        "        --foreground: #dddddd;\n"
+        "        --header-height: 6rem;\n"
+        "\n"
+        "        background: var(--background);\n"
+        "        display: block;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-main {\n"
+        "        min-height: 100vh;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-header {\n"
+        "        width: 100%;\n"
+        "        min-height: 6rem;\n"
+        "        font-size: 0.9rem;\n"
+        "        padding: 0.5rem;\n"
+        "        padding-top: 0.6rem;\n"
+        "        margin-bottom: 0.6rem;\n"
+        "\n"
+        "        display: flex;\n"
+        "        flex-flow: row nowrap;\n"
+        "        justify-content: left;\n"
+        "        align-items: stretch;\n"
+        "        overflow: hidden;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-header p {\n"
+        "        margin-block-start: 0;\n"
+        "        margin-block-end: 0;\n"
+        "    }\n"
+        "\n"
+        "    a {\n"
+        "        color: var(--foreground);\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-logo-and-version-holder {\n"
+        "        display: flex;\n"
+        "        flex-flow: column nowrap;\n"
+        "        align-items: center;\n"
+        "        margin-right: 1.2rem;\n"
+        "    }\n"
+        "\n"
+        "    .cmajor-logo {\n"
+        "        user-select: none;\n"
+        "        -webkit-user-select: none;\n"
+        "        -moz-user-select: none;\n"
+        "        -ms-user-select: none;\n"
+        "        min-width: 8rem;\n"
+        "        min-height: 4rem;\n"
+        "        align-self: flex-center;\n"
+        "        background-color: var(--foreground);\n"
+        "        mask: url(/cmaj_api/assets/cmajor-logo.svg);\n"
+        "        mask-repeat: no-repeat;\n"
+        "        mask-position: center;\n"
+        "        -webkit-mask: url(/cmaj_api/assets/cmajor-logo.svg);\n"
+        "        -webkit-mask-repeat: no-repeat;\n"
+        "        -webkit-mask-position: center;\n"
+        "        cursor: pointer;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-version-number {\n"
+        "        color: #999;\n"
+        "        font-size: 0.7rem;\n"
+        "        padding: 0 0 1rem 0;\n"
+        "        margin: 0;\n"
+        "    }\n"
+        "\n"
+        "    button {\n"
+        "        border: none;\n"
+        "        padding: 0.2rem 0.6rem;\n"
+        "        background-color: #ccccff30;\n"
+        "        color: #ddd;\n"
+        "        border-radius: 0.3rem;\n"
+        "    }\n"
+        "\n"
+        "    button:hover {\n"
+        "        background-color: #ddddff70;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-selected-button {\n"
+        "        background-color: #44ee4450;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-selected-button:hover {\n"
+        "        background-color: #44ee4480;\n"
+        "    }\n"
+        "\n"
+        "    select {\n"
+        "        background-color: #ccccff30;\n"
+        "        color: #ddd;\n"
+        "        padding: 0.3rem;\n"
+        "        margin: 0;\n"
+        "        border-radius: 0.3rem;\n"
+        "    }\n"
+        "\n"
+        "    select:hover {\n"
+        "        background-color: #ddddff60;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-patch-status {\n"
+        "        color: var(--foreground);\n"
+        "        flex: 2;\n"
+        "        height: 100%;\n"
+        "        overflow: hidden;\n"
+        "        text-overflow: ellipsis;\n"
+        "        padding-left: 0.5rem;\n"
+        "        margin-block-start: 0;\n"
+        "        margin-block-end: 0;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-top-panel-buttons {\n"
+        "        display: flex;\n"
+        "        flex-flow: column nowrap;\n"
+        "        justify-content: space-between;\n"
+        "        align-items: flex-end;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-top-panel-buttons button {\n"
+        "        margin-left: 1rem;\n"
+        "    }\n"
+        "\n"
+        "    cmaj-cpu-meter {\n"
+        "        width: 6rem;\n"
+        "        height: 1.5rem;\n"
+        "        align-self: flex-center;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-divider {\n"
+        "        width: 100%;\n"
+        "        height: 0.05rem;\n"
+        "        border-top: 0.05rem solid var(--foreground);\n"
+        "        margin: 0;\n"
+        "        padding: 0;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-control-container {\n"
+        "        padding: 0.5rem 0.2rem;\n"
+        "        margin: 0 0.6rem;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-available-patch-list-holder {\n"
+        "        background: solid;\n"
+        "        background-color: #00000044;\n"
+        "        padding-top: 0.5rem;\n"
+        "        margin: 0;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-available-patch-list button {\n"
+        "        background: none;\n"
+        "        cursor: pointer;\n"
+        "        margin: 0 0 0.3rem 0.3rem;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-available-patch-list button:hover {\n"
+        "        background-color: #ddddff40;\n"
+        "        cursor: pointer;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-io-panel {\n"
+        "        display: flex;\n"
+        "        padding: 0.5rem 0;\n"
+        "        flex-flow: row wrap;\n"
+        "        justify-content: center;\n"
+        "        align-items: center;\n"
+        "    }\n"
+        "\n"
+        "    cmaj-panel-piano-keyboard {\n"
+        "        display: inline-block;\n"
+        "        height: 6rem;\n"
+        "        min-width: 10rem;\n"
+        "        flex-basis: 20rem;\n"
+        "        flex-grow: 1;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-patch-view-holder {\n"
+        "        position: relative;\n"
+        "        display: block;\n"
+        "        overflow: auto;\n"
+        "        padding-top: 0.3rem;\n"
+        "        padding-bottom: 0.5rem;\n"
+        "        resize: vertical;\n"
+        "        height: 400px;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-graph {\n"
+        "        max-height: 50rem;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-error-list {\n"
+        "        display: block;\n"
+        "        white-space: pre-wrap;\n"
+        "        font-size: 0.9rem;\n"
+        "        min-height: 18rem;\n"
+        "        background: #222222;\n"
+        "        color: #bbbbbb;\n"
+        "        padding: 0.8rem;\n"
+        "        margin: 0.8rem;\n"
+        "        overflow: auto;\n"
+        "        resize: vertical;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-error-list p {\n"
+        "        margin: 0;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-error-list a {\n"
+        "        color: #aaa;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-action-button-holder {\n"
+        "        padding: 0.6rem 0;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-action-button-holder button {\n"
+        "        margin-bottom: 0.6rem;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-accordion-button {\n"
+        "        background-color: #ffffff40;\n"
+        "        color: var(--foreground);\n"
+        "        cursor: pointer;\n"
+        "        padding: 0 1rem;\n"
+        "        height: 2.5rem;\n"
+        "        width: 100%;\n"
+        "        border: none;\n"
+        "        outline: none;\n"
+        "        text-align: left;\n"
+        "        font-size: 1rem;\n"
+        "        transition: 0.2s;\n"
+        "        display: flex;\n"
+        "        justify-content: space-between;\n"
+        "        align-items: center;\n"
+        "        border-bottom: 0.1rem solid #00000033;\n"
+        "        border-radius: 0.1rem;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-accordion-button:hover {\n"
+        "        background-color: #ffffff60;\n"
+        "    }\n"
+        "\n"
+        "    .cmaj-accordion-panel {\n"
+        "        padding: 0 0.8rem;\n"
+        "        background-color: #ffffff20;\n"
+        "        overflow: hidden;\n"
+        "        transition: max-height 0.25s ease-out;\n"
+        "    }\n"
+        "\n"
+        "    #cmaj-view-selector {\n"
+        "        font-size: 0.8rem;\n"
+        "    }\n"
+        "\n"
+        "    ${AudioDevicePropertiesPanel.getCSS()}\n"
+        "    ${ConsoleEventControl.getCSS()}\n"
+        "    ${EndpointControlBase.getCSS()}\n"
+        "    ${CodeGenPanel.getCSS()}\n"
+        "\n"
+        "</style>\n"
+        "\n"
+        "<div class=\"cmaj-main\">\n"
+        "  <div id=\"cmaj-available-patch-list-holder\" hidden>\n"
+        "    <div id=\"cmaj-available-patch-list\"></div>\n"
+        "    <div class=\"cmaj-divider\"></div>\n"
+        "  </div>\n"
+        "\n"
+        "  <div class=\"cmaj-header\">\n"
+        "    <div class=\"cmaj-logo-and-version-holder\">\n"
+        "      <span id=\"cmaj-logo\" class=\"cmajor-logo\"></span>\n"
+        "      <p class=\"cmaj-version-number\">version ${getCmajorVersion()}</p>\n"
+        "    </div>\n"
+        "    <p id=\"cmaj-patch-status\"></p>\n"
+        "    <cmaj-cpu-meter id=\"cmaj-cpu\"></cmaj-cpu-meter>\n"
+        "    <div class=\"cmaj-top-panel-buttons\">\n"
+        "      <button id=\"cmaj-toggle-audio-button\">Stop Audio</button>\n"
+        "      <button id=\"cmaj-unload-button\">Unload Patch</button>\n"
+        "    </div>\n"
+        "  </div>\n"
+        "\n"
+        "  <div class=\"cmaj-divider\"></div>\n"
+        "\n"
+        "  <div class=\"cmaj-control-container\" id=\"cmaj-control-container\">\n"
+        "    <div class=\"cmaj-action-button-holder\">\n"
+        "      <button id=\"cmaj-reset-button\">Reset patch</button>\n"
+        "      <button id=\"cmaj-copy-state\">Copy state to clipboard</button>\n"
+        "      <button id=\"cmaj-restore-state\">Paste state from clipboard</button>\n"
+        "    </div>\n"
+        "\n"
+        "    <button class=\"cmaj-accordion-button cmaj-accordian-open\">GUI\n"
+        "      <select id=\"cmaj-view-selector\"></select>\n"
+        "    </button>\n"
+        "    <div class=\"cmaj-accordion-panel\">\n"
+        "      <div id=\"cmaj-patch-view-holder\"></div>\n"
+        "    </div>\n"
+        "\n"
+        "    <button class=\"cmaj-accordion-button cmaj-accordian-open\">Inputs</button>\n"
+        "    <div class=\"cmaj-accordion-panel\">\n"
+        "      <div id=\"cmaj-inputs-panel\" class=\"cmaj-io-panel\"></div>\n"
+        "    </div>\n"
+        "\n"
+        "    <button class=\"cmaj-accordion-button cmaj-accordian-open\">Outputs</button>\n"
+        "    <div class=\"cmaj-accordion-panel\">\n"
+        "      <div id=\"cmaj-outputs-panel\" class=\"cmaj-io-panel\"></div>\n"
+        "    </div>\n"
+        "\n"
+        "    <button class=\"cmaj-accordion-button\">Graph</button>\n"
+        "    <div class=\"cmaj-accordion-panel\">\n"
+        "      <cmaj-patch-graph id=\"cmaj-graph\"></cmaj-patch-graph>\n"
+        "    </div>\n"
+        "\n"
+        "    <button class=\"cmaj-accordion-button\">Audio Device Settings</button>\n"
+        "    <div class=\"cmaj-accordion-panel\">\n"
+        "      <div id=\"cmaj-audio-device-panel\" class=\"cmaj-audio-device-panel\"></div>\n"
+        "    </div>\n"
+        "\n"
+        "    <button class=\"cmaj-accordion-button\">Generated Code</button>\n"
+        "    <div class=\"cmaj-accordion-panel\">\n"
+        "      <cmaj-codegen-panel id=\"cmaj-codegen-panel\"></cmaj-codegen-panel>\n"
+        "    </div>\n"
+        "\n"
+        "  </div>\n"
+        "  <pre id=\"cmaj-error-list\"></pre>\n"
+        "</div>\n"
+        "</html>`;\n"
+        "    }\n"
+        "};\n"
+        "\n"
+        "function countEndpointsWithPurpose (endpoints, purpose)\n"
+        "{\n"
+        "    let count = 0;\n"
+        "\n"
+        "    if (endpoints)\n"
+        "        for (let e of endpoints)\n"
+        "            if (e.purpose && e.purpose == purpose)\n"
+        "                ++count;\n"
+        "\n"
+        "    return count;\n"
+        "}\n"
+        "\n"
+        "function printMIDI (message)\n"
+        "{\n"
+        "    const hex = \"00000\" + message.toString (16);\n"
+        "    const len = hex.length;\n"
+        "\n"
+        "    return hex.substring (len - 6, len - 4)\n"
+        "            + \" \" + hex.substring (len - 4, len - 2)\n"
+        "            + \" \" + hex.substring (len - 2, len);\n"
+        "}\n"
+        "\n"
+        "customElements.define (\"cmaj-level-meter\", LevelMeter);\n"
+        "customElements.define (\"cmaj-waveform-display\", WaveformDisplay);\n"
+        "customElements.define (\"cmaj-panel-piano-keyboard\", PianoKeyboard);\n"
+        "\n"
+        "customElements.define (\"cmaj-control-console\", ConsoleEventControl);\n"
+        "customElements.define (\"cmaj-control-in-midi\", MIDIInputControl);\n"
+        "customElements.define (\"cmaj-control-audio\", AudioLevelControl);\n"
+        "customElements.define (\"cmaj-control-audio-in\", AudioInputControl);\n"
+        "customElements.define (\"cmaj-codegen-panel\", CodeGenPanel);\n"
+        "\n"
+        "customElements.define (\"cmaj-audio-device-panel\", AudioDevicePropertiesPanel);\n"
+        "customElements.define (\"cmaj-patch-panel\", PatchPanel);\n";
+    static constexpr const char* panel_api_cmajcpumeter_js = "//\n"
+        "//     ,ad888ba,                              88\n"
+        "//    d8\"'    \"8b\n"
+        "//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit\n"
+        "//   Y8,           88    88    88  88     88  88\n"
+        "//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd\n"
+        "//     '\"Y888Y\"'   88    88    88  '\"8bbP\"Y8  88     https://cmajor.dev\n"
+        "//                                           ,88\n"
+        "//                                        888P\"\n"
+        "//\n"
+        "//  The Cmajor project is subject to commercial or open-source licensing.\n"
+        "//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or\n"
+        "//  visit https://cmajor.dev to learn about our commercial licence options.\n"
+        "//\n"
+        "//  CMAJOR IS PROVIDED \"AS IS\" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER\n"
+        "//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE\n"
+        "//  DISCLAIMED.\n"
+        "\n"
+        "export default class CPUMeter extends HTMLElement\n"
+        "{\n"
+        "    constructor()\n"
+        "    {\n"
+        "        super();\n"
+        "\n"
+        "        this.root = this.attachShadow({ mode: \"open\" });\n"
+        "        this.root.innerHTML = `<style>${this.getCSS()}</style>${this.getHTML()}`;\n"
+        "        this.bar = this.root.getElementById (\"meter-bar\");\n"
+        "        this.text = this.root.getElementById (\"text\");\n"
+        "\n"
+        "        this.cpuListener = e => this.setLevel (e.level);\n"
+        "    }\n"
+        "\n"
+        "    dispose()\n"
+        "    {\n"
+        "        setSession (undefined);\n"
+        "    }\n"
+        "\n"
+        "    setSession (session)\n"
+        "    {\n"
+        "        this.session?.removeCPUListener (this.cpuListener);\n"
+        "        this.session = session;\n"
+        "        this.session?.setCPULevelUpdateRate (20000);\n"
+        "        this.session?.addCPUListener (this.cpuListener);\n"
+        "    }\n"
+        "\n"
+        "    setLevel (newLevel)\n"
+        "    {\n"
+        "        const percentage = Math.min (newLevel * 100.0, 100.0).toFixed (1) + \"%\";\n"
+        "        this.text.innerText = \"CPU: \" + percentage;\n"
+        "        this.bar.style.width = percentage;\n"
+        "        this.bar.style.background = newLevel < 0.8 ? \"var(--bar-color-low)\" : \"var(--bar-color-high)\";\n"
+        "    }\n"
+        "\n"
+        "    getHTML()\n"
+        "    {\n"
+        "        return `<div id=\"holder\">\n"
+        "                 <div id=\"meter-bar\"></div>\n"
+        "                 <p id=\"text\">CPU: 0%</p>\n"
+        "                </div>`;\n"
+        "    }\n"
+        "\n"
+        "    getCSS()\n"
+        "    {\n"
+        "        return `\n"
+        "            * {\n"
+        "                box-sizing: border-box;\n"
+        "                user-select: none;\n"
+        "                -webkit-user-select: none;\n"
+        "                -moz-user-select: none;\n"
+        "                -ms-user-select: none;\n"
+        "            }\n"
+        "\n"
+        "            :host {\n"
+        "                --bar-color-low: #8c8;\n"
+        "                --bar-color-high: #f44;\n"
+        "                --background-color: #00000055;\n"
+        "                --text-color: #787;\n"
+        "                display: block;\n"
+        "            }\n"
+        "\n"
+        "            #holder {\n"
+        "                display: flex;\n"
+        "                position: relative;\n"
+        "                justify-content: center;\n"
+        "                align-items: center;\n"
+        "                top: 0rem;\n"
+        "                left: 0rem;\n"
+        "                width: 100%;\n"
+        "                height: 100%;\n"
+        "                background: var(--background-color);\n"
+        "                border: 0.1rem solid var(--background-color);\n"
+        "            }\n"
+        "\n"
+        "            #meter-bar {\n"
+        "                position: absolute;\n"
+        "                display: block;\n"
+        "                background: var(--bar-color-low);\n"
+        "                left: 0%;\n"
+        "                top: 0%;\n"
+        "                width: 0%;\n"
+        "                height: 100%;\n"
+        "                transition: width 0.2s ease-out, background 0.1s;\n"
+        "            }\n"
+        "\n"
+        "            p {\n"
+        "                position: relative;\n"
+        "                pointer-events: none;\n"
+        "                align-self: center;\n"
+        "                font-size: 0.7rem;\n"
+        "                color: var(--text-color);\n"
+        "                overflow: hidden;\n"
+        "            }\n"
+        "            `;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "customElements.define (\"cmaj-cpu-meter\", CPUMeter);\n";
+    static constexpr const char* panel_api_helpers_cmajimagestripcontrol_js = "//\n"
+        "//     ,ad888ba,                              88\n"
+        "//    d8\"'    \"8b\n"
+        "//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit\n"
+        "//   Y8,           88    88    88  88     88  88\n"
+        "//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd\n"
+        "//     '\"Y888Y\"'   88    88    88  '\"8bbP\"Y8  88     https://cmajor.dev\n"
+        "//                                           ,88\n"
+        "//                                        888P\"\n"
+        "//\n"
+        "//  The Cmajor project is subject to commercial or open-source licensing.\n"
+        "//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or\n"
+        "//  visit https://cmajor.dev to learn about our commercial licence options.\n"
+        "//\n"
+        "//  CMAJOR IS PROVIDED \"AS IS\" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER\n"
+        "//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE\n"
+        "//  DISCLAIMED.\n"
+        "\n"
+        "\n"
+        "export default class ImageStripControl extends HTMLElement\n"
+        "{\n"
+        "    constructor()\n"
+        "    {\n"
+        "        super();\n"
+        "\n"
+        "        this.currentValue = 0;\n"
+        "        this.rangeMin       = this.getAttribute (\"min-value\");\n"
+        "        this.rangeMax       = this.getAttribute (\"max-value\");\n"
+        "        this.default        = this.getAttribute (\"default-value\");\n"
+        "        this.label          = this.getAttribute (\"label\");\n"
+        "        this.horizontalMode = this.getAttribute (\"horizontalMode\");\n"
+        "\n"
+        "        this.addEventListener ('mousedown', this.startDrag);\n"
+        "        this.addEventListener ('touchstart', this.handleTouch);\n"
+        "        this.addEventListener (\"dblclick\", this.onReset);\n"
+        "    }\n"
+        "\n"
+        "    setImage ({ imageURL, numImagesPerStrip, imageHeightPixels, sensitivity })\n"
+        "    {\n"
+        "        this.imageURL = imageURL;\n"
+        "        this.numImagesPerStrip = numImagesPerStrip;\n"
+        "        this.imageHeightPixels = imageHeightPixels;\n"
+        "        this.sensitivity = sensitivity;\n"
+        "\n"
+        "        this.innerHTML = `<img draggable=\"false\" class=\"strip\" style=\"display:block; position: absolute;\" src=\"${imageURL}\"></img>`;\n"
+        "        this.imageStrip = this.children[0];\n"
+        "        this.updateKnobImage();\n"
+        "    }\n"
+        "\n"
+        "    /// This updates the knob with a new value\n"
+        "    setCurrentValue (newValue)\n"
+        "    {\n"
+        "        this.currentValue = newValue;\n"
+        "        this.updateKnobImage();\n"
+        "    }\n"
+        "\n"
+        "    /// These are called when the user drags the knob - override them to handle it\n"
+        "    onStartDrag() {}\n"
+        "    onEndDrag() {}\n"
+        "    onValueDragged (newValue)   {}\n"
+        "    onReset() {}\n"
+        "\n"
+        "    updateKnobImage()\n"
+        "    {\n"
+        "        const proportion = (this.currentValue - this.rangeMin) / (this.rangeMax - this.rangeMin);\n"
+        "        const imageIndex = Math.max (0, Math.min (this.numImagesPerStrip - 1, Math.floor (this.numImagesPerStrip * proportion)));\n"
+        "        this.imageStrip.style.top = `${imageIndex * -this.imageHeightPixels}px`;\n"
+        "    }\n"
+        "\n"
+        "    handleTouch (event)\n"
+        "    {\n"
+        "        this.dragStartValue = this.currentValue;\n"
+        "        this.dragStartPos = this.horizontalMode ? -event.changedTouches[0].clientX : event.changedTouches[0].clientY;\n"
+        "        this.dragging = true;\n"
+        "        this.touchIdentifier = event.changedTouches[0].identifier;\n"
+        "\n"
+        "        const dragTo = (event) =>\n"
+        "        {\n"
+        "            for (const touch of event.changedTouches)\n"
+        "            {\n"
+        "                if (touch.identifier == this.touchIdentifier)\n"
+        "                {\n"
+        "                    let currentPos = this.horizontalMode ? -touch.clientX : touch.clientY;\n"
+        "                    const delta = currentPos - this.dragStartPos;\n"
+        "                    const deltaProportion = delta / -this.sensitivity;\n"
+        "                    const newValue = this.dragStartValue + deltaProportion * (this.rangeMax - this.rangeMin);\n"
+        "                    const clippedValue = Math.min (this.rangeMax, Math.max (this.rangeMin, newValue));\n"
+        "                    this.onValueDragged (clippedValue);\n"
+        "                }\n"
+        "            }\n"
+        "        }\n"
+        "\n"
+        "        const endDrag = (event) =>\n"
+        "        {\n"
+        "            for (const touch of event.changedTouches)\n"
+        "            {\n"
+        "                if (touch.identifier == this.touchIdentifier)\n"
+        "                {\n"
+        "                    this.dragging = false;\n"
+        "                    this.onEndDrag();\n"
+        "                    window.removeEventListener('touchmove', dragTo);\n"
+        "                    window.removeEventListener('touchend', endDrag);\n"
+        "                    event.preventDefault();\n"
+        "                }\n"
+        "            }\n"
+        "        }\n"
+        "\n"
+        "        this.onStartDrag();\n"
+        "        window.addEventListener('touchmove', dragTo);\n"
+        "        window.addEventListener('touchend', endDrag);\n"
+        "        event.preventDefault();\n"
+        "    }\n"
+        "\n"
+        "    startDrag (event)\n"
+        "    {\n"
+        "        this.dragStartValue = this.currentValue;\n"
+        "        this.dragStartPos = this.horizontalMode ? -event.screenX  : event.screenY;\n"
+        "        this.dragging = true;\n"
+        "\n"
+        "        const dragTo = (event) =>\n"
+        "        {\n"
+        "            let currentPos = this.horizontalMode ? -event.screenX : event.screenY;\n"
+        "            const delta = currentPos - this.dragStartPos;\n"
+        "            const deltaProportion = delta / -this.sensitivity;\n"
+        "            const newValue = this.dragStartValue + deltaProportion * (this.rangeMax - this.rangeMin);\n"
+        "            const clippedValue = Math.min (this.rangeMax, Math.max (this.rangeMin, newValue));\n"
+        "            this.onValueDragged (clippedValue);\n"
+        "            event.preventDefault();\n"
+        "        }\n"
+        "\n"
+        "        const endDrag = (event) =>\n"
+        "        {\n"
+        "            this.dragging = false;\n"
+        "            this.onEndDrag();\n"
+        "            window.removeEventListener('mousemove', dragTo);\n"
+        "            window.removeEventListener('mouseup', endDrag);\n"
+        "            event.preventDefault();\n"
+        "        }\n"
+        "\n"
+        "        this.onStartDrag();\n"
+        "        window.addEventListener('mousemove', dragTo);\n"
+        "        window.addEventListener('mouseup', endDrag);\n"
+        "        event.preventDefault();\n"
+        "    }\n"
+        "\n"
+        "    static get observedAttributes()\n"
+        "    {\n"
+        "        return [\"min-value\", \"max-value\", \"label\"];\n"
+        "    }\n"
+        "}\n";
+    static constexpr const char* panel_api_helpers_cmajlevelmeter_js = "//\n"
+        "//     ,ad888ba,                              88\n"
+        "//    d8\"'    \"8b\n"
+        "//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit\n"
+        "//   Y8,           88    88    88  88     88  88\n"
+        "//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd\n"
+        "//     '\"Y888Y\"'   88    88    88  '\"8bbP\"Y8  88     https://cmajor.dev\n"
+        "//                                           ,88\n"
+        "//                                        888P\"\n"
+        "//\n"
+        "//  The Cmajor project is subject to commercial or open-source licensing.\n"
+        "//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or\n"
+        "//  visit https://cmajor.dev to learn about our commercial licence options.\n"
+        "//\n"
+        "//  CMAJOR IS PROVIDED \"AS IS\" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER\n"
+        "//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE\n"
+        "//  DISCLAIMED.\n"
+        "\n"
+        "export default class LevelMeter extends HTMLElement\n"
+        "{\n"
+        "    constructor()\n"
+        "    {\n"
+        "        super();\n"
+        "\n"
+        "        this.setScaleRange (-65.0, 0.0);\n"
+        "        this.setDecayTime (700, 1000);\n"
+        "\n"
+        "        this.root = this.attachShadow({ mode: \"open\" });\n"
+        "        this.setNumChans (1);\n"
+        "    }\n"
+        "\n"
+        "    connectedCallback()\n"
+        "    {\n"
+        "        this.timer = setInterval (() => this.refreshAllChannelLevels(), 25);\n"
+        "    }\n"
+        "\n"
+        "    disconnectedCallback()\n"
+        "    {\n"
+        "        clearInterval (this.timer);\n"
+        "    }\n"
+        "\n"
+        "    setScaleRange (lowDB, highDB)\n"
+        "    {\n"
+        "        this.scaleMinDB = lowDB;\n"
+        "        this.scaleMaxDB = highDB;\n"
+        "    }\n"
+        "\n"
+        "    setDecayTime (decayMs, peakHoldMs)\n"
+        "    {\n"
+        "        this.peakHoldMs = peakHoldMs;\n"
+        "        this.percentageDecayPerMs = 100.0 / decayMs;\n"
+        "    }\n"
+        "\n"
+        "    setNumChans (numChans)\n"
+        "    {\n"
+        "        if (this.numChans != numChans)\n"
+        "        {\n"
+        "            this.numChans = numChans;\n"
+        "            this.refreshContent();\n"
+        "\n"
+        "            this.channels = [];\n"
+        "\n"
+        "            for (let i = 0; i < numChans; ++i)\n"
+        "                this.channels.push ({\n"
+        "                    currentLevel: 0,\n"
+        "                    currentBar: 0,\n"
+        "                    lastPeakPercentage: 0,\n"
+        "                    lastPeakTime: Date.now(),\n"
+        "                    peakBarPercentage: 0,\n"
+        "                    peakBarTime: Date.now(),\n"
+        "                    element: this.root.querySelector(`[data-chan=\"${i}\"]`)\n"
+        "                });\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    setChannelLevel (channel, newLevel)\n"
+        "    {\n"
+        "        const now = Date.now();\n"
+        "        const chan = this.channels[channel];\n"
+        "        const newPercent = this.levelToPercentageHeight (newLevel);\n"
+        "\n"
+        "        if (newPercent > chan.currentLevel)\n"
+        "        {\n"
+        "            chan.currentLevel = newPercent;\n"
+        "            chan.lastPeakPercentage = newPercent;\n"
+        "            chan.lastPeakTime = now;\n"
+        "        }\n"
+        "\n"
+        "        if (newPercent > chan.peakBarPercentage)\n"
+        "        {\n"
+        "            chan.peakBarPercentage = newPercent;\n"
+        "            chan.peakBarTime = now;\n"
+        "        }\n"
+        "\n"
+        "        this.refreshChannelLevel (channel, now);\n"
+        "    }\n"
+        "\n"
+        "    setChannelMinMax (channel, minSample, maxSample)\n"
+        "    {\n"
+        "        this.setChannelLevel (channel, Math.max (Math.abs (minSample), Math.abs (maxSample)));\n"
+        "    }\n"
+        "\n"
+        "    levelToPercentageHeight (level)\n"
+        "    {\n"
+        "        if (level <= 0)\n"
+        "            return 0;\n"
+        "\n"
+        "        const dB = Math.log10 (level) * 20;\n"
+        "        const percentage = 100 * (dB - this.scaleMinDB) / (this.scaleMaxDB - this.scaleMinDB);\n"
+        "\n"
+        "        return Math.max (0, Math.min (100.0, percentage));\n"
+        "    }\n"
+        "\n"
+        "    refreshChannelLevel (channel, currentTime)\n"
+        "    {\n"
+        "        const chan = this.channels[channel];\n"
+        "        const elem = chan.element;\n"
+        "\n"
+        "        if (elem)\n"
+        "        {\n"
+        "            const timeSincePeak = currentTime - chan.lastPeakTime;\n"
+        "            const initialDecayDelay = 100;\n"
+        "\n"
+        "            if (timeSincePeak > initialDecayDelay)\n"
+        "            {\n"
+        "                let percent = chan.lastPeakPercentage - this.percentageDecayPerMs * (timeSincePeak - initialDecayDelay);\n"
+        "\n"
+        "                if (percent < 0.5)\n"
+        "                    percent = 0;\n"
+        "\n"
+        "                chan.currentLevel = percent;\n"
+        "            }\n"
+        "\n"
+        "            const timeSincePeakBar = currentTime - chan.peakBarTime;\n"
+        "\n"
+        "            if (timeSincePeakBar > this.peakHoldMs)\n"
+        "            {\n"
+        "                chan.peakBarTime = currentTime;\n"
+        "                chan.peakBarPercentage = chan.currentLevel;\n"
+        "            }\n"
+        "\n"
+        "            const topGap = 2;\n"
+        "            const w = elem.clientWidth;\n"
+        "            const h = elem.clientHeight - topGap;\n"
+        "            const bottom = topGap + h;\n"
+        "            const levelY = topGap + h * (100 - chan.currentLevel) / 100.0;\n"
+        "\n"
+        "            let path = `M0 ${levelY} L ${w}, ${levelY} L${w} ${bottom} L 0 ${bottom} Z`;\n"
+        "\n"
+        "            if (chan.peakBarPercentage > 0)\n"
+        "            {\n"
+        "                const peakY1 = topGap + h * (100 - chan.peakBarPercentage) / 100.0;\n"
+        "                const peakY2 = Math.min (bottom, peakY1 + 2);\n"
+        "                path += ` M0 ${peakY1} L ${w} ${peakY1} L ${w} ${peakY2} L 0 ${peakY2} Z`;\n"
+        "            }\n"
+        "\n"
+        "            elem.style.clipPath = `path(\"${path}\")`;\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    refreshAllChannelLevels()\n"
+        "    {\n"
+        "        const now = Date.now();\n"
+        "\n"
+        "        for (let i = 0; i < this.numChans; ++i)\n"
+        "            this.refreshChannelLevel (i, now);\n"
+        "    }\n"
+        "\n"
+        "    refreshContent()\n"
+        "    {\n"
+        "        let bars = \"\";\n"
+        "\n"
+        "        for (let chan = 0; chan < this.numChans; ++chan)\n"
+        "            bars += `<div class=\"meter-bar\" data-chan=\"${chan}\"></div>`;\n"
+        "\n"
+        "        this.root.innerHTML = `<style>${this.getCSS()}</style><div class=\"holder\">${bars}</div>`;\n"
+        "    }\n"
+        "\n"
+        "    getCSS (numChans)\n"
+        "    {\n"
+        "        return `\n"
+        "            * {\n"
+        "                box-sizing: border-box;\n"
+        "                pointer-events: none;\n"
+        "                user-select: none;\n"
+        "                -webkit-user-select: none;\n"
+        "                -moz-user-select: none;\n"
+        "                -ms-user-select: none;\n"
+        "                padding: 0;\n"
+        "                margin: 0;\n"
+        "            }\n"
+        "\n"
+        "            :host {\n"
+        "                --background-color: #222222;\n"
+        "                display: block;\n"
+        "                overflow: hidden;\n"
+        "                background: var(--background-color);\n"
+        "                padding: 0.1rem;\n"
+        "            }\n"
+        "\n"
+        "            .meter-bar {\n"
+        "                display: flex;\n"
+        "                flex-flow: row nowrap;\n"
+        "                align-items: flex-end;\n"
+        "                justify-content: center;\n"
+        "                background-image: linear-gradient(to bottom, #f22 0%, #f22 17%, #ff2 18%, #ff2 35%, #2f2 36%, #2f2 100%);\n"
+        "                background-position: bottom;\n"
+        "                background-size: 100% 100%;\n"
+        "                background-repeat: no-repeat;\n"
+        "                clip-path: polygon(0% 0%, 0% 0%, 0% 0%);\n"
+        "                top: 0%;\n"
+        "                width: 1.4rem;\n"
+        "                height: 100%;\n"
+        "                color: #777;\n"
+        "            }\n"
+        "\n"
+        "            .holder {\n"
+        "                display: flex;\n"
+        "                min-width: 2.5rem;\n"
+        "                height: 100%;\n"
+        "                flex-flow: row nowrap;\n"
+        "                align-items: flex-end;\n"
+        "                justify-content: space-around;\n"
+        "            }\n"
+        "`;\n"
+        "    }\n"
+        "}\n";
+    static constexpr const char* panel_api_helpers_cmajwaveformdisplay_js = "//\n"
+        "//     ,ad888ba,                              88\n"
+        "//    d8\"'    \"8b\n"
+        "//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit\n"
+        "//   Y8,           88    88    88  88     88  88\n"
+        "//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd\n"
+        "//     '\"Y888Y\"'   88    88    88  '\"8bbP\"Y8  88     https://cmajor.dev\n"
+        "//                                           ,88\n"
+        "//                                        888P\"\n"
+        "//\n"
+        "//  The Cmajor project is subject to commercial or open-source licensing.\n"
+        "//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or\n"
+        "//  visit https://cmajor.dev to learn about our commercial licence options.\n"
+        "//\n"
+        "//  CMAJOR IS PROVIDED \"AS IS\" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER\n"
+        "//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE\n"
+        "//  DISCLAIMED.\n"
+        "\n"
+        "export default class WaveformDisplay extends HTMLElement\n"
+        "{\n"
+        "    constructor()\n"
+        "    {\n"
+        "        super();\n"
+        "\n"
+        "        this.root = this.attachShadow({ mode: \"open\" });\n"
+        "\n"
+        "        this.setNumFrames (100);\n"
+        "        this.setNumChans (1);\n"
+        "    }\n"
+        "\n"
+        "    connectedCallback()\n"
+        "    {\n"
+        "    }\n"
+        "\n"
+        "    disconnectedCallback()\n"
+        "    {\n"
+        "    }\n"
+        "\n"
+        "    setNumFrames (numFrames)\n"
+        "    {\n"
+        "        if (this.numFrames != numFrames)\n"
+        "        {\n"
+        "            this.numFrames = numFrames;\n"
+        "            this.refreshChannelData();\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    setNumChans (numChans)\n"
+        "    {\n"
+        "        if (this.numChans != numChans)\n"
+        "        {\n"
+        "            this.numChans = numChans;\n"
+        "            this.refreshChannelData();\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    refreshChannelData()\n"
+        "    {\n"
+        "        this.channels = [];\n"
+        "        this.refreshContent();\n"
+        "\n"
+        "        if (this.numFrames)\n"
+        "        {\n"
+        "            for (let i = 0; i < this.numChans; ++i)\n"
+        "                this.channels.push ({\n"
+        "                    samples: new Float32Array(this.numFrames * 2),\n"
+        "                    index: 0,\n"
+        "                    canvas: this.root.querySelector(`[data-chan=\"${i}\"]`)\n"
+        "                });\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    setChannelMinMax (channel, minSample, maxSample)\n"
+        "    {\n"
+        "        const chan = this.channels[channel];\n"
+        "        chan.samples[chan.index++] = minSample;\n"
+        "        chan.samples[chan.index++] = maxSample;\n"
+        "\n"
+        "        if (chan.index >= this.numFrames * 2)\n"
+        "            chan.index = 0;\n"
+        "\n"
+        "        this.updateChannelCurve (chan);\n"
+        "    }\n"
+        "\n"
+        "    updateChannelCurve (channel)\n"
+        "    {\n"
+        "        const ctx = channel.canvas.getContext(\"2d\");\n"
+        "\n"
+        "        const canvasW = channel.canvas.width;\n"
+        "        const canvasH = channel.canvas.height;\n"
+        "        const centreY = canvasH * 0.5;\n"
+        "        const vScale = (canvasH - 2) * -0.5;\n"
+        "        const xScale = canvasW / this.numFrames;\n"
+        "\n"
+        "        ctx.clearRect (0, 0, canvasW, canvasH);\n"
+        "        ctx.fillStyle = \"#aca\";\n"
+        "\n"
+        "        let index = channel.index;\n"
+        "\n"
+        "        for (let i = 0; i < this.numFrames; ++i)\n"
+        "        {\n"
+        "            const minLevel = channel.samples[index++];\n"
+        "            const maxLevel = channel.samples[index++];\n"
+        "\n"
+        "            if (index >= this.numFrames * 2)\n"
+        "                index = 0;\n"
+        "\n"
+        "            const y1 = centreY + vScale * Math.max (-1.0, Math.min (1.0, maxLevel));\n"
+        "            const y2 = centreY + vScale * Math.max (-1.0, Math.min (1.0, minLevel));\n"
+        "\n"
+        "            if (y2 > y1 + 0.5)\n"
+        "            {\n"
+        "                const peak = Math.max (Math.abs (minLevel), Math.abs (maxLevel));\n"
+        "\n"
+        "                if (peak > 0.98)\n"
+        "                    ctx.fillStyle = \"#f22\";\n"
+        "                else if (peak > 0.8)\n"
+        "                    ctx.fillStyle = \"#ff2\";\n"
+        "                else\n"
+        "                    ctx.fillStyle = \"#2f2\";\n"
+        "\n"
+        "                ctx.fillRect (xScale * i, y1, xScale, y2 - y1);\n"
+        "            }\n"
+        "        }\n"
+        "    }\n"
+        "\n"
+        "    sampleToY (sample)\n"
+        "    {\n"
+        "        return 20.0 - 20.0 * sample;\n"
+        "    }\n"
+        "\n"
+        "    refreshContent()\n"
+        "    {\n"
+        "        let waveforms = \"\";\n"
+        "\n"
+        "        for (let chan = 0; chan < this.numChans; ++chan)\n"
+        "            waveforms += `<canvas class=\"waveform\" data-chan=\"${chan}\"></canvas>`;\n"
+        "\n"
+        "        this.root.innerHTML = `<style>${this.getCSS()}</style> <div class=\"waveforms\">${waveforms}</div>`;\n"
+        "    }\n"
+        "\n"
+        "    getCSS (numChans)\n"
+        "    {\n"
+        "        return `\n"
+        "            * {\n"
+        "                box-sizing: border-box;\n"
+        "                pointer-events: none;\n"
+        "                user-select: none;\n"
+        "                -webkit-user-select: none;\n"
+        "                -moz-user-select: none;\n"
+        "                -ms-user-select: none;\n"
+        "                padding: 0;\n"
+        "                margin: 0;\n"
+        "            }\n"
+        "\n"
+        "            :host {\n"
+        "                --background-color: #222222;\n"
+        "                display: block;\n"
+        "                overflow: hidden;\n"
+        "                background: var(--background-color);\n"
+        "                padding: 0.1rem;\n"
+        "            }\n"
+        "\n"
+        "            .waveforms {\n"
+        "                display: flex;\n"
+        "                min-width: 3rem;\n"
+        "                height: 100%;\n"
+        "                flex-flow: column nowrap;\n"
+        "                align-items: stretch;\n"
+        "                align-content: stretch;\n"
+        "                justify-content: space-around;\n"
+        "            }\n"
+        "\n"
+        "            .waveform {\n"
+        "                left: 0%;\n"
+        "                width: 100%;\n"
+        "                min-height: 1rem;\n"
+        "                flex: 1 1 auto;\n"
+        "            }\n"
+        "`;\n"
+        "    }\n"
+        "}\n";
 
 
     static constexpr std::array files =

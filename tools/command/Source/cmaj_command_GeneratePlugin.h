@@ -83,7 +83,7 @@ inline std::string createFileData (const GeneratedFiles& files)
              && choc::text::findInvalidUTF8Data (f.content.data(), f.content.size()) == nullptr)
         {
             result += "    static constexpr const char* " + name + " =\n        "
-                       + cmaj::cpp_utils::createRawStringLiteral (f.content) + ";\n";
+                       + cmaj::cpp_utils::createMultiLineStringLiteral (f.content, "        ") + ";\n";
         }
         else
         {

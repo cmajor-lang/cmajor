@@ -84,30 +84,35 @@ namespace cmaj::cpp_utils
         return s.str();
     }
 
-    inline std::string createRawStringLiteral (std::string_view text, std::string guard = {})
+    inline std::string createMultiLineStringLiteral (std::string_view text, std::string_view indent)
     {
-        if (text.length() > maxStringLiteralSize)
-        {
-            auto split = getSplitPoint (text);
-            return createRawStringLiteral (text.substr (0, split), guard) + "\n" + cpp_utils::createRawStringLiteral (text.substr (split), guard);
-        }
+        if (text.empty())
+            return "\"\"";
 
-        if (choc::text::contains (text, ")" + guard + "\""))
-        {
-            if (guard.empty())
-                guard = "text";
+        std::ostringstream result (std::ios::binary);
+        std::string line;
 
-            for (int i = 0;; ++i)
+        for (auto c : text)
+        {
+            line += c;
+
+            if (c == '\n' || line.length() >= maxStringLiteralSize)
             {
-                if (! choc::text::contains (text, guard + std::to_string (i)))
-                {
-                    guard += std::to_string (i);
-                    break;
-                }
+                result << indent << '\"';
+                escapeString (result, line);
+                result << "\"\n";
+                line = {};
             }
         }
 
-        return "R\""  + guard + "(" + std::string(text) + ")" + guard + "\"";
+        if (! line.empty())
+        {
+            result << indent << '\"';
+            escapeString (result, line);
+            result << "\"";
+        }
+
+        return choc::text::trim (result.str());
     }
 
     inline std::string createDataLiteral (std::string_view data)

@@ -35,14 +35,14 @@ def createStringLiteralFile(variableName, targetFile, source):
 
     with open (source, 'r') as f:
         content += "//==============================================================================\n"
-        content += "static constexpr std::string_view " + variableName + " = " + createCppStringLiteral (f.read()) + ";\n"
+        content += "static constexpr std::string_view " + variableName + " = " + createCppStringLiteral (f.read(), "    ") + ";\n"
 
     replaceFileIfDifferent (targetFile, content)
 
 #####################################################################################################
 def convertHTMLToCppCode (filename, code):
     print ("Adding " + filename)
-    return "static constexpr const char* " + filename.replace (".", "_") + " = " + createCppStringLiteral (code) + ";\n"
+    return "static constexpr const char* " + filename.replace (".", "_") + " = " + createCppStringLiteral (code, "    ") + ";\n"
 
 #####################################################################################################
 def createHTMLFile(targetFile, folder):
