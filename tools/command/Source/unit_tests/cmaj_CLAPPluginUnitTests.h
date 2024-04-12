@@ -440,7 +440,7 @@ inline Environment::VirtualFileSystem createInMemoryFileSystem (const InMemoryFi
         [=] (const auto& path) -> std::unique_ptr<std::istream>
         {
             if (const auto source = toSource (path); ! source.empty())
-                return std::make_unique<std::istringstream> (source);
+                return std::make_unique<std::istringstream> (source, std::ios::binary);
 
             return {};
         },

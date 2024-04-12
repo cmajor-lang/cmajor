@@ -21,7 +21,7 @@ uint32_t getAudioChannelCount (const cmaj::EndpointDetailsList& endpoints)
 
 std::string getFrameValue (choc::buffer::ChannelArrayBuffer<float>& buffer, uint32_t frame)
 {
-    std::ostringstream oss;
+    std::ostringstream oss (std::ios::binary);
 
     auto channels = buffer.getNumChannels();
 

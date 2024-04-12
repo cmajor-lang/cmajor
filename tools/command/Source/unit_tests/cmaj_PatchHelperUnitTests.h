@@ -48,7 +48,7 @@ static PatchManifest createManifestWithInMemoryFiles (const std::string& manifes
         [=] (const std::string& name) -> std::shared_ptr<std::istream>
         {
             if (const auto source = toSource (name); ! source.empty())
-                return std::make_shared<std::istringstream> (source);
+                return std::make_shared<std::istringstream> (source, std::ios::binary);
 
             return {};
         },

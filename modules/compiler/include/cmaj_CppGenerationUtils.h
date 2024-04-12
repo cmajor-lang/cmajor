@@ -77,7 +77,7 @@ namespace cmaj::cpp_utils
             return createStringLiteral (text.substr (0, split)) + "\n" + cpp_utils::createStringLiteral (text.substr (split));
         }
 
-        std::ostringstream s;
+        std::ostringstream s (std::ios::binary);
         s << '\"';
         escapeString (s, text);
         s << '\"';
@@ -107,14 +107,12 @@ namespace cmaj::cpp_utils
             }
         }
 
-        std::ostringstream s;
-        s << "R\"" << guard << "(" << text << ")" << guard << "\"";
-        return s.str();
+        return "R\""  + guard + "(" + std::string(text) + ")" + guard + "\"";
     }
 
     inline std::string createDataLiteral (std::string_view data)
     {
-        std::ostringstream result;
+        std::ostringstream result (std::ios::binary);
         std::string currentLine;
         bool firstInLine = true;
 

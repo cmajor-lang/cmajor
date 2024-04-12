@@ -109,7 +109,7 @@ Environment::VirtualFileSystem createVirtualFileSystem()
         {
             for (auto& file : PatchClass::files)
                 if (f == file.name)
-                    return std::make_unique<std::istringstream> (std::string (file.content));
+                    return std::make_unique<std::istringstream> (std::string (file.content), std::ios::binary);
 
             return {};
         },

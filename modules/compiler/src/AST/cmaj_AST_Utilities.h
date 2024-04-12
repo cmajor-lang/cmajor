@@ -391,7 +391,7 @@ struct SignatureBuilder
         return result;
     }
 
-    std::ostringstream sig;
+    std::ostringstream sig  { std::ios::binary };
     bool firstItem = true;
 };
 

@@ -2082,7 +2082,7 @@ std::string generateWAST (const ProgramInterface& p, const BuildSettings& buildS
 
     if (gen.generate (buildSettings))
     {
-        std::ostringstream out;
+        std::ostringstream out (std::ios::binary);
         out << *gen.currentModule;
         return out.str();
     }
