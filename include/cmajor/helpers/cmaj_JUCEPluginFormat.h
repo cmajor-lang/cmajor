@@ -32,10 +32,8 @@ namespace cmaj::plugin
 class JUCEPluginFormat   : public juce::AudioPluginFormat
 {
 public:
-    using PluginInstance = JUCEPluginBase<JUCEPluginType_SinglePatchJIT>;
-
     JUCEPluginFormat (CacheDatabaseInterface::Ptr compileCache,
-                      std::function<void(PluginInstance&)> patchChangeCallbackFn,
+                      std::function<void(SinglePatchJITPlugin&)> patchChangeCallbackFn,
                       std::string hostDescriptionToUse)
        : cache (std::move (compileCache)),
          patchChangeCallback (std::move (patchChangeCallbackFn)),
@@ -55,14 +53,14 @@ public:
         try
         {
             PatchManifest manifest;
-            manifest.initialiseWithFile (PluginInstance::getFileFromPluginID (fileOrIdentifier));
+            manifest.initialiseWithFile (getFileFromPluginID (fileOrIdentifier));
 
             desc.name                = manifest.name;
             desc.descriptiveName     = manifest.description;
             desc.category            = manifest.category;
             desc.manufacturerName    = manifest.manufacturer;
             desc.version             = manifest.version;
-            desc.fileOrIdentifier    = PluginInstance::createPatchID (manifest);
+            desc.fileOrIdentifier    = SinglePatchJITPlugin::createPatchID (manifest);
             desc.lastFileModTime     = juce::File (fileOrIdentifier).getLastModificationTime();
             desc.isInstrument        = manifest.isInstrument;
             desc.uniqueId            = static_cast<int> (std::hash<std::string>{} (manifest.ID));
@@ -77,6 +75,12 @@ public:
         return false;
     }
 
+    static std::filesystem::path getFileFromPluginID (const juce::String& fileOrIdentifier)
+    {
+        auto file = SinglePatchJITPlugin::getPropertyFromPluginID (fileOrIdentifier, "location");
+        return file.getWithDefault<std::string> (fileOrIdentifier.toStdString());
+    }
+
     void findAllTypesForFile (juce::OwnedArray<juce::PluginDescription>& results,
                               const juce::String& fileOrIdentifier) override
     {
@@ -88,19 +92,19 @@ public:
 
     bool fileMightContainThisPluginType (const juce::String& fileOrIdentifier) override
     {
-        return PluginInstance::isCmajorIdentifier (fileOrIdentifier)
+        return SinglePatchJITPlugin::isCmajorIdentifier (fileOrIdentifier)
                 || juce::File::createFileWithoutCheckingPath (fileOrIdentifier).hasFileExtension (patchFileExtension);
     }
 
     juce::String getNameOfPluginFromIdentifier (const juce::String& fileOrIdentifier) override
     {
-        if (auto name = PluginInstance::getNameFromPluginID (fileOrIdentifier); ! name.empty())
+        if (auto name = SinglePatchJITPlugin::getNameFromPluginID (fileOrIdentifier); ! name.empty())
             return name;
 
         try
         {
             PatchManifest manifest;
-            manifest.initialiseWithFile (PluginInstance::getFileFromPluginID (fileOrIdentifier));
+            manifest.initialiseWithFile (getFileFromPluginID (fileOrIdentifier));
             return manifest.name;
         }
         catch (...) {}
@@ -175,9 +179,6 @@ public:
     {
         try
         {
-            PatchManifest manifest;
-            manifest.initialiseWithFile (PluginInstance::getFileFromPluginID (desc.fileOrIdentifier));
-
             auto patch = std::make_unique<Patch>();
 
             patch->setHostDescription (hostDescription);
@@ -191,16 +192,13 @@ public:
            #endif
 
             patch->cache = cache;
-            patch->preload (manifest);
 
-            auto plugin = std::make_unique<PluginInstance> (std::move (patch));
+            auto manifestFile = getFileFromPluginID (desc.fileOrIdentifier);
+
+            auto plugin = std::make_unique<SinglePatchJITPlugin> (std::move (patch), manifestFile);
             plugin->patchChangeCallback = patchChangeCallback;
             plugin->setRateAndBufferSizeDetails (initialSampleRate, initialBufferSize);
-            plugin->patch->setPlaybackParams (cmaj::Patch::PlaybackParams (initialSampleRate,
-                                                                           static_cast<uint32_t> (initialBufferSize),
-                                                                           2, 2));
-
-            plugin->loadPatch (manifest);
+            plugin->applyRateAndBlockSize (initialSampleRate, static_cast<uint32_t> (initialBufferSize));
 
             if (! plugin->isStatusMessageError)
                 callback (std::move (plugin), {});
@@ -217,7 +215,7 @@ public:
     bool requiresUnblockedMessageThreadDuringCreation (const juce::PluginDescription&) const override   { return false; }
 
     CacheDatabaseInterface::Ptr cache;
-    std::function<void(PluginInstance&)> patchChangeCallback;
+    std::function<void(SinglePatchJITPlugin&)> patchChangeCallback;
     std::string hostDescription;
 };
 

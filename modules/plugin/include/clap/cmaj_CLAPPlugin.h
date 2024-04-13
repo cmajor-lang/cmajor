@@ -28,6 +28,7 @@
 
 #include "choc/containers/choc_SingleReaderSingleWriterFIFO.h"
 #include "choc/platform/choc_Platform.h"
+#include "choc/gui/choc_DesktopWindow.h"
 
 #include <clap/clap.h>
 
@@ -1844,30 +1845,11 @@ inline bool addChildView (void* parent, void* child)
 inline bool setViewSize (void* view, uint32_t width, uint32_t height)
 {
   #if CHOC_OSX
-    try
-    {
-        // TODO: lifted from choc_DesktopWindow.h. push this stuff into choc at some point
-
-        // Including CodeGraphics.h can create all kinds of messy C/C++ symbol clashes
-        // with other headers, but all we actually need are these coordinate structs:
-        #if defined (__LP64__) && __LP64__
-        using CGFloat = double;
-        #else
-        using CGFloat = float;
-        #endif
-
-        struct CGPoint { CGFloat x = 0, y = 0; };
-        struct CGSize  { CGFloat width = 0, height = 0; };
-        struct CGRect  { CGPoint origin; CGSize size; };
-
-        CGRect frame { { 0 , 0 }, { static_cast<CGFloat> (width), static_cast<CGFloat> (height) } };
-        choc::objc::call<void> ((id) view, "setFrame:", frame);
-
-        return true;
-    }
-    catch (...) {}
-
-    return false;
+    CHOC_AUTORELEASE_BEGIN
+    auto frame = choc::ui::macos_ui_helpers::createCGRect ({ 0, 0, (int) width, (int) height });
+    choc::objc::call<void> ((id) view, "setFrame:", frame);
+    CHOC_AUTORELEASE_END
+    return true;
   #elif CHOC_WINDOWS
     return MoveWindow (static_cast<HWND> (view), 0, 0, static_cast<int> (width), static_cast<int> (height), true);
   #else

@@ -75,14 +75,17 @@ class GenericPatchView extends HTMLElement
         this.parametersElement.innerHTML = "";
         this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";
 
-        for (const endpointInfo of this.status?.details?.inputs)
+        if (this.status?.details?.inputs)
         {
-            if (! endpointInfo.annotation?.hidden)
+            for (const endpointInfo of this.status.details.inputs)
             {
-                const control = Controls.createLabelledControl (this.patchConnection, endpointInfo);
+                if (! endpointInfo.annotation?.hidden)
+                {
+                    const control = Controls.createLabelledControl (this.patchConnection, endpointInfo);
 
-                if (control)
-                    this.parametersElement.appendChild (control);
+                    if (control)
+                        this.parametersElement.appendChild (control);
+                }
             }
         }
     }

@@ -38,6 +38,8 @@ struct PatchWebView  : public PatchView
 
     choc::ui::WebView& getWebView();
 
+    void setStatusMessage (const std::string& newMessage);
+
     /// Provides a chunk of javascript that goes in a function which is run before the
     /// view element is added to its parent element.
     std::string extraSetupCode;
@@ -79,8 +81,7 @@ inline PatchWebView::~PatchWebView() = default;
 
 inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
 {
-    if (! webview.evaluateJavascript ("window.cmaj_deliverMessageFromServer?.(" + choc::json::toString (msg, true) + ");"))
-        CMAJ_ASSERT_FALSE;
+    webview.evaluateJavascript ("window.cmaj_deliverMessageFromServer?.(" + choc::json::toString (msg, true) + ");");
 }
 
 inline void PatchWebView::createBindings()
@@ -124,6 +125,11 @@ inline choc::ui::WebView& PatchWebView::getWebView()
     return webview;
 }
 
+inline void PatchWebView::setStatusMessage (const std::string& newMessage)
+{
+    webview.evaluateJavascript ("window.setStatusMessage (" + choc::json::getEscapedQuotedString (newMessage) + ")");
+}
+
 inline void PatchWebView::reload()
 {
     webview.evaluateJavascript ("document.location.reload()");
@@ -140,9 +146,9 @@ static constexpr auto cmajor_patch_gui_html = R"(
 <style>
   * { box-sizing: border-box; padding: 0; margin: 0; border: 0; }
   html { background: black; overflow: hidden; }
-  body { display: block; position: absolute; width: 100%; height: 100%; color: white; font-family: Arial, Helvetica, sans-serif; }
+  body { display: block; position: absolute; width: 100%; height: 100%; color: white; font-family: Monaco, Consolas, monospace; }
   #cmaj-view-container { display: block; position: relative; width: 100%; height: 100%; overflow: auto; }
-  #cmaj-error-text { display: block; position: relative; width: 100%; height: 100%; text-align: center; padding: 1rem; }
+  #cmaj-error-text { display: block; position: relative; width: 100%; height: 100%; padding: 1rem; text-wrap: wrap; }
 </style>
 
 <body>
@@ -181,26 +187,68 @@ class EmbeddedPatchConnection  extends PatchConnection
 }
 
 //==============================================================================
-async function initialiseContainer (container)
+const container = document.getElementById ("cmaj-view-container");
+let isViewActive = false;
+
+async function initialiseContainer()
 {
 $EXTRA_SETUP_CODE$
 }
 
-async function initialiseView()
+window.setStatusMessage = (newMessage) =>
 {
-    const container = document.getElementById ("cmaj-view-container");
-    await initialiseContainer (container);
+    isViewActive = false;
+    container.innerHTML = `<pre id="cmaj-error-text">${newMessage}</pre>`;
+};
 
-    const patchConnection = new EmbeddedPatchConnection();
+async function createViewIfNeeded (patchConnection)
+{
+    if (isViewActive)
+        return;
+
+    container.innerHTML = "";
+
+    await initialiseContainer();
+
     const view = await createPatchViewHolder (patchConnection, viewInfo);
 
     if (view)
+    {
         container.appendChild (view);
+        isViewActive = true;
+    }
     else
-        container.innerHTML = `<div id="cmaj-error-text">No view available</div>`;
+    {
+        window.setStatusMessage ("No view available");
+    }
 }
 
-initialiseView();
+async function initialisePatch()
+{
+    const patchConnection = new EmbeddedPatchConnection();
+
+    const statusListener = async status =>
+    {
+        const getDescription = () =>
+        {
+            if (status.manifest?.name)
+                return `Error building '${status.manifest.name}':`;
+
+            return `Error:`;
+        }
+
+        if (status.error)
+            window.setStatusMessage (getDescription() + "\n\n" + status.error.toString());
+        else
+            await createViewIfNeeded (patchConnection);
+    };
+
+    patchConnection.addStatusListener (statusListener);
+    patchConnection.requestStatusUpdate();
+}
+
+initialisePatch();
+
 
 </script>
 </html>

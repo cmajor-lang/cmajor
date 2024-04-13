@@ -249,7 +249,7 @@ ${mainClass}
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new cmaj::plugin::GeneratedPlugin<::${mainClassName}> (std::make_unique<cmaj::Patch>());
+    return new cmaj::plugin::GeneratedPlugin<::${mainClassName}> (std::make_shared<cmaj::Patch>());
 }
 )",
     "${mainClass}", cpp.generatedCode,

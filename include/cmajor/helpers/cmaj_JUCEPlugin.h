@@ -50,69 +50,54 @@ namespace cmaj::plugin
 /// See the cmaj::plugin::JITLoaderPlugin and cmaj::plugin::GeneratedPlugin
 /// types below for how to use it in these different modes.
 ///
-template <typename EngineType>
+template <typename DerivedType>
 class JUCEPluginBase  : public juce::AudioPluginInstance,
                         private juce::MessageListener
 {
 public:
-    JUCEPluginBase (std::unique_ptr<Patch> patchToLoad)
-        : juce::AudioPluginInstance (getDefaultBusLayout (patchToLoad.get())),
-          patch (std::move (patchToLoad)),
+    JUCEPluginBase (std::shared_ptr<cmaj::Patch> patchToUse, BusesProperties buses)
+        : juce::AudioPluginInstance (std::move (buses)),
+          patch (std::move (patchToUse)),
           dllLoadedSuccessfully (initialiseDLL())
     {
         juce::MessageManager::callAsync ([] { choc::messageloop::initialise(); });
 
-        if (dllLoadedSuccessfully)
-        {
-            patch->setHostDescription (std::string (getWrapperTypeDescription (wrapperType)));
-
-            patch->stopPlayback  = [this] { suspendProcessing (true); };
-            patch->startPlayback = [this] { suspendProcessing (false); };
-
-            patch->patchChanged = [this]
-            {
-                const auto executeOrDeferToMessageThread = [] (auto&& fn) -> void
-                {
-                    if (juce::MessageManager::getInstance()->isThisTheMessageThread())
-                        return fn();
-
-                    juce::MessageManager::callAsync (std::forward<decltype (fn)> (fn));
-                };
-
-                executeOrDeferToMessageThread ([this] { handlePatchChange(); });
-            };
-
-            patch->statusChanged = [this] (const auto& s) { setStatusMessage (s.statusMessage, s.messageList.hasErrors()); };
-
-            patch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
-            {
-                handleOutputEvent (frame, endpointID, v);
-            };
-
-           #if CMAJ_USE_QUICKJS_WORKER
-            enableQuickJSPatchWorker (*patch);
-           #else
-            enableWebViewPatchWorker (*patch);
-           #endif
-
-            if constexpr (EngineType::isPrecompiled)
-            {
-                patch->createEngine = +[] { return cmaj::createEngineForGeneratedCppProgram<typename EngineType::PerformerClass>(); };
-
-                patch->setPlaybackParams (getPlaybackParams (44100, 128));
-                setNewState (createEmptyState ({}));
-            }
-            else
-            {
-                // for a JIT plugin, we can't recreate parameter objects without hosts crashing, so
-                // will just create a big flat list and re-use its parameter objects when things change
-                ensureNumParameters (100);
-            }
-        }
-        else
+        if (! dllLoadedSuccessfully)
         {
             setStatusMessage ("Could not load the required Cmajor DLL", true);
+            return;
         }
+
+        patch->setHostDescription (std::string (getWrapperTypeDescription (wrapperType)));
+
+        patch->stopPlayback  = [this] { suspendProcessing (true); };
+        patch->startPlayback = [this] { suspendProcessing (false); };
+
+        patch->patchChanged = [this]
+        {
+            const auto executeOrDeferToMessageThread = [] (auto&& fn) -> void
+            {
+                if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+                    return fn();
+
+                juce::MessageManager::callAsync (std::forward<decltype (fn)> (fn));
+            };
+
+            executeOrDeferToMessageThread ([this] { handlePatchChange(); });
+        };
+
+        patch->statusChanged = [this] (const auto& s) { setStatusMessage (s.statusMessage, s.messageList.hasErrors()); };
+
+        patch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
+        {
+            handleOutputEvent (frame, endpointID, v);
+        };
+
+       #if CMAJ_USE_QUICKJS_WORKER
+        enableQuickJSPatchWorker (*patch);
+       #else
+        enableWebViewPatchWorker (*patch);
+       #endif
     }
 
     ~JUCEPluginBase() override
@@ -123,29 +108,13 @@ public:
     }
 
     //==============================================================================
-    void loadPatch (const std::filesystem::path& fileToLoad)
-    {
-        if (dllLoadedSuccessfully)
-            setNewStateAsync (createEmptyState (fileToLoad));
-    }
-
-    void loadPatch (const PatchManifest& manifest)
-    {
-        if (dllLoadedSuccessfully)
-        {
-            Patch::LoadParams loadParams;
-            loadParams.manifest = manifest;
-            patch->loadPatch (loadParams, EngineType::isPrecompiled);
-        }
-    }
-
     void unload()
     {
         unload ({}, false);
     }
 
     std::function<void(const char*)> handleConsoleMessage;
-    std::function<void(JUCEPluginBase&)> patchChangeCallback;
+    std::function<void(DerivedType&)> patchChangeCallback;
 
     //==============================================================================
     const juce::String getName() const override          { return patch->getName(); }
@@ -161,7 +130,7 @@ public:
         return s;
     }
 
-    juce::AudioProcessorEditor* createEditor() override   { return new Editor (*this); }
+    juce::AudioProcessorEditor* createEditor() override   { return new Editor (static_cast<DerivedType&> (*this)); }
     bool hasEditor() const override                       { return true; }
 
     bool acceptsMidi() const override                     { return patch->hasMIDIInput() || ! patch->isLoaded(); }
@@ -256,12 +225,6 @@ public:
         return {};
     }
 
-    static std::filesystem::path getFileFromPluginID (const juce::String& fileOrIdentifier)
-    {
-        auto file = getPropertyFromPluginID (fileOrIdentifier, "location");
-        return file.getWithDefault<std::string> (fileOrIdentifier.toStdString());
-    }
-
     static std::string getIDFromPluginID (const juce::String& fileOrIdentifier)
     {
         return getPropertyFromPluginID (fileOrIdentifier, "ID").toString();
@@ -275,8 +238,7 @@ public:
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override
     {
-        if (dllLoadedSuccessfully)
-            patch->setPlaybackParams (getPlaybackParams (sampleRate, static_cast<uint32_t> (samplesPerBlock)));
+        applyRateAndBlockSize (sampleRate, static_cast<uint32_t> (samplesPerBlock));
     }
 
     void releaseResources() override
@@ -311,7 +273,7 @@ public:
     bool applyBusLayouts (const BusesLayout& layouts) override
     {
         auto result = juce::AudioPluginInstance::applyBusLayouts (layouts);
-        patch->setPlaybackParams (getPlaybackParams (getSampleRate(), static_cast<uint32_t> (getBlockSize())));
+        applyCurrentRateAndBlockSize();
         return result;
     }
 
@@ -366,18 +328,38 @@ public:
         }
     }
 
-    std::unique_ptr<Patch> patch;
+    Patch::PlaybackParams getPlaybackParams (double rate, uint32_t requestedBlockSize)
+    {
+        auto layout = getBusesLayout();
+
+        return Patch::PlaybackParams (rate, requestedBlockSize,
+                                      static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels()),
+                                      static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels()));
+    }
+
+    void applyRateAndBlockSize (double sampleRate, uint32_t samplesPerBlock)
+    {
+        if (dllLoadedSuccessfully)
+            patch->setPlaybackParams (getPlaybackParams (sampleRate, samplesPerBlock));
+    }
+
+    void applyCurrentRateAndBlockSize()
+    {
+        applyRateAndBlockSize (getSampleRate(), static_cast<uint32_t> (getBlockSize()));
+    }
+
+    std::shared_ptr<Patch> patch;
     std::string statusMessage;
     bool isStatusMessageError = false;
     bool dllLoadedSuccessfully = false;
 
-private:
+protected:
     uint64_t lastLoadedStateHash = 0;
 
     //==============================================================================
     static bool initialiseDLL()
     {
-        if constexpr (cmaj::Library::isUsingDLL && ! EngineType::isPrecompiled)
+        if constexpr (cmaj::Library::isUsingDLL && ! DerivedType::isPrecompiled)
         {
             static bool initialised = false;
 
@@ -412,24 +394,6 @@ private:
     }
 
     //==============================================================================
-    Patch::PlaybackParams getPlaybackParams (double rate, uint32_t requestedBlockSize)
-    {
-        auto layout = getBusesLayout();
-
-        return Patch::PlaybackParams (rate, requestedBlockSize,
-                                      static_cast<choc::buffer::ChannelCount> (layout.getMainInputChannels()),
-                                      static_cast<choc::buffer::ChannelCount> (layout.getMainOutputChannels()));
-    }
-
-    void unload (const std::string& message, bool isError)
-    {
-        if constexpr (! EngineType::isPrecompiled)
-        {
-            patch->unload();
-            setStatusMessage (message, isError);
-        }
-    }
-
     static BusesProperties getBusesProperties (const EndpointDetailsList& inputs,
                                                const EndpointDetailsList& outputs)
     {
@@ -446,27 +410,12 @@ private:
         return layout;
     }
 
-    static BusesProperties getDefaultBusLayout (Patch* p)
+    void unload (const std::string& message, bool isError)
     {
-        if constexpr (EngineType::isPrecompiled)
+        if constexpr (! DerivedType::isPrecompiled)
         {
-            auto programDetailsJSON = choc::json::parse (EngineType::PerformerClass::programDetailsJSON);
-
-            return getBusesProperties (EndpointDetailsList::fromJSON (programDetailsJSON["inputs"], true),
-                                       EndpointDetailsList::fromJSON (programDetailsJSON["outputs"], false));
-        }
-        else
-        {
-            if constexpr (EngineType::isFixedPatch)
-            {
-                return getBusesProperties (p->getInputEndpoints(),
-                                           p->getOutputEndpoints());
-            }
-
-            BusesProperties layout;
-            layout.addBus (true,  "Input",  juce::AudioChannelSet::stereo(), true);
-            layout.addBus (false, "Output", juce::AudioChannelSet::stereo(), true);
-            return layout;
+            patch->unload();
+            setStatusMessage (message, isError);
         }
     }
 
@@ -486,7 +435,7 @@ private:
         updateHostDisplay (changes);
 
         if (patchChangeCallback)
-            patchChangeCallback (*this);
+            patchChangeCallback (static_cast<DerivedType&> (*this));
     }
 
     void setStatusMessage (const std::string& newMessage, bool isError)
@@ -502,7 +451,7 @@ private:
     void notifyEditorStatusMessageChanged()
     {
         if (auto e = dynamic_cast<Editor*> (getActiveEditor()))
-            e->onStatusMessageChanged();
+            e->statusMessageChanged();
     }
 
     void notifyEditorPatchChanged()
@@ -515,7 +464,10 @@ private:
     juce::ValueTree createEmptyState (std::filesystem::path location) const
     {
         juce::ValueTree state (ids.Cmajor);
-        state.setProperty (ids.location, juce::String (location.string()), nullptr);
+
+        if constexpr (! DerivedType::isFixedPatch)
+            state.setProperty (ids.location, juce::String (location.string()), nullptr);
+
         return state;
     }
 
@@ -564,52 +516,27 @@ private:
         postMessage (m.release());
     }
 
+    virtual bool prepareManifest (Patch::LoadParams&, const juce::ValueTree& newState) = 0;
+
     void setNewState (const juce::ValueTree& newState)
     {
         if (! dllLoadedSuccessfully)
             return;
 
+        if (newState.isValid() && ! newState.hasType (ids.Cmajor))
+            return unload ("Failed to load: invalid state", true);
+
         Patch::LoadParams loadParams;
-        bool reloadParams = false;
 
-        if constexpr (EngineType::isPrecompiled)
+        try
         {
-            loadParams.manifest = EngineType::createManifest();
-
-            reloadParams = newState.isValid() && newState.hasType (ids.Cmajor);
+            if (! prepareManifest (loadParams, newState))
+                return unload();
         }
-        else
+        catch (const std::runtime_error& e)
         {
-            if (! newState.isValid())
-                return unload();
-
-            if (! newState.hasType (ids.Cmajor))
-                return unload ("Failed to load: invalid state", true);
-
-            auto location = newState.getProperty (ids.location).toString().toStdString();
-
-            if (location.empty())
-                return unload();
-
-            try
-            {
-                loadParams.manifest.initialiseWithFile (location);
-            }
-            catch (const std::runtime_error& e)
-            {
-                return unload (e.what(), true);
-            }
-
-            reloadParams = ! patch->isLoaded() || loadParams.manifest.manifestFile == patch->getPatchFile();
+            return unload (e.what(), true);
         }
-
-        if (reloadParams)
-            if (auto params = newState.getChildWithName (ids.PARAMS); params.isValid())
-                for (auto param : params)
-                    if (auto endpointIDProp = param.getPropertyPointer (ids.ID))
-                        if (auto endpointID = endpointIDProp->toString().toStdString(); ! endpointID.empty())
-                            if (auto valProp = param.getPropertyPointer (ids.V))
-                                loadParams.parameterValues[endpointID] = static_cast<float> (*valProp);
 
         if (isViewResizable())
         {
@@ -645,10 +572,20 @@ private:
             }
         }
 
-        if (getSampleRate() != 0)
-            patch->setPlaybackParams (getPlaybackParams (getSampleRate(), static_cast<uint32_t> (getBlockSize())));
+        if (getSampleRate() > 0)
+            applyCurrentRateAndBlockSize();
 
-        patch->loadPatch (loadParams, EngineType::isPrecompiled);
+        patch->loadPatch (loadParams, DerivedType::isPrecompiled);
+    }
+
+    void readParametersFromState (Patch::LoadParams& loadParams, const juce::ValueTree& newState) const
+    {
+        if (auto params = newState.getChildWithName (ids.PARAMS); params.isValid())
+            for (auto param : params)
+                if (auto endpointIDProp = param.getPropertyPointer (ids.ID))
+                    if (auto endpointID = endpointIDProp->toString().toStdString(); ! endpointID.empty())
+                        if (auto valProp = param.getPropertyPointer (ids.V))
+                            loadParams.parameterValues[endpointID] = static_cast<float> (*valProp);
     }
 
     static choc::value::Value convertVarToValue (const juce::var& v)
@@ -861,7 +798,7 @@ private:
         const juce::String paramID;
     };
 
-    static constexpr bool useFixedParamTree = EngineType::isPrecompiled || EngineType::isFixedPatch;
+    static constexpr bool useFixedParamTree = DerivedType::isPrecompiled || DerivedType::isFixedPatch;
 
     void createParameterTree()
     {
@@ -963,7 +900,7 @@ private:
     //==============================================================================
     struct Editor  : public juce::AudioProcessorEditor
     {
-        Editor (JUCEPluginBase& p)
+        Editor (DerivedType& p)
             : juce::AudioProcessorEditor (p), owner (p),
               patchGUIHolder (std::make_unique<cmaj::PatchWebView> (*p.patch, derivePatchViewSize (p)))
         {
@@ -971,10 +908,14 @@ private:
             lookAndFeel.setColour (juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
             setLookAndFeel (&lookAndFeel);
 
+            extraComp = owner.createExtraComponent();
+
             onPatchChanged (false);
 
-            addAndMakeVisible (extraComp);
-            onStatusMessageChanged();
+            if (extraComp)
+                addAndMakeVisible (*extraComp);
+
+            statusMessageChanged();
 
             juce::Font::setDefaultMinimumHorizontalScaleFactor (1.0f);
         }
@@ -985,12 +926,13 @@ private:
             setLookAndFeel (nullptr);
         }
 
-        void onStatusMessageChanged()
+        void statusMessageChanged()
         {
-            extraComp.refresh();
+            owner.refreshExtraComp (extraComp.get());
+            patchGUIHolder.patchView->setStatusMessage (owner.statusMessage);
         }
 
-        static cmaj::PatchManifest::View derivePatchViewSize (const JUCEPluginBase& owner)
+        static cmaj::PatchManifest::View derivePatchViewSize (const DerivedType& owner)
         {
             auto view = cmaj::PatchManifest::View
             {
@@ -1010,9 +952,7 @@ private:
 
         void onPatchChanged (bool forceReload = true)
         {
-            const auto loaded = owner.patch->isPlayable();
-
-            if (loaded)
+            if (owner.isViewVisible())
             {
                 patchGUIHolder.patchView->setActive (true);
                 patchGUIHolder.update (derivePatchViewSize (owner));
@@ -1041,7 +981,7 @@ private:
         {
             if (! isResizing && patchGUIHolder.isVisible())
                 setSize (std::max (50, patchGUIHolder.getWidth()),
-                         std::max (50, patchGUIHolder.getHeight() + extraComp.height));
+                         std::max (50, patchGUIHolder.getHeight() + DerivedType::extraCompHeight));
         }
 
         void resized() override
@@ -1053,7 +993,7 @@ private:
 
             if (patchGUIHolder.isVisible())
             {
-                patchGUIHolder.setBounds (r.removeFromTop (getHeight() - extraComp.height));
+                patchGUIHolder.setBounds (r.removeFromTop (getHeight() - DerivedType::extraCompHeight));
                 r.removeFromTop (4);
 
                 if (getWidth() > 0 && getHeight() > 0)
@@ -1063,7 +1003,9 @@ private:
                 }
             }
 
-            extraComp.setBounds (r);
+            if (extraComp)
+                extraComp->setBounds (r);
+
             isResizing = false;
         }
 
@@ -1134,8 +1076,8 @@ private:
         };
 
         //==============================================================================
-        JUCEPluginBase& owner;
-        typename EngineType::template ExtraEditorComponent<JUCEPluginBase> extraComp { owner };
+        DerivedType& owner;
+        std::unique_ptr<juce::Component> extraComp;
 
         PatchGUIHolder patchGUIHolder;
         juce::LookAndFeel_V4 lookAndFeel;
@@ -1170,17 +1112,71 @@ private:
 
 
 //==============================================================================
-/// Used along with JUCEPluginBase to create a JIT-compiling JUCE plugin class.
-struct JUCEPluginType_DynamicJIT
+/// This class is a juce::AudioPluginInstance which runs a JIT-compiled engine.
+class JITLoaderPlugin  : public JUCEPluginBase<JITLoaderPlugin>
 {
+public:
+    JITLoaderPlugin (std::shared_ptr<Patch> patchToUse)
+        : JUCEPluginBase<JITLoaderPlugin> (patchToUse, getBusLayout())
+    {
+        // for a JIT plugin, we can't recreate parameter objects without hosts crashing, so
+        // will just create a big flat list and re-use its parameter objects when things change
+        ensureNumParameters (100);
+    }
+
     static constexpr bool isPrecompiled = false;
     static constexpr bool isFixedPatch = false;
 
-    template <typename Plugin>
+    void loadPatch (const std::filesystem::path& fileToLoad)
+    {
+        setNewStateAsync (createEmptyState (fileToLoad));
+    }
+
+    void loadPatch (const PatchManifest& manifest)
+    {
+        if (dllLoadedSuccessfully)
+        {
+            Patch::LoadParams loadParams;
+            loadParams.manifest = manifest;
+            patch->loadPatch (loadParams, false);
+        }
+    }
+
+    bool prepareManifest (Patch::LoadParams& loadParams, const juce::ValueTree& newState) override
+    {
+        if (! newState.isValid())
+            return false;
+
+        auto location = newState.getProperty (ids.location).toString().toStdString();
+
+        if (location.empty())
+            return false;
+
+        loadParams.manifest.initialiseWithFile (location);
+
+        if (! patch->isLoaded() || loadParams.manifest.manifestFile == patch->getPatchFile())
+            readParametersFromState (loadParams, newState);
+
+        return true;
+    }
+
+    static BusesProperties getBusLayout()
+    {
+        BusesProperties layout;
+        layout.addBus (true,  "Input",  juce::AudioChannelSet::stereo(), true);
+        layout.addBus (false, "Output", juce::AudioChannelSet::stereo(), true);
+        return layout;
+    }
+
+    bool isViewVisible()
+    {
+        return patch->isPlayable();
+    }
+
     struct ExtraEditorComponent  : public juce::Component,
                                    public juce::FileDragAndDropTarget
     {
-        ExtraEditorComponent (Plugin& p) : plugin (p)
+        ExtraEditorComponent (JITLoaderPlugin& p) : plugin (p)
         {
             messageBox.setMultiLine (true);
             messageBox.setReadOnly (true);
@@ -1246,77 +1242,100 @@ struct JUCEPluginType_DynamicJIT
         }
 
         //==============================================================================
-        Plugin& plugin;
+        JITLoaderPlugin& plugin;
         bool isDragOver = false;
 
         juce::TextEditor messageBox;
         juce::TextButton unloadButton { "Unload" };
 
-        static constexpr int height = 50;
-
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ExtraEditorComponent)
     };
+
+    static constexpr int extraCompHeight = 50;
+
+    std::unique_ptr<ExtraEditorComponent> createExtraComponent()
+    {
+        return std::make_unique<ExtraEditorComponent> (*this);
+    }
+
+    void refreshExtraComp (juce::Component* c)
+    {
+        if (auto v = dynamic_cast<ExtraEditorComponent*> (c))
+            v->refresh();
+    }
 };
 
 //==============================================================================
-/// Used along with JUCEPluginBase to create a JUCE plugin class for a given single patch
-struct JUCEPluginType_SinglePatchJIT
+/// This class is a juce::AudioPluginInstance which runs a JIT-compiled engine.
+class SinglePatchJITPlugin  : public JUCEPluginBase<SinglePatchJITPlugin>
 {
+public:
+    SinglePatchJITPlugin (std::shared_ptr<cmaj::Patch> patchToUse,
+                          std::filesystem::path manifestLocationToUse)
+        : JUCEPluginBase<SinglePatchJITPlugin> (patchToUse, preloadBusLayout (*patchToUse, manifestLocationToUse)),
+          manifestLocation (std::move (manifestLocationToUse))
+    {
+        setNewStateAsync (createEmptyState (manifestLocation));
+    }
+
+    bool prepareManifest (Patch::LoadParams& loadParams, const juce::ValueTree& newState) override
+    {
+        if (! newState.isValid())
+            return false;
+
+        loadParams.manifest.initialiseWithFile (manifestLocation);
+        readParametersFromState (loadParams, newState);
+        return true;
+    }
+
+    static BusesProperties preloadBusLayout (cmaj::Patch& p, std::filesystem::path location)
+    {
+        cmaj::PatchManifest m;
+        m.initialiseWithFile (location);
+        p.preload (m);
+
+        return getBusesProperties (p.getInputEndpoints(),
+                                   p.getOutputEndpoints());
+    }
+
     static constexpr bool isPrecompiled = false;
     static constexpr bool isFixedPatch = true;
 
-    template <typename Plugin>
-    struct ExtraEditorComponent  : public juce::Component
-    {
-        ExtraEditorComponent (Plugin& p) : plugin (p)
-        {
-            messageBox.setMultiLine (true);
-            messageBox.setReadOnly (true);
-            addAndMakeVisible (messageBox);
-        }
+    std::filesystem::path manifestLocation;
 
-        void refresh()
-        {
-            juce::Font f (18.0f);
-            f.setTypefaceName (juce::Font::getDefaultMonospacedFontName());
-            messageBox.setFont (f);
-            messageBox.setText (plugin.statusMessage);
-        }
-
-        void resized() override
-        {
-            messageBox.setBounds (getLocalBounds().reduced (4));
-        }
-
-        Plugin& plugin;
-        juce::TextEditor messageBox;
-
-        static constexpr int height = 0;
-    };
+    static constexpr int extraCompHeight = 0;
+    static bool isViewVisible()  { return true; }
+    std::unique_ptr<juce::Component> createExtraComponent() { return {}; }
+    void refreshExtraComp (juce::Component*) {}
 };
 
 //==============================================================================
-/// Used along with JUCEPluginBase to create a JUCE plugin class that is specialised
-/// for loading the C++ class specified by the GeneratedInfoClass argument.
+/// This class is a juce::AudioPluginInstance which loads a generated C++ patch
 template <typename GeneratedInfoClass>
-struct JUCEPluginType_Cpp
+class GeneratedPlugin  : public JUCEPluginBase<GeneratedPlugin<GeneratedInfoClass>>
 {
-    using PatchClass = GeneratedInfoClass;
-    using PerformerClass = typename PatchClass::PerformerClass;
-    static constexpr bool isPrecompiled = true;
-    static constexpr bool isFixedPatch = true;
+public:
+    using super = JUCEPluginBase<GeneratedPlugin<GeneratedInfoClass>>;
 
-    static cmaj::PatchManifest createManifest()
+    GeneratedPlugin (std::shared_ptr<cmaj::Patch> patchToUse)
+        : super (std::move (patchToUse), getBusLayout())
     {
-        cmaj::PatchManifest m;
-        m.needsToBuildSource = false;
+        this->patch->createEngine = +[] { return cmaj::createEngineForGeneratedCppProgram<typename GeneratedPlugin::PerformerClass>(); };
 
-        m.initialiseWithVirtualFile (std::string (PatchClass::filename),
+        this->applyRateAndBlockSize (44100, 128);
+        super::setNewState (this->createEmptyState ({}));
+    }
+
+    bool prepareManifest (Patch::LoadParams& loadParams, const juce::ValueTree& newState) override
+    {
+        loadParams.manifest.needsToBuildSource = false;
+
+        loadParams.manifest.initialiseWithVirtualFile (std::string (PatchClass::filename),
             [] (const std::string& f) -> std::shared_ptr<std::istream>
             {
                 for (auto& file : PatchClass::files)
                     if (f == file.name)
-                        return std::make_shared<std::istringstream> (std::string (file.content));
+                        return std::make_shared<std::istringstream> (std::string (file.content), std::ios::binary);
 
                 return {};
             },
@@ -1331,25 +1350,28 @@ struct JUCEPluginType_Cpp
                 return false;
             });
 
-        return m;
+        this->readParametersFromState (loadParams, newState);
+        return true;
     }
 
-    template <typename Plugin>
-    struct ExtraEditorComponent  : public juce::Component
+    static auto getBusLayout()
     {
-        ExtraEditorComponent (Plugin&) {}
-        void refresh() {}
-        static constexpr int height = 0;
-    };
+        auto programDetailsJSON = choc::json::parse (PerformerClass::programDetailsJSON);
+
+        return super::getBusesProperties (cmaj::EndpointDetailsList::fromJSON (programDetailsJSON["inputs"], true),
+                                          cmaj::EndpointDetailsList::fromJSON (programDetailsJSON["outputs"], false));
+    }
+
+    using PatchClass = GeneratedInfoClass;
+    using PerformerClass = typename PatchClass::PerformerClass;
+    static constexpr bool isPrecompiled = true;
+    static constexpr bool isFixedPatch = true;
+
+    static constexpr int extraCompHeight = 0;
+    static bool isViewVisible()  { return true; }
+    std::unique_ptr<juce::Component> createExtraComponent() { return {}; }
+    void refreshExtraComp (juce::Component*) {}
 };
-
-//==============================================================================
-/// This class is a juce::AudioPluginInstance which runs a JIT-compiled engine.
-using JITLoaderPlugin = JUCEPluginBase<JUCEPluginType_DynamicJIT>;
-
-/// This class is a juce::AudioPluginInstance which loads a generated C++ patch
-template <typename GeneratedInfoClass>
-using GeneratedPlugin = JUCEPluginBase<JUCEPluginType_Cpp<GeneratedInfoClass>>;
 
 
 } // namespace cmaj::plugin

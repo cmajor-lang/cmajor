@@ -426,12 +426,15 @@ inline std::unordered_map<std::string, choc::value::ValueView> PatchManifest::ge
 {
     std::unordered_map<std::string, choc::value::ValueView> result;
 
-    if (auto externals = manifest["externals"]; externals.isObject())
+    if (manifest.isObject())
     {
-        for (uint32_t i = 0; i < externals.size(); i++)
+        if (auto externals = manifest["externals"]; externals.isObject())
         {
-            auto member = externals.getObjectMemberAt (i);
-            result[member.name] = member.value;
+            for (uint32_t i = 0; i < externals.size(); i++)
+            {
+                auto member = externals.getObjectMemberAt (i);
+                result[member.name] = member.value;
+            }
         }
     }
 

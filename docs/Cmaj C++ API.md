@@ -92,11 +92,11 @@ This class can be given a `PatchManifest` to load, and will take care of running
 
 These JUCE-based helper classes are provided to allow you to create `juce::AudioPluginInstance` objects for Cmajor patches, and thus build (or host) them as VST/AU/AAX plugins.
 
-If you create a `cmaj::JUCEPluginBase<cmaj::JUCEPluginType_DynamicJIT>`, it provides a plugin which can dynamically load different Cmajor patches. It does this by allowing patches to be dragged-and-dropped onto its GUI, and it will dynamically load and re-JIT them. This is flexible, but sadly because most hosts can't cope when plugins dynamically change their parameters, or i/o configuration, there are a few compromises involved in the implementation of this class.
+If you create a `cmaj::JITLoaderPlugin`, it provides a plugin which can dynamically load different Cmajor patches. It does this by allowing patches to be dragged-and-dropped onto its GUI, and it will dynamically load and re-JIT them. This is flexible, but sadly because most hosts can't cope when plugins dynamically change their parameters, or i/o configuration, there are a few compromises involved in the implementation of this class.
 
-If you want to build a plugin that loads a particular patch and doesn't change it, you can use `cmaj::JUCEPluginBase<cmaj::JUCEPluginType_SinglePatchJIT>` instead. This still uses the JIT engine and can also live-reload changes to the patch when running, but it takes a patch on construction, pre-loads it, and makes sure that the host has the correct i/o and parameter list ready at the start, which plays much more nicely with the way most hosts work. In this mode, it doesn't allow you to drag-and-drop onto the GUI to load different patches.
+If you want to build a plugin that loads a particular patch and doesn't change it, you can use `cmaj::SinglePatchJITPlugin` instead. This still uses the JIT engine and can also live-reload changes to the patch when running, but it takes a patch on construction, pre-loads it, and makes sure that the host has the correct i/o and parameter list ready at the start, which plays much more nicely with the way most hosts work. In this mode, it doesn't allow you to drag-and-drop onto the GUI to load different patches.
 
-The `cmaj::JUCEPluginFormat` is a `juce::AudioPluginFormat` class which can scan for and load Cmajor patches as JUCE plugins. It uses the `cmaj::JUCEPluginBase<cmaj::JUCEPluginType_SinglePatchJIT>` wrapper, and if you're writing a JUCE-based host that you want to load Cmajor patches, this would be the class to give to your `juce::AudioPluginFormatManager`.
+The `cmaj::JUCEPluginFormat` is a `juce::AudioPluginFormat` class which can scan for and load Cmajor patches as JUCE plugins. It uses the `cmaj::SinglePatchJITPlugin>` wrapper, and if you're writing a JUCE-based host that you want to load Cmajor patches, this would be the class to give to your `juce::AudioPluginFormatManager`.
 
 ### `cmaj::GeneratedCppEngine`
 
