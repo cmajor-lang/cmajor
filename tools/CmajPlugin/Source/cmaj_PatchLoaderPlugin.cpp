@@ -62,7 +62,7 @@ static std::optional<std::filesystem::path> findSiblingJSONFile (std::filesystem
     {
         try
         {
-            auto json = choc::json::parse (choc::file::loadFileAsString (f));
+            auto json = choc::json::parse (choc::file::loadFileAsString (f.string()));
 
             if (! json.isObject())
                 throw std::runtime_error ("Expected a JSON object");

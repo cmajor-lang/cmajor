@@ -798,12 +798,10 @@ protected:
         const juce::String paramID;
     };
 
-    static constexpr bool useFixedParamTree = DerivedType::isPrecompiled || DerivedType::isFixedPatch;
-
     void createParameterTree()
     {
         // for a precompiled plugin, we can build a complete group structure
-        if constexpr (useFixedParamTree)
+        if constexpr (DerivedType::isPrecompiled || DerivedType::isFixedPatch)
         {
             struct ParameterTreeBuilder
             {
@@ -868,7 +866,7 @@ protected:
         bool changed = false;
         auto params = patch->getParameterList();
 
-        if constexpr (useFixedParamTree)
+        if constexpr (DerivedType::isPrecompiled || DerivedType::isFixedPatch)
         {
             if (parameters.empty())
                 createParameterTree();
