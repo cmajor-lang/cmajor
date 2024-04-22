@@ -5151,3 +5151,163 @@ processor A
         out <- (f, f);
     }
 }
+
+
+## testProcessor()
+
+graph Main [[main]]
+{
+    output stream float out;
+
+    node osc = Osc;
+    node source = Source;
+
+    connection
+    {
+        source -> osc.in;
+        osc -> out;
+    }
+}
+
+processor Source
+{
+    output stream float out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph Osc
+{
+    input osc.in;
+    output stream float out;
+
+    node osc = Oscillator[2];
+
+    connection
+        osc.out -> out;
+}
+
+graph Oscillator
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+        in -> out;
+}
+
+
+## testProcessor()
+
+graph Main [[main]]
+{
+    output stream float out;
+
+    node osc = Osc;
+    node source = Source;
+
+    connection
+    {
+        source -> osc.in;
+        osc -> out;
+    }
+}
+
+processor Source
+{
+    output value float out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph Osc
+{
+    input osc.in;
+    output stream float out;
+
+    node osc = Oscillator[2];
+
+    connection
+        osc.out -> out;
+}
+
+graph Oscillator
+{
+    input value float in;
+    output stream float out;
+
+    connection
+        in -> out;
+}
+
+
+## testProcessor()
+
+graph Main [[main]]
+{
+    output stream float out;
+
+    node osc = Osc;
+    node source = Source;
+
+    connection
+    {
+        source -> osc.in;
+        osc -> out;
+    }
+}
+
+processor Source
+{
+    output event float out;
+
+    void main()
+    {
+        out <- 1;
+        advance();
+        out <- -1;
+        advance();
+    }
+}
+
+graph Osc
+{
+    input osc.in;
+    output stream float out;
+
+    node osc = Oscillator[2];
+
+    connection
+        osc.out -> out;
+}
+
+processor Oscillator
+{
+    input event float in;
+    output stream float out;
+
+    event in (float v)  { o = v; }
+
+    float o;
+
+    void main()
+    {
+        loop
+        {
+            out <- o;
+            advance();
+        }
+    }
+}

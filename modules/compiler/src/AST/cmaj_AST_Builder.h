@@ -187,7 +187,18 @@ static inline void addConnection (AST::Graph& graph,
     if (destNode   != nullptr) dstEndpointInstance.node.createReferenceTo (*destNode);
 
     auto& connection = context.allocate<AST::Connection>();
-    connection.sources.addReference (srcEndpointInstance);
+
+    if (sourceEndpoint.isEvent())
+    {
+        connection.sources.addReference (srcEndpointInstance);
+    }
+    else
+    {
+        auto& readFromEndpoint = context.allocate<AST::ReadFromEndpoint>();
+        readFromEndpoint.endpointInstance.referTo (srcEndpointInstance);
+        connection.sources.addReference (readFromEndpoint);
+    }
+
     connection.dests.addReference (dstEndpointInstance);
 
     graph.connections.addReference (connection);
