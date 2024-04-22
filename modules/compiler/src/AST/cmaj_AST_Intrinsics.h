@@ -127,33 +127,22 @@ private:
         return argType;
     }
 
-    template <typename NumericType, bool isFloat>
+    template <typename ArgType, bool isFloat>
     static ptr<ConstantValueBase> perform (Type intrinsic, ArgList args)
     {
-        if (auto result = performNumeric<NumericType, isFloat> (intrinsic, args))
-        {
-            if (intrinsic == Type::isnan || intrinsic == Type::isinf)
-                return args.front()->context.allocator.createConstantBool (*result != 0);
-
-            return args.front()->context.allocator.createConstant (*result);
-        }
-
-        return {};
-    }
-
-    template <typename NumericType, bool isFloat>
-    static std::optional<NumericType> performNumeric (Type intrinsic, ArgList args)
-    {
-        NumericType argArray[4] = {};
+        ArgType argArray[4] = {};
         size_t i = 0;
 
         for (auto& arg : args)
-            argArray[i++] = getAsPrimitive<NumericType> (arg);
+            argArray[i++] = getAsPrimitive<ArgType> (arg);
+
+        auto& allocator = args.front()->context.allocator;
 
         #define CMAJ_HANDLE_INTRINSIC(name, numArgs, canDoInt, canDoFloat) \
             if constexpr (isFloat ? canDoFloat : canDoInt) \
                 if (intrinsic == Type::name && numArgs == args.size()) \
-                    return perform_ ## name (argArray);
+                    return allocator.createConstant (perform_ ## name (argArray));
+
         CMAJ_INTRINSICS (CMAJ_HANDLE_INTRINSIC)
         #undef CMAJ_HANDLE_INTRINSIC
 
@@ -229,11 +218,12 @@ private:
     template <typename T> static T perform_acos          (const T* args)  { return std::acos (args[0]); }
     template <typename T> static T perform_atan          (const T* args)  { return std::atan (args[0]); }
     template <typename T> static T perform_atan2         (const T* args)  { return std::atan2 (args[0], args[1]); }
-    template <typename T> static T perform_isnan         (const T* args)  { return std::isnan (args[0]) ? 1.0f : 0.0f; }
-    template <typename T> static T perform_isinf         (const T* args)  { return std::isinf (args[0]) ? 1.0f : 0.0f; }
 
-    static int32_t perform_reinterpretFloatToInt (const float* args)    { return choc::memory::bit_cast<int32_t> (args[0]); }
-    static int64_t perform_reinterpretFloatToInt (const double* args)   { return choc::memory::bit_cast<int64_t> (args[0]); }
-    static float   perform_reinterpretIntToFloat (const int32_t* args)  { return choc::memory::bit_cast<float>   (args[0]); }
-    static double  perform_reinterpretIntToFloat (const int64_t* args)  { return choc::memory::bit_cast<double>  (args[0]); }
+    template <typename T> static bool perform_isnan (const T* args)       { return std::isnan (args[0]) ? 1.0f : 0.0f; }
+    template <typename T> static bool perform_isinf (const T* args)       { return std::isinf (args[0]) ? 1.0f : 0.0f; }
+
+    static int32_t perform_reinterpretFloatToInt (const float* args)      { return choc::memory::bit_cast<int32_t> (args[0]); }
+    static int64_t perform_reinterpretFloatToInt (const double* args)     { return choc::memory::bit_cast<int64_t> (args[0]); }
+    static float   perform_reinterpretIntToFloat (const int32_t* args)    { return choc::memory::bit_cast<float>   (args[0]); }
+    static double  perform_reinterpretIntToFloat (const int64_t* args)    { return choc::memory::bit_cast<double>  (args[0]); }
 };
