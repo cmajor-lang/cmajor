@@ -47,12 +47,9 @@ struct PatchPlayerServer
                              [this] { return std::make_unique<ClientRequestHandler> (*this); },
                              [this] (const std::string& error) { handleServerError (error); }))
         {
-            serverAddress = std::string (httpServer.getAddress());
-            serverAddressWithScheme = "http://" + serverAddress;
-
             setAudioDevicePropsFn = [this] (const choc::value::ValueView& v) { setAudioDeviceProperties (v); };
 
-            writeToConsole ("\nCmajor server active: " + serverAddressWithScheme + "\n\n");
+            writeToConsole ("\nCmajor server active: " + httpServer.getHTTPAddress() + "\n\n");
 
             createAudioPlayer (audioOptions);
             refreshAllSessionAudioDevices();
@@ -245,7 +242,7 @@ struct PatchPlayerServer
         std::string getPatchServerModule() const
         {
             return choc::text::replace (EmbeddedAssets::getInstance().getContent ("embedded_patch_session_template.js"),
-                                        "SOCKET_URL", choc::json::getEscapedQuotedString ("ws://" + owner.serverAddress));
+                                        "SOCKET_URL", choc::json::getEscapedQuotedString (owner.httpServer.getWebSocketAddress()));
         }
 
         std::string createRedirectToNewSessionPage()
@@ -386,7 +383,7 @@ struct PatchPlayerServer
            : owner (s), sessionID (std::move (sessionIDToUse))
         {
             httpPath = "/session_" + sessionID + "/";
-            httpRootURL = owner.serverAddressWithScheme + httpPath;
+            httpRootURL = owner.httpServer.getHTTPAddress() + httpPath;
 
             pingTimer = choc::messageloop::Timer (2000, [this]
             {
@@ -945,8 +942,6 @@ struct PatchPlayerServer
 
         return codeGenTargets;
     }
-
-    std::string serverAddress, serverAddressWithScheme;
 
 private:
     //==============================================================================

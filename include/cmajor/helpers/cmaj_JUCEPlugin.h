@@ -900,8 +900,11 @@ protected:
     {
         Editor (DerivedType& p)
             : juce::AudioProcessorEditor (p), owner (p),
-              patchGUIHolder (std::make_unique<cmaj::PatchWebView> (*p.patch, derivePatchViewSize (p)))
+              patchWebView (std::make_unique<cmaj::PatchWebView> (*p.patch, derivePatchViewSize (p)))
         {
+            patchWebViewHolder = choc::ui::createJUCEWebViewHolder (patchWebView->getWebView());
+            patchWebViewHolder->setSize ((int) patchWebView->width, (int) patchWebView->height);
+
             lookAndFeel.setColour (juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
             lookAndFeel.setColour (juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
             setLookAndFeel (&lookAndFeel);
@@ -922,12 +925,14 @@ protected:
         {
             owner.editorBeingDeleted (this);
             setLookAndFeel (nullptr);
+            patchWebViewHolder.reset();
+            patchWebView.reset();
         }
 
         void statusMessageChanged()
         {
             owner.refreshExtraComp (extraComp.get());
-            patchGUIHolder.patchView->setStatusMessage (owner.statusMessage);
+            patchWebView->setStatusMessage (owner.statusMessage);
         }
 
         static cmaj::PatchManifest::View derivePatchViewSize (const DerivedType& owner)
@@ -952,34 +957,35 @@ protected:
         {
             if (owner.isViewVisible())
             {
-                patchGUIHolder.patchView->setActive (true);
-                patchGUIHolder.update (derivePatchViewSize (owner));
+                patchWebView->setActive (true);
+                patchWebView->update (derivePatchViewSize (owner));
+                patchWebViewHolder->setSize ((int) patchWebView->width, (int) patchWebView->height);
 
-                setResizable (patchGUIHolder.patchView->resizable, false);
+                setResizable (patchWebView->resizable, false);
 
-                addAndMakeVisible (patchGUIHolder);
+                addAndMakeVisible (*patchWebViewHolder);
                 childBoundsChanged (nullptr);
             }
             else
             {
-                removeChildComponent (std::addressof (patchGUIHolder));
+                removeChildComponent (patchWebViewHolder.get());
 
-                patchGUIHolder.patchView->setActive (false);
-                patchGUIHolder.setVisible (false);
+                patchWebView->setActive (false);
+                patchWebViewHolder->setVisible (false);
 
                 setSize (defaultWidth, defaultHeight);
                 setResizable (true, false);
             }
 
             if (forceReload)
-                patchGUIHolder.patchView->reload();
+                patchWebView->reload();
         }
 
         void childBoundsChanged (Component*) override
         {
-            if (! isResizing && patchGUIHolder.isVisible())
-                setSize (std::max (50, patchGUIHolder.getWidth()),
-                         std::max (50, patchGUIHolder.getHeight() + DerivedType::extraCompHeight));
+            if (! isResizing && patchWebViewHolder->isVisible())
+                setSize (std::max (50, patchWebViewHolder->getWidth()),
+                         std::max (50, patchWebViewHolder->getHeight() + DerivedType::extraCompHeight));
         }
 
         void resized() override
@@ -989,15 +995,15 @@ protected:
 
             auto r = getLocalBounds();
 
-            if (patchGUIHolder.isVisible())
+            if (patchWebViewHolder->isVisible())
             {
-                patchGUIHolder.setBounds (r.removeFromTop (getHeight() - DerivedType::extraCompHeight));
+                patchWebViewHolder->setBounds (r.removeFromTop (getHeight() - DerivedType::extraCompHeight));
                 r.removeFromTop (4);
 
                 if (getWidth() > 0 && getHeight() > 0)
                 {
-                    owner.lastEditorWidth = patchGUIHolder.getWidth();
-                    owner.lastEditorHeight = patchGUIHolder.getHeight();
+                    owner.lastEditorWidth = patchWebViewHolder->getWidth();
+                    owner.lastEditorHeight = patchWebViewHolder->getHeight();
                 }
             }
 
@@ -1013,71 +1019,11 @@ protected:
         }
 
         //==============================================================================
-       #if JUCE_MAC
-        using NativeUIBase = juce::NSViewComponent;
-       #elif JUCE_IOS
-        using NativeUIBase = juce::UIViewComponent;
-       #elif JUCE_WINDOWS
-        using NativeUIBase = juce::HWNDComponent;
-       #else
-        using NativeUIBase = juce::XEmbedComponent;
-       #endif
-
-        struct PatchGUIHolder  : public NativeUIBase
-        {
-            PatchGUIHolder (std::unique_ptr<PatchWebView> webView) :
-               #if JUCE_LINUX
-                juce::XEmbedComponent (getWindowID (*webView), true, false),
-               #endif
-                patchView (std::move (webView))
-            {
-                setSize ((int) patchView->width, (int) patchView->height);
-
-               #if JUCE_MAC || JUCE_IOS
-                setView (patchView->getWebView().getViewHandle());
-               #elif JUCE_WINDOWS
-                setHWND (patchView->getWebView().getViewHandle());
-               #endif
-            }
-
-            ~PatchGUIHolder()
-            {
-               #if JUCE_MAC || JUCE_IOS
-                setView ({});
-               #elif JUCE_WINDOWS
-                setHWND ({});
-               #elif JUCE_LINUX
-                removeClient();
-               #endif
-            }
-
-           #if JUCE_LINUX
-            static unsigned long getWindowID (PatchWebView& v)
-            {
-                auto childWidget = GTK_WIDGET (v.getWebView().getViewHandle());
-                auto plug = gtk_plug_new (0);
-                gtk_container_add (GTK_CONTAINER (plug), childWidget);
-                gtk_widget_show_all (plug);
-                return gtk_plug_get_id (GTK_PLUG (plug));
-            }
-           #endif
-
-            void update (const PatchManifest::View& view)
-            {
-                patchView->update (view);
-                setSize ((int) patchView->width, (int) patchView->height);
-            }
-
-            std::unique_ptr<PatchWebView> patchView;
-
-            JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PatchGUIHolder)
-        };
-
-        //==============================================================================
         DerivedType& owner;
-        std::unique_ptr<juce::Component> extraComp;
 
-        PatchGUIHolder patchGUIHolder;
+        std::unique_ptr<cmaj::PatchWebView> patchWebView;
+        std::unique_ptr<juce::Component> patchWebViewHolder, extraComp;
+
         juce::LookAndFeel_V4 lookAndFeel;
         bool isResizing = false;
 
