@@ -805,7 +805,6 @@ static inline ptr<AST::Object> getSpecialisationParamDefault (const AST::Object&
     }
 
     CMAJ_ASSERT_FALSE;
-    return {};
 }
 
 static inline void checkSpecialisationParams (AST::ModuleBase& module)

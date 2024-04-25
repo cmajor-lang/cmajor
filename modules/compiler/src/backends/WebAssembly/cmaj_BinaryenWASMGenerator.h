@@ -1188,8 +1188,8 @@ struct WebAssemblyGenerator
 
     struct ForwardBranchPlaceholder {};
     using ForwardBranchTarget = int;
-    ForwardBranchPlaceholder beginForwardBranch (ValueReader, size_t)                   { CMAJ_ASSERT_FALSE; return {}; }
-    ForwardBranchTarget createForwardBranchTarget (ForwardBranchPlaceholder, size_t)    { CMAJ_ASSERT_FALSE; return {}; }
+    ForwardBranchPlaceholder beginForwardBranch (ValueReader, size_t)                   { CMAJ_ASSERT_FALSE; }
+    ForwardBranchTarget createForwardBranchTarget (ForwardBranchPlaceholder, size_t)    { CMAJ_ASSERT_FALSE; }
     void resolveForwardBranch (ForwardBranchPlaceholder, const std::vector<ForwardBranchTarget>&)    { CMAJ_ASSERT_FALSE; }
 
     ValueReference createLocalTempVariable (const AST::VariableDeclaration& variable, ValueReader value, bool ensureZeroInitialised)
@@ -1513,7 +1513,6 @@ struct WebAssemblyGenerator
                                    codeGenerator->createNullConstant (sourceType));
 
         CMAJ_ASSERT_FALSE;
-        return {};
     }
 
     ValueReader createSliceFromArray (const AST::TypeBase& elementType, ValueReader sourceArray,
@@ -1893,7 +1892,6 @@ struct WebAssemblyGenerator
         }
 
         CMAJ_ASSERT_FALSE;
-        return wasm::BinaryOp::InvalidBinary;
     }
 
     static bool canPerformVectorUnaryOp()   { return false; }

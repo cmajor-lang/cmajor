@@ -921,7 +921,7 @@ inline clap_process_status Plugin::Impl::clapPlugin_process (const clap_process_
                             const auto clapEvent = toClapNoteEvent (
                                 frameOffsetRelativeToProcessBlockStart,
                                 portIndex,
-                                message.isNoteOn() ? CLAP_EVENT_NOTE_ON : CLAP_EVENT_NOTE_OFF,
+                                static_cast<uint16_t> (message.isNoteOn() ? CLAP_EVENT_NOTE_ON : CLAP_EVENT_NOTE_OFF),
                                 message.getChannel0to15(),
                                 message.getNoteNumber(),
                                 message.getVelocity() / 127.0
@@ -963,7 +963,7 @@ inline void Plugin::Impl::consumeEventsFromEditor (const clap_output_events_t& o
                     clap_event_param_gesture clapEvent {};
 
                     clapEvent.header.size = sizeof (clap_event_param_gesture);
-                    clapEvent.header.type = type;
+                    clapEvent.header.type = static_cast<uint16_t> (type);
                     clapEvent.header.time = 0;
                     clapEvent.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
                     clapEvent.header.flags = 0;

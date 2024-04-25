@@ -516,7 +516,7 @@ private:
     //==============================================================================
     struct Dictionary  : public choc::value::StringDictionary
     {
-        Handle getHandleForString(std::string_view) override { CMAJ_ASSERT_FALSE; return {}; }
+        Handle getHandleForString (std::string_view) override { return {}; }
 
         std::string_view getStringForHandle (Handle handle) const override
         {

@@ -63,7 +63,6 @@ struct TypeRules
         }
 
         CMAJ_ASSERT_FALSE;
-        return CastType::impossible;
     }
 
     static bool areTypesIdentical (const TypeBase& dest, const TypeBase& source)  { return getCastType (dest, source) == CastType::identity; }
@@ -203,7 +202,6 @@ struct TypeRules
         if (op == UnaryOpTypeEnum::Enum::logicalNot)   return t.isPrimitiveBool();
 
         CMAJ_ASSERT_FALSE;
-        return false;
     }
 
     struct BinaryOperatorTypes
@@ -245,7 +243,6 @@ struct TypeRules
         if (isArithmeticOperator (op))    return getCommonTypeForOp      (a.skipConstAndRefModifiers(), b.skipConstAndRefModifiers(), op);
 
         CMAJ_ASSERT_FALSE;
-        return BinaryOperatorTypes::invalid (a);
     }
 
     static BinaryOperatorTypes getVectorOperatorTypes (BinaryOpTypeEnum::Enum op, const TypeBase& a, const TypeBase& b)
@@ -617,7 +614,7 @@ private:
                         case PrimitiveTypeEnum::Enum::complex64:   return CastType::impossible;
                         case PrimitiveTypeEnum::Enum::boolean:     return CastType::numericReduction;
                         case PrimitiveTypeEnum::Enum::string:      return CastType::impossible;
-                        default:                                   CMAJ_ASSERT_FALSE; return CastType::impossible;
+                        default:                                   CMAJ_ASSERT_FALSE;
                     }
 
                 case PrimitiveTypeEnum::Enum::int64:
@@ -632,7 +629,7 @@ private:
                         case PrimitiveTypeEnum::Enum::complex64:   return CastType::impossible;
                         case PrimitiveTypeEnum::Enum::boolean:     return CastType::numericReduction;
                         case PrimitiveTypeEnum::Enum::string:      return CastType::impossible;
-                        default:                                   CMAJ_ASSERT_FALSE; return CastType::impossible;
+                        default:                                   CMAJ_ASSERT_FALSE;
                     }
 
                 case PrimitiveTypeEnum::Enum::float32:
@@ -647,7 +644,7 @@ private:
                         case PrimitiveTypeEnum::Enum::complex64:   return CastType::impossible;
                         case PrimitiveTypeEnum::Enum::boolean:     return CastType::numericReduction;
                         case PrimitiveTypeEnum::Enum::string:      return CastType::impossible;
-                        default:                                   CMAJ_ASSERT_FALSE; return CastType::impossible;
+                        default:                                   CMAJ_ASSERT_FALSE;
                     }
 
                 case PrimitiveTypeEnum::Enum::float64:
@@ -662,7 +659,7 @@ private:
                         case PrimitiveTypeEnum::Enum::complex64:   return CastType::impossible;
                         case PrimitiveTypeEnum::Enum::boolean:     return CastType::numericReduction;
                         case PrimitiveTypeEnum::Enum::string:      return CastType::impossible;
-                        default:                                   CMAJ_ASSERT_FALSE; return CastType::impossible;
+                        default:                                   CMAJ_ASSERT_FALSE;
                     }
 
                 case PrimitiveTypeEnum::Enum::complex32:
@@ -677,7 +674,7 @@ private:
                         case PrimitiveTypeEnum::Enum::complex64:   return CastType::numericReduction;
                         case PrimitiveTypeEnum::Enum::boolean:     return CastType::impossible;
                         case PrimitiveTypeEnum::Enum::string:      return CastType::impossible;
-                        default:                                   CMAJ_ASSERT_FALSE; return CastType::impossible;
+                        default:                                   CMAJ_ASSERT_FALSE;
                     }
 
                 case PrimitiveTypeEnum::Enum::complex64:
@@ -692,7 +689,7 @@ private:
                         case PrimitiveTypeEnum::Enum::complex64:   return CastType::identity;
                         case PrimitiveTypeEnum::Enum::boolean:     return CastType::impossible;
                         case PrimitiveTypeEnum::Enum::string:      return CastType::impossible;
-                        default:                                   CMAJ_ASSERT_FALSE; return CastType::impossible;
+                        default:                                   CMAJ_ASSERT_FALSE;
                     }
 
                 case PrimitiveTypeEnum::Enum::boolean:
@@ -707,7 +704,7 @@ private:
                         case PrimitiveTypeEnum::Enum::complex64:   return CastType::impossible;
                         case PrimitiveTypeEnum::Enum::boolean:     return CastType::identity;
                         case PrimitiveTypeEnum::Enum::string:      return CastType::impossible;
-                        default:                                   CMAJ_ASSERT_FALSE; return CastType::impossible;
+                        default:                                   CMAJ_ASSERT_FALSE;
                     }
 
                 case PrimitiveTypeEnum::Enum::void_:
@@ -717,7 +714,6 @@ private:
 
                 default:
                     CMAJ_ASSERT_FALSE;
-                    return CastType::impossible;
             }
         }
 
@@ -734,7 +730,7 @@ private:
                 case PrimitiveTypeEnum::Enum::complex64:   return CastType::impossible;
                 case PrimitiveTypeEnum::Enum::boolean:     return CastType::impossible;
                 case PrimitiveTypeEnum::Enum::string:      return CastType::impossible;
-                default:                                   CMAJ_ASSERT_FALSE; return CastType::impossible;
+                default:                                   CMAJ_ASSERT_FALSE;
             }
         }
 

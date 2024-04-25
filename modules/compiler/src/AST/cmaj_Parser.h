@@ -820,7 +820,6 @@ private:
         if (skipIfKeywordOrIdentifier ("best"))   return AST::InterpolationTypeEnum::Enum::best;
 
         throwError (Errors::expectedInterpolationType());
-        return AST::InterpolationTypeEnum::Enum::none;
     }
 
     AST::InterpolationTypeEnum::Enum parseInterpolationTypeIfPresent()
@@ -911,7 +910,6 @@ private:
         if (skipIfKeywordOrIdentifier ("event"))   return AST::EndpointTypeEnum::Enum::event;
 
         throwError (Errors::expectedStreamType());
-        return AST::EndpointTypeEnum::Enum::value;
     }
 
     void parseEndpointName (AST::EndpointDeclaration& e)

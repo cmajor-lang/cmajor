@@ -702,7 +702,6 @@ private:
         if (auto p = value.getAsPreOrPostIncOrDec())    return createPreOrPostIncOrDec (AST::castToValueRef (p->target), p->isIncrement, p->isPost);
 
         CMAJ_ASSERT_FALSE;
-        return {};
     }
 
     ValueReference createTempVariableReference (const AST::TypeBase& type,

@@ -605,8 +605,6 @@ struct ParentBlockInsertionPoint
 
             statement = parent;
         }
-
-        CMAJ_ASSERT_FALSE;
     }
 
     ScopeBlock& parentBlock;

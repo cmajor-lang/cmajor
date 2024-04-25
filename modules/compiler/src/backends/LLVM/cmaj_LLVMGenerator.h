@@ -1482,7 +1482,6 @@ struct LLVMCodeGenerator
         }
 
         CMAJ_ASSERT_FALSE;
-        return {};
     }
 
     ValueReader createAddInt32 (ValueReader lhs, int32_t rhs)

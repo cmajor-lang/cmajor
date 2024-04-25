@@ -64,15 +64,15 @@ struct TypeBase  : public Expression
     virtual TypeBase& skipConstAndRefModifiers()                { return *this; }
     virtual const TypeBase& skipConstAndRefModifiers() const    { return *this; }
 
-    virtual uint32_t getNumDimensions() const                                { CMAJ_ASSERT_FALSE; return 0; }
+    virtual uint32_t getNumDimensions() const                                { CMAJ_ASSERT_FALSE; }
     virtual ArraySize getVectorSize() const                                  { return 0; }
-    virtual ArraySize getArrayOrVectorSize (uint32_t dimensionIndex) const   { (void) dimensionIndex; CMAJ_ASSERT_FALSE; return 0; }
+    virtual ArraySize getArrayOrVectorSize (uint32_t dimensionIndex) const   { (void) dimensionIndex; CMAJ_ASSERT_FALSE; }
     virtual ptr<const TypeBase> getArrayOrVectorElementType() const          { return {}; }
-    virtual ArraySize getFixedSizeAggregateNumElements() const               { CMAJ_ASSERT_FALSE; return 0; }
-    virtual ptr<const TypeBase> getAggregateElementType (size_t) const       { CMAJ_ASSERT_FALSE; return {}; }
+    virtual ArraySize getFixedSizeAggregateNumElements() const               { CMAJ_ASSERT_FALSE; }
+    virtual ptr<const TypeBase> getAggregateElementType (size_t) const       { CMAJ_ASSERT_FALSE; }
     virtual IntegerRange getAddressableIntegerRange() const                  { return {}; }
 
-    virtual size_t getPackedStorageSize() const     { CMAJ_ASSERT_FALSE; return 0; }
+    virtual size_t getPackedStorageSize() const     { CMAJ_ASSERT_FALSE; }
 
     virtual ConstantValueBase& allocateConstantValue (const ObjectContext&) const = 0;
 
@@ -89,7 +89,7 @@ struct TypeBase  : public Expression
 
     virtual std::string getLayoutSignature() const = 0;
 
-    virtual choc::value::Type toChocType() const            { CMAJ_ASSERT_FALSE; return {}; }
+    virtual choc::value::Type toChocType() const            { CMAJ_ASSERT_FALSE; }
 
     virtual ObjectRefVector<TypeBase> getResolvedReferencedTypes() const     { return {}; }
 
@@ -142,7 +142,7 @@ struct PrimitiveType  : public TypeBase
             case PrimitiveTypeEnum::Enum::complex64:    return getStrings().complex64TypeName;
             case PrimitiveTypeEnum::Enum::boolean:      return getStrings().boolTypeName;
             case PrimitiveTypeEnum::Enum::string:       return getStrings().stringTypeName;
-            default:                                    CMAJ_ASSERT_FALSE; return {};
+            default:                                    CMAJ_ASSERT_FALSE;
         }
     }
 
@@ -216,7 +216,7 @@ struct PrimitiveType  : public TypeBase
             case PrimitiveTypeEnum::Enum::complex64:    return 16;
             case PrimitiveTypeEnum::Enum::boolean:      return 1;
             case PrimitiveTypeEnum::Enum::string:       return 4;
-            default:                                    CMAJ_ASSERT_FALSE; return 0;
+            default:                                    CMAJ_ASSERT_FALSE;
         }
     }
 
@@ -233,7 +233,7 @@ struct PrimitiveType  : public TypeBase
             case PrimitiveTypeEnum::Enum::complex64:    return c.allocate<ConstantComplex64>();
             case PrimitiveTypeEnum::Enum::boolean:      return c.allocate<ConstantBool>();
             case PrimitiveTypeEnum::Enum::string:       return c.allocate<ConstantString>();
-            default:                                    CMAJ_ASSERT_FALSE; return c.allocate<ConstantBool>();
+            default:                                    CMAJ_ASSERT_FALSE;
         }
     }
 
@@ -252,7 +252,7 @@ struct PrimitiveType  : public TypeBase
             case PrimitiveTypeEnum::Enum::complex64:    return createComplexType ("complex64", choc::value::Type::createFloat64());
             case PrimitiveTypeEnum::Enum::boolean:      return choc::value::Type::createBool();
             case PrimitiveTypeEnum::Enum::string:       return choc::value::Type::createString();
-            default:                                    CMAJ_ASSERT_FALSE; return {};
+            default:                                    CMAJ_ASSERT_FALSE;
         }
     }
 
@@ -537,7 +537,6 @@ struct VectorType  : public TypeBase
                 return static_cast<ArraySize> (*sizeConst);
 
         CMAJ_ASSERT_FALSE;
-        return 0;
     }
 
     bool isSameType (const TypeBase& other, int flags) const override
@@ -820,7 +819,6 @@ struct BoundedType  : public TypeBase
                 return static_cast<ArraySize> (*size);
 
         CMAJ_ASSERT_FALSE;
-        return 0;
     }
 
     template <typename IntType>
@@ -1101,7 +1099,7 @@ struct TypeMetaFunction  : public TypeBase
         sig << "meta" << op.getEnumString() << source;
     }
 
-    bool isSameType (const TypeBase&, int) const override   { CMAJ_ASSERT_FALSE; return false; }
+    bool isSameType (const TypeBase&, int) const override   { CMAJ_ASSERT_FALSE; }
 
     ConstantValueBase& allocateConstantValue (const ObjectContext& c) const override
     {

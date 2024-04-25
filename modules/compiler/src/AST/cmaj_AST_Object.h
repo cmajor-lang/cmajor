@@ -120,9 +120,9 @@ struct Object
     //==============================================================================
     virtual PropertyList getPropertyList()                              { return PropertyList (0); }
     virtual uint32_t getNumProperties() const                           { return 0; }
-    virtual std::string_view getPropertyName (uint32_t) const           { CMAJ_ASSERT_FALSE; return {}; }
-    virtual uint8_t getPropertyID (uint32_t) const                      { CMAJ_ASSERT_FALSE; return 0; }
-    virtual Property* findPropertyForID (uint32_t)                      { CMAJ_ASSERT_FALSE; return {}; }
+    virtual std::string_view getPropertyName (uint32_t) const           { CMAJ_ASSERT_FALSE; }
+    virtual uint8_t getPropertyID (uint32_t) const                      { CMAJ_ASSERT_FALSE; }
+    virtual Property* findPropertyForID (uint32_t)                      { CMAJ_ASSERT_FALSE; }
     virtual bool canConstantFoldProperty (const Property&)              { return true; }
     virtual bool isDummyStatement() const                               { return false; }
     virtual ptr<const Comment> getComment() const                       { return {}; }

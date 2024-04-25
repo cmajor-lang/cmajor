@@ -67,7 +67,7 @@ struct Property
     virtual ptr<const ObjectReference>      getAsObjectReference() const   { return {}; }
     virtual ptr<const ListProperty>         getAsListProperty() const      { return {}; }
 
-    virtual PooledString toString() const                       { CMAJ_ASSERT_FALSE; return {}; }
+    virtual PooledString toString() const                       { CMAJ_ASSERT_FALSE; }
     std::string_view toStdString() const                        { return toString().get(); }
     virtual bool hasName (PooledString nameToMatch) const       { (void) nameToMatch; return false; }
 

@@ -686,7 +686,7 @@ struct EndpointDeclaration  : public Object
             case EndpointTypeEnum::Enum::stream:       return EndpointType::stream;
             case EndpointTypeEnum::Enum::value:        return EndpointType::value;
             case EndpointTypeEnum::Enum::event:        return EndpointType::event;
-            default:                                   CMAJ_ASSERT_FALSE; return EndpointType::stream;
+            default:                                   CMAJ_ASSERT_FALSE;
         }
     }
 

@@ -494,10 +494,8 @@ struct UnaryOperator  : public ValueBase
             case UnaryOpTypeEnum::Enum::negate:         return source.performUnaryNegate (a);
             case UnaryOpTypeEnum::Enum::logicalNot:     return source.performUnaryLogicalNot (a);
             case UnaryOpTypeEnum::Enum::bitwiseNot:     return source.performUnaryBitwiseNot (a);
-            default: CMAJ_ASSERT_FALSE; break;
+            default: CMAJ_ASSERT_FALSE;
         }
-
-        return {};
     }
 
     void visitObjectsInScope (ObjectVisitor visit) override
@@ -1892,7 +1890,6 @@ struct ValueMetaFunction  : public ValueBase
             case ValueMetaFunctionTypeEnum::Enum::alloc:
             default:
                 CMAJ_ASSERT_FALSE;
-                return false;
         }
     }
 
