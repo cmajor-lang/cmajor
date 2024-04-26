@@ -782,45 +782,45 @@ setState (graph_t* auxg, attr_state_t* attr_state)
     attr_state->G_ordering = G_ordering;
 
     E_constr = NULL;
-    E_samehead = agattr(auxg,AGEDGE, "samehead", NULL);
-    E_sametail = agattr(auxg,AGEDGE, "sametail", NULL);
-    E_weight = agattr(auxg,AGEDGE, "weight", NULL);
+    E_samehead = agattr(auxg,AGEDGE, (char*) "samehead", NULL);
+    E_sametail = agattr(auxg,AGEDGE, (char*) "sametail", NULL);
+    E_weight = agattr(auxg,AGEDGE, (char*) "weight", NULL);
     if (!E_weight)
-	E_weight = agattr (auxg,AGEDGE,"weight", "");
+	E_weight = agattr (auxg,AGEDGE,(char*) "weight", (char*) "");
     E_minlen = NULL;
     E_fontcolor = NULL;
-    E_fontname = agfindedgeattr(auxg, "fontname");
-    E_fontsize = agfindedgeattr(auxg, "fontsize");
-    E_headclip = agfindedgeattr(auxg, "headclip");
+    E_fontname = agfindedgeattr(auxg, (char*) "fontname");
+    E_fontsize = agfindedgeattr(auxg, (char*) "fontsize");
+    E_headclip = agfindedgeattr(auxg, (char*) "headclip");
     E_headlabel = NULL;
-    E_label = agfindedgeattr(auxg, "label");
-    E_label_float = agfindedgeattr(auxg, "label_float");
+    E_label = agfindedgeattr(auxg, (char*) "label");
+    E_label_float = agfindedgeattr(auxg, (char*) "label_float");
     E_labelfontcolor = NULL;
-    E_labelfontname = agfindedgeattr(auxg, "labelfontname");
-    E_labelfontsize = agfindedgeattr(auxg, "labelfontsize");
-    E_tailclip = agfindedgeattr(auxg, "tailclip");
+    E_labelfontname = agfindedgeattr(auxg, (char*) "labelfontname");
+    E_labelfontsize = agfindedgeattr(auxg, (char*) "labelfontsize");
+    E_tailclip = agfindedgeattr(auxg, (char*) "tailclip");
     E_taillabel = NULL;
     E_xlabel = NULL;
-    N_height = agfindnodeattr(auxg, "height");
-    N_width = agfindnodeattr(auxg, "width");
-    N_shape = agfindnodeattr(auxg, "shape");
+    N_height = agfindnodeattr(auxg, (char*) "height");
+    N_width = agfindnodeattr(auxg, (char*) "width");
+    N_shape = agfindnodeattr(auxg, (char*) "shape");
     N_style = NULL;
-    N_fontsize = agfindnodeattr(auxg, "fontsize");
-    N_fontname = agfindnodeattr(auxg, "fontname");
+    N_fontsize = agfindnodeattr(auxg, (char*) "fontsize");
+    N_fontname = agfindnodeattr(auxg, (char*) "fontname");
     N_fontcolor = NULL;
-    N_label = agfindnodeattr(auxg, "label");
+    N_label = agfindnodeattr(auxg, (char*) "label");
     N_xlabel = NULL;
     N_showboxes = NULL;
-    N_ordering = agfindnodeattr(auxg, "ordering");
-    N_sides = agfindnodeattr(auxg, "sides");
-    N_peripheries = agfindnodeattr(auxg, "peripheries");
-    N_skew = agfindnodeattr(auxg, "skew");
-    N_orientation = agfindnodeattr(auxg, "orientation");
-    N_distortion = agfindnodeattr(auxg, "distortion");
-    N_fixed = agfindnodeattr(auxg, "fixed");
+    N_ordering = agfindnodeattr(auxg, (char*) "ordering");
+    N_sides = agfindnodeattr(auxg, (char*) "sides");
+    N_peripheries = agfindnodeattr(auxg, (char*) "peripheries");
+    N_skew = agfindnodeattr(auxg, (char*) "skew");
+    N_orientation = agfindnodeattr(auxg, (char*) "orientation");
+    N_distortion = agfindnodeattr(auxg, (char*) "distortion");
+    N_fixed = agfindnodeattr(auxg, (char*) "fixed");
     N_nojustify = NULL;
     N_group = NULL;
-    G_ordering = agfindgraphattr (auxg, "ordering");
+    G_ordering = agfindgraphattr (auxg, (char*) "ordering");
 }
 
 /* cloneGraph:
@@ -836,11 +836,11 @@ cloneGraph (graph_t* g, attr_state_t* attr_state)
     Agsym_t* sym;
     graph_t* auxg;
     if (agisdirected(g))
-	auxg = agopen ("auxg",Agdirected, NULL);
+	auxg = agopen ((char*) "auxg",Agdirected, NULL);
     else
-	auxg = agopen ("auxg",Agundirected, NULL);
-    agbindrec(auxg, "Agraphinfo_t", sizeof(Agraphinfo_t), true);
-    agattr(auxg, AGRAPH, "rank", "");
+	auxg = agopen ((char*) "auxg",Agundirected, NULL);
+    agbindrec(auxg, (char*) "Agraphinfo_t", sizeof(Agraphinfo_t), true);
+    agattr(auxg, AGRAPH, (char*) "rank", (char*) "");
     GD_drawing(auxg) = (layout_t*) gv_alloc(sizeof(layout_t));
     GD_drawing(auxg)->quantum = GD_drawing(g)->quantum;
     GD_drawing(auxg)->dpi = GD_drawing(g)->dpi;
@@ -863,10 +863,10 @@ cloneGraph (graph_t* g, attr_state_t* attr_state)
     for (; sym; sym = agnxtattr(agroot(g),AGEDGE,sym))
 	agattr (auxg, AGEDGE,sym->name, sym->defval);
 
-    if (!agattr(auxg,AGEDGE, "headport", NULL))
-	agattr(auxg,AGEDGE, "headport", "");
-    if (!agattr(auxg,AGEDGE, "tailport", NULL))
-	agattr(auxg,AGEDGE, "tailport", "");
+    if (!agattr(auxg,AGEDGE, (char*) "headport", NULL))
+	agattr(auxg,AGEDGE, (char*) "headport", "");
+    if (!agattr(auxg,AGEDGE, (char*) "tailport", NULL))
+	agattr(auxg,AGEDGE, (char*) "tailport", "");
 
     setState (auxg, attr_state);
 
@@ -935,7 +935,7 @@ static node_t *cloneNode(graph_t *g, node_t *orign) {
         size_t lbllen = strlen(ND_label(orign)->text);
         char* buf = (char*)gv_calloc(lbllen + 3, sizeof(char));
         sprintf (buf, "{%s}", ND_label(orign)->text);
-	agset (n, "label", buf);
+	agset (n, (char*) "label", buf);
         free(buf);
     }
 
@@ -1266,9 +1266,9 @@ make_flat_adj_edges(graph_t* g, edge_t** edges, int ind, int cnt, edge_t* e0,
 
     attr_state_t attrs = {0};
     auxg = cloneGraph(g, &attrs);
-    subg = agsubg (auxg, "xxx",1);
+    subg = agsubg (auxg, (char*) "xxx",1);
     agbindrec(subg, "Agraphinfo_t", sizeof(Agraphinfo_t), true);
-    agset (subg, "rank", "source");
+    agset (subg, (char*) "rank", "source");
     rightx = ND_coord(hn).x;
     leftx = ND_coord(tn).x;
     if (GD_flip(g)) {

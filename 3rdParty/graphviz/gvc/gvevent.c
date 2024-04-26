@@ -24,17 +24,17 @@ extern void graph_cleanup(graph_t *g);
 #define ZOOMFACTOR 1.1
 #define EPSILON .0001
 
-static char *s_digraph = "digraph";
-static char *s_graph = "graph";
-static char *s_subgraph = "subgraph";
-static char *s_node = "node";
-static char *s_edge = "edge";
-static char *s_tooltip = "tooltip";
-static char *s_href = "href";
-static char *s_URL = "URL";
-static char *s_tailport = "tailport";
-static char *s_headport = "headport";
-static char *s_key = "key";
+static char *s_digraph = (char*) "digraph";
+static char *s_graph = (char*) "graph";
+static char *s_subgraph = (char*) "subgraph";
+static char *s_node = (char*) "node";
+static char *s_edge = (char*) "edge";
+static char *s_tooltip = (char*) "tooltip";
+static char *s_href = (char*) "href";
+static char *s_URL = (char*) "URL";
+static char *s_tailport = (char*) "tailport";
+static char *s_headport = (char*) "headport";
+static char *s_key = (char*) "key";
 
 static void gv_graph_state(GVJ_t *job, graph_t *g)
 {
@@ -615,20 +615,20 @@ static void gvevent_render (GVJ_t * job, const char *format, const char *filenam
 
 
 gvevent_key_binding_t gvevent_key_binding[] = {
-    {"Q", quit_cb},
-    {"Left", left_cb},
-    {"KP_Left", left_cb},
-    {"Right", right_cb},
-    {"KP_Right", right_cb},
-    {"Up", up_cb},
-    {"KP_Up", up_cb},
-    {"Down", down_cb},
-    {"KP_Down", down_cb},
-    {"plus", zoom_in_cb},
-    {"KP_Add", zoom_in_cb},
-    {"minus", zoom_out_cb},
-    {"KP_Subtract", zoom_out_cb},
-    {"F", toggle_fit_cb},
+    {(char*) "Q", quit_cb},
+    {(char*) "Left", left_cb},
+    {(char*) "KP_Left", left_cb},
+    {(char*) "Right", right_cb},
+    {(char*) "KP_Right", right_cb},
+    {(char*) "Up", up_cb},
+    {(char*) "KP_Up", up_cb},
+    {(char*) "Down", down_cb},
+    {(char*) "KP_Down", down_cb},
+    {(char*) "plus", zoom_in_cb},
+    {(char*) "KP_Add", zoom_in_cb},
+    {(char*) "minus", zoom_out_cb},
+    {(char*) "KP_Subtract", zoom_out_cb},
+    {(char*) "F", toggle_fit_cb},
 };
 
 int gvevent_key_binding_size = ARRAY_SIZE(gvevent_key_binding);

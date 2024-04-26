@@ -37,7 +37,7 @@ extern void emit_once_reset(void);
 /* from common/globals.c */
 // extern int graphviz_errors;
 
-static char *LibInfo[] = {
+static const char *LibInfo[] = {
     "graphviz",         /* Program */
     PACKAGE_VERSION,   /* Version */
 };
@@ -46,7 +46,7 @@ GVC_t *gvNEWcontext(const lt_symlist_t *builtins, int demand_loading)
 {
     auto gvc = (GVC_t *) zmalloc(sizeof(GVC_t));
 
-    gvc->common.info = LibInfo;
+    gvc->common.info = (char**) LibInfo;
     gvc->common.errorfn = agerrorf;
     gvc->common.builtins = builtins;
     gvc->common.demand_loading = demand_loading;

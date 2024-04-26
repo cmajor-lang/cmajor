@@ -37,8 +37,8 @@ void dot_sameports(graph_t * g)
     int n_sametail;		/* number of same_t groups on current node */
     int i;
 
-    E_samehead = agattr(g, AGEDGE, "samehead", NULL);
-    E_sametail = agattr(g, AGEDGE, "sametail", NULL);
+    E_samehead = agattr(g, AGEDGE, (char*) "samehead", NULL);
+    E_sametail = agattr(g, AGEDGE, (char*) "sametail", NULL);
     if (!(E_samehead || E_sametail))
 	return;
     for (n = agfstnode(g); n; n = agnxtnode(g, n)) {

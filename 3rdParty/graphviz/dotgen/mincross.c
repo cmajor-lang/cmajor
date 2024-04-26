@@ -253,7 +253,7 @@ fixLabelOrder (graph_t* g, rank_t* rk)
     }
     if (!haveBackedge) return;
 
-    sg = agsubg(g, "comp", 1);
+    sg = agsubg(g, (char*) "comp", 1);
     arr = N_NEW(agnnodes(g), Agnode_t*);
     indices = N_NEW(agnnodes(g), int);
 
@@ -299,7 +299,7 @@ checkLabelOrder (graph_t* g)
 	for (j = 0; j < rk->n; j++) {
 	    u = rk->v[j];
 	    if ((e = (Agedge_t*)ND_alg(u))) {
-		if (!lg) lg = agopen ("lg", Agstrictdirected, 0);
+		if (!lg) lg = agopen ((char*) "lg", Agstrictdirected, 0);
 		snprintf(buf, sizeof(buf), "%d", j);
 		n = agnode(lg, buf, 1);
 		agbindrec(n, "info", sizeof(info_t), true);
@@ -369,7 +369,7 @@ void dot_mincross(graph_t * g, int doBalance)
 #endif
     }
 
-    if (GD_n_cluster(g) > 0 && (!(s = agget(g, "remincross")) || mapbool(s))) {
+    if (GD_n_cluster(g) > 0 && (!(s = agget(g, (char*) "remincross")) || mapbool(s))) {
 	mark_lowclusters(g);
 	ReMincross = true;
 	nc = mincross(g, 2, 2, doBalance);
@@ -1126,7 +1126,7 @@ realFillRanks (Agraph_t* g, int rnks[], int rnks_sz, Agraph_t* sg)
     for (i = GD_minrank(g); i <= GD_maxrank(g); i++) {
 	if (rnks[i] == 0) {
 	    if (!sg) {
-		sg = agsubg (dot_root(g), "_new_rank", 1);
+		sg = agsubg (dot_root(g), (char*) "_new_rank", 1);
 	    }
 	    n = agnode (sg, NULL, 1);
 	    agbindrec(n, "Agnodeinfo_t", sizeof(Agnodeinfo_t), true);
@@ -1941,7 +1941,7 @@ static void mincross_options(graph_t * g)
     MaxIter = 24;
     Convergence = .995;
 
-    p = agget(g, "mclimit");
+    p = agget(g, (char*) "mclimit");
     if (p && (f = atof(p)) > 0.0) {
 	MinQuit = MAX(1, MinQuit * f);
 	MaxIter = MAX(1, MaxIter * f);

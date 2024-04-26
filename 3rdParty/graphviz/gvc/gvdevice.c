@@ -79,7 +79,7 @@ static void auto_output_filename(GVJ_t *job)
     else
         gidx[0] = '\0';
     if (!(fn = job->input_filename))
-        fn = "noname.gv";
+        fn = (char*) "noname.gv";
     len = strlen(fn)                    /* typically "something.gv" */
         + strlen(gidx)                  /* "", ".2", ".3", ".4", ... */
         + 1                             /* "." */
@@ -429,7 +429,7 @@ static char * gvprintnum (size_t *len, double number)
         N = number + 0.5;
     if (N == 0) {			/* special case for exactly 0 */
 	*len = 1;
-	return "0";
+	return (char*) "0";
     }
     if ((negative = N < 0))		/* avoid "-0" by testing rounded int */
         N = -N;				/* make number +ve */

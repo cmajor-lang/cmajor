@@ -347,7 +347,7 @@ static Agraph_t *deriveGraph(Agraph_t * g)
     Agnode_t *dn;
     Agnode_t *n;
 
-    dg = agopen("dg", Agstrictundirected, NULL);
+    dg = agopen((char*) "dg", Agstrictundirected, NULL);
 
     deriveClusters (dg, g);
 
@@ -563,8 +563,8 @@ Agraph_t **cccomps(Agraph_t * g, int *ncc, char *pfx)
 	n_cnt = dfs(dg, dn, dout, &stk);
 	if (n_cnt == SIZE_MAX) {
 	    agclose(dg);
-	    agclean (g, AGRAPH, GRECNAME);
-	    agclean (g, AGNODE, NRECNAME);
+	    agclean (g, AGRAPH, (char*) GRECNAME);
+	    agclean (g, AGNODE, (char*) NRECNAME);
 	    freeStk (&stk);
 	    free(ccs);
 	    agxbfree(&name);
@@ -587,8 +587,8 @@ Agraph_t **cccomps(Agraph_t * g, int *ncc, char *pfx)
 	    agnnodes(g), agnedges(g), c_cnt, agnameof(g));
 
     agclose(dg);
-    agclean (g, AGRAPH, GRECNAME);
-    agclean (g, AGNODE, NRECNAME);
+    agclean (g, AGRAPH, (char*) GRECNAME);
+    agclean (g, AGNODE, (char*) NRECNAME);
     freeStk (&stk);
     ccs = (Agraph_t **)gv_recalloc(ccs, ccs_length, c_cnt, sizeof(Agraph_t*));
     agxbfree(&name);

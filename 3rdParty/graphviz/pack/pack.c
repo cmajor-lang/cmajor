@@ -734,7 +734,7 @@ polyRects(int ng, boxf* gs, pack_info * pinfo)
     ginfo *info = (ginfo*) gv_calloc(ng, sizeof(ginfo));
     for (i = 0; i < ng; i++) {
 	info[i].index = i;
-	genBox(gs[i], info + i, stepSize, pinfo->margin, center, "");
+	genBox(gs[i], info + i, stepSize, pinfo->margin, center, (char*) "");
     }
 
     /* sort */
@@ -919,7 +919,7 @@ point *putGraphs(int ng, Agraph_t ** gs, Agraph_t * root,
 	if (pinfo->flags & PK_USER_VALS) {
 	    pinfo->vals =(packval_t*) gv_calloc(ng, sizeof(packval_t));
 	    for (i = 0; i < ng; i++) {
-		s = agget (gs[i], "sortv");
+		s = agget (gs[i], (char*) "sortv");
 		if (s && sscanf(s, "%d", &v) > 0 && v >= 0)
 		    pinfo->vals[i] = v;
 	    }
@@ -1309,7 +1309,7 @@ parsePackModeInfo(const char* p, pack_mode dflt, pack_info* pinfo)
 pack_mode
 getPackModeInfo(Agraph_t * g, pack_mode dflt, pack_info* pinfo)
 {
-    return parsePackModeInfo (agget(g, "packmode"), dflt, pinfo);
+    return parsePackModeInfo (agget(g, (char*) "packmode"), dflt, pinfo);
 }
 
 pack_mode
@@ -1330,7 +1330,7 @@ int getPack(Agraph_t * g, int not_def, int dflt)
     int i;
     int v = not_def;
 
-    if ((p = agget(g, "pack"))) {
+    if ((p = agget(g, (char*) "pack"))) {
 	if (sscanf(p, "%d", &i) == 1 && i >= 0)
 	    v = i;
 	else if (*p == 't' || *p == 'T')

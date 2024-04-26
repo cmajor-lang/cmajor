@@ -50,8 +50,8 @@ dot_init_edge(edge_t * e)
     common_init_edge(e);
 
     ED_weight(e) = late_int(e, E_weight, 1, 0);
-    tailgroup = late_string(agtail(e), N_group, "");
-    headgroup = late_string(aghead(e), N_group, "");
+    tailgroup = late_string(agtail(e), N_group, (char*) "");
+    headgroup = late_string(aghead(e), N_group, (char*) "");
     ED_count(e) = ED_xpenalty(e) = 1;
     if (tailgroup[0] && (tailgroup == headgroup)) {
 	ED_xpenalty(e) = CL_CROSS;
@@ -239,7 +239,7 @@ removeFill (Agraph_t * g)
 {
     Agnode_t* n;
     Agnode_t* nxt;
-    Agraph_t* sg = agsubg (g, "_new_rank", 0);
+    Agraph_t* sg = agsubg (g, (char*) "_new_rank", 0);
 
     if (!sg) return;
     for (n = agfstnode(sg); n; n = nxt) {
@@ -258,8 +258,8 @@ removeFill (Agraph_t * g)
 static void
 attach_phase_attrs (Agraph_t * g, int maxphase)
 {
-    Agsym_t* rk = agnodeattr(g,"rank","");
-    Agsym_t* order = agnodeattr(g,"order","");
+    Agsym_t* rk = agnodeattr(g,(char*) "rank",(char*) "");
+    Agsym_t* order = agnodeattr(g,(char*) "order",(char*) "");
     Agnode_t* n;
     char buf[BUFSIZ];
 
@@ -279,7 +279,7 @@ static void dotLayout(Agraph_t * g)
 {
     aspect_t aspect;
     aspect_t* asp;
-    int maxphase = late_int(g, agfindgraphattr(g,"phase"), -1, 1);
+    int maxphase = late_int(g, agfindgraphattr(g,(char*) "phase"), -1, 1);
 
     setEdgeType (g, EDGETYPE_SPLINE);
     asp = setAspect (g, &aspect);
@@ -314,7 +314,7 @@ static void dotLayout(Agraph_t * g)
 	removeFill (g);
     dot_sameports(g);
     dot_splines(g);
-    if (mapbool(agget(g, "compound")))
+    if (mapbool(agget(g, (char*) "compound")))
 	dot_compoundEdges(g);
 }
 

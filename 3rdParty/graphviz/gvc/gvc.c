@@ -23,7 +23,7 @@ GVC_t *gvContext(void)
 {
     GVC_t *gvc;
 
-    agattr(NULL, AGNODE, "label", NODENAME_ESC);
+    agattr(NULL, AGNODE, (char*) "label", NODENAME_ESC);
     /* default to no builtins, demand loading enabled */
     gvc = gvNEWcontext(NULL, TRUE);
     gvconfig(gvc, false); /* configure for available plugins */
@@ -34,7 +34,7 @@ GVC_t *gvContextPlugins(const lt_symlist_t *builtins, int demand_loading)
 {
     GVC_t *gvc;
 
-    agattr(NULL, AGNODE, "label", NODENAME_ESC);
+    agattr(NULL, AGNODE, (char*) "label", NODENAME_ESC);
     gvc = gvNEWcontext(builtins, demand_loading);
     gvconfig(gvc, false); /* configure for available plugins */
     return gvc;
@@ -73,7 +73,7 @@ int gvLayout(GVC_t *gvc, graph_t *g, const char *engine)
         snprintf(buf, sizeof(buf), "%d %d %d %d",
                  ROUND(GD_bb(g).LL.x), ROUND(GD_bb(g).LL.y),
                  ROUND(GD_bb(g).UR.x), ROUND(GD_bb(g).UR.y));
-    agsafeset(g, "bb", buf, "");
+    agsafeset(g, (char*) "bb", buf, "");
 
     return 0;
 }

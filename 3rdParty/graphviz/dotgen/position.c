@@ -144,7 +144,7 @@ static int nsiter2(graph_t * g)
     int maxiter = INT_MAX;
     char *s;
 
-    if ((s = agget(g, "nslimit")))
+    if ((s = agget(g, (char*) "nslimit")))
 	maxiter = atof(s) * agnnodes(g);
     return maxiter;
 }
