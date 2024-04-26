@@ -414,6 +414,10 @@ target_link_libraries(${CMAJ_TARGET_NAME} PRIVATE cmaj_clap)
 target_compile_options(${CMAJ_TARGET_NAME} PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/Zc:__cplusplus>)
 target_compile_definitions(${CMAJ_TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1>)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+endif()
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_options(${CMAJ_TARGET_NAME} PRIVATE -exported_symbols_list "${CMAJ_PLUGIN_HELPERS_PATH}/clap/macos-symbols.txt")
 
