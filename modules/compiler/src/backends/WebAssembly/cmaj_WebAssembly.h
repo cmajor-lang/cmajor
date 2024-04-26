@@ -20,7 +20,7 @@
 
 #include "../../../include/cmaj_ErrorHandling.h"
 
-#if CMAJ_ENABLE_CODEGEN_BINARYEN || CMAJ_ENABLE_CODEGEN_LLVM_WASM
+#if CMAJ_ENABLE_CODEGEN_LLVM_WASM
 
 #include "../../../../../include/cmajor/COM/cmaj_EngineFactoryInterface.h"
 #include "../../codegen/cmaj_CodeGenerator.h"
@@ -45,13 +45,7 @@ namespace cmaj::webassembly
         choc::value::SimpleStringDictionary stringDictionary;
     };
 
-    namespace binaryen
-    {
-        WebAssemblyModule generateWebAssembly (const ProgramInterface&, const BuildSettings&);
-        std::string generateWAST (const ProgramInterface&, const BuildSettings&);
-    }
-
-   #if CMAJ_ENABLE_CODEGEN_LLVM_WASM || CMAJ_ENABLE_CODEGEN_BINARYEN
+   #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
     struct JavascriptWrapper
     {
         std::string code, mainClassName;

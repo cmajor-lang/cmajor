@@ -33,7 +33,7 @@ static std::vector<std::string> getCodeGenTargetList()
 {
     auto list = cmaj::Engine::create().getAvailableCodeGenTargetTypes();
 
-   #if CMAJ_ENABLE_CODEGEN_BINARYEN || CMAJ_ENABLE_CODEGEN_LLVM_WASM
+   #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
     list.push_back ("webaudio-html");
     list.push_back ("webaudio");
     list.push_back ("javascript");
@@ -107,7 +107,7 @@ void generateFromPatch (juce::ArgumentList& args,
     if (targetType == "juce")  return generate_cpp::generatePluginProject (args, outputFile, patch, loadParams, false);
     if (targetType == "clap")  return generate_cpp::generatePluginProject (args, outputFile, patch, loadParams, true);
 
-   #if CMAJ_ENABLE_CODEGEN_BINARYEN || CMAJ_ENABLE_CODEGEN_LLVM_WASM
+   #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
 
     if (targetType == "webaudio-html")
         return generate_javascript::generateWebAudioHTML (patch, loadParams, engineOptions).writeToOutputFolder (outputFile);

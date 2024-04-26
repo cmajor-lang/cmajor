@@ -19,8 +19,8 @@
 #pragma once
 
 #include "../../../include/cmaj_DefaultFlags.h"
-#include "../../../include/cmajor/API/cmaj_BuildSettings.h"
-#include "../../../include/cmajor/COM/cmaj_EngineFactoryInterface.h"
+#include "../../../../include/cmajor/API/cmaj_BuildSettings.h"
+#include "../../../../include/cmajor/COM/cmaj_EngineFactoryInterface.h"
 #include "../../AST/cmaj_AST.h"
 #include "../../codegen/cmaj_NativeTypeLayout.h"
 #include "../WebAssembly/cmaj_WebAssembly.h"

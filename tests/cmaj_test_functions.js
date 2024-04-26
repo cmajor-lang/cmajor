@@ -624,7 +624,7 @@ function performanceTest (options)
 {
     let testSection = getCurrentTestSection();
 
-    if (getEngineName() == "webview" || getEngineName() == "webview-binaryen")
+    if (getEngineName() == "webview")
     {
         testSection.reportUnsupported ("engine type " + getEngineName() + " not supported");
         return;

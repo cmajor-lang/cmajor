@@ -18,7 +18,7 @@
 
 #pragma once
 
-#if CMAJ_ENABLE_CODEGEN_LLVM_WASM || CMAJ_ENABLE_CODEGEN_BINARYEN
+#if CMAJ_ENABLE_CODEGEN_LLVM_WASM
 
 #include "choc/text/choc_CodePrinter.h"
 #include "choc/javascript/choc_javascript.h"
@@ -48,40 +48,22 @@ struct JavascriptClassGenerator
     JavascriptClassGenerator (const AST::Program& p,
                               const BuildSettings& buildSettingsToUse,
                               std::string optionalMainClassName,
-                              bool shouldUseBinaryen,
                               SIMDMode simdMode)
         : program (p),
           buildSettings (buildSettingsToUse),
-          useBinaryen (shouldUseBinaryen),
           generateSIMD (simdMode.allowSIMD),
           generateNonSIMD (simdMode.allowNonSIMD),
           mainClassName (std::move (optionalMainClassName))
     {
-       #if CMAJ_ENABLE_CODEGEN_BINARYEN && ! CMAJ_ENABLE_CODEGEN_LLVM_WASM
-        useBinaryen = true;
-       #endif
     }
 
     std::string generate()
     {
-        if (useBinaryen)
-        {
-           #if CMAJ_ENABLE_CODEGEN_BINARYEN
-            hasNonSIMD = moduleNonSIMD.generate (program, buildSettings, true, false);
-           #else
-            CMAJ_ASSERT_FALSE;
-           #endif
-        }
-        else
-        {
-           #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
-            if (generateSIMD)
-                hasSIMD = moduleSIMD.generate (program, buildSettings, false, true);
+        if (generateSIMD)
+            hasSIMD = moduleSIMD.generate (program, buildSettings, true);
 
-            if (generateNonSIMD)
-                hasNonSIMD = moduleNonSIMD.generate (program, buildSettings, false, false);
-           #endif
-        }
+        if (generateNonSIMD)
+            hasNonSIMD = moduleNonSIMD.generate (program, buildSettings, false);
 
         if (hasNonSIMD || hasSIMD)
             return emitClass();
@@ -1190,29 +1172,14 @@ setInputStreamFrames_ENDPOINT (sourceChannelArrays, numFramesToWrite, sourceChan
 
     const AST::Program& program;
     const BuildSettings& buildSettings;
-    bool useBinaryen, generateSIMD, generateNonSIMD;
+    bool generateSIMD, generateNonSIMD;
     std::string mainClassName;
 
     struct GeneratedModule
     {
-        bool generate (const AST::Program& p, const BuildSettings& settings, bool binaryen, bool useSIMD)
+        bool generate (const AST::Program& p, const BuildSettings& settings, bool useSIMD)
         {
-            (void) useSIMD;
-
-            if (binaryen)
-            {
-               #if CMAJ_ENABLE_CODEGEN_BINARYEN
-                module = binaryen::generateWebAssembly (p, settings);
-               #else
-                CMAJ_ASSERT_FALSE;
-               #endif
-            }
-            else
-            {
-               #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
-                module = llvm::generateWebAssembly (p, settings, useSIMD);
-               #endif
-            }
+            module = llvm::generateWebAssembly (p, settings, useSIMD);
 
             if (module.binaryWASMData.empty())
                 return false;

@@ -88,9 +88,6 @@
 [submodule "3rdParty/JUCE"]
 	path = 3rdParty/JUCE
 	url = git@github.com:juce-framework/JUCE.git
-[submodule "3rdParty/binaryen"]
-	path = 3rdParty/binaryen
-	url = git@github.com:cmajor-lang/binaryen.git
 [submodule "3rdParty/llvm"]
 	path = 3rdParty/llvm
 	url = git@github.com:cmajor-lang/llvm.git

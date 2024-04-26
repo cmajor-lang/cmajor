@@ -18,17 +18,13 @@
 
 #include "../../../include/cmaj_DefaultFlags.h"
 
-#if CMAJ_ENABLE_CODEGEN_BINARYEN || CMAJ_ENABLE_CODEGEN_LLVM_WASM
+#if CMAJ_ENABLE_CODEGEN_LLVM_WASM
 
 #include "cmaj_WebAssembly.h"
 #include "cmaj_JavascriptClassGenerator.h"
 
 #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
  #include "../LLVM/cmaj_LLVM.h"
-#endif
-
-#if CMAJ_ENABLE_CODEGEN_BINARYEN
- #include "cmaj_BinaryenWASMGenerator.h"
 #endif
 
 namespace cmaj::webassembly
@@ -38,9 +34,7 @@ JavascriptWrapper generateJavascriptWrapper (const ProgramInterface& p, std::str
 {
     auto options = choc::json::parse (opts);
 
-    bool useBinaryen = options.isObject() && options.hasObjectMember ("binaryen");
-
-    JavascriptClassGenerator gen (AST::getProgram (p), buildSettings, {}, useBinaryen, SIMDMode (options));
+    JavascriptClassGenerator gen (AST::getProgram (p), buildSettings, {}, SIMDMode (options));
 
     JavascriptWrapper w;
     w.code = gen.generate();
@@ -52,8 +46,6 @@ std::string generateWAST (const ProgramInterface& p, const BuildSettings& buildS
 {
    #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
     return llvm::generateWebAssembly (p, buildSettings, true).binaryWASMData;
-   #else
-    return binaryen::generateWAST (p, buildSettings);
    #endif
 }
 

@@ -28,7 +28,6 @@ function (MAKE_CMAJ_LIBRARY)
 
         ENABLE_CODEGEN_CPP
         ENABLE_CODEGEN_LLVM_WASM
-        ENABLE_CODEGEN_BINARYEN
     )
 
     set (oneValueArgs LIBRARY_NAME)
@@ -44,7 +43,6 @@ function (MAKE_CMAJ_LIBRARY)
     message ("CMAJ_ENABLE_PERFORMER_CPP:        ${CMAJ_ENABLE_PERFORMER_CPP}")
     message ("CMAJ_ENABLE_CODEGEN_CPP:          ${CMAJ_ENABLE_CODEGEN_CPP}")
     message ("CMAJ_ENABLE_CODEGEN_LLVM_WASM:    ${CMAJ_ENABLE_CODEGEN_LLVM_WASM}")
-    message ("CMAJ_ENABLE_CODEGEN_BINARYEN:     ${CMAJ_ENABLE_CODEGEN_BINARYEN}")
 
     # -------------------------------------------------------------------
     # LLVM Stuff
@@ -297,7 +295,6 @@ function (MAKE_CMAJ_LIBRARY)
     TRANSFORM_BOOL (CMAJ_ENABLE_PERFORMER_CPP)
     TRANSFORM_BOOL (CMAJ_ENABLE_CODEGEN_CPP)
     TRANSFORM_BOOL (CMAJ_ENABLE_CODEGEN_LLVM_WASM)
-    TRANSFORM_BOOL (CMAJ_ENABLE_CODEGEN_BINARYEN)
 
     add_compile_definitions (
         $<$<CONFIG:Debug>:DEBUG=1>
@@ -309,7 +306,6 @@ function (MAKE_CMAJ_LIBRARY)
         CMAJ_ENABLE_PERFORMER_CPP=${CMAJ_ENABLE_PERFORMER_CPP}
         CMAJ_ENABLE_CODEGEN_CPP=${CMAJ_ENABLE_CODEGEN_CPP}
         CMAJ_ENABLE_CODEGEN_LLVM_WASM=${CMAJ_ENABLE_CODEGEN_LLVM_WASM}
-        CMAJ_ENABLE_CODEGEN_BINARYEN=${CMAJ_ENABLE_CODEGEN_BINARYEN}
     )
 
     add_library (${CMAJ_LIBRARY_NAME} OBJECT
@@ -346,7 +342,6 @@ function (MAKE_CMAJ_LIBRARY)
     target_include_directories (${CMAJ_LIBRARY_NAME}
         PRIVATE
             ${CMAJ_MODULE_DIR}/../3rdParty
-            ${CMAJ_MODULE_DIR}/../3rdParty/binaryen/src
             ${LLVM_PATH_ROOT}/include
     )
 

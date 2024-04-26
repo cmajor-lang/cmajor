@@ -17,7 +17,7 @@
 //  DISCLAIMED.
 
 #include "../../include/cmaj_ErrorHandling.h"
-#include "../../../include/cmajor/COM/cmaj_Library.h"
+#include "../../../../include/cmajor/COM/cmaj_Library.h"
 
 #include "../backends/cmaj_EngineBase.h"
 #include "CPlusPlus/cmaj_CPlusPlus.h"

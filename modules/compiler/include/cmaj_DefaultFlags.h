@@ -58,13 +58,8 @@
  #define CMAJ_ENABLE_CODEGEN_LLVM_WASM 1
 #endif
 
-#ifndef CMAJ_ENABLE_CODEGEN_BINARYEN
- #error // this should be defined globally by the project
- #define CMAJ_ENABLE_CODEGEN_BINARYEN 1
-#endif
-
 //==============================================================================
 #if ! (CMAJ_ENABLE_PERFORMER_CPP || CMAJ_ENABLE_PERFORMER_WEBVIEW || CMAJ_ENABLE_PERFORMER_LLVM \
-        || CMAJ_ENABLE_CODEGEN_BINARYEN || CMAJ_ENABLE_CODEGEN_LLVM_WASM)
+        || CMAJ_ENABLE_CODEGEN_LLVM_WASM)
  #error "Need to enable at least one back-end!"
 #endif

@@ -23,7 +23,7 @@
 #include "../../../include/cmaj_ErrorHandling.h"
 #include "choc/text/choc_TextTable.h"
 
-#include "../../../include/cmajor/COM/cmaj_EngineFactoryInterface.h"
+#include "../../../../include/cmajor/COM/cmaj_EngineFactoryInterface.h"
 #include "../../codegen/cmaj_CodeGenerator.h"
 #include "../../transformations/cmaj_Transformations.h"
 

@@ -28,14 +28,13 @@
 #include "choc/text/choc_Files.h"
 #include "choc/gui/choc_WebView.h"
 #include "choc/gui/choc_DesktopWindow.h"
-#include "../../../modules/playback/include/cmaj_AllocationChecker.h"
+#include "../../../../modules/playback/include/cmaj_AllocationChecker.h"
 
 
 namespace cmaj::webassembly
 {
 
 //==============================================================================
-template <bool useBinaryen>
 struct WebAssemblyEngine
 {
     WebAssemblyEngine (EngineBase<WebAssemblyEngine>& e) : engine (e)
@@ -52,7 +51,7 @@ struct WebAssemblyEngine
         uint32_t frameSizeBytes = 0;
     };
 
-    static constexpr bool canUseForwardBranches = ! useBinaryen;
+    static constexpr bool canUseForwardBranches = true;
     static constexpr bool usesDynamicRateAndSessionID = false;
     static constexpr bool allowTopLevelSlices = false;
     static constexpr bool supportsExternalFunctions = false;
@@ -65,7 +64,7 @@ struct WebAssemblyEngine
             : latency (latencyToUse)
         {
             JavascriptClassGenerator gen (AST::getProgram (*wasmEngine.engine.program),
-                                          wasmEngine.engine.buildSettings, {}, useBinaryen,
+                                          wasmEngine.engine.buildSettings, {},
                                           SIMDMode (wasmEngine.engine.options));
 
             wrapperJavascript = gen.generate();
@@ -625,15 +624,7 @@ struct Factory : public choc::com::ObjectWithAtomicRefCount<EngineFactoryInterfa
     {
         try
         {
-           #if CMAJ_ENABLE_CODEGEN_BINARYEN
-            auto options = choc::json::parse (engineCreationOptions);
-            bool useBinaryen = options.isObject() && options.hasObjectMember("binaryen");
-
-            if (useBinaryen)
-                return choc::com::create<EngineBase<WebAssemblyEngine<true>>> (engineCreationOptions).getWithIncrementedRefCount();
-           #endif
-
-            return choc::com::create<EngineBase<WebAssemblyEngine<false>>> (engineCreationOptions).getWithIncrementedRefCount();
+            return choc::com::create<EngineBase<WebAssemblyEngine>> (engineCreationOptions).getWithIncrementedRefCount();
         }
         catch (...) {}
 

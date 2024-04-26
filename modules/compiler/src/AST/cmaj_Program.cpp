@@ -17,7 +17,7 @@
 //  DISCLAIMED.
 
 #include "../../include/cmaj_ErrorHandling.h"
-#include "../../../include/cmajor/COM/cmaj_Library.h"
+#include "../../../../include/cmajor/COM/cmaj_Library.h"
 #include "cmaj_AST.h"
 #include "cmaj_Lexer.h"
 #include "../transformations/cmaj_Transformations.h"
