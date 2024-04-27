@@ -19,8 +19,13 @@
 #pragma once
 
 #include "cmaj_Patch.h"
-#include "cmaj_PatchWorker_QuickJS.h"
 #include "cmaj_GeneratedCppEngine.h"
+
+#if CMAJ_USE_QUICKJS_WORKER
+ #include "cmaj_PatchWorker_QuickJS.h"
+#else
+ #include "cmaj_PatchWorker_WebView.h"
+#endif
 
 #include <filesystem>
 #include <functional>
@@ -82,12 +87,18 @@ struct Environment
     void initialisePatch (cmaj::Patch& patch) const
     {
         patch.createEngine = createEngine;
-        enableQuickJSPatchWorker (patch);
         patch.stopPlayback = [] {};
         patch.startPlayback = [] {};
         patch.patchChanged = [] {};
         patch.statusChanged = [] (auto&&...) {};
         patch.handleOutputEvent = [] (auto&&...) {};
+
+       #if CMAJ_USE_QUICKJS_WORKER
+        enableQuickJSPatchWorker (patch);
+       #else
+        enableWebViewPatchWorker (patch);
+       #endif
+
         patch.setAutoRebuildOnFileChange (engineType == EngineType::JIT);
     }
 };
