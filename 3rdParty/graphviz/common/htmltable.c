@@ -251,9 +251,9 @@ static void doBorder(GVJ_t * job, htmldata_t * dp, boxf b)
     if (dp->style & (DASHED | DOTTED)) {
 	sptr[0] = sptr[1] = NULL;
 	if (dp->style & DASHED)
-	    sptr[0] = "dashed";
+	    sptr[0] = (char*) "dashed";
 	else if (dp->style & DOTTED)
-	    sptr[0] = "dotted";
+	    sptr[0] = (char*) "dotted";
 	gvrender_set_style(job, sptr);
     } else
 	gvrender_set_style(job, job->gvc->defaultlinestyle);
@@ -343,7 +343,7 @@ setFill(GVJ_t * job, char *color, int angle, int style, char *clrs[2])
 	if (clrs[1])
 	    gvrender_set_gradient_vals(job, clrs[1], angle, frac);
 	else
-	    gvrender_set_gradient_vals(job, DEFAULT_COLOR, angle, frac);
+	    gvrender_set_gradient_vals(job, (char*) DEFAULT_COLOR, angle, frac);
 	if (style & RADIAL)
 	    filled = RGRADIENT;
 	else
@@ -352,7 +352,7 @@ setFill(GVJ_t * job, char *color, int angle, int style, char *clrs[2])
 	gvrender_set_fillcolor(job, color);
 	filled = FILL;
     }
-    gvrender_set_pencolor(job, "transparent");
+    gvrender_set_pencolor(job, (char*) "transparent");
     return filled;
 }
 
@@ -456,7 +456,7 @@ emit_html_rules(GVJ_t * job, htmlcell_t * cp, htmlenv_t * env, char *color, html
     pointf pos = env->pos;
 
     if (!color)
-	color = DEFAULT_COLOR;
+	color = (char*) DEFAULT_COLOR;
     gvrender_set_fillcolor(job, color);
     gvrender_set_pencolor(job, color);
 
@@ -618,7 +618,7 @@ static void emit_html_img(GVJ_t * job, htmlimg_t * cp, htmlenv_t * env)
 	scale = env->imgscale;
     assert(cp->src);
     assert(cp->src[0]);
-    gvrender_usershape(job, cp->src, A, 4, true, scale, "mc");
+    gvrender_usershape(job, cp->src, A, 4, true, scale, (char*) "mc");
 }
 
 static void emit_html_cell(GVJ_t * job, htmlcell_t * cp, htmlenv_t * env)
@@ -763,11 +763,11 @@ void emit_html_label(GVJ_t * job, htmllabel_t * lp, textlabel_t * tp)
     env.finfo.color = tp->fontcolor;
     env.finfo.name = tp->fontname;
     env.finfo.size = tp->fontsize;
-    env.imgscale = agget(job->obj->u.n, "imagescale");
+    env.imgscale = agget(job->obj->u.n, (char*) "imagescale");
     env.objid = job->obj->id;
     env.objid_set = false;
     if (env.imgscale == NULL || env.imgscale[0] == '\0')
-	env.imgscale = "false";
+	env.imgscale = (char*) "false";
     if (lp->kind == HTML_TBL) {
 	htmltbl_t *tbl = lp->u.tbl;
 
@@ -777,7 +777,7 @@ void emit_html_label(GVJ_t * job, htmllabel_t * lp, textlabel_t * tp)
 	if (tbl->data.pencolor)
 	    gvrender_set_pencolor(job, tbl->data.pencolor);
 	else
-	    gvrender_set_pencolor(job, DEFAULT_COLOR);
+	    gvrender_set_pencolor(job, (char*) DEFAULT_COLOR);
 	emit_html_tbl(job, tbl, &env);
     } else {
 	emit_html_txt(job, lp->u.txt, &env);
@@ -1480,8 +1480,8 @@ static void sizeArray(htmltbl_t * tbl)
     tbl->heights = N_NEW(tbl->rc + 1, int);
     tbl->widths = N_NEW(tbl->cc + 1, int);
 
-    rowg = agopen("rowg", dir, NULL);
-    colg = agopen("colg", dir, NULL);
+    rowg = agopen((char*) "rowg", dir, NULL);
+    colg = agopen((char*) "colg", dir, NULL);
     /* Only need GD_nlist */
     agbindrec(rowg, "Agraphinfo_t", sizeof(Agraphinfo_t), true);	// graph custom data
     agbindrec(colg, "Agraphinfo_t", sizeof(Agraphinfo_t), true);	// graph custom data
@@ -1965,9 +1965,9 @@ static char *getPenColor(void *obj)
 {
     char *str;
 
-    if ((str = agget(obj, "pencolor")) != 0 && str[0])
+    if ((str = agget(obj, (char*) "pencolor")) != 0 && str[0])
 	return str;
-    else if ((str = agget(obj, "color")) != 0 && str[0])
+    else if ((str = agget(obj, (char*) "color")) != 0 && str[0])
 	return str;
     else
 	return NULL;
