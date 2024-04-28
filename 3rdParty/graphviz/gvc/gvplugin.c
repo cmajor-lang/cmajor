@@ -38,7 +38,7 @@
  * initialized here by redefining ELEM and reinvoking APIS.
  */
 #define ELEM(x) #x,
-static char *api_names[] = { APIS };    /* "render", "layout", ... */
+static const char *api_names[] = { APIS };    /* "render", "layout", ... */
 
 #undef ELEM
 
@@ -57,7 +57,7 @@ char *gvplugin_api_name(api_t api)
 {
     if (api >= ARRAY_SIZE(api_names))
         return NULL;
-    return api_names[api];
+    return (char*) api_names[api];
 }
 
 /* install a plugin description into the list of available plugins
@@ -376,7 +376,7 @@ char *gvplugin_list(GVC_t * gvc, api_t api, const char *str)
         }
     }
     if (newList)
-        bp = "";
+        bp = (char*) "";
     else
         bp = agxbuse(&xb);
     return bp;
@@ -466,24 +466,24 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
     char bufa[100], *buf1, *buf2, bufb[100], *p, *q, *lq, *t;
     int neededge_loadimage, neededge_device;
 
-    g = agopen("G", Agdirected, NULL);
-    agattr(g, AGRAPH, "label", "");
-    agattr(g, AGRAPH, "rankdir", "");
-    agattr(g, AGRAPH, "rank", "");
-    agattr(g, AGRAPH, "ranksep", "");
-    agattr(g, AGNODE, "label", NODENAME_ESC);
-    agattr(g, AGNODE, "shape", "");
-    agattr(g, AGNODE, "style", "");
-    agattr(g, AGNODE, "width", "");
-    agattr(g, AGEDGE, "style", "");
+    g = agopen((char*) "G", Agdirected, NULL);
+    agattr(g, AGRAPH, (char*) "label", "");
+    agattr(g, AGRAPH, (char*) "rankdir", "");
+    agattr(g, AGRAPH, (char*) "rank", "");
+    agattr(g, AGRAPH, (char*) "ranksep", "");
+    agattr(g, AGNODE, (char*) "label", NODENAME_ESC);
+    agattr(g, AGNODE, (char*) "shape", "");
+    agattr(g, AGNODE, (char*) "style", "");
+    agattr(g, AGNODE, (char*) "width", "");
+    agattr(g, AGEDGE, (char*) "style", "");
 
-    a = agfindgraphattr(g, "rankdir");
+    a = agfindgraphattr(g, (char*) "rankdir");
     agxset(g, a, "LR");
 
-    a = agfindgraphattr(g, "ranksep");
+    a = agfindgraphattr(g, (char*) "ranksep");
     agxset(g, a, "2.5");
 
-    a = agfindgraphattr(g, "label");
+    a = agfindgraphattr(g, (char*) "label");
     agxset(g, a, "Plugins");
 
     for (package = gvc->packages; package; package = package->next) {
@@ -492,7 +492,7 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
         strcpy(bufa, "cluster_");
         strcat(bufa, package->name);
         sg = agsubg(g, bufa, 1);
-        a = agfindgraphattr(sg, "label");
+        a = agfindgraphattr(sg, (char*) "label");
         agxset(sg, a, package->name);
         strcpy(bufa, package->name);
         strcat(bufa, "_");
@@ -500,7 +500,7 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
         for (size_t api = 0; api < ARRAY_SIZE(api_names); api++) {
             strcpy(buf1, api_names[api]);
             ssg = agsubg(sg, bufa, 1);
-            a = agfindgraphattr(ssg, "rank");
+            a = agfindgraphattr(ssg, (char*) "rank");
             agxset(ssg, a, "same");
             strcat(buf1, "_");
             buf2 = bufa + strlen(bufa);
@@ -521,29 +521,29 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
                         /* hack for aliases */
 			lq = q;
                         if (!strncmp(q, "jp", 2)) {
-                            q = "jpg";                /* canonical - for node name */
-			    lq = "jpeg\\njpe\\njpg";  /* list - for label */
+                            q = (char*) "jpg";                /* canonical - for node name */
+			    lq = (char*) "jpeg\\njpe\\njpg";  /* list - for label */
 			}
                         else if (!strncmp(q, "tif", 3)) {
-                            q = "tif";
-			    lq = "tiff\\ntif";
+                            q = (char*) "tif";
+			    lq = (char*) "tiff\\ntif";
 			}
                         else if (!strcmp(q, "x11") || !strcmp(q, "xlib")) {
-                            q = "x11";
-                            lq = "x11\\nxlib";
+                            q = (char*) "x11";
+                            lq = (char*) "x11\\nxlib";
 			}
                         else if (!strcmp(q, "dot") || !strcmp(q, "gv")) {
-                            q = "gv";
-                            lq = "gv\\ndot";
+                            q = (char*) "gv";
+                            lq = (char*) "gv\\ndot";
 			}
 
                         strcpy(buf2, q);
                         n = agnode(ssg, bufa, 1);
-                        a = agfindnodeattr(g, "label");
+                        a = agfindnodeattr(g, (char*) "label");
                         agxset(n, a, lq);
-                        a = agfindnodeattr(g, "width");
+                        a = agfindnodeattr(g, (char*) "width");
                         agxset(n, a, "1.0");
-                        a = agfindnodeattr(g, "shape");
+                        a = agfindnodeattr(g, (char*) "shape");
 			if (api == API_device) {
                             agxset(n, a, "box");
                             device_n = n;
@@ -557,7 +557,7 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
                             m = agfindnode(sg, bufb);
                             if (!m) {
                                 m = agnode(sg, bufb, 1);
-                                a = agfindgraphattr(g, "label");
+                                a = agfindgraphattr(g, (char*) "label");
                                 agxset(m, a, "cg");
                             }
                             agedge(sg, m, n, NULL, 1);
@@ -569,7 +569,7 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
                         strcat(bufb, "_");
                         strcat(bufb, q);
                         renderer_n = n = agnode(ssg, bufb, 1);
-                        a = agfindnodeattr(g, "label");
+                        a = agfindnodeattr(g, (char*) "label");
                         agxset(n, a, q);
                         break;
                     case API_textlayout:
@@ -579,9 +579,9 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
                         strcat(bufb, "_");
                         strcat(bufb, q);
                         textlayout_n = n = agnode(ssg, bufb, 1);
-                        a = agfindnodeattr(g, "shape");
+                        a = agfindnodeattr(g, (char*) "shape");
                         agxset(n, a, "invtriangle");
-                        a = agfindnodeattr(g, "label");
+                        a = agfindnodeattr(g, (char*) "label");
                         agxset(n, a, "T");
                         break;
                     case API_layout:
@@ -590,9 +590,9 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
                         strcat(bufb, "_");
                         strcat(bufb, q);
                         layout_n = n = agnode(ssg, bufb, 1);
-                        a = agfindnodeattr(g, "shape");
+                        a = agfindnodeattr(g, (char*) "shape");
                         agxset(n, a, "hexagon");
-                        a = agfindnodeattr(g, "label");
+                        a = agfindnodeattr(g, (char*) "label");
                         agxset(n, a, q);
                         break;
                     default:
@@ -607,22 +607,22 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
 		neededge_loadimage = 1;
                 strcpy(buf2, "invis");
                 loadimage_n = n = agnode(ssg, bufa, 1);
-                a = agfindnodeattr(g, "style");
+                a = agfindnodeattr(g, (char*) "style");
                 agxset(n, a, "invis");
-                a = agfindnodeattr(g, "label");
+                a = agfindnodeattr(g, (char*) "label");
                 agxset(n, a, "");
-                a = agfindnodeattr(g, "width");
+                a = agfindnodeattr(g, (char*) "width");
                 agxset(n, a, "1.0");
 
                 strcpy(buf2, "invis_src");
                 n = agnode(g, bufa, 1);
-                a = agfindnodeattr(g, "style");
+                a = agfindnodeattr(g, (char*) "style");
                 agxset(n, a, "invis");
-                a = agfindnodeattr(g, "label");
+                a = agfindnodeattr(g, (char*) "label");
                 agxset(n, a, "");
 
                 e = agedge(g, n, loadimage_n, NULL, 1);
-                a = agfindedgeattr(g, "style");
+                a = agfindedgeattr(g, (char*) "style");
                 agxset(e, a, "invis");
 	    }
             if (api == API_render && !renderer_n) {
@@ -630,47 +630,47 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
 		neededge_device = 1;
                 strcpy(buf2, "invis");
                 renderer_n = n = agnode(ssg, bufa, 1);
-                a = agfindnodeattr(g, "style");
+                a = agfindnodeattr(g, (char*) "style");
                 agxset(n, a, "invis");
-                a = agfindnodeattr(g, "label");
+                a = agfindnodeattr(g, (char*) "label");
                 agxset(n, a, "");
 	    }
             if (api == API_device && !device_n) {
 		neededge_device = 1;
                 strcpy(buf2, "invis");
                 device_n = n = agnode(ssg, bufa, 1);
-                a = agfindnodeattr(g, "style");
+                a = agfindnodeattr(g, (char*) "style");
                 agxset(n, a, "invis");
-                a = agfindnodeattr(g, "label");
+                a = agfindnodeattr(g, (char*) "label");
                 agxset(n, a, "");
-                a = agfindnodeattr(g, "width");
+                a = agfindnodeattr(g, (char*) "width");
                 agxset(n, a, "1.0");
 	    }
         }
         if (neededge_loadimage) {
             e = agedge(sg, loadimage_n, renderer_n, NULL, 1);
-            a = agfindedgeattr(g, "style");
+            a = agfindedgeattr(g, (char*) "style");
             agxset(e, a, "invis");
         }
         if (neededge_device) {
             e = agedge(sg, renderer_n, device_n, NULL, 1);
-            a = agfindedgeattr(g, "style");
+            a = agfindedgeattr(g, (char*) "style");
             agxset(e, a, "invis");
         }
         if (textlayout_n) {
             e = agedge(sg, loadimage_n, textlayout_n, NULL, 1);
-            a = agfindedgeattr(g, "style");
+            a = agfindedgeattr(g, (char*) "style");
             agxset(e, a, "invis");
         }
         if (layout_n) {
             e = agedge(sg, loadimage_n, layout_n, NULL, 1);
-            a = agfindedgeattr(g, "style");
+            a = agfindedgeattr(g, (char*) "style");
             agxset(e, a, "invis");
         }
     }
 
-    ssg = agsubg(g, "output_formats", 1);
-    a = agfindgraphattr(ssg, "rank");
+    ssg = agsubg(g, (char*) "output_formats", 1);
+    a = agfindgraphattr(ssg, (char*) "rank");
     agxset(ssg, a, "same");
     for (package = gvc->packages; package; package = package->next) {
         strcpy(bufa, package->name);
@@ -692,20 +692,20 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
  		    /* hack for aliases */
                     lq = q;
                     if (!strncmp(q, "jp", 2)) {
-                        q = "jpg";                /* canonical - for node name */
-                        lq = "jpeg\\njpe\\njpg";  /* list - for label */
+                        q = (char*) "jpg";                /* canonical - for node name */
+                        lq = (char*) "jpeg\\njpe\\njpg";  /* list - for label */
                     }
                     else if (!strncmp(q, "tif", 3)) {
-                        q = "tif";
-                        lq = "tiff\\ntif";
+                        q = (char*) "tif";
+                        lq = (char*) "tiff\\ntif";
                     }
                     else if (!strcmp(q, "x11") || !strcmp(q, "xlib")) {
-                        q = "x11";
-                        lq = "x11\\nxlib";
+                        q = (char*) "x11";
+                        lq = (char*) "x11\\nxlib";
                     }
                     else if (!strcmp(q, "dot") || !strcmp(q, "gv")) {
-                        q = "gv";
-                        lq = "gv\\ndot";
+                        q = (char*) "gv";
+                        lq = (char*) "gv\\ndot";
                     }
 
                     switch (api) {
@@ -717,9 +717,9 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
                         m = agfindnode(ssg, bufb);
                         if (!m) {
                             m = agnode(ssg, bufb, 1);
-                            a = agfindnodeattr(g, "label");
+                            a = agfindnodeattr(g, (char*) "label");
                             agxset(m, a, lq);
-                            a = agfindnodeattr(g, "shape");
+                            a = agfindnodeattr(g, (char*) "shape");
                             agxset(m, a, "note");
                         }
                         e = agfindedge(g, n, m);
@@ -744,9 +744,9 @@ Agraph_t *gvplugin_graph(GVC_t * gvc)
                         m = agfindnode(g, bufb);
                         if (!m) {
                             m = agnode(g, bufb, 1);
-                            a = agfindnodeattr(g, "label");
+                            a = agfindnodeattr(g, (char*) "label");
                             agxset(m, a, lq);
-                            a = agfindnodeattr(g, "shape");
+                            a = agfindnodeattr(g, (char*) "shape");
                             agxset(m, a, "note");
                         }
                         e = agfindedge(g, m, n);

@@ -62,7 +62,7 @@ int gvLayoutJobs(GVC_t * gvc, Agraph_t * g)
         GD_gvc(agroot(g)) = gvc;
     }
 
-    if ((p = agget(g, "layout"))) {
+    if ((p = agget(g, (char*) "layout"))) {
         gvc->layout.engine = NULL;
 	rc = gvlayout_select(gvc, p);
 	if (rc == NO_SUPPORT) {

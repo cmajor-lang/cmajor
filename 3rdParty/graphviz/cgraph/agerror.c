@@ -82,7 +82,7 @@ userout (agerrlevel_t level, const char *fmt, va_list args)
 
     if (level != AGPREV) {
 	usererrf ((char*) ((level == AGERR) ? "Error" : "Warning"));
-	usererrf (": ");
+	usererrf ((char*) ": ");
     }
 
     // construct the full error in our buffer

@@ -6,7 +6,6 @@ import sys
 def pull (folder):
     print (folder)
     os.chdir (folder)
-    os.system ("cd " + folder)
     os.system ("git checkout master")
     os.system ("git pull")
 

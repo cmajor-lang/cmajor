@@ -165,7 +165,7 @@ Agsym_t *agattrsym(void *obj, char *name)
 
 /* to create a graph's, node's edge's string attributes */
 
-char *AgDataRecName = "_AG_strdata";
+char *AgDataRecName = (char*) "_AG_strdata";
 
 static int topdictsize(Agobj_t * obj)
 {

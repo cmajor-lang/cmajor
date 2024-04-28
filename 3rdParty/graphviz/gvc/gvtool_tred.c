@@ -76,7 +76,7 @@ int gvToolTred(Agraph_t * g)
         for (n = agfstnode(g); n; n = agnxtnode(g, n)) {
 	    warn = dfs(n, NULL, warn);
         }
-        agclean(g, AGNODE, "info");
+        agclean(g, AGNODE, (char*) "info");
     } else {
 	fprintf(stderr, "warning: %s is not a directed graph, not attempting tred\n",
 			agnameof(g));
