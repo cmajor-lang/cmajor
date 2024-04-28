@@ -21,7 +21,7 @@
 #define EDGE_TYPE(g) (GD_flags(g) & (7 << 1))
 
 #ifndef streq
-#define streq(a,b)		(!strcmp(a,b))
+#define streq(a,b)        (!strcmp(a,b))
 #endif
 
 #define XPAD(d) ((d).x += 4*GAP)

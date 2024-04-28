@@ -15,6 +15,6 @@
 #include "gvcjob.h"
 
     struct gvlayout_engine_s {
-	void (*layout) (graph_t * g);
-	void (*cleanup) (graph_t * g);
+    void (*layout) (graph_t * g);
+    void (*cleanup) (graph_t * g);
     };

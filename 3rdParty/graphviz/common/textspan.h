@@ -35,9 +35,9 @@
         char* stretch;
         char* style;
         int xfig_code;
-	char* svg_font_family;
-	char* svg_font_weight;
-	char* svg_font_style;
+    char* svg_font_family;
+    char* svg_font_weight;
+    char* svg_font_style;
     } PostscriptAlias;
 
     /* font information
@@ -45,23 +45,22 @@
      * is unspecified.
      */
     typedef struct {
-	char*  name;
-	char*  color;
-	PostscriptAlias *postscript_alias;
-	double size;
-	unsigned int flags:GV_TEXTFONT_FLAGS_WIDTH; // HTML_UL, HTML_IF, HTML_BF, etc.
-	unsigned int cnt:(sizeof(unsigned int) * 8 - GV_TEXTFONT_FLAGS_WIDTH);
-	  ///< reference count
+    char*  name;
+    char*  color;
+    PostscriptAlias *postscript_alias;
+    double size;
+    unsigned int flags:GV_TEXTFONT_FLAGS_WIDTH; // HTML_UL, HTML_IF, HTML_BF, etc.
+    unsigned int cnt:(sizeof(unsigned int) * 8 - GV_TEXTFONT_FLAGS_WIDTH);
+      ///< reference count
     } textfont_t;
 
     /* atomic unit of text emitted using a single htmlfont_t */
     typedef struct {
-	char *str;      /* stored in utf-8 */
-	textfont_t *font;
-	void *layout;
-	void (*free_layout) (void *layout);   /* FIXME - this is ugly */
-	double yoffset_layout, yoffset_centerline;
- 	pointf size;
-	char just;	/* 'l' 'n' 'r' */ /* FIXME */
+    char *str;      /* stored in utf-8 */
+    textfont_t *font;
+    void *layout;
+    void (*free_layout) (void *layout);   /* FIXME - this is ugly */
+    double yoffset_layout, yoffset_centerline;
+     pointf size;
+    char just;    /* 'l' 'n' 'r' */ /* FIXME */
     } textspan_t;
-

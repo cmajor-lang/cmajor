@@ -17,18 +17,18 @@
 #include "const.h"
 #include "globals.h"
 #include "memory.h"
-#include "colorprocs.h"		/* must follow color.h (in types.h) */
-#include "geomprocs.h"		/* must follow geom.h (in types.h) */
+#include "colorprocs.h"        /* must follow color.h (in types.h) */
+#include "geomprocs.h"        /* must follow geom.h (in types.h) */
 #include "../cgraph/agxbuf.h"
-#include "utils.h"		/* must follow types.h and agxbuf.h */
-#include "../gvc/gvplugin.h"		/* must follow gvcext.h (in types.h) */
-#include "../gvc/gvcjob.h"		/* must follow gvcext.h (in types.h) */
-#include "../gvc/gvcint.h"		/* must follow gvcext.h (in types.h) */
-#include "../gvc/gvcproc.h"		/* must follow gvcext.h (in types.h) */
+#include "utils.h"        /* must follow types.h and agxbuf.h */
+#include "../gvc/gvplugin.h"        /* must follow gvcext.h (in types.h) */
+#include "../gvc/gvcjob.h"        /* must follow gvcext.h (in types.h) */
+#include "../gvc/gvcint.h"        /* must follow gvcext.h (in types.h) */
+#include "../gvc/gvcproc.h"        /* must follow gvcext.h (in types.h) */
 
     typedef struct epsf_s {
-	int macro_id;
-	point offset;
+    int macro_id;
+    point offset;
     } epsf_t;
 
 #ifdef GVDLL
@@ -43,23 +43,23 @@
 #define RENDER_API /* nothing */
 #endif
 
-	RENDER_API void add_box(path *, boxf);
+    RENDER_API void add_box(path *, boxf);
     RENDER_API void arrow_flags(Agedge_t * e, int *sflag, int *eflag);
     RENDER_API boxf arrow_bb(pointf p, pointf u, double arrowsize);
     RENDER_API void arrow_gen(GVJ_t * job, emit_state_t emit_state, pointf p, pointf u,
-			  double arrowsize, double penwidth, int flag);
+              double arrowsize, double penwidth, int flag);
     RENDER_API int arrowEndClip(edge_t*, pointf*, int, int , bezier*, int eflag);
     RENDER_API int arrowStartClip(edge_t*, pointf* ps, int, int, bezier*, int sflag);
     RENDER_API void arrowOrthoClip(edge_t*, pointf* ps, int, int, bezier*, int sflag, int eflag);
     RENDER_API void beginpath(path *, Agedge_t *, int, pathend_t *, bool);
     RENDER_API void bezier_clip(inside_t * inside_context,
-			    bool(*insidefn) (inside_t * inside_context,
-						pointf p), pointf * sp, bool left_inside);
+                bool(*insidefn) (inside_t * inside_context,
+                        pointf p), pointf * sp, bool left_inside);
     RENDER_API shape_desc *bind_shape(char *name, node_t *);
     RENDER_API void makeStraightEdge(graph_t * g, edge_t * e, int edgetype, splineInfo * info);
     RENDER_API void makeStraightEdges(graph_t* g, edge_t** edges, int e_cnt, int et, splineInfo* sinfo);
     RENDER_API void clip_and_install(edge_t * fe, node_t * hn,
-	pointf * ps, int pn, splineInfo * info);
+    pointf * ps, int pn, splineInfo * info);
     RENDER_API char* charsetToStr (int c);
     RENDER_API pointf coord(node_t * n);
     RENDER_API void do_graph_label(graph_t * sg);
@@ -92,7 +92,7 @@
     RENDER_API int initMapData (GVJ_t*, char*, char*, char*, char*, char*, void*);
     RENDER_API bool isPolygon(node_t *);
     RENDER_API void makeSelfEdge(edge_t * edges[], int ind, int cnt,
-	double sizex, double sizey, splineInfo * sinfo);
+    double sizex, double sizey, splineInfo * sinfo);
     RENDER_API textlabel_t *make_label(void *obj, char *str, int kind, double fontsize, char *fontname, char *fontcolor);
     RENDER_API bezier *new_spline(edge_t * e, int sz);
     RENDER_API char **parse_style(char *s);
@@ -128,4 +128,3 @@
     RENDER_API boxf xdotBB (graph_t* g);
 
 #undef RENDER_API
-

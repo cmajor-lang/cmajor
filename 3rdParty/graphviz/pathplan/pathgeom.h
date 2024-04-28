@@ -27,7 +27,7 @@
     typedef struct pointf_s Pvector_t;
 #else
     typedef struct Pxy_t {
-	double x, y;
+    double x, y;
     } Pxy_t;
 
     typedef struct Pxy_t Ppoint_t;
@@ -35,14 +35,14 @@
 #endif
 
     typedef struct Ppoly_t {
-	Ppoint_t *ps;
-	int pn;
+    Ppoint_t *ps;
+    int pn;
     } Ppoly_t;
 
     typedef Ppoly_t Ppolyline_t;
 
     typedef struct Pedge_t {
-	Ppoint_t a, b;
+    Ppoint_t a, b;
     } Pedge_t;
 
 /* opaque state handle for visibility graph operations */

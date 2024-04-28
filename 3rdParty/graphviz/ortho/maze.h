@@ -4,7 +4,7 @@
  */
 
 /*************************************************************************
- * Copyright (c) 2011 AT&T Intellectual Property 
+ * Copyright (c) 2011 AT&T Intellectual Property
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -26,9 +26,9 @@ enum {M_RIGHT=0, M_TOP, M_LEFT, M_BOTTOM};
 #define MZ_SMALLH  16
 
   /// @brief cell corresponds to node
-#define IsNode(cp) (cp->flags & MZ_ISNODE)  
+#define IsNode(cp) (cp->flags & MZ_ISNODE)
   /// @brief cell already inserted in vertical channel
-#define IsVScan(cp) (cp->flags & MZ_VSCAN)  
+#define IsVScan(cp) (cp->flags & MZ_VSCAN)
   /// @brief cell already inserted in horizontal channel
 #define IsHScan(cp) (cp->flags & MZ_HSCAN)
   /// @brief cell has small height corresponding to a small height node

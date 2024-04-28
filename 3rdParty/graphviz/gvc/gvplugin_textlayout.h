@@ -16,6 +16,5 @@
 #include "gvcommon.h"
 
     struct gvtextlayout_engine_s {
-	bool (*textlayout) (textspan_t *span, char** fontpath);
+    bool (*textlayout) (textspan_t *span, char** fontpath);
     };
-

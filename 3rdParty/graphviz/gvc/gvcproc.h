@@ -26,8 +26,8 @@
 /* plugins */
 
     bool gvplugin_install(GVC_t *gvc, api_t api,
-		    const char *typestr, int quality, gvplugin_package_t *package,
-		    gvplugin_installed_t *typeptr);
+            const char *typestr, int quality, gvplugin_package_t *package,
+            gvplugin_installed_t *typeptr);
     gvplugin_available_t *gvplugin_load(GVC_t * gvc, api_t api, const char *type);
     gvplugin_library_t *gvplugin_library_load(GVC_t *gvc, char *path);
     api_t gvplugin_api(const char *str);
@@ -97,7 +97,7 @@
     void gvrender_begin_edge(GVJ_t *job);
     void gvrender_end_edge(GVJ_t * job);
     void gvrender_begin_anchor(GVJ_t * job,
-		char *href, char *tooltip, char *target, char *id);
+        char *href, char *tooltip, char *target, char *id);
     void gvrender_end_anchor(GVJ_t * job);
     void gvrender_begin_label(GVJ_t * job, label_type type);
     void gvrender_end_label(GVJ_t * job);
@@ -112,7 +112,7 @@
     void gvrender_polygon(GVJ_t* job, pointf* af, int n, int filled);
     void gvrender_box(GVJ_t * job, boxf BF, int filled);
     void gvrender_beziercurve(GVJ_t * job, pointf * AF, int n,
-			int arrow_at_start, int arrow_at_end, int filled);
+            int arrow_at_start, int arrow_at_end, int filled);
     void gvrender_polyline(GVJ_t * job, pointf * AF, int n);
     void gvrender_comment(GVJ_t * job, char *str);
     void gvrender_usershape(GVJ_t * job, char *name, pointf * AF, int n, bool filled, char *imagescale, char *imagepos);

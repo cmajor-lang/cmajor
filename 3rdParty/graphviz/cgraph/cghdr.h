@@ -31,24 +31,24 @@ static inline bool streq(const char *a, const char *b) {
   return strcmp(a, b) == 0;
 }
 
-#define	SUCCESS				0
-#define FAILURE				-1
-#define LOCALNAMEPREFIX		'%'
+#define    SUCCESS                0
+#define FAILURE                -1
+#define LOCALNAMEPREFIX        '%'
 
-#define AGDISC(g,d)			((g)->clos->disc.d)
-#define AGCLOS(g,d)			((g)->clos->state.d)
-#define AGNEW(g,t)			((t*)(agalloc(g,sizeof(t))))
+#define AGDISC(g,d)            ((g)->clos->disc.d)
+#define AGCLOS(g,d)            ((g)->clos->state.d)
+#define AGNEW(g,t)            ((t*)(agalloc(g,sizeof(t))))
 
-	/* functional definitions */
+    /* functional definitions */
 typedef Agobj_t *(*agobjsearchfn_t) (Agraph_t * g, Agobj_t * obj);
 CGHDR_API int agapply(Agraph_t * g, Agobj_t * obj, agobjfn_t fn, void *arg,
-	    int preorder);
+        int preorder);
 
-	/* global variables */
+    /* global variables */
 extern Agraph_t *Ag_G_global;
 extern char *AgDataRecName;
 
-	/* set ordering disciplines */
+    /* set ordering disciplines */
 extern Dtdisc_t Ag_subnode_id_disc;
 extern Dtdisc_t Ag_subnode_seq_disc;
 extern Dtdisc_t Ag_mainedge_id_disc;
@@ -57,17 +57,17 @@ extern Dtdisc_t Ag_mainedge_seq_disc;
 extern Dtdisc_t Ag_subedge_seq_disc;
 extern Dtdisc_t Ag_subgraph_id_disc;
 
-	/* internal constructor of graphs and subgraphs */
+    /* internal constructor of graphs and subgraphs */
 Agraph_t *agopen1(Agraph_t * g);
 int agstrclose(Agraph_t * g);
 
-	/* ref string management */
+    /* ref string management */
 void agmarkhtmlstr(char *s);
 
 /// Mask of `Agtag_s.seq` width
 enum { SEQ_MASK = (1 << (sizeof(unsigned) * 8 - 4)) - 1 };
 
-	/* object set management */
+    /* object set management */
 Agnode_t *agfindnode_by_id(Agraph_t * g, IDTYPE id);
 uint64_t agnextseq(Agraph_t * g, int objtype);
 
@@ -77,10 +77,10 @@ void agdtdisc(Agraph_t * g, Dict_t * dict, Dtdisc_t * disc);
 int agdtdelete(Agraph_t * g, Dict_t * dict, void *obj);
 int agdtclose(Agraph_t * g, Dict_t * dict);
 void *agdictobjmem(Dict_t * dict, void * p, size_t size,
-		   Dtdisc_t * disc);
+           Dtdisc_t * disc);
 void agdictobjfree(Dict_t * dict, void * p, Dtdisc_t * disc);
 
-	/* name-value pair operations */
+    /* name-value pair operations */
 CGHDR_API Agdatadict_t *agdatadict(Agraph_t * g, int cflag);
 CGHDR_API Agattr_t *agattrrec(void *obj);
 
@@ -91,14 +91,14 @@ void agnodeattr_delete(Agnode_t * n);
 void agedgeattr_init(Agraph_t *g, Agedge_t * e);
 void agedgeattr_delete(Agedge_t * e);
 
-	/* parsing and lexing graph files */
+    /* parsing and lexing graph files */
 int aagparse(void);
 void aglexinit(Agdisc_t * disc, void *ifile);
 int aaglex(void);
 void aglexeof(void);
 void aglexbad(void);
 
-	/* ID management */
+    /* ID management */
 int agmapnametoid(Agraph_t * g, int objtype, char *str,
           IDTYPE *result, int createflag);
 int agallocid(Agraph_t * g, int objtype, IDTYPE request);
@@ -113,7 +113,7 @@ int aginternalmapdelete(Agraph_t * g, int objtype, IDTYPE id);
 void aginternalmapclose(Agraph_t * g);
 void agregister(Agraph_t * g, int objtype, void *obj);
 
-	/* internal set operations */
+    /* internal set operations */
 void agedgesetop(Agraph_t * g, Agedge_t * e, int insertion);
 void agdelnodeimage(Agraph_t * g, Agnode_t * node, void *ignored);
 void agdeledgeimage(Agraph_t * g, Agedge_t * edge, void *ignored);
@@ -126,7 +126,7 @@ void agmethod_delete(Agraph_t * g, void *obj);
 
 typedef enum { CB_INITIALIZE, CB_UPDATE, CB_DELETION, } cb_t;
 void agrecord_callback(Agraph_t * g, Agobj_t * obj, cb_t kind,
-		       Agsym_t * optsym);
+               Agsym_t * optsym);
 void aginitcb(Agraph_t * g, void *obj, Agcbstack_t * disc);
 void agupdcb(Agraph_t * g, void *obj, Agsym_t * sym, Agcbstack_t * disc);
 void agdelcb(Agraph_t * g, void *obj, Agcbstack_t * disc);

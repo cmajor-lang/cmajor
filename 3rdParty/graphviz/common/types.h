@@ -47,111 +47,111 @@
     typedef struct htmllabel_t htmllabel_t;
 
     typedef union inside_t {
-	struct {
-	    pointf* p;
-	    double* r;
-	} a;
-	struct {
-	    node_t* n;
-	    boxf*    bp;
-	} s;
+    struct {
+        pointf* p;
+        double* r;
+    } a;
+    struct {
+        node_t* n;
+        boxf*    bp;
+    } s;
     } inside_t;
 
-    typedef struct port {	/* internal edge endpoint specification */
-	pointf p;		/* aiming point relative to node center */
-	double theta;		/* slope in radians */
-	boxf *bp;		/* if not null, points to bbox of
-				 * rectangular area that is port target
-				 */
-	bool defined;        /* if true, edge has port info at this end */
-	bool constrained;    /* if true, constraints such as theta are set */
-	bool clip;           /* if true, clip end to node/port shape */
-	bool dyna;           /* if true, assign compass point dynamically */
-	unsigned char order;	/* for mincross */
-	unsigned char side;	/* if port is on perimeter of node, this
+    typedef struct port {    /* internal edge endpoint specification */
+    pointf p;        /* aiming point relative to node center */
+    double theta;        /* slope in radians */
+    boxf *bp;        /* if not null, points to bbox of
+                 * rectangular area that is port target
+                 */
+    bool defined;        /* if true, edge has port info at this end */
+    bool constrained;    /* if true, constraints such as theta are set */
+    bool clip;           /* if true, clip end to node/port shape */
+    bool dyna;           /* if true, assign compass point dynamically */
+    unsigned char order;    /* for mincross */
+    unsigned char side;    /* if port is on perimeter of node, this
                                  * contains the bitwise OR of the sides (TOP,
                                  * BOTTOM, etc.) it is on.
                                  */
-	char *name;		/* port name, if it was explicitly given, otherwise NULL */
+    char *name;        /* port name, if it was explicitly given, otherwise NULL */
     } port;
 
     typedef struct {
-	bool(*swapEnds) (edge_t * e);	/* Should head and tail be swapped? */
-	bool(*splineMerge) (node_t * n);	/* Is n a node in the middle of an edge? */
-	bool ignoreSwap;                     /* Test for swapped edges if false */
-	bool isOrtho;                        /* Orthogonal routing used */
+    bool(*swapEnds) (edge_t * e);    /* Should head and tail be swapped? */
+    bool(*splineMerge) (node_t * n);    /* Is n a node in the middle of an edge? */
+    bool ignoreSwap;                     /* Test for swapped edges if false */
+    bool isOrtho;                        /* Orthogonal routing used */
     } splineInfo;
 
     typedef struct pathend_t {
-	boxf nb;			/* the node box */
-	pointf np;		/* node port */
-	int sidemask;
-	int boxn;
-	boxf boxes[20];
+    boxf nb;            /* the node box */
+    pointf np;        /* node port */
+    int sidemask;
+    int boxn;
+    boxf boxes[20];
     } pathend_t;
 
-    typedef struct path {	/* internal specification for an edge spline */
-	port start;
-	port end;
-	int nbox;		/* number of subdivisions */
-	boxf *boxes;		/* rectangular regions of subdivision */
-	void *data;
+    typedef struct path {    /* internal specification for an edge spline */
+    port start;
+    port end;
+    int nbox;        /* number of subdivisions */
+    boxf *boxes;        /* rectangular regions of subdivision */
+    void *data;
     } path;
 
     typedef struct bezier {
-	pointf *list;
-	int size;
-	int sflag;
-	int eflag;
-	pointf sp;
-	pointf ep;
+    pointf *list;
+    int size;
+    int sflag;
+    int eflag;
+    pointf sp;
+    pointf ep;
     } bezier;
 
     typedef struct splines {
-	bezier *list;
-	int size;
-	boxf bb;
+    bezier *list;
+    int size;
+    boxf bb;
     } splines;
 
     typedef struct textlabel_t {
-	char *text;
-	char *fontname;
-	char *fontcolor;
-	int charset;
-	double fontsize;
-	pointf dimen; /* the diagonal size of the label (estimated by layout) */
-	pointf space; /* the diagonal size of the space for the label */
-		      /*   the rendered label is aligned in this box */
-		      /*   space does not include pad or margin */
-	pointf pos;   /* the center of the space for the label */
-	union {
-	    struct {
-		textspan_t *span;
-		short nspans;
-	    } txt;
-	    htmllabel_t *html;
-	} u;
-	char valign;  /* 't' 'c' 'b' */
-	bool set;  /* true if position is set */
-	bool html; /* true if html label */
+    char *text;
+    char *fontname;
+    char *fontcolor;
+    int charset;
+    double fontsize;
+    pointf dimen; /* the diagonal size of the label (estimated by layout) */
+    pointf space; /* the diagonal size of the space for the label */
+              /*   the rendered label is aligned in this box */
+              /*   space does not include pad or margin */
+    pointf pos;   /* the center of the space for the label */
+    union {
+        struct {
+        textspan_t *span;
+        short nspans;
+        } txt;
+        htmllabel_t *html;
+    } u;
+    char valign;  /* 't' 'c' 'b' */
+    bool set;  /* true if position is set */
+    bool html; /* true if html label */
     } textlabel_t;
 
-    typedef struct polygon_t {	/* mutable shape information for a node */
-	int regular;		/* true for symmetric shapes */
-	int peripheries;	/* number of periphery lines */
-	int sides;		/* number of sides */
-	double orientation;	/* orientation of shape (+ve degrees) */
-	double distortion;	/* distortion factor - as in trapezium */
-	double skew;		/* skew factor - as in parallelogram */
-	int option;		/* ROUNDED, DIAGONAL corners, etc. */
-	pointf *vertices;	/* array of vertex points */
+    typedef struct polygon_t {    /* mutable shape information for a node */
+    int regular;        /* true for symmetric shapes */
+    int peripheries;    /* number of periphery lines */
+    int sides;        /* number of sides */
+    double orientation;    /* orientation of shape (+ve degrees) */
+    double distortion;    /* distortion factor - as in trapezium */
+    double skew;        /* skew factor - as in parallelogram */
+    int option;        /* ROUNDED, DIAGONAL corners, etc. */
+    pointf *vertices;    /* array of vertex points */
     } polygon_t;
 
-    typedef struct stroke_t {	/* information about a single stroke */
-	/* we would have called it a path if that term wasn't already used */
-	int nvertices;		/* number of points in the stroke */
-	int flags;		/* stroke style flags */
-	pointf *vertices;	/* array of vertex points */
+    typedef struct stroke_t {    /* information about a single stroke */
+    /* we would have called it a path if that term wasn't already used */
+    int nvertices;        /* number of points in the stroke */
+    int flags;        /* stroke style flags */
+    pointf *vertices;    /* array of vertex points */
     } stroke_t;
 
 /* flag definitions for stroke_t */
@@ -160,93 +160,93 @@
 #define STROKE_PENDOWN (1 << 2)
 #define STROKE_VERTICES_ALLOCATED (1 << 3)
 
-    typedef struct shape_functions {	/* read-only shape functions */
-	void (*initfn) (node_t *);	/* initializes shape from node u.shape_info structure */
-	void (*freefn) (node_t *);	/* frees  shape from node u.shape_info structure */
-	 port(*portfn) (node_t *, char *, char *);	/* finds aiming point and slope of port */
-	 bool(*insidefn) (inside_t * inside_context, pointf);	/* clips incident gvc->e spline on shape of gvc->n */
-	int (*pboxfn)(node_t* n, port* p, int side, boxf rv[], int *kptr); /* finds box path to reach port */
-	void (*codefn) (GVJ_t * job, node_t * n);	/* emits graphics code for node */
+    typedef struct shape_functions {    /* read-only shape functions */
+    void (*initfn) (node_t *);    /* initializes shape from node u.shape_info structure */
+    void (*freefn) (node_t *);    /* frees  shape from node u.shape_info structure */
+     port(*portfn) (node_t *, char *, char *);    /* finds aiming point and slope of port */
+     bool(*insidefn) (inside_t * inside_context, pointf);    /* clips incident gvc->e spline on shape of gvc->n */
+    int (*pboxfn)(node_t* n, port* p, int side, boxf rv[], int *kptr); /* finds box path to reach port */
+    void (*codefn) (GVJ_t * job, node_t * n);    /* emits graphics code for node */
     } shape_functions;
 
     typedef enum { SH_UNSET, SH_POLY, SH_RECORD, SH_POINT, SH_EPSF} shape_kind;
 
-    typedef struct shape_desc {	/* read-only shape descriptor */
-	char *name;		/* as read from graph file */
-	shape_functions *fns;
-	polygon_t *polygon;	/* base polygon info */
-	bool usershape;
+    typedef struct shape_desc {    /* read-only shape descriptor */
+    char *name;        /* as read from graph file */
+    shape_functions *fns;
+    polygon_t *polygon;    /* base polygon info */
+    bool usershape;
     } shape_desc;
 
-#include "usershape.h"		/* usershapes needed by gvc */
+#include "usershape.h"        /* usershapes needed by gvc */
 
     typedef struct nodequeue {
-	node_t **store;
-	node_t **limit;
-	node_t **head;
-	node_t **tail;
+    node_t **store;
+    node_t **limit;
+    node_t **head;
+    node_t **tail;
     } nodequeue;
 
     typedef struct adjmatrix_t {
-	int nrows;
-	int ncols;
-	char *data;
+    int nrows;
+    int ncols;
+    char *data;
     } adjmatrix_t;
 
     typedef struct rank_t {
-	int n;			/* number of nodes in this rank  */
-	node_t **v;		/* ordered list of nodes in rank    */
-	int an;			/* globally allocated number of nodes   */
-	node_t **av;		/* allocated list of nodes in rank  */
-	double ht1;	/* height below/above centerline    */
-	double ht2;	/* height below/above centerline    */
-	double pht1;	/* as above, but only primitive nodes   */
-	double pht2;	/* as above, but only primitive nodes   */
-	bool candidate;	/* for transpose () */
-	bool valid;
-	int cache_nc;		/* caches number of crossings */
-	adjmatrix_t *flat;
+    int n;            /* number of nodes in this rank  */
+    node_t **v;        /* ordered list of nodes in rank    */
+    int an;            /* globally allocated number of nodes   */
+    node_t **av;        /* allocated list of nodes in rank  */
+    double ht1;    /* height below/above centerline    */
+    double ht2;    /* height below/above centerline    */
+    double pht1;    /* as above, but only primitive nodes   */
+    double pht2;    /* as above, but only primitive nodes   */
+    bool candidate;    /* for transpose () */
+    bool valid;
+    int cache_nc;        /* caches number of crossings */
+    adjmatrix_t *flat;
     } rank_t;
 
     typedef enum { R_NONE =
-	    0, R_VALUE, R_FILL, R_COMPRESS, R_AUTO, R_EXPAND } ratio_t;
+        0, R_VALUE, R_FILL, R_COMPRESS, R_AUTO, R_EXPAND } ratio_t;
 
     typedef struct layout_t {
-	double quantum;
-	double scale;
-	double ratio;		/* set only if ratio_kind == R_VALUE */
-	double dpi;
-	pointf margin;
-	pointf page;
-	pointf size;
-	bool filled;
-	bool landscape;
-	bool centered;
-	ratio_t ratio_kind;
-	void* xdots;
-	char* id;
+    double quantum;
+    double scale;
+    double ratio;        /* set only if ratio_kind == R_VALUE */
+    double dpi;
+    pointf margin;
+    pointf page;
+    pointf size;
+    bool filled;
+    bool landscape;
+    bool centered;
+    ratio_t ratio_kind;
+    void* xdots;
+    char* id;
     } layout_t;
 
 /* for "record" shapes */
     typedef struct field_t {
-	pointf size;		/* its dimension */
-	boxf b;			/* its placement in node's coordinates */
-	int n_flds;
-	textlabel_t *lp;	/* n_flds == 0 */
-	struct field_t **fld;	/* n_flds > 0 */
-	char *id;		/* user's identifier */
-	unsigned char LR;	/* if box list is horizontal (left to right) */
-	unsigned char sides;    /* sides of node exposed to field */
+    pointf size;        /* its dimension */
+    boxf b;            /* its placement in node's coordinates */
+    int n_flds;
+    textlabel_t *lp;    /* n_flds == 0 */
+    struct field_t **fld;    /* n_flds > 0 */
+    char *id;        /* user's identifier */
+    unsigned char LR;    /* if box list is horizontal (left to right) */
+    unsigned char sides;    /* sides of node exposed to field */
     } field_t;
 
     typedef struct nlist_t {
-	node_t **list;
-	int size;
+    node_t **list;
+    int size;
     } nlist_t;
 
     typedef struct elist {
-	edge_t **list;
-	int size;
+    edge_t **list;
+    int size;
     } elist;
 
 #define GUI_STATE_ACTIVE    (1<<0)
@@ -262,77 +262,77 @@
 typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 
     typedef struct Agraphinfo_t {
-	Agrec_t hdr;
-	/* to generate code */
-	layout_t *drawing;
-	textlabel_t *label;	/* if the cluster has a title */
-	boxf bb;			/* bounding box */
-	pointf border[4];	/* sizes of margins for graph labels */
-	unsigned char gui_state; /* Graph state for GUI ops */
-	unsigned char has_labels;
-	bool has_images;
-	unsigned char charset; /* input character set */
-	int rankdir;
-	double ht1; /* below and above extremal ranks */
-	double ht2; /* below and above extremal ranks */
-	unsigned short flags;
-	void *alg;
-	GVC_t *gvc;	/* context for "globals" over multiple graphs */
-	void (*cleanup) (graph_t * g);   /* function to deallocate layout-specific data */
+    Agrec_t hdr;
+    /* to generate code */
+    layout_t *drawing;
+    textlabel_t *label;    /* if the cluster has a title */
+    boxf bb;            /* bounding box */
+    pointf border[4];    /* sizes of margins for graph labels */
+    unsigned char gui_state; /* Graph state for GUI ops */
+    unsigned char has_labels;
+    bool has_images;
+    unsigned char charset; /* input character set */
+    int rankdir;
+    double ht1; /* below and above extremal ranks */
+    double ht2; /* below and above extremal ranks */
+    unsigned short flags;
+    void *alg;
+    GVC_t *gvc;    /* context for "globals" over multiple graphs */
+    void (*cleanup) (graph_t * g);   /* function to deallocate layout-specific data */
 
 #ifndef DOT_ONLY
-	/* to place nodes */
-	node_t **neato_nlist;
-	int move;
-	double **dist;
-	double **spring;
-	double **sum_t;
-	double ***t;
-	unsigned short ndim;
-	unsigned short odim;
+    /* to place nodes */
+    node_t **neato_nlist;
+    int move;
+    double **dist;
+    double **spring;
+    double **sum_t;
+    double ***t;
+    unsigned short ndim;
+    unsigned short odim;
 #endif
 #ifndef NEATO_ONLY
-	/* to have subgraphs */
-	int n_cluster;
-	graph_t **clust;	/* clusters are in clust[1..n_cluster] !!! */
-	graph_t *dotroot;
-	node_t *nlist;
-	rank_t *rank;
-	graph_t *parent;        /* containing cluster (not parent subgraph) */
-	int level;		/* cluster nesting level (not node level!) */
-	node_t *minrep; /* set leaders for min and max rank */
-	node_t *maxrep;	/* set leaders for min and max rank */
+    /* to have subgraphs */
+    int n_cluster;
+    graph_t **clust;    /* clusters are in clust[1..n_cluster] !!! */
+    graph_t *dotroot;
+    node_t *nlist;
+    rank_t *rank;
+    graph_t *parent;        /* containing cluster (not parent subgraph) */
+    int level;        /* cluster nesting level (not node level!) */
+    node_t *minrep; /* set leaders for min and max rank */
+    node_t *maxrep;    /* set leaders for min and max rank */
 
-	/* fast graph node list */
-	nlist_t comp;
-	/* connected components */
-	node_t *minset; /* set leaders */
-	node_t *maxset;	/* set leaders */
-	long n_nodes;
-	/* includes virtual */
-	int minrank;
-	int maxrank;
+    /* fast graph node list */
+    nlist_t comp;
+    /* connected components */
+    node_t *minset; /* set leaders */
+    node_t *maxset;    /* set leaders */
+    long n_nodes;
+    /* includes virtual */
+    int minrank;
+    int maxrank;
 
-	/* various flags */
-	bool has_flat_edges;
-	bool has_sourcerank;
-	bool has_sinkrank;
-	unsigned char	showboxes;
-	fontname_kind fontnames;		/* to override mangling in SVG */
+    /* various flags */
+    bool has_flat_edges;
+    bool has_sourcerank;
+    bool has_sinkrank;
+    unsigned char    showboxes;
+    fontname_kind fontnames;        /* to override mangling in SVG */
 
-	int nodesep;
-	int ranksep;
-	node_t *ln; /* left nodes of bounding box */
-	node_t *rn; /* right nodes of bounding box */
+    int nodesep;
+    int ranksep;
+    node_t *ln; /* left nodes of bounding box */
+    node_t *rn; /* right nodes of bounding box */
 
-	/* for clusters */
-	node_t *leader;
-	node_t **rankleader;
-	bool expanded;
-	char installed;
-	char set_type;
-	char label_pos;
-	bool exact_ranksep;
+    /* for clusters */
+    node_t *leader;
+    node_t **rankleader;
+    bool expanded;
+    char installed;
+    char set_type;
+    char label_pos;
+    bool exact_ranksep;
 #endif
 
     } Agraphinfo_t;
@@ -357,8 +357,8 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define GD_has_labels(g) (((Agraphinfo_t*)AGDATA(g))->has_labels)
 #define GD_has_images(g) (((Agraphinfo_t*)AGDATA(g))->has_images)
 #define GD_has_flat_edges(g) (((Agraphinfo_t*)AGDATA(g))->has_flat_edges)
-#define GD_has_sourcerank(g)	(((Agraphinfo_t*)AGDATA(g))->has_sourcerank)
-#define GD_has_sinkrank(g)	(((Agraphinfo_t*)AGDATA(g))->has_sinkrank)
+#define GD_has_sourcerank(g)    (((Agraphinfo_t*)AGDATA(g))->has_sourcerank)
+#define GD_has_sinkrank(g)    (((Agraphinfo_t*)AGDATA(g))->has_sinkrank)
 #define GD_ht1(g) (((Agraphinfo_t*)AGDATA(g))->ht1)
 #define GD_ht2(g) (((Agraphinfo_t*)AGDATA(g))->ht2)
 #define GD_installed(g) (((Agraphinfo_t*)AGDATA(g))->installed)
@@ -398,76 +398,76 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define GD_t(g) (((Agraphinfo_t*)AGDATA(g))->t)
 
     typedef struct Agnodeinfo_t {
-	Agrec_t hdr;
-	shape_desc *shape;
-	void *shape_info;
-	pointf coord;
-	double width;   /* inches */
-	double height;  /* inches */
-	boxf bb;
-	double ht;
-	double lw;
-	double rw;
-	double outline_width;  /* width in points with penwidth taken into account */
-	double outline_height; /* height in points with penwidth taken into account */
-	textlabel_t *label;
-	textlabel_t *xlabel;
-	void *alg;
-	char state;
-	unsigned char gui_state; /* Node state for GUI ops */
-	bool clustnode;
+    Agrec_t hdr;
+    shape_desc *shape;
+    void *shape_info;
+    pointf coord;
+    double width;   /* inches */
+    double height;  /* inches */
+    boxf bb;
+    double ht;
+    double lw;
+    double rw;
+    double outline_width;  /* width in points with penwidth taken into account */
+    double outline_height; /* height in points with penwidth taken into account */
+    textlabel_t *label;
+    textlabel_t *xlabel;
+    void *alg;
+    char state;
+    unsigned char gui_state; /* Node state for GUI ops */
+    bool clustnode;
 
 #ifndef DOT_ONLY
-	unsigned char pinned;
-	int id;
-	int heapindex;
-	int hops;
-	double *pos;
-	double dist;
+    unsigned char pinned;
+    int id;
+    int heapindex;
+    int hops;
+    double *pos;
+    double dist;
 #endif
 #ifndef NEATO_ONLY
-	unsigned char showboxes;
-	bool  has_port;
-	node_t* rep;
-	node_t *set;
+    unsigned char showboxes;
+    bool  has_port;
+    node_t* rep;
+    node_t *set;
 
-	/* fast graph */
-	char node_type;
-	size_t mark;
-	char onstack;
-	char ranktype;
-	char weight_class;
-	node_t *next;
-	node_t *prev;
-	elist in;
-	elist out;
-	elist flat_out;
-	elist flat_in;
-	elist other;
-	graph_t *clust;
+    /* fast graph */
+    char node_type;
+    size_t mark;
+    char onstack;
+    char ranktype;
+    char weight_class;
+    node_t *next;
+    node_t *prev;
+    elist in;
+    elist out;
+    elist flat_out;
+    elist flat_in;
+    elist other;
+    graph_t *clust;
 
-	/* for union-find and collapsing nodes */
-	int UF_size;
-	node_t *UF_parent;
-	node_t *inleaf;
-	node_t *outleaf;
+    /* for union-find and collapsing nodes */
+    int UF_size;
+    node_t *UF_parent;
+    node_t *inleaf;
+    node_t *outleaf;
 
-	/* for placing nodes */
-	int rank;
-	int order;	/* initially, order = 1 for ordered edges */
-	double mval;
-	elist save_in;
-	elist save_out;
+    /* for placing nodes */
+    int rank;
+    int order;    /* initially, order = 1 for ordered edges */
+    double mval;
+    elist save_in;
+    elist save_out;
 
-	/* for network-simplex */
-	elist tree_in;
-	elist tree_out;
-	edge_t *par;
-	int low;
-	int lim;
-	int priority;
+    /* for network-simplex */
+    elist tree_in;
+    elist tree_out;
+    edge_t *par;
+    int low;
+    int lim;
+    int priority;
 
-	double pad[1];
+    double pad[1];
 #endif
 
     } Agnodeinfo_t;
@@ -532,37 +532,37 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define ND_ysize(n) (ND_ht(n))
 
     typedef struct Agedgeinfo_t {
-	Agrec_t hdr;
-	splines *spl;
-	port tail_port;
-	port head_port;
-	textlabel_t *label;
-	textlabel_t *head_label;
-	textlabel_t *tail_label;
-	textlabel_t *xlabel;
-	char edge_type;
-	char compound;
-	char adjacent;          /* true for flat edge with adjacent nodes */
-	char label_ontop;
-	unsigned char gui_state; /* Edge state for GUI ops */
-	edge_t *to_orig;	/* for dot's shapes.c    */
-	void *alg;
+    Agrec_t hdr;
+    splines *spl;
+    port tail_port;
+    port head_port;
+    textlabel_t *label;
+    textlabel_t *head_label;
+    textlabel_t *tail_label;
+    textlabel_t *xlabel;
+    char edge_type;
+    char compound;
+    char adjacent;          /* true for flat edge with adjacent nodes */
+    char label_ontop;
+    unsigned char gui_state; /* Edge state for GUI ops */
+    edge_t *to_orig;    /* for dot's shapes.c    */
+    void *alg;
 
 #ifndef DOT_ONLY
-	double factor;
-	double dist;
-	Ppolyline_t path;
+    double factor;
+    double dist;
+    Ppolyline_t path;
 #endif
 #ifndef NEATO_ONLY
-	unsigned char showboxes;
-	bool conc_opp_flag;
-	short xpenalty;
-	int weight;
-	int cutvalue;
-	int tree_index;
-	short count;
-	unsigned short minlen;
-	edge_t *to_virt;
+    unsigned char showboxes;
+    bool conc_opp_flag;
+    short xpenalty;
+    int weight;
+    int cutvalue;
+    int tree_index;
+    short count;
+    unsigned short minlen;
+    edge_t *to_virt;
 #endif
     } Agedgeinfo_t;
 
@@ -602,5 +602,5 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define agfindedgeattr(g,a) (agattr(g,AGEDGE,a,NULL))
 
     typedef struct {
-	int flags;
+    int flags;
     } gvlayout_features_t;

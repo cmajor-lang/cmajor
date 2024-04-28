@@ -39,44 +39,44 @@
 
     /* line of textspan_t's */
     typedef struct {
-	textspan_t *items;
-	short nitems;
-	char just;
-	double size;   /* width of span */
-	double lfsize; /* offset from previous baseline to current one */
+    textspan_t *items;
+    short nitems;
+    char just;
+    double size;   /* width of span */
+    double lfsize; /* offset from previous baseline to current one */
     } htextspan_t;
 
     typedef struct {
-	htextspan_t *spans;
-	short nspans;
-	char simple;
-	boxf box;
+    htextspan_t *spans;
+    short nspans;
+    char simple;
+    boxf box;
     } htmltxt_t;
 
     typedef struct {
-	boxf box;
-	char *src;
-	char *scale;
+    boxf box;
+    char *src;
+    char *scale;
     } htmlimg_t;
 
     typedef struct {
-	char *href;		/* pointer to an external resource */
-	char *port;
-	char *target;
-	char *title;
-	char *id;
-	char *bgcolor;
-	char *pencolor;
-	int gradientangle;
-	signed char space;
-	unsigned char border;
-	unsigned char pad;
-	unsigned char sides;    /* set of sides exposed to field */
-	unsigned short flags;
-	unsigned short width;
-	unsigned short height;
-	unsigned short style;
-	boxf box;		/* its geometric placement in points */
+    char *href;        /* pointer to an external resource */
+    char *port;
+    char *target;
+    char *title;
+    char *id;
+    char *bgcolor;
+    char *pencolor;
+    int gradientangle;
+    signed char space;
+    unsigned char border;
+    unsigned char pad;
+    unsigned char sides;    /* set of sides exposed to field */
+    unsigned short flags;
+    unsigned short width;
+    unsigned short height;
+    unsigned short style;
+    boxf box;        /* its geometric placement in points */
     } htmldata_t;
 
 #define HTML_UNSET 0
@@ -91,44 +91,44 @@
     typedef struct htmltbl_t htmltbl_t;
 
     struct htmltbl_t {
-	htmldata_t data;
-	union {
-	    struct {
-		htmlcell_t *parent;	/* enclosing cell */
-		htmlcell_t **cells;	/* cells */
-	    } n;
-	    struct {
-		htmltbl_t *prev;	/* stack */
-		Dt_t *rows;	/* cells */
-	    } p;
-	} u;
-	signed char cb;		/* cell border */
-	int *heights;		/* heights of the rows */
-	int *widths;		/* widths of the columns */
-	int rc;			/* number of rows */
-	int cc;			/* number of columns */
-	textfont_t *font;	/* font info */
-	unsigned char flags;
+    htmldata_t data;
+    union {
+        struct {
+        htmlcell_t *parent;    /* enclosing cell */
+        htmlcell_t **cells;    /* cells */
+        } n;
+        struct {
+        htmltbl_t *prev;    /* stack */
+        Dt_t *rows;    /* cells */
+        } p;
+    } u;
+    signed char cb;        /* cell border */
+    int *heights;        /* heights of the rows */
+    int *widths;        /* widths of the columns */
+    int rc;            /* number of rows */
+    int cc;            /* number of columns */
+    textfont_t *font;    /* font info */
+    unsigned char flags;
     };
 
     struct htmllabel_t {
-	union {
-	    htmltbl_t *tbl;
-	    htmltxt_t *txt;
-	    htmlimg_t *img;
-	} u;
-	char kind;
+    union {
+        htmltbl_t *tbl;
+        htmltxt_t *txt;
+        htmlimg_t *img;
+    } u;
+    char kind;
     };
 
     struct htmlcell_t {
-	htmldata_t data;
-	unsigned short cspan;
-	unsigned short rspan;
-	unsigned short col;
-	unsigned short row;
-	htmllabel_t child;
-	htmltbl_t *parent;
-	unsigned char ruled;
+    htmldata_t data;
+    unsigned short cspan;
+    unsigned short rspan;
+    unsigned short col;
+    unsigned short row;
+    htmllabel_t child;
+    htmltbl_t *parent;
+    unsigned char ruled;
     };
 
 /* During parsing, table contents are stored as rows of cells.
@@ -137,12 +137,12 @@
  * pitems are used for both lists.
  */
     typedef struct {
-	Dtlink_t link;
-	union {
-	    Dt_t *rp;
-	    htmlcell_t *cp;
-	} u;
-	unsigned char ruled;
+    Dtlink_t link;
+    union {
+        Dt_t *rp;
+        htmlcell_t *cp;
+    } u;
+    unsigned char ruled;
     } pitem;
 
     typedef struct {

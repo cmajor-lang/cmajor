@@ -84,9 +84,9 @@ extern int aagdebug;
 
 union AAGSTYPE
 {
-			int				i;
-			char			*str;
-			struct Agnode_s	*n;
+            int                i;
+            char            *str;
+            struct Agnode_s    *n;
 
 };
 

@@ -4,4 +4,3 @@
 #include "../common/geom.h"
 
 DEFINE_LIST(boxes, boxf)
-

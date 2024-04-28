@@ -13,8 +13,8 @@
 #include "pathplan.h"
 
 #ifndef FALSE
-#define FALSE	0
-#define TRUE	(!FALSE)
+#define FALSE    0
+#define TRUE    (!FALSE)
 #endif
 
 #ifdef GVDLL
@@ -28,7 +28,7 @@
 #ifndef PATHUTIL_API
 #define PATHUTIL_API /* nothing */
 #endif
-	typedef double COORD;
+    typedef double COORD;
     PATHUTIL_API COORD area2(Ppoint_t, Ppoint_t, Ppoint_t);
     PATHUTIL_API int wind(Ppoint_t a, Ppoint_t b, Ppoint_t c);
     PATHUTIL_API COORD dist2(Ppoint_t, Ppoint_t);

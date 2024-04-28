@@ -13,25 +13,25 @@
 #include "../common/geom.h"
 
 typedef struct {
-    pointf sz;			/* Size of label (input) */
-    pointf pos;			/* Position of lower-left corner of label (output) */
-    void *lbl;			/* Pointer to label in the graph */
-    unsigned char set;		/* True if the position has been set (input/output) */
+    pointf sz;            /* Size of label (input) */
+    pointf pos;            /* Position of lower-left corner of label (output) */
+    void *lbl;            /* Pointer to label in the graph */
+    unsigned char set;        /* True if the position has been set (input/output) */
 } xlabel_t;
 
 typedef struct {
-    pointf pos;			/* Position of lower-left corner of object */
-    pointf sz;			/* Size of object; may be zero for a point */
-    xlabel_t *lbl;		/* Label attached to object, or NULL */
+    pointf pos;            /* Position of lower-left corner of object */
+    pointf sz;            /* Size of object; may be zero for a point */
+    xlabel_t *lbl;        /* Label attached to object, or NULL */
 } object_t;
 
 typedef struct {
-    boxf bb;			/* Bounding box of all objects */
-    unsigned char force;	/* If true, all labels must be placed */
+    boxf bb;            /* Bounding box of all objects */
+    unsigned char force;    /* If true, all labels must be placed */
 } label_params_t;
 
 int placeLabels(object_t * objs, int n_objs,
-		xlabel_t * lbls, int n_lbls, label_params_t * params);
+        xlabel_t * lbls, int n_lbls, label_params_t * params);
 
 #ifdef XLABEL_INT
 #include "index.h"
@@ -86,9 +86,9 @@ typedef struct XLabels_s {
     int n_lbls;
     label_params_t *params;
 
-    Dt_t *hdx;			// splay tree keyed with hilbert spatial codes
-    RTree_t *spdx;		// rtree
+    Dt_t *hdx;            // splay tree keyed with hilbert spatial codes
+    RTree_t *spdx;        // rtree
 
 } XLabels_t;
 
-#endif				/* XLABEL_INT */
+#endif                /* XLABEL_INT */

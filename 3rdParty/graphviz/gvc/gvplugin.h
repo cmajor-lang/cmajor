@@ -18,33 +18,33 @@
  * Terminology:
  *
  *    package         - e.g. libgvplugin_cairo.so
- *       api	      - e.g. render
+ *       api          - e.g. render
  *          type      - e.g. "png", "ps"
  */
 
     typedef struct {
-	int id;         /* an id that is only unique within a package
-			of plugins of the same api.
-			A renderer-type such as "png" in the cairo package
-			has an id that is different from the "ps" type
-			in the same package */
-	const char *type;	/* a string name, such as "png" or "ps" that
-			distinguishes different types within the same
-			 (renderer in this case) */
-	int quality;    /* an arbitrary integer used for ordering plugins of
-			the same type from different packages */
-	void *engine;   /* pointer to the jump table for the plugin */
-	void *features; /* pointer to the feature description
-				void* because type varies by api */
+    int id;         /* an id that is only unique within a package
+            of plugins of the same api.
+            A renderer-type such as "png" in the cairo package
+            has an id that is different from the "ps" type
+            in the same package */
+    const char *type;    /* a string name, such as "png" or "ps" that
+            distinguishes different types within the same
+             (renderer in this case) */
+    int quality;    /* an arbitrary integer used for ordering plugins of
+            the same type from different packages */
+    void *engine;   /* pointer to the jump table for the plugin */
+    void *features; /* pointer to the feature description
+                void* because type varies by api */
     } gvplugin_installed_t;
 
     typedef struct {
-	api_t api;
-	gvplugin_installed_t *types;
+    api_t api;
+    gvplugin_installed_t *types;
     } gvplugin_api_t;
 
     typedef struct {
-	char *packagename;    /* used when this plugin is builtin and has
-					no pathname */
-	gvplugin_api_t *apis;
+    char *packagename;    /* used when this plugin is builtin and has
+                    no pathname */
+    gvplugin_api_t *apis;
     } gvplugin_library_t;

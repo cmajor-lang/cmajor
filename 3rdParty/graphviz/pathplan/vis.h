@@ -15,18 +15,18 @@
 
     typedef COORD **array2;
 
-#define EQ(p,q)		((p.x == q.x) && (p.y == q.y))
+#define EQ(p,q)        ((p.x == q.x) && (p.y == q.y))
 
     struct vconfig_s {
-	int Npoly;
-	int N;			/* number of points in walk of barriers */
-	Ppoint_t *P;		/* barrier points */
-	int *start;
-	int *next;
-	int *prev;
+    int Npoly;
+    int N;            /* number of points in walk of barriers */
+    Ppoint_t *P;        /* barrier points */
+    int *start;
+    int *next;
+    int *prev;
 
-	/* this is computed from the above */
-	array2 vis;
+    /* this is computed from the above */
+    array2 vis;
     };
 #ifdef GVDLL
 #ifdef PATHPLAN_EXPORTS
@@ -40,12 +40,11 @@
 #define VIS_API /* nothing */
 #endif
 
-	VIS_API COORD *ptVis(vconfig_t *, int, Ppoint_t);
+    VIS_API COORD *ptVis(vconfig_t *, int, Ppoint_t);
     VIS_API bool directVis(Ppoint_t, int, Ppoint_t, int, vconfig_t *);
     VIS_API void visibility(vconfig_t *);
     VIS_API int *makePath(Ppoint_t p, int pp, COORD * pvis,
-			 Ppoint_t q, int qp, COORD * qvis,
-			 vconfig_t * conf);
+             Ppoint_t q, int qp, COORD * qvis,
+             vconfig_t * conf);
 
 #undef VIS_API
-

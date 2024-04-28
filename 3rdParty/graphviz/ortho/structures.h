@@ -23,7 +23,7 @@ typedef struct {
 } pair_;
 
 typedef struct {
-	pair_ t1, t2;
+    pair_ t1, t2;
 } pair2;
 
 typedef enum {B_NODE, B_UP, B_LEFT, B_DOWN, B_RIGHT} bend_;

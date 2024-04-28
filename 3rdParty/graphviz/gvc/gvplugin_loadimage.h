@@ -30,7 +30,7 @@ GVPLUGIN_LOADIMAGE_API bool gvusershape_file_access(usershape_t *us);
 GVPLUGIN_LOADIMAGE_API void gvusershape_file_release(usershape_t *us);
 
     struct gvloadimage_engine_s {
-	void (*loadimage) (GVJ_t *job, usershape_t *us, boxf b, bool filled);
+    void (*loadimage) (GVJ_t *job, usershape_t *us, boxf b, bool filled);
     };
 
 #undef GVPLUGIN_LOADIMAGE_API

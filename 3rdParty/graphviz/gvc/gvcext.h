@@ -31,8 +31,8 @@
     typedef struct GVC_s GVC_t;
 
     typedef struct {
-	const char *name;
-	void* address;
+    const char *name;
+    void* address;
     } lt_symlist_t;
 
     typedef struct gvplugin_available_s gvplugin_available_t;

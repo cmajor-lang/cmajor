@@ -16,7 +16,7 @@
 
 
     struct gvdevice_engine_s {
-	void (*initialize) (GVJ_t * firstjob);
-	void (*format) (GVJ_t * firstjob);
-	void (*finalize) (GVJ_t * firstjob);
+    void (*initialize) (GVJ_t * firstjob);
+    void (*format) (GVJ_t * firstjob);
+    void (*finalize) (GVJ_t * firstjob);
     };

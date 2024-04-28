@@ -36,4 +36,3 @@ typedef struct split_q_s {
 } SplitQ_t;
 
 void SplitNode(RTree_t *, Node_t *, Branch_t *, Node_t **);
-

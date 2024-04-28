@@ -53,9 +53,9 @@ typedef struct {
 typedef struct {
     xdot_grad_type type;
     union {
-	char* clr;
-	xdot_linear_grad ling;
-	xdot_radial_grad ring;
+    char* clr;
+    xdot_linear_grad ling;
+    xdot_radial_grad ring;
     } u;
 } xdot_color;
 
@@ -175,4 +175,3 @@ XDOT_API int statXDot (xdot*, xdot_stats*);
 XDOT_API xdot_grad_type colorTypeXDot (char*);
 XDOT_API char* parseXDotColor (char* cp, xdot_color* clr);
 XDOT_API void freeXDotColor (xdot_color*);
-

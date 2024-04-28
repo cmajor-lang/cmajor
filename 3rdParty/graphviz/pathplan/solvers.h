@@ -11,4 +11,3 @@
 #pragma once
 
     extern int solve3(double *, double *);
-

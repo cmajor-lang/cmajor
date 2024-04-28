@@ -35,7 +35,7 @@
 #endif
 /// @endcond
 
-	POINTSET_API PointSet *newPS(void);
+    POINTSET_API PointSet *newPS(void);
     POINTSET_API void freePS(PointSet *);
     POINTSET_API void insertPS(PointSet *, point);
     POINTSET_API void addPS(PointSet *, int x, int y);
