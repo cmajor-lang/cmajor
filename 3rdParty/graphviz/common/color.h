@@ -11,7 +11,7 @@
 #pragma once
 
 typedef struct hsvrgbacolor_t {
-    char *name;
+    const char *name;
     unsigned char h, s, v;
     unsigned char r, g, b, a;
 } hsvrgbacolor_t;

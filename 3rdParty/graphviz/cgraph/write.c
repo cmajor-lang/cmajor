@@ -294,7 +294,7 @@ static int write_hdr(Agraph_t * g, iochan_t * ofile, int top)
     bool root = false;
     bool hasName = true;
 
-    strict = "";
+    strict = (char*) "";
     if (!top && agparent(g))
 	kind = (char*) "sub";
     else {
@@ -305,13 +305,13 @@ static int write_hdr(Agraph_t * g, iochan_t * ofile, int top)
 	    kind = (char*) "";
 	if (agisstrict(g))
 	    strict = (char*) "strict ";
-	Tailport = agattr(g, AGEDGE, TAILPORT_ID, NULL);
-	Headport = agattr(g, AGEDGE, HEADPORT_ID, NULL);
+	Tailport = agattr(g, AGEDGE, (char*) TAILPORT_ID, NULL);
+	Headport = agattr(g, AGEDGE, (char*) HEADPORT_ID, NULL);
     }
     name = agnameof(g);
-    sep = " ";
+    sep = (char*) " ";
     if (!name || name[0] == LOCALNAMEPREFIX) {
-	sep = name = "";
+	sep = name = (char*) "";
 	hasName = false;
     }
     CHKRV(indent(g, ofile));
@@ -567,7 +567,7 @@ static int write_port(Agedge_t * e, iochan_t * ofile, Agsym_t * port)
 	if (s) {
 	    *s = '\0';
 	    CHKRV(_write_canonstr(g, ofile, val, FALSE));
-	    CHKRV(ioput(g, ofile, ":"));
+	    CHKRV(ioput(g, ofile, (char*) ":"));
 	    CHKRV(_write_canonstr(g, ofile, s + 1, FALSE));
 	    *s = ':';
 	} else {

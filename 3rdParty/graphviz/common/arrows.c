@@ -50,10 +50,10 @@ typedef struct {
 } arrowdir_t;
 
 static const arrowdir_t Arrowdirs[] = {
-    {"forward", ARR_TYPE_NONE, ARR_TYPE_NORM},
-    {"back", ARR_TYPE_NORM, ARR_TYPE_NONE},
-    {"both", ARR_TYPE_NORM, ARR_TYPE_NORM},
-    {"none", ARR_TYPE_NONE, ARR_TYPE_NONE},
+    {(char*) "forward", ARR_TYPE_NONE, ARR_TYPE_NORM},
+    {(char*) "back", ARR_TYPE_NORM, ARR_TYPE_NONE},
+    {(char*) "both", ARR_TYPE_NORM, ARR_TYPE_NORM},
+    {(char*) "none", ARR_TYPE_NONE, ARR_TYPE_NONE},
     {0}
 };
 
@@ -65,42 +65,42 @@ typedef struct {
 static const arrowname_t Arrowsynonyms[] = {
     /* synonyms for deprecated arrow names - included for backward compatibility */
     /*  evaluated before primary names else "invempty" would give different results */
-    {"invempty", (ARR_TYPE_NORM | ARR_MOD_INV | ARR_MOD_OPEN)},	/* oinv     */
+    {(char*) "invempty", (ARR_TYPE_NORM | ARR_MOD_INV | ARR_MOD_OPEN)},	/* oinv     */
     {0}
 };
 
 static const arrowname_t Arrowmods[] = {
-    {"o", ARR_MOD_OPEN},
-    {"r", ARR_MOD_RIGHT},
-    {"l", ARR_MOD_LEFT},
+    {(char*) "o", ARR_MOD_OPEN},
+    {(char*) "r", ARR_MOD_RIGHT},
+    {(char*) "l", ARR_MOD_LEFT},
     /* deprecated alternates for backward compat */
-    {"e", ARR_MOD_OPEN},	/* o  - needed for "ediamond" */
-    {"half", ARR_MOD_LEFT},	/* l  - needed for "halfopen" */
+    {(char*) "e", ARR_MOD_OPEN},	/* o  - needed for "ediamond" */
+    {(char*) "half", ARR_MOD_LEFT},	/* l  - needed for "halfopen" */
     {0}
 };
 
 static const arrowname_t Arrownames[] = {
-    {"normal", ARR_TYPE_NORM},
-    {"crow", ARR_TYPE_CROW},
-    {"tee", ARR_TYPE_TEE},
-    {"box", ARR_TYPE_BOX},
-    {"diamond", ARR_TYPE_DIAMOND},
-    {"dot", ARR_TYPE_DOT},
-    {"none", ARR_TYPE_GAP},
+    {(char*) "normal", ARR_TYPE_NORM},
+    {(char*) "crow", ARR_TYPE_CROW},
+    {(char*) "tee", ARR_TYPE_TEE},
+    {(char*) "box", ARR_TYPE_BOX},
+    {(char*) "diamond", ARR_TYPE_DIAMOND},
+    {(char*) "dot", ARR_TYPE_DOT},
+    {(char*) "none", ARR_TYPE_GAP},
     /* ARR_MOD_INV is used only here to define two additional shapes
        since not all types can use it */
-    {"inv", (ARR_TYPE_NORM | ARR_MOD_INV)},
-    {"vee", (ARR_TYPE_CROW | ARR_MOD_INV)},
+    {(char*) "inv", (ARR_TYPE_NORM | ARR_MOD_INV)},
+    {(char*) "vee", (ARR_TYPE_CROW | ARR_MOD_INV)},
     /* WARNING ugly kludge to deal with "o" v "open" conflict */
     /* Define "open" as just "pen" since "o" already taken as ARR_MOD_OPEN */
     /* Note that ARR_MOD_OPEN has no meaning for ARR_TYPE_CROW shape */
-    {"pen", (ARR_TYPE_CROW | ARR_MOD_INV)},
+    {(char*) "pen", (ARR_TYPE_CROW | ARR_MOD_INV)},
     /* WARNING ugly kludge to deal with "e" v "empty" conflict */
     /* Define "empty" as just "mpty" since "e" already taken as ARR_MOD_OPEN */
     /* Note that ARR_MOD_OPEN has expected meaning for ARR_TYPE_NORM shape */
-    {"mpty", ARR_TYPE_NORM},
-    {"curve", ARR_TYPE_CURVE},
-    {"icurve", (ARR_TYPE_CURVE | ARR_MOD_INV)},
+    {(char*) "mpty", ARR_TYPE_NORM},
+    {(char*) "curve", ARR_TYPE_CURVE},
+    {(char*) "icurve", (ARR_TYPE_CURVE | ARR_MOD_INV)},
     {0}
 };
 
@@ -222,13 +222,13 @@ void arrow_flags(Agedge_t * e, int *sflag, int *eflag)
 	 * which edge attributes appear and are thus parsed into a dictionary mean
 	 * E_arrowhead->id potentially points at a stale attribute value entry
 	 */
-	Agsym_t *arrowhead = agfindedgeattr(agraphof(e), "arrowhead");
+	Agsym_t *arrowhead = agfindedgeattr(agraphof(e), (char*) "arrowhead");
 	if (arrowhead != NULL && ((attr = agxget(e, arrowhead)))[0])
 		arrow_match_name(attr, eflag);
     }
     if (*sflag == ARR_TYPE_NORM) {
 	/* similar to above, we cannot use E_arrowtail here */
-	Agsym_t *arrowtail = agfindedgeattr(agraphof(e), "arrowtail");
+	Agsym_t *arrowtail = agfindedgeattr(agraphof(e), (char*) "arrowtail");
 	if (arrowtail != NULL && ((attr = agxget(e, arrowtail)))[0])
 		arrow_match_name(attr, sflag);
     }

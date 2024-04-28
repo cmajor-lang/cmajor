@@ -57,17 +57,17 @@ typedef struct {
 #define ICO_MAGIC  "\x00\x00\x01\x00"
 
 static knowntype_t knowntypes[] = {
-    { PNG_MAGIC,  sizeof(PNG_MAGIC)-1,   FT_PNG,  (char*) "png",  },
-    { PS_MAGIC,   sizeof(PS_MAGIC)-1,    FT_PS,   (char*) "ps",   },
-    { BMP_MAGIC,  sizeof(BMP_MAGIC)-1,   FT_BMP,  (char*) "bmp",  },
-    { GIF_MAGIC,  sizeof(GIF_MAGIC)-1,   FT_GIF,  (char*) "gif",  },
-    { JPEG_MAGIC, sizeof(JPEG_MAGIC)-1,  FT_JPEG, (char*) "jpeg", },
-    { PDF_MAGIC,  sizeof(PDF_MAGIC)-1,   FT_PDF,  (char*) "pdf",  },
-    { EPS_MAGIC,  sizeof(EPS_MAGIC)-1,   FT_EPS,  (char*) "eps",  },
-/*    { SVG_MAGIC,  sizeof(SVG_MAGIC)-1,  FT_SVG,  (char*) "svg",  },  - viewers expect xml preamble */
-    { XML_MAGIC,  sizeof(XML_MAGIC)-1,   FT_XML,  (char*) "xml",  },
-    { RIFF_MAGIC, sizeof(RIFF_MAGIC)-1,  FT_RIFF, (char*) "riff", },
-    { ICO_MAGIC,  sizeof(ICO_MAGIC)-1,   FT_ICO,  (char*) "ico",  },
+    { (char*) PNG_MAGIC,  sizeof(PNG_MAGIC)-1,   FT_PNG,  (char*) "png",  },
+    { (char*) PS_MAGIC,   sizeof(PS_MAGIC)-1,    FT_PS,   (char*) "ps",   },
+    { (char*) BMP_MAGIC,  sizeof(BMP_MAGIC)-1,   FT_BMP,  (char*) "bmp",  },
+    { (char*) GIF_MAGIC,  sizeof(GIF_MAGIC)-1,   FT_GIF,  (char*) "gif",  },
+    { (char*) JPEG_MAGIC, sizeof(JPEG_MAGIC)-1,  FT_JPEG, (char*) "jpeg", },
+    { (char*) PDF_MAGIC,  sizeof(PDF_MAGIC)-1,   FT_PDF,  (char*) "pdf",  },
+    { (char*) EPS_MAGIC,  sizeof(EPS_MAGIC)-1,   FT_EPS,  (char*) "eps",  },
+/*    { (char*) SVG_MAGIC,  sizeof(SVG_MAGIC)-1,  FT_SVG,  (char*) "svg",  },  - viewers expect xml preamble */
+    { (char*) XML_MAGIC,  sizeof(XML_MAGIC)-1,   FT_XML,  (char*) "xml",  },
+    { (char*) RIFF_MAGIC, sizeof(RIFF_MAGIC)-1,  FT_RIFF, (char*) "riff", },
+    { (char*) ICO_MAGIC,  sizeof(ICO_MAGIC)-1,   FT_ICO,  (char*) "ico",  },
 //    { TIFF_MAGIC, sizeof(TIFF_MAGIC)-1,  FT_TIFF, (char*) "tiff", },
 };
 
