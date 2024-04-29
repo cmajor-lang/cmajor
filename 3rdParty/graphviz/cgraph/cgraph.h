@@ -369,7 +369,7 @@ CGRAPH_API void aginit(Agraph_t * g, int kind, const char *rec_name,
                        int rec_size, int move_to_front);
 CGRAPH_API void agclean(Agraph_t * g, int kind, char *rec_name);
 
-CGRAPH_API char *agget(void *obj, char *name);
+CGRAPH_API char *agget(void *obj, const char *name);
 CGRAPH_API char *agxget(void *obj, Agsym_t * sym);
 CGRAPH_API int agset(void *obj, char *name, const char *value);
 CGRAPH_API int agxset(void *obj, Agsym_t * sym, const char *value);

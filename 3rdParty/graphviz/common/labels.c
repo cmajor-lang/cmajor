@@ -286,9 +286,9 @@ void emit_label(GVJ_t * job, emit_state_t emit_state, textlabel_t * lp)
 static char *strdup_and_subst_obj0 (char *str, void *obj, int escBackslash)
 {
     char c, *s;
-    char *tp_str = "", *hp_str = "";
-    char *g_str = "\\G", *n_str = "\\N", *e_str = "\\E",
-	*h_str = "\\H", *t_str = "\\T", *l_str = "\\L";
+    char *tp_str = (char*) "", *hp_str = (char*) "";
+    char *g_str = (char*) "\\G", *n_str = (char*) "\\N", *e_str = (char*) "\\E",
+	*h_str = (char*) "\\H", *t_str = (char*) "\\T", *l_str = (char*) "\\L";
     bool has_hp = false;
     bool has_tp = false;
     int isEdge = 0;
@@ -328,9 +328,9 @@ static char *strdup_and_subst_obj0 (char *str, void *obj, int escBackslash)
 		l_str = tl->text;
 	    }
 	    if (agisdirected(agroot(agraphof(agtail(((edge_t*)obj))))))
-		e_str = "->";
+		e_str = (char*) "->";
 	    else
-		e_str = "--";
+		e_str = (char*) "--";
 	    break;
     }
 

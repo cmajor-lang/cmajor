@@ -314,7 +314,7 @@ static void dotLayout(Agraph_t * g)
 	removeFill (g);
     dot_sameports(g);
     dot_splines(g);
-    if (mapbool(agget(g, (char*) "compound")))
+    if (mapbool(agget(g, "compound")))
 	dot_compoundEdges(g);
 }
 

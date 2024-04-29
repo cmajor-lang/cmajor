@@ -369,7 +369,7 @@ void dot_mincross(graph_t * g, int doBalance)
 #endif
     }
 
-    if (GD_n_cluster(g) > 0 && (!(s = agget(g, (char*) "remincross")) || mapbool(s))) {
+    if (GD_n_cluster(g) > 0 && (!(s = agget(g, "remincross")) || mapbool(s))) {
 	mark_lowclusters(g);
 	ReMincross = true;
 	nc = mincross(g, 2, 2, doBalance);
@@ -1941,7 +1941,7 @@ static void mincross_options(graph_t * g)
     MaxIter = 24;
     Convergence = .995;
 
-    p = agget(g, (char*) "mclimit");
+    p = agget(g, "mclimit");
     if (p && (f = atof(p)) > 0.0) {
 	MinQuit = MAX(1, MinQuit * f);
 	MaxIter = MAX(1, MaxIter * f);

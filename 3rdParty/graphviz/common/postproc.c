@@ -564,7 +564,7 @@ static void addXLabels(Agraph_t * gp)
 	bb = info.bb;
     }
 
-    force = agfindgraphattr(gp, "forcelabels");
+    force = agfindgraphattr(gp, (char*) "forcelabels");
 
     params.force = late_bool(gp, force, true);
     params.bb = bb;

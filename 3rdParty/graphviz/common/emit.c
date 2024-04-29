@@ -726,7 +726,7 @@ static bool isFilled(node_t * n)
 {
     char *style, *p, **pp;
     bool r = false;
-    style = late_nnstring(n, N_style, "");
+    style = late_nnstring(n, N_style, (char*) "");
     if (style[0]) {
         pp = parse_style(style);
         while ((p = *pp)) {
@@ -2283,23 +2283,23 @@ static void emit_edge_graphics(GVJ_t * job, edge_t * e, char** styles)
 	fillcolor = pencolor = color;
 	if (ED_gui_state(e) & GUI_STATE_ACTIVE) {
 	    pencolor = late_nnstring(e, E_activepencolor,
-			default_pencolor(pencolor, DEFAULT_ACTIVEPENCOLOR));
-	    fillcolor = late_nnstring(e, E_activefillcolor, DEFAULT_ACTIVEFILLCOLOR);
+			default_pencolor(pencolor, (char*) DEFAULT_ACTIVEPENCOLOR));
+	    fillcolor = late_nnstring(e, E_activefillcolor, (char*) DEFAULT_ACTIVEFILLCOLOR);
 	}
 	else if (ED_gui_state(e) & GUI_STATE_SELECTED) {
 	    pencolor = late_nnstring(e, E_selectedpencolor,
-			default_pencolor(pencolor, DEFAULT_SELECTEDPENCOLOR));
-	    fillcolor = late_nnstring(e, E_selectedfillcolor, DEFAULT_SELECTEDFILLCOLOR);
+			default_pencolor(pencolor, (char*) DEFAULT_SELECTEDPENCOLOR));
+	    fillcolor = late_nnstring(e, E_selectedfillcolor, (char*) DEFAULT_SELECTEDFILLCOLOR);
 	}
 	else if (ED_gui_state(e) & GUI_STATE_DELETED) {
 	    pencolor = late_nnstring(e, E_deletedpencolor,
-			default_pencolor(pencolor, DEFAULT_DELETEDPENCOLOR));
-	    fillcolor = late_nnstring(e, E_deletedfillcolor, DEFAULT_DELETEDFILLCOLOR);
+			default_pencolor(pencolor, (char*) DEFAULT_DELETEDPENCOLOR));
+	    fillcolor = late_nnstring(e, E_deletedfillcolor, (char*) DEFAULT_DELETEDFILLCOLOR);
 	}
 	else if (ED_gui_state(e) & GUI_STATE_VISITED) {
 	    pencolor = late_nnstring(e, E_visitedpencolor,
-			default_pencolor(pencolor, DEFAULT_VISITEDPENCOLOR));
-	    fillcolor = late_nnstring(e, E_visitedfillcolor, DEFAULT_VISITEDFILLCOLOR);
+			default_pencolor(pencolor, (char*) DEFAULT_VISITEDPENCOLOR));
+	    fillcolor = late_nnstring(e, E_visitedfillcolor, (char*) DEFAULT_VISITEDFILLCOLOR);
 	}
 	else
 	    fillcolor = late_nnstring(e, E_fillcolor, color);
@@ -3052,12 +3052,12 @@ static void init_gvc(GVC_t * gvc, graph_t * g)
     gvc->bb = GD_bb(g);
 
     /* clusters have peripheries */
-    G_peripheries = agfindgraphattr(g, "peripheries");
-    G_penwidth = agfindgraphattr(g, "penwidth");
+    G_peripheries = agfindgraphattr(g, (char*) "peripheries");
+    G_penwidth = agfindgraphattr(g, (char*) "penwidth");
 
     /* default font */
     gvc->defaultfontname = late_nnstring(NULL,
-                N_fontname, DEFAULT_FONTNAME);
+                N_fontname, (char*) DEFAULT_FONTNAME);
     gvc->defaultfontsize = late_double(NULL,
                 N_fontsize, DEFAULT_FONTSIZE, MIN_FONTSIZE);
 
@@ -4091,8 +4091,8 @@ int gvRenderJobs (GVC_t * gvc, graph_t * g)
 
 	if (! (job->flags & GVDEVICE_EVENTS)) {
 #ifdef DEBUG
-    		/* Show_boxes is not defined, if at all, 
-                 * until splines are generated in dot 
+    		/* Show_boxes is not defined, if at all,
+                 * until splines are generated in dot
                  */
 	    job->common->show_boxes = Show_boxes;
 #endif

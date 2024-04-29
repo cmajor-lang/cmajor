@@ -44,7 +44,7 @@ static Initialiser5 initialiser5;
   /* extra null character needed to avoid style emitter from thinking
    * there are arguments.
    */
-static char *point_style[3] = { "invis\0", "filled\0", 0 };
+static char *point_style[3] = { (char*) "invis\0", (char*) "filled\0", 0 };
 
 /* forward declarations of functions used in shapes tables */
 
@@ -399,71 +399,71 @@ static shape_functions cylinder_fns = {
 };
 
 static shape_desc Shapes[] = {	/* first entry is default for no such shape */
-		{"box", &poly_fns, &p_box},
-		{"polygon", &poly_fns, &p_box},
-		{"oval", &poly_fns, &p_ellipse},
-		{"circle", &poly_fns, &p_circle},
-		{"point", &poly_fns, &p_circle},
-		{"egg", &poly_fns, &p_egg},
-		{"triangle", &poly_fns, &p_triangle},
-		{"none", &poly_fns, &p_plaintext},
-		{"plaintext", &poly_fns, &p_plaintext},
-		{"plain", &poly_fns, &p_plain},
-		{"diamond", &poly_fns, &p_diamond},
-		{"trapezium", &poly_fns, &p_trapezium},
-		{"parallelogram", &poly_fns, &p_parallelogram},
-		{"house", &poly_fns, &p_house},
-		{"pentagon", &poly_fns, &p_pentagon},
-		{"hexagon", &poly_fns, &p_hexagon},
-		{"septagon", &poly_fns, &p_septagon},
-		{"octagon", &poly_fns, &p_octagon},
-		{"note", &poly_fns, &p_note},
-		{"tab", &poly_fns, &p_tab},
-		{"folder", &poly_fns, &p_folder},
-		{"box3d", &poly_fns, &p_box3d},
-		{"component", &poly_fns, &p_component},
-		{"cylinder", &poly_fns, &p_cylinder},
-		{"rect", &poly_fns, &p_box},
-		{"rectangle", &poly_fns, &p_box},
-		{"square", &poly_fns, &p_square},
-		{"doublecircle", &poly_fns, &p_doublecircle},
-		{"doubleoctagon", &poly_fns, &p_doubleoctagon},
-		{"tripleoctagon", &poly_fns, &p_tripleoctagon},
-		{"invtriangle", &poly_fns, &p_invtriangle},
-		{"invtrapezium", &poly_fns, &p_invtrapezium},
-		{"invhouse", &poly_fns, &p_invhouse},
-		{"underline", &poly_fns, &p_underline},
-		{"Mdiamond", &poly_fns, &p_Mdiamond},
-		{"Msquare", &poly_fns, &p_Msquare},
-		{"Mcircle", &poly_fns, &p_Mcircle},
+		{(char*) "box", &poly_fns, &p_box},
+		{(char*) "polygon", &poly_fns, &p_box},
+		{(char*) "oval", &poly_fns, &p_ellipse},
+		{(char*) "circle", &poly_fns, &p_circle},
+		{(char*) "point", &poly_fns, &p_circle},
+		{(char*) "egg", &poly_fns, &p_egg},
+		{(char*) "triangle", &poly_fns, &p_triangle},
+		{(char*) "none", &poly_fns, &p_plaintext},
+		{(char*) "plaintext", &poly_fns, &p_plaintext},
+		{(char*) "plain", &poly_fns, &p_plain},
+		{(char*) "diamond", &poly_fns, &p_diamond},
+		{(char*) "trapezium", &poly_fns, &p_trapezium},
+		{(char*) "parallelogram", &poly_fns, &p_parallelogram},
+		{(char*) "house", &poly_fns, &p_house},
+		{(char*) "pentagon", &poly_fns, &p_pentagon},
+		{(char*) "hexagon", &poly_fns, &p_hexagon},
+		{(char*) "septagon", &poly_fns, &p_septagon},
+		{(char*) "octagon", &poly_fns, &p_octagon},
+		{(char*) "note", &poly_fns, &p_note},
+		{(char*) "tab", &poly_fns, &p_tab},
+		{(char*) "folder", &poly_fns, &p_folder},
+		{(char*) "box3d", &poly_fns, &p_box3d},
+		{(char*) "component", &poly_fns, &p_component},
+		{(char*) "cylinder", &poly_fns, &p_cylinder},
+		{(char*) "rect", &poly_fns, &p_box},
+		{(char*) "rectangle", &poly_fns, &p_box},
+		{(char*) "square", &poly_fns, &p_square},
+		{(char*) "doublecircle", &poly_fns, &p_doublecircle},
+		{(char*) "doubleoctagon", &poly_fns, &p_doubleoctagon},
+		{(char*) "tripleoctagon", &poly_fns, &p_tripleoctagon},
+		{(char*) "invtriangle", &poly_fns, &p_invtriangle},
+		{(char*) "invtrapezium", &poly_fns, &p_invtrapezium},
+		{(char*) "invhouse", &poly_fns, &p_invhouse},
+		{(char*) "underline", &poly_fns, &p_underline},
+		{(char*) "Mdiamond", &poly_fns, &p_Mdiamond},
+		{(char*) "Msquare", &poly_fns, &p_Msquare},
+		{(char*) "Mcircle", &poly_fns, &p_Mcircle},
 		/* biological circuit shapes, as specified by SBOLv*/
 		/** gene expression symbols **/
-		{"promoter", &poly_fns, &p_promoter},
-		{"cds",  &poly_fns, &p_cds},
-		{"terminator",  &poly_fns, &p_terminator},
-		{"utr",  &poly_fns, &p_utr},
-		{"insulator", &poly_fns, &p_insulator},
-		{"ribosite", &poly_fns, &p_ribosite},
-		{"rnastab", &poly_fns, &p_rnastab},
-		{"proteasesite", &poly_fns, &p_proteasesite},
-		{"proteinstab", &poly_fns, &p_proteinstab},
+		{(char*) "promoter", &poly_fns, &p_promoter},
+		{(char*) "cds",  &poly_fns, &p_cds},
+		{(char*) "terminator",  &poly_fns, &p_terminator},
+		{(char*) "utr",  &poly_fns, &p_utr},
+		{(char*) "insulator", &poly_fns, &p_insulator},
+		{(char*) "ribosite", &poly_fns, &p_ribosite},
+		{(char*) "rnastab", &poly_fns, &p_rnastab},
+		{(char*) "proteasesite", &poly_fns, &p_proteasesite},
+		{(char*) "proteinstab", &poly_fns, &p_proteinstab},
 		/** dna construction symbols **/
-		{"primersite",  &poly_fns, &p_primersite},
-		{"restrictionsite", &poly_fns, &p_restrictionsite},
-		{"fivepoverhang", &poly_fns, &p_fivepoverhang},
-		{"threepoverhang", &poly_fns, &p_threepoverhang},
-		{"noverhang", &poly_fns, &p_noverhang},
-		{"assembly", &poly_fns, &p_assembly},
-		{"signature", &poly_fns, &p_signature},
-		{"rpromoter", &poly_fns, &p_rpromoter},
-		{"larrow",  &poly_fns, &p_larrow},
-		{"rarrow",  &poly_fns, &p_rarrow},
-		{"lpromoter",  &poly_fns, &p_lpromoter},
+		{(char*) "primersite",  &poly_fns, &p_primersite},
+		{(char*) "restrictionsite", &poly_fns, &p_restrictionsite},
+		{(char*) "fivepoverhang", &poly_fns, &p_fivepoverhang},
+		{(char*) "threepoverhang", &poly_fns, &p_threepoverhang},
+		{(char*) "noverhang", &poly_fns, &p_noverhang},
+		{(char*) "assembly", &poly_fns, &p_assembly},
+		{(char*) "signature", &poly_fns, &p_signature},
+		{(char*) "rpromoter", &poly_fns, &p_rpromoter},
+		{(char*) "larrow",  &poly_fns, &p_larrow},
+		{(char*) "rarrow",  &poly_fns, &p_rarrow},
+		{(char*) "lpromoter",  &poly_fns, &p_lpromoter},
 			/*  *** shapes other than polygons  *** */
-		{"record", &record_fns, NULL},
-		{"Mrecord", &record_fns, NULL},
-		{"epsf", &epsf_fns, NULL},
-		{"star", &star_fns, &p_star},
+		{(char*) "record", &record_fns, NULL},
+		{(char*) "Mrecord", &record_fns, NULL},
+		{(char*) "epsf", &epsf_fns, NULL},
+		{(char*) "star", &star_fns, &p_star},
 		{0}
 };
 
@@ -502,7 +502,7 @@ char* penColor(GVJ_t * job, node_t * n)
 {
     char *color;
 
-    color = late_nnstring(n, N_color, "");
+    color = late_nnstring(n, N_color, (char*) "");
     if (!color[0])
 	color = DEFAULT_COLOR;
     gvrender_set_pencolor(job, color);
@@ -514,10 +514,10 @@ char *findFillDflt(node_t * n, char *dflt)
 {
     char *color;
 
-    color = late_nnstring(n, N_fillcolor, "");
+    color = late_nnstring(n, N_fillcolor, (char*) "");
     if (!color[0]) {
 	/* for backward compatibility, default fill is same as pen */
-	color = late_nnstring(n, N_color, "");
+	color = late_nnstring(n, N_color, (char*) "");
 	if (!color[0]) {
 	    color = dflt;
 	}
@@ -564,7 +564,7 @@ static char **checkStyle(node_t * n, int *flagp)
     int istyle = 0;
     polygon_t *poly;
 
-    style = late_nnstring(n, N_style, "");
+    style = late_nnstring(n, N_style, (char*) "");
     if (style[0]) {
 	char **pp;
 	char **qp;
@@ -2986,35 +2986,34 @@ static void poly_gencode(GVJ_t * job, node_t * n)
     clrs[0] = NULL;
 
     if (ND_gui_state(n) & GUI_STATE_ACTIVE) {
-	pencolor = late_nnstring(n, N_activepencolor, DEFAULT_ACTIVEPENCOLOR);
+	pencolor = late_nnstring(n, N_activepencolor, (char*) DEFAULT_ACTIVEPENCOLOR);
 	gvrender_set_pencolor(job, pencolor);
 	color =
-	    late_nnstring(n, N_activefillcolor, DEFAULT_ACTIVEFILLCOLOR);
+	    late_nnstring(n, N_activefillcolor, (char*) DEFAULT_ACTIVEFILLCOLOR);
 	gvrender_set_fillcolor(job, color);
 	filled = FILL;
     } else if (ND_gui_state(n) & GUI_STATE_SELECTED) {
 	pencolor =
-	    late_nnstring(n, N_selectedpencolor, DEFAULT_SELECTEDPENCOLOR);
+	    late_nnstring(n, N_selectedpencolor, (char*) DEFAULT_SELECTEDPENCOLOR);
 	gvrender_set_pencolor(job, pencolor);
 	color =
-	    late_nnstring(n, N_selectedfillcolor,
-			  DEFAULT_SELECTEDFILLCOLOR);
+	    late_nnstring(n, N_selectedfillcolor, (char*) DEFAULT_SELECTEDFILLCOLOR);
 	gvrender_set_fillcolor(job, color);
 	filled = FILL;
     } else if (ND_gui_state(n) & GUI_STATE_DELETED) {
 	pencolor =
-	    late_nnstring(n, N_deletedpencolor, DEFAULT_DELETEDPENCOLOR);
+	    late_nnstring(n, N_deletedpencolor, (char*) DEFAULT_DELETEDPENCOLOR);
 	gvrender_set_pencolor(job, pencolor);
 	color =
-	    late_nnstring(n, N_deletedfillcolor, DEFAULT_DELETEDFILLCOLOR);
+	    late_nnstring(n, N_deletedfillcolor, (char*) DEFAULT_DELETEDFILLCOLOR);
 	gvrender_set_fillcolor(job, color);
 	filled = FILL;
     } else if (ND_gui_state(n) & GUI_STATE_VISITED) {
 	pencolor =
-	    late_nnstring(n, N_visitedpencolor, DEFAULT_VISITEDPENCOLOR);
+	    late_nnstring(n, N_visitedpencolor, (char*) DEFAULT_VISITEDPENCOLOR);
 	gvrender_set_pencolor(job, pencolor);
 	color =
-	    late_nnstring(n, N_visitedfillcolor, DEFAULT_VISITEDFILLCOLOR);
+	    late_nnstring(n, N_visitedfillcolor, (char*) DEFAULT_VISITEDFILLCOLOR);
 	gvrender_set_fillcolor(job, color);
 	filled = FILL;
     } else {
@@ -3322,32 +3321,31 @@ static void point_gencode(GVJ_t * job, node_t * n)
 	gvrender_set_penwidth(job, late_double(n, N_penwidth, 1.0, 0.0));
 
     if (ND_gui_state(n) & GUI_STATE_ACTIVE) {
-	color = late_nnstring(n, N_activepencolor, DEFAULT_ACTIVEPENCOLOR);
+	color = late_nnstring(n, N_activepencolor, (char*) DEFAULT_ACTIVEPENCOLOR);
 	gvrender_set_pencolor(job, color);
 	color =
-	    late_nnstring(n, N_activefillcolor, DEFAULT_ACTIVEFILLCOLOR);
+	    late_nnstring(n, N_activefillcolor, (char*) DEFAULT_ACTIVEFILLCOLOR);
 	gvrender_set_fillcolor(job, color);
     } else if (ND_gui_state(n) & GUI_STATE_SELECTED) {
 	color =
-	    late_nnstring(n, N_selectedpencolor, DEFAULT_SELECTEDPENCOLOR);
+	    late_nnstring(n, N_selectedpencolor, (char*) DEFAULT_SELECTEDPENCOLOR);
 	gvrender_set_pencolor(job, color);
 	color =
-	    late_nnstring(n, N_selectedfillcolor,
-			  DEFAULT_SELECTEDFILLCOLOR);
+	    late_nnstring(n, N_selectedfillcolor, (char*) DEFAULT_SELECTEDFILLCOLOR);
 	gvrender_set_fillcolor(job, color);
     } else if (ND_gui_state(n) & GUI_STATE_DELETED) {
 	color =
-	    late_nnstring(n, N_deletedpencolor, DEFAULT_DELETEDPENCOLOR);
+	    late_nnstring(n, N_deletedpencolor, (char*) DEFAULT_DELETEDPENCOLOR);
 	gvrender_set_pencolor(job, color);
 	color =
-	    late_nnstring(n, N_deletedfillcolor, DEFAULT_DELETEDFILLCOLOR);
+	    late_nnstring(n, N_deletedfillcolor, (char*) DEFAULT_DELETEDFILLCOLOR);
 	gvrender_set_fillcolor(job, color);
     } else if (ND_gui_state(n) & GUI_STATE_VISITED) {
 	color =
-	    late_nnstring(n, N_visitedpencolor, DEFAULT_VISITEDPENCOLOR);
+	    late_nnstring(n, N_visitedpencolor, (char*) DEFAULT_VISITEDPENCOLOR);
 	gvrender_set_pencolor(job, color);
 	color =
-	    late_nnstring(n, N_visitedfillcolor, DEFAULT_VISITEDFILLCOLOR);
+	    late_nnstring(n, N_visitedfillcolor, (char*) DEFAULT_VISITEDFILLCOLOR);
 	gvrender_set_fillcolor(job, color);
     } else {
 	color = findFillDflt(n, "black");

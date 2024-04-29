@@ -763,7 +763,7 @@ void emit_html_label(GVJ_t * job, htmllabel_t * lp, textlabel_t * tp)
     env.finfo.color = tp->fontcolor;
     env.finfo.name = tp->fontname;
     env.finfo.size = tp->fontsize;
-    env.imgscale = agget(job->obj->u.n, (char*) "imagescale");
+    env.imgscale = agget(job->obj->u.n, "imagescale");
     env.objid = job->obj->id;
     env.objid_set = false;
     if (env.imgscale == NULL || env.imgscale[0] == '\0')
@@ -1965,9 +1965,9 @@ static char *getPenColor(void *obj)
 {
     char *str;
 
-    if ((str = agget(obj, (char*) "pencolor")) != 0 && str[0])
+    if ((str = agget(obj, "pencolor")) != 0 && str[0])
 	return str;
-    else if ((str = agget(obj, (char*) "color")) != 0 && str[0])
+    else if ((str = agget(obj, "color")) != 0 && str[0])
 	return str;
     else
 	return NULL;

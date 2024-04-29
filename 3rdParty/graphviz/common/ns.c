@@ -890,7 +890,7 @@ graphSize (graph_t * g, int* nn, int* ne)
 int rank2(graph_t * g, int balance, int maxiter, int search_size)
 {
     int iter = 0, feasible;
-    char *ns = "network simplex: ";
+    char *ns = (char*) "network simplex: ";
     edge_t *e, *f;
 
 #ifdef DEBUG

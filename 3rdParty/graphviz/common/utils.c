@@ -99,7 +99,7 @@ double late_double(void *obj, attrsym_t *attr, double defaultValue,
  */
 double get_inputscale(graph_t *g) {
     if (PSinputscale > 0) return PSinputscale;  /* command line flag prevails */
-    double d = late_double(g, agfindgraphattr(g, "inputscale"), -1, 0);
+    double d = late_double(g, agfindgraphattr(g, (char*) "inputscale"), -1, 0);
     if (d == 0) return POINTS_PER_INCH;
     else return d;
 }
@@ -542,11 +542,11 @@ void common_init_node(node_t * n)
     ND_height(n) =
 	late_double(n, N_height, DEFAULT_NODEHEIGHT, MIN_NODEHEIGHT);
     ND_shape(n) =
-	bind_shape(late_nnstring(n, N_shape, DEFAULT_NODESHAPE), n);
+	bind_shape(late_nnstring(n, N_shape, (char*) DEFAULT_NODESHAPE), n);
     str = agxget(n, N_label);
     fi.fontsize = late_double(n, N_fontsize, DEFAULT_FONTSIZE, MIN_FONTSIZE);
-    fi.fontname = late_nnstring(n, N_fontname, DEFAULT_FONTNAME);
-    fi.fontcolor = late_nnstring(n, N_fontcolor, DEFAULT_COLOR);
+    fi.fontname = late_nnstring(n, N_fontname, (char*) DEFAULT_FONTNAME);
+    fi.fontcolor = late_nnstring(n, N_fontcolor, (char*) DEFAULT_COLOR);
     ND_label(n) = make_label(n, str,
 	        (aghtmlstr(str) ? LT_HTML : LT_NONE) | ( (shapeOf(n) == SH_RECORD) ? LT_RECD : LT_NONE),
 		fi.fontsize, fi.fontname, fi.fontcolor);
@@ -563,8 +563,8 @@ void common_init_node(node_t * n)
 static void initFontEdgeAttr(edge_t * e, struct fontinfo *fi)
 {
     fi->fontsize = late_double(e, E_fontsize, DEFAULT_FONTSIZE, MIN_FONTSIZE);
-    fi->fontname = late_nnstring(e, E_fontname, DEFAULT_FONTNAME);
-    fi->fontcolor = late_nnstring(e, E_fontcolor, DEFAULT_COLOR);
+    fi->fontname = late_nnstring(e, E_fontname, (char*) DEFAULT_FONTNAME);
+    fi->fontcolor = late_nnstring(e, E_fontcolor, (char*) DEFAULT_COLOR);
 }
 
 static void
@@ -835,13 +835,13 @@ Agsym_t *setAttr(graph_t * g, void *obj, char *name, char *value,
     if (ap == NULL) {
 	switch (agobjkind(obj)) {
 	case AGRAPH:
-	    ap = agattr(g, AGRAPH,name, "");
+	    ap = agattr(g, AGRAPH,name, (char*) "");
 	    break;
 	case AGNODE:
-	    ap = agattr(g,AGNODE, name, "");
+	    ap = agattr(g,AGNODE, name, (char*) "");
 	    break;
 	case AGEDGE:
-	    ap = agattr(g,AGEDGE, name, "");
+	    ap = agattr(g,AGEDGE, name, (char*) "");
 	    break;
 	}
     }
@@ -871,9 +871,9 @@ static node_t *clustNode(node_t * n, graph_t * cg, agxbuf * xb,
 	agsubnode(clg,n,1);
 
     /* set attributes */
-    N_label = setAttr(agraphof(cn), cn, "label", "", N_label);
-    N_style = setAttr(agraphof(cn), cn, "style", "invis", N_style);
-    N_shape = setAttr(agraphof(cn), cn, "shape", "box", N_shape);
+    N_label = setAttr(agraphof(cn), cn, (char*) "label", (char*) "", N_label);
+    N_style = setAttr(agraphof(cn), cn, (char*) "style", (char*) "invis", N_style);
+    N_shape = setAttr(agraphof(cn), cn, (char*) "shape", (char*) "box", N_shape);
 
     return cn;
 }
@@ -1102,7 +1102,7 @@ void processClusterEdges(graph_t * g)
     char buf[SMALLBUF];
 
     map = dtopen(&mapDisc, Dtoset);
-    clg = agsubg(g, "__clusternodes",1);
+    clg = agsubg(g, (char*) "__clusternodes",1);
     agbindrec(clg, "Agraphinfo_t", sizeof(Agraphinfo_t), true);
     agxbinit(&xb, SMALLBUF, buf);
     for (n = agfstnode(g); n; n = agnxtnode(g, n)) {
@@ -1202,7 +1202,7 @@ void undoClusterEdges(graph_t * g)
     int i = 0;
 
     if (!ecnt) return;
-    clg = agsubg(g, "__clusternodes",1);
+    clg = agsubg(g, (char*) "__clusternodes",1);
     agbindrec(clg, "Agraphinfo_t", sizeof(Agraphinfo_t), true);
     edge_t **edgelist = (edge_t**) gv_calloc(ecnt, sizeof(edge_t*));
     for (n = agfstnode(g); n; n = agnxtnode(g, n)) {

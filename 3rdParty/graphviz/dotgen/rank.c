@@ -148,7 +148,7 @@ rank_set_class(graph_t * g)
 
     if (is_cluster(g))
 	return CLUSTER;
-    val = maptoken(agget(g, (char*) "rank"), (char**) name, class_);
+    val = maptoken(agget(g, "rank"), (char**) name, class_);
     GD_set_type(g) = val;
     return val;
 }
@@ -372,7 +372,7 @@ void rank1(graph_t * g)
     int c;
     char *s;
 
-    if ((s = agget(g, (char*) "nslimit1")))
+    if ((s = agget(g, "nslimit1")))
 	maxiter = atof(s) * agnnodes(g);
     for (c = 0; c < GD_comp(g).size; c++) {
 	GD_nlist(g) = GD_comp(g).list[c];
@@ -472,7 +472,7 @@ static void dot1_rank(graph_t * g, aspect_t* asp)
     if (minmax_edges2(g, p))
 	decompose(g, 0);
 #ifdef ALLOW_LEVELS
-    if ((N_level = agattr(g,AGNODE,"level",NULL)))
+    if ((N_level = agattr(g,AGNODE,(char*) "level",NULL)))
 	setRanks(g, N_level);
     else
 #endif
@@ -488,7 +488,7 @@ static void dot1_rank(graph_t * g, aspect_t* asp)
 
 void dot_rank(graph_t * g, aspect_t* asp)
 {
-    if (agget (g, (char*) "newrank")) {
+    if (agget (g, "newrank")) {
 	GD_flags(g) |= NEW_RANK;
 	dot2_rank (g, asp);
     }
@@ -534,13 +534,13 @@ static bool is_empty(graph_t *g) {
 
 static bool is_a_strong_cluster(graph_t * g)
 {
-    char *str = agget(g, (char*) "compact");
+    char *str = agget(g, "compact");
     return mapBool(str, false);
 }
 
 static int rankset_kind(graph_t * g)
 {
-    char *str = agget(g, (char*) "rank");
+    char *str = agget(g, "rank");
 
     if (str && str[0]) {
 	if (!strcmp(str, "min"))
@@ -661,7 +661,7 @@ static void compile_samerank(graph_t * ug, graph_t * parent_clust)
 	break;
     default:			/* unrecognized - warn and do nothing */
 	agerr(AGWARN, "%s has unrecognized rank=%s", agnameof(ug),
-	      agget(ug, (char*) "rank"));
+	      agget(ug, "rank"));
     }
 
     /* a cluster may become degenerate */
@@ -1061,7 +1061,7 @@ void dot2_rank(graph_t * g, aspect_t* asp)
 
     edgelabel_ranks(g);
 
-    if ((s = agget(g, (char*) "nslimit1")))
+    if ((s = agget(g, "nslimit1")))
 	maxiter = atof(s) * agnnodes(g);
     else
 	maxiter = INT_MAX;
@@ -1079,7 +1079,7 @@ void dot2_rank(graph_t * g, aspect_t* asp)
 	initEdgeTypes(Xg);
     }
 
-    if ((s = agget(g, (char*) "searchsize")))
+    if ((s = agget(g, "searchsize")))
 	ssize = atoi(s);
     else
 	ssize = -1;

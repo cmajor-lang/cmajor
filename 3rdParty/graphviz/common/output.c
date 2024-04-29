@@ -62,8 +62,8 @@ static void printdouble(FILE * f, char *prefix, double v)
 
 static void printpoint(FILE * f, pointf p)
 {
-    printdouble(f, " ", PS2INCH(p.x));
-    printdouble(f, " ", PS2INCH(YDIR(p.y)));
+    printdouble(f, (char*) " ", PS2INCH(p.x));
+    printdouble(f, (char*) " ", PS2INCH(YDIR(p.y)));
 }
 
 /* setYInvert:
@@ -97,9 +97,9 @@ static void writenodeandport(FILE *f, node_t *node, char *portname) {
 	name = canon (agraphof(node), strchr(agnameof(node), ':') + 1);
     else
 	name = agcanonStr (agnameof(node));
-    printstring(f, " ", name); /* slimey i know */
+    printstring(f, (char*) " ", name); /* slimey i know */
     if (portname && *portname)
-	printstring(f, ":", agcanonStr(portname));
+	printstring(f, (char*) ":", agcanonStr(portname));
 }
 
 /* _write_plain:
@@ -118,9 +118,9 @@ void write_plain(GVJ_t *job, graph_t *g, FILE *f, bool extend) {
 //    setup_graph(job, g);
     setYInvert(g);
     pt = GD_bb(g).UR;
-    printdouble(f, "graph ", job->zoom);
-    printdouble(f, " ", PS2INCH(pt.x));
-    printdouble(f, " ", PS2INCH(pt.y));
+    printdouble(f, (char*) "graph ", job->zoom);
+    printdouble(f, (char*) " ", PS2INCH(pt.x));
+    printdouble(f, (char*) " ", PS2INCH(pt.y));
     agputc('\n', f);
     for (n = agfstnode(g); n; n = agnxtnode(g, n)) {
 	if (IS_CLUST_NODE(n))
@@ -131,16 +131,16 @@ void write_plain(GVJ_t *job, graph_t *g, FILE *f, bool extend) {
 	    lbl = agcanonStr (agxget(n, N_label));
 	else
 	    lbl = canon(agraphof(n),ND_label(n)->text);
-        printdouble(f, " ", ND_width(n));
-        printdouble(f, " ", ND_height(n));
-        printstring(f, " ", lbl);
-	printstring(f, " ", late_nnstring(n, N_style, "solid"));
-	printstring(f, " ", ND_shape(n)->name);
-	printstring(f, " ", late_nnstring(n, N_color, DEFAULT_COLOR));
-	fillcolor = late_nnstring(n, N_fillcolor, "");
+        printdouble(f, (char*) " ", ND_width(n));
+        printdouble(f, (char*) " ", ND_height(n));
+        printstring(f, (char*) " ", lbl);
+	printstring(f, (char*) " ", late_nnstring(n, N_style, (char*) "solid"));
+	printstring(f, (char*) " ", ND_shape(n)->name);
+	printstring(f, (char*) " ", late_nnstring(n, N_color, (char*) DEFAULT_COLOR));
+	fillcolor = late_nnstring(n, N_fillcolor, (char*) "");
         if (fillcolor[0] == '\0')
-	    fillcolor = late_nnstring(n, N_color, DEFAULT_FILL);
-	printstring(f, " ", fillcolor);
+	    fillcolor = late_nnstring(n, N_color, (char*) DEFAULT_FILL);
+	printstring(f, (char*) " ", fillcolor);
 	agputc('\n', f);
     }
     for (n = agfstnode(g); n; n = agnxtnode(g, n)) {
@@ -148,22 +148,22 @@ void write_plain(GVJ_t *job, graph_t *g, FILE *f, bool extend) {
 
 	    if (extend) {		//assuming these two attrs have already been created by cgraph
 		if (!(tport = agget(e,"tailport")))
-		    tport = "";
+		    tport = (char*) "";
 		if (!(hport = agget(e,"headport")))
-		    hport = "";
+		    hport = (char*) "";
 	    }
 	    else
-		tport = hport = "";
+		tport = hport = (char*) "";
 	    if (ED_spl(e)) {
 		splinePoints = 0;
 		for (i = 0; i < ED_spl(e)->size; i++) {
 		    bz = ED_spl(e)->list[i];
 		    splinePoints += bz.size;
 		}
-		printstring(f, NULL, "edge");
+		printstring(f, NULL, (char*) "edge");
 		writenodeandport(f, agtail(e), tport);
 		writenodeandport(f, aghead(e), hport);
-		printint(f, " ", splinePoints);
+		printint(f, (char*) " ", splinePoints);
 		for (i = 0; i < ED_spl(e)->size; i++) {
 		    bz = ED_spl(e)->list[i];
 		    for (j = 0; j < bz.size; j++)
@@ -171,11 +171,11 @@ void write_plain(GVJ_t *job, graph_t *g, FILE *f, bool extend) {
 		}
 	    }
 	    if (ED_label(e)) {
-		printstring(f, " ", canon(agraphof(agtail(e)),ED_label(e)->text));
+		printstring(f, (char*) " ", canon(agraphof(agtail(e)),ED_label(e)->text));
 		printpoint(f, ED_label(e)->pos);
 	    }
-	    printstring(f, " ", late_nnstring(e, E_style, "solid"));
-	    printstring(f, " ", late_nnstring(e, E_color, DEFAULT_COLOR));
+	    printstring(f, (char*) " ", late_nnstring(e, E_style, (char*) "solid"));
+	    printstring(f, (char*) " ", late_nnstring(e, E_color, (char*) DEFAULT_COLOR));
 	    agputc('\n', f);
 	}
     }
@@ -241,27 +241,27 @@ void attach_attrs_and_arrows(graph_t* g, int* sp, int* ep)
     e_arrows = s_arrows = 0;
     setYInvert(g);
     agxbinit(&xb, BUFSIZ, xbuffer);
-    safe_dcl(g, AGNODE, "pos", "");
-    safe_dcl(g, AGNODE, "rects", "");
-    N_width = safe_dcl(g, AGNODE, "width", "");
-    N_height = safe_dcl(g, AGNODE, "height", "");
-    safe_dcl(g, AGEDGE, "pos", "");
+    safe_dcl(g, AGNODE, (char*) "pos", (char*) "");
+    safe_dcl(g, AGNODE, (char*) "rects", (char*) "");
+    N_width = safe_dcl(g, AGNODE, (char*) "width", (char*) "");
+    N_height = safe_dcl(g, AGNODE, (char*) "height", (char*) "");
+    safe_dcl(g, AGEDGE, (char*) "pos", (char*) "");
     if (GD_has_labels(g) & NODE_XLABEL)
-	safe_dcl(g, AGNODE, "xlp", "");
+	safe_dcl(g, AGNODE, (char*) "xlp", (char*) "");
     if (GD_has_labels(g) & EDGE_LABEL)
-	safe_dcl(g, AGEDGE, "lp", "");
+	safe_dcl(g, AGEDGE, (char*) "lp", (char*) "");
     if (GD_has_labels(g) & EDGE_XLABEL)
-	safe_dcl(g, AGEDGE, "xlp", "");
+	safe_dcl(g, AGEDGE, (char*) "xlp", (char*) "");
     if (GD_has_labels(g) & HEAD_LABEL)
-	safe_dcl(g, AGEDGE, "head_lp", "");
+	safe_dcl(g, AGEDGE, (char*) "head_lp", (char*) "");
     if (GD_has_labels(g) & TAIL_LABEL)
-	safe_dcl(g, AGEDGE, "tail_lp", "");
+	safe_dcl(g, AGEDGE, (char*) "tail_lp", (char*) "");
     if (GD_has_labels(g) & GRAPH_LABEL) {
-	lpsym = safe_dcl(g, AGRAPH, "lp", "");
-	lwsym = safe_dcl(g, AGRAPH, "lwidth", "");
-	lhsym = safe_dcl(g, AGRAPH, "lheight", "");
+	lpsym = safe_dcl(g, AGRAPH, (char*) "lp", (char*) "");
+	lwsym = safe_dcl(g, AGRAPH, (char*) "lwidth", (char*) "");
+	lhsym = safe_dcl(g, AGRAPH, (char*) "lheight", (char*) "");
     }
-    bbsym = safe_dcl(g, AGRAPH, "bb", "");
+    bbsym = safe_dcl(g, AGRAPH, (char*) "bb", (char*) "");
     for (n = agfstnode(g); n; n = agnxtnode(g, n)) {
 	if (dim3) {
 	    int k;
@@ -270,11 +270,11 @@ void attach_attrs_and_arrows(graph_t* g, int* sp, int* ep)
 	    for (k = 3; k < GD_odim(g); k++) {
 		agxbprint(&xb, ",%.5g", POINTS_PER_INCH*(ND_pos(n)[k]));
 	    }
-	    agset(n, "pos", agxbuse(&xb));
+	    agset(n, (char*) "pos", agxbuse(&xb));
 	} else {
 	    snprintf(buf, sizeof(buf), "%.5g,%.5g", ND_coord(n).x,
 	             YDIR(ND_coord(n).y));
-	    agset(n, "pos", buf);
+	    agset(n, (char*) "pos", buf);
 	}
 	snprintf(buf, sizeof(buf), "%.5g", PS2INCH(ND_ht(n)));
 	agxset(n, N_height, buf);
@@ -283,12 +283,12 @@ void attach_attrs_and_arrows(graph_t* g, int* sp, int* ep)
 	if (ND_xlabel(n) && ND_xlabel(n)->set) {
 	    ptf = ND_xlabel(n)->pos;
 	    snprintf(buf, sizeof(buf), "%.5g,%.5g", ptf.x, YDIR(ptf.y));
-	    agset(n, "xlp", buf);
+	    agset(n, (char*) "xlp", buf);
 	}
 	if (strcmp(ND_shape(n)->name, "record") == 0) {
 	    set_record_rects(n, (field_t*)ND_shape_info(n), &xb);
 	    agxbpop(&xb);	/* get rid of last space */
-	    agset(n, "rects", agxbuse(&xb));
+	    agset(n, (char*) "rects", agxbuse(&xb));
 	} else {
 	    polygon_t *poly;
 	    if (N_vertices && isPolygon(n)) {
@@ -346,26 +346,26 @@ void attach_attrs_and_arrows(graph_t* g, int* sp, int* ep)
 			agxbprint(&xb, "%.5g,%.5g", ptf.x, YDIR(ptf.y));
 		    }
 		}
-		agset(e, "pos", agxbuse(&xb));
+		agset(e, (char*) "pos", agxbuse(&xb));
 		if (ED_label(e)) {
 		    ptf = ED_label(e)->pos;
 		    snprintf(buf, sizeof(buf), "%.5g,%.5g", ptf.x, YDIR(ptf.y));
-		    agset(e, "lp", buf);
+		    agset(e, (char*) "lp", buf);
 		}
 		if (ED_xlabel(e) && ED_xlabel(e)->set) {
 		    ptf = ED_xlabel(e)->pos;
 		    snprintf(buf, sizeof(buf), "%.5g,%.5g", ptf.x, YDIR(ptf.y));
-		    agset(e, "xlp", buf);
+		    agset(e, (char*) "xlp", buf);
 		}
 		if (ED_head_label(e)) {
 		    ptf = ED_head_label(e)->pos;
 		    snprintf(buf, sizeof(buf), "%.5g,%.5g", ptf.x, YDIR(ptf.y));
-		    agset(e, "head_lp", buf);
+		    agset(e, (char*) "head_lp", buf);
 		}
 		if (ED_tail_label(e)) {
 		    ptf = ED_tail_label(e)->pos;
 		    snprintf(buf, sizeof(buf), "%.5g,%.5g", ptf.x, YDIR(ptf.y));
-		    agset(e, "tail_lp", buf);
+		    agset(e, (char*) "tail_lp", buf);
 		}
 	    }
 	}

@@ -44,7 +44,7 @@ static const char *neatoItems = "\n\
 
 static const char *fdpFlags =
     "(additional options for fdp)      [-L(gO)] [-L(nUCT)<val>]\n";
-static char *fdpItems = "\n\
+static const char *fdpItems = "\n\
  -Lg         - Don't use grid\n\
  -LO         - Use old attractive force\n\
  -Ln<i>      - Set number of iterations to i\n\
@@ -587,7 +587,7 @@ static void setRatio(graph_t * g)
     char *p, c;
     double ratio;
 
-    if ((p = agget(g, (char*) "ratio")) && (c = p[0])) {
+    if ((p = agget(g, "ratio")) && (c = p[0])) {
 	switch (c) {
 	case 'a':
 	    if (streq(p, "auto"))
@@ -632,7 +632,7 @@ void graph_init(graph_t * g, bool use_rankdir)
     GD_drawing(g) = NEW(layout_t);
 
     /* reparseable input */
-    if ((p = agget(g, (char*) "postaction"))) {   /* requires a graph wrapper for yyparse */
+    if ((p = agget(g, "postaction"))) {   /* requires a graph wrapper for yyparse */
         agxbuf buf = {0};
         agxbprint(&buf, "%s { %s }", agisdirected(g) ? "digraph" : "graph", p);
         agmemconcat(g, agxbuse(&buf));
@@ -640,7 +640,7 @@ void graph_init(graph_t * g, bool use_rankdir)
     }
 
     /* set this up fairly early in case any string sizes are needed */
-    if ((p = agget(g, (char*) "fontpath")) || (p = getenv("DOTFONTPATH"))) {
+    if ((p = agget(g, "fontpath")) || (p = getenv("DOTFONTPATH"))) {
 	/* overide GDFONTPATH in local environment if dot
 	 * wants its own */
 #ifdef HAVE_SETENV
@@ -658,7 +658,7 @@ void graph_init(graph_t * g, bool use_rankdir)
     GD_charset(g) = findCharset (g);
 
     if (!HTTPServerEnVar) {
-	Gvimagepath = agget (g, (char*) "imagepath");
+	Gvimagepath = agget (g, "imagepath");
     }
 
     GD_drawing(g)->quantum =
@@ -672,7 +672,7 @@ void graph_init(graph_t * g, bool use_rankdir)
      * with record shapes, so we store the real rankdir in the next 2 bits.
      */
     rankdir = RANKDIR_TB;
-    if ((p = agget(g, (char*) "rankdir"))) {
+    if ((p = agget(g, "rankdir"))) {
 	if (streq(p, "LR"))
 	    rankdir = RANKDIR_LR;
 	else if (streq(p, "BT"))
@@ -711,34 +711,34 @@ void graph_init(graph_t * g, bool use_rankdir)
     GD_drawing(g)->filled = getdoubles2ptf(g, (char*) "size", &GD_drawing(g)->size);
     getdoubles2ptf(g, (char*) "page", &(GD_drawing(g)->page));
 
-    GD_drawing(g)->centered = mapbool(agget(g, (char*) "center"));
+    GD_drawing(g)->centered = mapbool(agget(g, "center"));
 
-    if ((p = agget(g, (char*) "rotate")))
+    if ((p = agget(g, "rotate")))
 	GD_drawing(g)->landscape = atoi(p) == 90;
-    else if ((p = agget(g, (char*) "orientation")))
+    else if ((p = agget(g, "orientation")))
 	GD_drawing(g)->landscape = p[0] == 'l' || p[0] == 'L';
-    else if ((p = agget(g, (char*) "landscape")))
+    else if ((p = agget(g, "landscape")))
 	GD_drawing(g)->landscape = mapbool(p);
 
-    p = agget(g, (char*) "clusterrank");
+    p = agget(g, "clusterrank");
     CL_type = maptoken(p, rankname, rankcode);
-    p = agget(g, (char*) "concentrate");
+    p = agget(g, "concentrate");
     Concentrate = mapbool(p) ? TRUE : FALSE;
     State = GVBEGIN;
     EdgeLabelsDone = 0;
 
     GD_drawing(g)->dpi = 0.0;
-    if (((p = agget(g, (char*) "dpi")) && p[0])
-	|| ((p = agget(g, (char*) "resolution")) && p[0]))
+    if (((p = agget(g, "dpi")) && p[0])
+	|| ((p = agget(g, "resolution")) && p[0]))
 	GD_drawing(g)->dpi = atof(p);
 
     do_graph_label(g);
 
     Initial_dist = MYHUGE;
 
-    G_ordering = agfindgraphattr(g, "ordering");
-    G_gradientangle = agfindgraphattr(g,"gradientangle");
-    G_margin = agfindgraphattr(g, "margin");
+    G_ordering = agfindgraphattr(g, (char*) "ordering");
+    G_gradientangle = agfindgraphattr(g, (char*) "gradientangle");
+    G_margin = agfindgraphattr(g, (char*) "margin");
 
     /* initialize nodes */
     N_height = agfindnodeattr(g, (char*) "height");
@@ -813,7 +813,7 @@ void graph_init(graph_t * g, bool use_rankdir)
     GD_drawing(g)->xdots = init_xdot (g);
 
     /* initialize id, if any */
-    if ((p = agget(g, (char*) "id")) && *p)
+    if ((p = agget(g, "id")) && *p)
 	GD_drawing(g)->id = strdup_and_subst_obj(p, g);
 }
 
@@ -868,7 +868,7 @@ void do_graph_label(graph_t * sg)
     int pos_ix;
 
     /* it would be nice to allow multiple graph labels in the future */
-    if ((str = agget(sg, (char*) "label")) && *str != '\0') {
+    if ((str = agget(sg, "label")) && *str != '\0') {
 	char pos_flag;
 	pointf dimen;
 
@@ -878,12 +878,12 @@ void do_graph_label(graph_t * sg)
 	    late_double(sg, agfindgraphattr(sg, (char*) "fontsize"),
 			DEFAULT_FONTSIZE, MIN_FONTSIZE),
 	    late_nnstring(sg, agfindgraphattr(sg, (char*) "fontname"),
-			DEFAULT_FONTNAME),
+			(char*) DEFAULT_FONTNAME),
 	    late_nnstring(sg, agfindgraphattr(sg, (char*) "fontcolor"),
-			DEFAULT_COLOR));
+			(char*) DEFAULT_COLOR));
 
 	/* set label position */
-	pos = agget(sg, (char*) "labelloc");
+	pos = agget(sg, "labelloc");
 	if (sg != agroot(sg)) {
 	    if (pos && pos[0] == 'b')
 		pos_flag = LABEL_AT_BOTTOM;
@@ -895,7 +895,7 @@ void do_graph_label(graph_t * sg)
 	    else
 		pos_flag = LABEL_AT_BOTTOM;
 	}
-	just = agget(sg, (char*) "labeljust");
+	just = agget(sg, "labeljust");
 	if (just) {
 	    if (just[0] == 'l')
 		pos_flag |= LABEL_AT_LEFT;

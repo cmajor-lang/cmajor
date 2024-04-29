@@ -441,13 +441,13 @@ void agedgeattr_delete(Agedge_t * e)
     }
 }
 
-char *agget(void *obj, char *name)
+char *agget(void *obj, const char *name)
 {
     Agsym_t *sym;
     Agattr_t *data;
     char *rv;
 
-    sym = agattrsym(obj, name);
+    sym = agattrsym(obj, (char*) name);
     if (sym == NULL)
 	rv = 0;			/* note was "", but this provides more info */
     else {
