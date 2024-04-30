@@ -36,13 +36,13 @@ static void agputc(char c, FILE *fp) {
     putstr(fp, buf);
 }
 
-static void printstring(FILE * f, char *prefix, char *s)
+static void printstring(FILE * f, const char *prefix, const char *s)
 {
     if (prefix) agputs(prefix, f);
     agputs(s, f);
 }
 
-static void printint(FILE * f, char *prefix, int i)
+static void printint(FILE * f, const char *prefix, int i)
 {
     char buf[BUFSIZ];
 
@@ -51,7 +51,7 @@ static void printint(FILE * f, char *prefix, int i)
     agputs(buf, f);
 }
 
-static void printdouble(FILE * f, char *prefix, double v)
+static void printdouble(FILE * f, const char *prefix, double v)
 {
     char buf[BUFSIZ];
 

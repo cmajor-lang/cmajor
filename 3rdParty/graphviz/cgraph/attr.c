@@ -131,15 +131,15 @@ static Agdatadict_t *agmakedatadict(Agraph_t * g)
 }
 
 /* look up an attribute with possible viewpathing */
-static Agsym_t *agdictsym(Dict_t * dict, char *name)
+static Agsym_t *agdictsym(Dict_t * dict, const char *name)
 {
     Agsym_t key;
-    key.name = name;
+    key.name = (char*) name;
     return (Agsym_t*) dtsearch(dict, &key);
 }
 
 /* look up attribute in local dictionary with no view pathing */
-static Agsym_t *aglocaldictsym(Dict_t * dict, char *name)
+static Agsym_t *aglocaldictsym(Dict_t * dict, const char *name)
 {
     Agsym_t *rv;
     Dict_t *view;
@@ -246,7 +246,7 @@ static void addattr(Agraph_t * g, Agobj_t * obj, Agsym_t * sym)
     attr->str[sym->id] = agstrdup(g, sym->defval);
 }
 
-static Agsym_t *getattr(Agraph_t *g, int kind, char *name) {
+static Agsym_t *getattr(Agraph_t *g, int kind, const char *name) {
   Agsym_t *rv = 0;
   Dict_t *dict;
   dict = agdictof(g, kind);
@@ -256,7 +256,7 @@ static Agsym_t *getattr(Agraph_t *g, int kind, char *name) {
   return rv;
 }
 
-static void unviewsubgraphsattr(Agraph_t *parent, char *name) {
+static void unviewsubgraphsattr(Agraph_t *parent, const char *name) {
   Agraph_t *subg;
   Agsym_t *psym, *lsym;
   Dict_t *ldict;
@@ -276,7 +276,7 @@ static void unviewsubgraphsattr(Agraph_t *parent, char *name) {
   }
 }
 
-static Agsym_t *setattr(Agraph_t * g, int kind, char *name, const char *value) {
+static Agsym_t *setattr(Agraph_t * g, int kind, const char *name, const char *value) {
     Dict_t *ldict, *rdict;
     Agsym_t *lsym, *psym, *rsym, *rv;
     Agraph_t *root;
@@ -340,7 +340,7 @@ static Agsym_t *setattr(Agraph_t * g, int kind, char *name, const char *value) {
  * when a new attribute is created, existing graphs/nodes/edges
  * receive its default value.
  */
-Agsym_t *agattr(Agraph_t * g, int kind, char *name, const char *value) {
+Agsym_t *agattr(Agraph_t * g, int kind, const char *name, const char *value) {
     Agsym_t *rv;
 
     if (g == 0) {

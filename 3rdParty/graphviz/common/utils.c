@@ -104,16 +104,16 @@ double get_inputscale(graph_t *g) {
     else return d;
 }
 
-char *late_string(void *obj, attrsym_t *attr, char *defaultValue) {
+char *late_string(void *obj, attrsym_t *attr, const char *defaultValue) {
     if (!attr || !obj)
-        return defaultValue;
+        return (char*) defaultValue;
     return agxget(obj, attr);
 }
 
-char *late_nnstring(void *obj, attrsym_t *attr, char *defaultValue) {
+char *late_nnstring(void *obj, attrsym_t *attr, const char *defaultValue) {
     char *rv = late_string(obj, attr, defaultValue);
     if (!rv || (rv[0] == '\0'))
-        return defaultValue;
+        return (char*) defaultValue;
     return rv;
 }
 

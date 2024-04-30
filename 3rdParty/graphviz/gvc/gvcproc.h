@@ -105,7 +105,7 @@
     void gvrender_set_pencolor(GVJ_t * job, char *name);
     void gvrender_set_penwidth(GVJ_t * job, double penwidth);
     void gvrender_set_fillcolor(GVJ_t * job, char *name);
-    void gvrender_set_gradient_vals (GVJ_t * job, char *stopcolor, int angle, float frac);
+    void gvrender_set_gradient_vals (GVJ_t * job, const char *stopcolor, int angle, float frac);
 
     void gvrender_set_style(GVJ_t * job, char **s);
     void gvrender_ellipse(GVJ_t * job, pointf * AF, int filled);

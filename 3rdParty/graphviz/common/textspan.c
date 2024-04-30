@@ -41,7 +41,7 @@ estimate_textspan_size(textspan_t * span, char **fontpath)
     span->size.x = fontsize * estimate_text_width_1pt(span->font->name, span->str, bold, italic);
 
     if (fontpath)
-        *fontpath = "[internal hard-coded]";
+        *fontpath = (char*) "[internal hard-coded]";
 }
 
 /*

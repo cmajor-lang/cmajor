@@ -355,7 +355,7 @@ struct Agdatadict_s {        /* set of dictionaries per graph */
     } dict;
 };
 
-CGRAPH_API Agsym_t *agattr(Agraph_t * g, int kind, char *name,
+CGRAPH_API Agsym_t *agattr(Agraph_t * g, int kind, const char *name,
                            const char *value);
 CGRAPH_API Agsym_t *agattrsym(void *obj, char *name);
 CGRAPH_API Agsym_t *agnxtattr(Agraph_t * g, int kind, Agsym_t * attr);

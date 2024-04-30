@@ -184,21 +184,21 @@ static int gvrender_comparestr(const void *s1, const void *s2)
  * bsearch must also be char**, so we use &tok.
  */
 static void gvrender_resolve_color(gvrender_features_t * features,
-				   char *name, gvcolor_t * color)
+				   const char *name, gvcolor_t * color)
 {
     char *tok;
     int rc;
 
-    color->u.string = name;
+    color->u.string = (char*) name;
     color->type = COLOR_STRING;
-    tok = canontoken(name);
+    tok = canontoken((char*) name);
     if (!features->knowncolors
 	||
 	(bsearch
 	 (&tok, features->knowncolors, features->sz_knowncolors,
 	  sizeof(char *), gvrender_comparestr)) == NULL) {
 	/* if tok was not found in known_colors */
-	rc = colorxlate(name, color, features->color_type);
+	rc = colorxlate((char*) name, color, features->color_type);
 	if (rc != COLOR_OK) {
 	    if (rc == COLOR_UNKNOWN) {
 		char *missedcolor = (char*) gmalloc(strlen(name) + 16);
@@ -465,7 +465,7 @@ void gvrender_set_fillcolor(GVJ_t * job, char *name)
 	*cp = ':';
 }
 
-void gvrender_set_gradient_vals (GVJ_t * job, char *stopcolor, int angle, float frac)
+void gvrender_set_gradient_vals (GVJ_t * job, const char *stopcolor, int angle, float frac)
 {
     gvrender_engine_t *gvre = job->render.engine;
     gvcolor_t *color = &(job->obj->stopcolor);

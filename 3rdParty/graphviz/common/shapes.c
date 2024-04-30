@@ -504,13 +504,13 @@ char* penColor(GVJ_t * job, node_t * n)
 
     color = late_nnstring(n, N_color, (char*) "");
     if (!color[0])
-	color = DEFAULT_COLOR;
+	color = (char*) DEFAULT_COLOR;
     gvrender_set_pencolor(job, color);
     return color;
 }
 
 static
-char *findFillDflt(node_t * n, char *dflt)
+char *findFillDflt(node_t * n, const char *dflt)
 {
     char *color;
 
@@ -519,7 +519,7 @@ char *findFillDflt(node_t * n, char *dflt)
 	/* for backward compatibility, default fill is same as pen */
 	color = late_nnstring(n, N_color, (char*) "");
 	if (!color[0]) {
-	    color = dflt;
+	    color = (char*) dflt;
 	}
     }
     return color;
@@ -528,7 +528,7 @@ char *findFillDflt(node_t * n, char *dflt)
 static
 char *findFill(node_t * n)
 {
-    return findFillDflt(n, DEFAULT_FILL);
+    return findFillDflt(n, (char*) DEFAULT_FILL);
 }
 
 static int
@@ -2914,7 +2914,7 @@ static port poly_port(node_t * n, char *portname, char *compass)
 	return Center;
 
     if (compass == NULL)
-	compass = "_";
+	compass = (char*) "_";
     sides = BOTTOM | RIGHT | TOP | LEFT;
     if (ND_label(n)->html && (bp = html_port(n, portname, &sides))) {
 	if (compassPort(n, bp, &rv, compass, sides, NULL)) {
@@ -3052,7 +3052,7 @@ static void poly_gencode(GVJ_t * job, node_t * n)
     /* if no boundary but filled, set boundary color to transparent */
     if (peripheries == 0 && filled != 0 && pfilled) {
 	peripheries = 1;
-	gvrender_set_pencolor(job, "transparent");
+	gvrender_set_pencolor(job, (char*) "transparent");
     }
 
     /* draw peripheries first */
@@ -3081,7 +3081,7 @@ static void poly_gencode(GVJ_t * job, node_t * n)
 	    }
 	    gvrender_polygon(job, AF, sides, 0);
 	} else if (style & UNDERLINE) {
-	    gvrender_set_pencolor(job, "transparent");
+	    gvrender_set_pencolor(job, (char*) "transparent");
 	    gvrender_polygon(job, AF, sides, filled);
 	    gvrender_set_pencolor(job, pencolor);
 	    gvrender_polyline(job, AF+2, 2);
@@ -3096,7 +3096,7 @@ static void poly_gencode(GVJ_t * job, node_t * n)
 
     usershape_p = false;
     if (ND_shape(n)->usershape) {
-	name = ND_shape(n)->name;
+	name = (char*) ND_shape(n)->name;
 	if (streq(name, "custom")) {
 	    if ((name = agget(n, "shapefile")) && name[0])
 		usershape_p = true;

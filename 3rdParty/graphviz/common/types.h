@@ -172,7 +172,7 @@
     typedef enum { SH_UNSET, SH_POLY, SH_RECORD, SH_POINT, SH_EPSF} shape_kind;
 
     typedef struct shape_desc {    /* read-only shape descriptor */
-    char *name;        /* as read from graph file */
+    const char *name;        /* as read from graph file */
     shape_functions *fns;
     polygon_t *polygon;    /* base polygon info */
     bool usershape;
