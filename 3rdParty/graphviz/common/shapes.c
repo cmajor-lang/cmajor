@@ -3748,7 +3748,7 @@ static void record_init(node_t * n)
     textbuf = N_NEW(len + 1, char);
     if (!(info = parse_reclbl(n, flip, true, textbuf))) {
 	agerr(AGERR, "bad label format %s\n", ND_label(n)->text);
-	reclblp = "\\N";
+	reclblp = (char*) "\\N";
 	info = parse_reclbl(n, flip, true, textbuf);
     }
     free(textbuf);
@@ -3809,7 +3809,7 @@ static port record_port(node_t * n, char *portname, char *compass)
 	return Center;
     sides = BOTTOM | RIGHT | TOP | LEFT;
     if (compass == NULL)
-	compass = "_";
+	compass = (char*) "_";
     f = (field_t*)ND_shape_info(n);
     if ((subf = map_rec_port(f, portname))) {
 	if (compassPort(n, &subf->b, &rv, compass, subf->sides, NULL)) {
@@ -4040,7 +4040,7 @@ shape_desc *bind_shape(char *name, node_t * np)
     str = safefile(agget(np, "shapefile"));
     /* If shapefile is defined and not epsf, set shape = custom */
     if (str && !streq(name, "epsf"))
-	name = "custom";
+	name = (char*) "custom";
     if (!streq(name, "custom")) {
 	for (ptr = Shapes; ptr->name; ptr++) {
 	    if (streq(ptr->name, name)) {
@@ -4281,7 +4281,7 @@ static void cylinder_draw(GVJ_t * job, pointf * AF, int sides, int filled)
     gvrender_beziercurve(job, vertices, 7, FALSE, FALSE, FALSE);
 }
 
-static char *side_port[] = { "s", "e", "n", "w" };
+static const char *side_port[] = { "s", "e", "n", "w" };
 
 static point cvtPt(pointf p, int rankdir)
 {
@@ -4380,7 +4380,7 @@ static char *closestSide(node_t * n, node_t * other, port * oldport)
 	d = DIST2(p, opt);
 	if (!rv || d < mind) {
 	    mind = d;
-	    rv = side_port[i];
+	    rv = (char*) side_port[i];
 	}
     }
     return rv;

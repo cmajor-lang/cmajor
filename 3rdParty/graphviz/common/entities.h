@@ -8,7 +8,7 @@
  */
 
 static struct entities_s {
-    char    *name;
+    const char    *name;
     int    value;
 } entities[] = {
     {"AElig", 198},
