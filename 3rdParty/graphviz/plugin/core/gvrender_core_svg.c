@@ -84,7 +84,7 @@ static void svg_bzptarray(GVJ_t * job, pointf * A, int n)
 #endif
 }
 
-static void svg_print_id_class(GVJ_t * job, char* id, char* idx, char* kind, void* obj)
+static void svg_print_id_class(GVJ_t * job, char* id, char* idx, const char* kind, void* obj)
 {
     char* str;
 
@@ -709,7 +709,7 @@ static void svg_polyline(GVJ_t * job, pointf * A, int n)
 
 /* color names from http://www.w3.org/TR/SVG/types.html */
 /* NB.  List must be LANG_C sorted */
-static char *svg_knowncolors[] = {
+static const char *svg_knowncolors[] = {
     "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure",
     "beige", "bisque", "black", "blanchedalmond", "blue",
     "blueviolet", "brown", "burlywood",

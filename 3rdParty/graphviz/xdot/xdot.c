@@ -388,7 +388,7 @@ xdot *parseXDot(char *s)
     return parseXDotF(s, 0, 0);
 }
 
-typedef int (*pf)(void*, char*, ...);
+typedef int (*pf)(void*, const char*, ...);
 
 /* trim:
  * Trailing zeros are removed and decimal point, if possible.

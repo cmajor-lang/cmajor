@@ -506,9 +506,9 @@ addNodeEdges (sgraph* sg, cell* cp, snode* np)
 }
 
 #include "../common/intset.h"
-static char* bendToStr (bend_ b)
+static const char* bendToStr (bend_ b)
 {
-  char* s = NULL;
+  const char* s = NULL;
   switch (b) {
   case B_NODE :
     s = "B_NODE";
@@ -1404,7 +1404,7 @@ static char* prolog3 =
 } def\n\
 \n";
 
-static char* epilog2 =
+static const char* epilog2 =
 "showpage\n\
 %%%%Trailer\n\
 %%%%BoundingBox: %.f %.f %.f %.f\n";

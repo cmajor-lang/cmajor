@@ -2005,7 +2005,7 @@ static void edgerhs(Agnode_t *tail, char *tport, item *hlist, char *key)
 	}
 }
 
-static void mkport(Agedge_t *e, char *name, char *val)
+static void mkport(Agedge_t *e, const char *name, char *val)
 {
 	Agsym_t *attr;
 	if (val) {

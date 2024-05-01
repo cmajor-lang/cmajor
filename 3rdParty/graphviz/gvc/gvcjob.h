@@ -105,7 +105,7 @@
     typedef struct {
     int flags;
     double default_pad;    /* graph units */
-    char **knowncolors;
+    const char **knowncolors;
     int sz_knowncolors;
     color_type_t color_type;
     } gvrender_features_t;

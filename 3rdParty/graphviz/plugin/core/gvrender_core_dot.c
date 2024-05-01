@@ -72,12 +72,12 @@ typedef struct {
 } xdot_state_t;
 static xdot_state_t* xd;
 
-static void xdot_str_xbuf (agxbuf* xb, char* pfx, const char* s)
+static void xdot_str_xbuf (agxbuf* xb, const char* pfx, const char* s)
 {
     agxbprint (xb, "%s%" PRISIZE_T " -%s ", pfx, strlen(s), s);
 }
 
-static void xdot_str (GVJ_t *job, char* pfx, const char* s)
+static void xdot_str (GVJ_t *job, const char* pfx, const char* s)
 {
     emit_state_t emit_state = job->obj->emit_state;
     xdot_str_xbuf (xbufs[emit_state], pfx, s);

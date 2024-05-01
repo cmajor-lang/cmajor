@@ -93,7 +93,7 @@ typedef int (*bcmpfn) (const void *, const void *);
 
 /* Mechanism for automatically processing attributes */
 typedef struct {
-    char *name;			/* attribute name */
+    const char *name;			/* attribute name */
     attrFn action;		/* action to perform if name matches */
 } attr_item;
 
@@ -208,7 +208,7 @@ static int idfn(htmldata_t * p, char *v)
  * String s is name of value.
  * Return 0 if okay; 1 otherwise.
  */
-static int doInt(char *v, char *s, int min, int max, long *ul)
+static int doInt(char *v, const char *s, int min, int max, long *ul)
 {
     int rv = 0;
     char *ep;
