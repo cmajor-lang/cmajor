@@ -546,7 +546,7 @@ static attr_item br_items[] = {
  * s is the name of the HTML element being processed.
  */
 static void
-doAttrs(void *tp, attr_item * items, int nel, char **atts, char *s)
+doAttrs(void *tp, attr_item * items, int nel, char **atts, const char *s)
 {
     char *name;
     char *val;
@@ -813,10 +813,10 @@ static UNUSED void agxbput_move(agxbuf *dst, const char *src) {
  * or null character otherwise.
  * We rely on HTML strings having matched nested <>.
  */
-static char *eatComment(char *p)
+static const char *eatComment(const char *p)
 {
     int depth = 1;
-    char *s = p;
+    const char *s = p;
     char c;
 
     while (depth && (c = *s++)) {
@@ -827,7 +827,7 @@ static char *eatComment(char *p)
     }
     s--;			/* move back to '\0' or '>' */
     if (*s) {
-	char *t = s - 2;
+	const char *t = s - 2;
 	if (t < p || strncmp(t, "--", 2)) {
 	    agerr(AGWARN, "Unclosed comment\n");
 	    state.warn = 1;
@@ -840,9 +840,9 @@ static char *eatComment(char *p)
  * Return next XML unit. This is either <..>, an HTML
  * comment <!-- ... -->, or characters up to next <.
  */
-static char *findNext(char *s, agxbuf* xb)
+static const char *findNext(const char *s, agxbuf* xb)
 {
-    char* t = s + 1;
+    const char* t = s + 1;
     char c;
 
     if (*s == '<') {
@@ -1057,11 +1057,11 @@ static void printTok(int tok)
 int htmllex()
 {
 #ifdef HAVE_EXPAT
-    static char *begin_html = "<HTML>";
-    static char *end_html = "</HTML>";
+    static const char *begin_html = "<HTML>";
+    static const char *end_html = "</HTML>";
 
-    char *s;
-    char *endp = 0;
+    const char *s;
+    const char *endp = 0;
     size_t len, llen;
     int rv;
 
@@ -1090,7 +1090,7 @@ int htmllex()
 
 	state.prevtok = state.currtok;
 	state.prevtoklen = state.currtoklen;
-	state.currtok = s;
+	state.currtok = (char *) s;
 	state.currtoklen = len;
 	if ((llen = (size_t)agxblen(&state.lb))) {
 	    assert(llen <= (size_t)INT_MAX && "XML token too long for expat API");
@@ -1110,7 +1110,7 @@ int htmllex()
 	    }
 	}
 	if (endp)
-	    state.ptr = endp;
+	    state.ptr = (char *) endp;
     } while (state.tok == 0);
 #ifdef DEBUG
     printTok (state.tok);

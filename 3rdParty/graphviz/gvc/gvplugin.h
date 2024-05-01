@@ -44,7 +44,7 @@
     } gvplugin_api_t;
 
     typedef struct {
-    char *packagename;    /* used when this plugin is builtin and has
+    const char *packagename;    /* used when this plugin is builtin and has
                     no pathname */
     gvplugin_api_t *apis;
     } gvplugin_library_t;

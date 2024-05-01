@@ -1228,7 +1228,7 @@ void undoClusterEdges(graph_t * g)
  * with given name. If one does not exist, create it with the
  * default value defaultValue.
  */
-attrsym_t *safe_dcl(graph_t *g, int obj_kind, char *name, char *defaultValue) {
+attrsym_t *safe_dcl(graph_t *g, int obj_kind, const char *name, const char *defaultValue) {
     attrsym_t *a = agattr(g,obj_kind,name, NULL);
     if (!a)	/* attribute does not exist */
         a = agattr(g, obj_kind, name, defaultValue);
@@ -1246,9 +1246,9 @@ static int comp_entities(const void *e1, const void *e2) {
  * t points to first char after '&'. Return after final semicolon.
  * If unknown, we return t and let libexpat flag the error.
  *     */
-char* scanEntity (char* t, agxbuf* xb)
+const char* scanEntity (const char* t, agxbuf* xb)
 {
-    char*  endp = strchr (t, ';');
+    const char*  endp = strchr (t, ';');
     struct entities_s key, *res;
     size_t len;
     char   buf[MAXENTLEN+1];

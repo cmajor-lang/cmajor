@@ -139,7 +139,7 @@
     double defaultfontsize;
 
     /* default line style */
-    char **defaultlinestyle;
+    const char **defaultlinestyle;
 
     /* render defaults set from graph */
     gvcolor_t bgcolor;    /* background color */

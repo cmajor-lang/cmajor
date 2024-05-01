@@ -1372,7 +1372,7 @@ orthofinish:
 #include "../common/arith.h"
 #define TRANS 10
 
-static char* prolog3 =
+static const char* prolog3 =
 "%%!PS-Adobe-2.0\n\
 %%%%BoundingBox: (atend)\n\
 /point {\n\

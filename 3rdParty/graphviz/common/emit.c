@@ -74,7 +74,7 @@ void* init_xdot (Agraph_t* g)
     return xd;
 }
 
-static char *defaultlinestyle[3] = { "solid\0", "setlinewidth\0001\0", 0 };
+static const char *defaultlinestyle[3] = { "solid\0", "setlinewidth\0001\0", 0 };
 
 /* push empty graphic state for current object */
 obj_state_t* push_obj_state(GVJ_t *job)
@@ -193,7 +193,7 @@ getObjId (GVJ_t* job, void* obj, agxbuf* xb)
     graph_t* root = job->gvc->g;
     char* gid = GD_drawing(root)->id;
     long idnum = 0;
-    char* pfx = NULL;
+    const char* pfx = NULL;
 
     layerPagePrefix (job, xb);
 

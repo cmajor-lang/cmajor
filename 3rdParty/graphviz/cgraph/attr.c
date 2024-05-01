@@ -509,7 +509,7 @@ int agxset(void *obj, Agsym_t * sym, const char *value)
     return SUCCESS;
 }
 
-int agsafeset(void *obj, char *name, const char *value, const char *def) {
+int agsafeset(void *obj, const char *name, const char *value, const char *def) {
     Agsym_t *a;
 
     a = agattr(agraphof(obj), AGTYPE(obj), name, 0);

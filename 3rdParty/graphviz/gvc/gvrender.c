@@ -431,13 +431,13 @@ void gvrender_textspan(GVJ_t * job, pointf p, textspan_t * span)
     }
 }
 
-void gvrender_set_pencolor(GVJ_t * job, char *name)
+void gvrender_set_pencolor(GVJ_t * job, const char *name)
 {
     gvrender_engine_t *gvre = job->render.engine;
     gvcolor_t *color = &(job->obj->pencolor);
     char *cp = NULL;
 
-    if ((cp = strchr(name, ':'))) // if it’s a color list, then use only first
+    if ((cp = (char *)strchr(name, ':'))) // if it’s a color list, then use only first
 	*cp = '\0';
     if (gvre) {
 	gvrender_resolve_color(job->render.features, name, color);
@@ -448,13 +448,13 @@ void gvrender_set_pencolor(GVJ_t * job, char *name)
 	*cp = ':';
 }
 
-void gvrender_set_fillcolor(GVJ_t * job, char *name)
+void gvrender_set_fillcolor(GVJ_t * job, const char *name)
 {
     gvrender_engine_t *gvre = job->render.engine;
     gvcolor_t *color = &(job->obj->fillcolor);
     char *cp = NULL;
 
-    if ((cp = strchr(name, ':'))) // if it’s a color list, then use only first
+    if ((cp = (char *)strchr(name, ':'))) // if it’s a color list, then use only first
 	*cp = '\0';
     if (gvre) {
 	gvrender_resolve_color(job->render.features, name, color);
@@ -479,11 +479,11 @@ void gvrender_set_gradient_vals (GVJ_t * job, const char *stopcolor, int angle, 
     job->obj->gradient_frac = frac;
 }
 
-void gvrender_set_style(GVJ_t * job, char **s)
+void gvrender_set_style(GVJ_t * job, const char **s)
 {
     gvrender_engine_t *gvre = job->render.engine;
     obj_state_t *obj = job->obj;
-    char *line, *p;
+    const char *line, *p;
 
     obj->rawstyle = s;
     if (gvre) {

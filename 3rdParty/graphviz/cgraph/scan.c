@@ -850,7 +850,7 @@ static void beginstr(void) {
          "endstr()/endhtmlstr()?)");
 }
 
-static void addstr(char *src) {
+static void addstr(const char *src) {
   agxbput(&Sbuf, src);
 }
 

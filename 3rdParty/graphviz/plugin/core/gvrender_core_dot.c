@@ -68,7 +68,7 @@ typedef struct {
     attrsym_t *tl_draw;
     char buf[NUMXBUFS][BUFSIZ];
     unsigned short version;
-    char* version_s;
+    const char* version_s;
 } xdot_state_t;
 static xdot_state_t* xd;
 
@@ -181,7 +181,7 @@ static void xdot_style (GVJ_t *job)
     char buf0[BUFSIZ];
     char buf [128]; /* enough to hold a double */
     agxbuf xb;
-    char* p, **s;
+    const char *p, **s;
     int more;
 
     agxbinit(&xb, BUFSIZ, buf0);
@@ -350,11 +350,11 @@ static void xdot_end_cluster(GVJ_t * job)
 }
 
 static unsigned short
-versionStr2Version (char* str)
+versionStr2Version (const char* str)
 {
     char c, buf[BUFSIZ];
     int n = 0;
-    char* s = str;
+    const char* s = str;
     unsigned short us;
 
     while ((c = *s++)) {

@@ -198,7 +198,7 @@
     pen_type pen;
     fill_type fill;
     double penwidth;
-    char **rawstyle;
+    const char **rawstyle;
 
     double z, tail_z, head_z;   /* z depths for 2.5D renderers such as vrml */
 
