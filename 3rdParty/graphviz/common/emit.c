@@ -1127,13 +1127,13 @@ static int parse_layers(GVC_t *gvc, graph_t * g, char *p)
 
     gvc->layerDelims = agget(g, "layersep");
     if (!gvc->layerDelims)
-        gvc->layerDelims = DEFAULT_LAYERSEP;
+        gvc->layerDelims = (char*)DEFAULT_LAYERSEP;
     gvc->layerListDelims = agget(g, "layerlistsep");
     if (!gvc->layerListDelims)
-        gvc->layerListDelims = DEFAULT_LAYERLISTSEP;
+        gvc->layerListDelims = (char*)DEFAULT_LAYERLISTSEP;
     if ((tok = strpbrk (gvc->layerDelims, gvc->layerListDelims))) { /* conflict in delimiter strings */
 	agerr(AGWARN, "The character \'%c\' appears in both the layersep and layerlistsep attributes - layerlistsep ignored.\n", *tok);
-        gvc->layerListDelims = "";
+        gvc->layerListDelims = (char*)"";
     }
 
     ntok = 0;
@@ -1595,7 +1595,7 @@ static void emit_background(GVJ_t * job, graph_t *g)
 
     /* if no bgcolor specified - first assume default of "transparent" */
     if (! ((str = agget(g, "bgcolor")) && str[0])) {
-	str = "transparent";
+	str = (char*)"transparent";
 	dfltColor = 1;
     }
     else
@@ -1604,7 +1604,7 @@ static void emit_background(GVJ_t * job, graph_t *g)
 
     /* if device has no truecolor support, change "transparent" to "white" */
     if (! (job->flags & GVDEVICE_DOES_TRUECOLOR) && (streq(str, "transparent"))) {
-	str = "white";
+	str = (char*)"white";
 	dfltColor = 1;
     }
 
@@ -2274,7 +2274,7 @@ static void emit_edge_graphics(GVJ_t * job, edge_t * e, char** styles)
 
 	if (numsemi && numc) {
 	    if (multicolor (job, e, styles, color, numc+1, arrowsize, penwidth)) {
-		color = DEFAULT_COLOR;
+		color = (char*)DEFAULT_COLOR;
 	    }
 	    else
 		return;
@@ -2310,8 +2310,8 @@ static void emit_edge_graphics(GVJ_t * job, edge_t * e, char** styles)
 	color = pencolor;
 
 	if (tapered) {
-	    if (*color == '\0') color = DEFAULT_COLOR;
-	    if (*fillcolor == '\0') fillcolor = DEFAULT_COLOR;
+	    if (*color == '\0') color = (char*)DEFAULT_COLOR;
+	    if (*fillcolor == '\0') fillcolor = (char*)DEFAULT_COLOR;
     	    gvrender_set_pencolor(job, "transparent");
 	    gvrender_set_fillcolor(job, color);
 	    bz = ED_spl(e)->list[0];
@@ -2371,7 +2371,7 @@ static void emit_edge_graphics(GVJ_t * job, edge_t * e, char** styles)
 	    for (cnum = 0, color = strtok(colors, ":"); color;
 		cnum++, color = strtok(0, ":")) {
 		if (!color[0])
-		    color = DEFAULT_COLOR;
+		    color = (char*)DEFAULT_COLOR;
 		if (color != lastcolor) {
 	            if (! (ED_gui_state(e) & (GUI_STATE_ACTIVE | GUI_STATE_SELECTED))) {
 		        gvrender_set_pencolor(job, color);
@@ -2674,13 +2674,13 @@ emit_edge_label(GVJ_t* job, textlabel_t* lbl, emit_state_t lkind, int explicit_,
 	newid = N_NEW(strlen(id) + sizeof("-headlabel"),char);
 	switch (lkind) {
 	case EMIT_ELABEL :
-	    type = "label";
+	    type = (char*)"label";
 	    break;
 	case EMIT_HLABEL :
-	    type = "headlabel";
+	    type = (char*)"headlabel";
 	    break;
 	case EMIT_TLABEL :
-	    type = "taillabel";
+	    type = (char*)"taillabel";
 	    break;
 	default :
 	    assert (0);
@@ -3043,7 +3043,7 @@ static void init_gvc(GVC_t * gvc, graph_t * g)
 	gvc->rotation = 0;
 
     /* pagedir */
-    gvc->pagedir = "BL";
+    gvc->pagedir = (char *) "BL";
     if ((p = agget(g, "pagedir")) && p[0])
             gvc->pagedir = p;
 
@@ -3643,8 +3643,8 @@ void emit_clusters(GVJ_t * job, Agraph_t * g, int flags)
             }
 
 	}
-	if (!pencolor) pencolor = DEFAULT_COLOR;
-	if (!fillcolor) fillcolor = DEFAULT_FILL;
+	if (!pencolor) pencolor = (char *) DEFAULT_COLOR;
+	if (!fillcolor) fillcolor = (char *) DEFAULT_FILL;
 	clrs[0] = NULL;
 	if (filled) {
 	    float frac;
