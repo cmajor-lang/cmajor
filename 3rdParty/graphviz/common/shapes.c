@@ -630,7 +630,7 @@ static int stylenode(GVJ_t * job, node_t * n)
     double penwidth;
 
     if ((pstyle = checkStyle(n, &istyle)))
-	gvrender_set_style(job, pstyle);
+	gvrender_set_style(job, (const char **) pstyle);
 
     if (N_penwidth && (s = agxget(n, N_penwidth)) && s[0]) {
 	penwidth = late_double(n, N_penwidth, 1.0, 0.0);
@@ -3314,9 +3314,9 @@ static void point_gencode(GVJ_t * job, node_t * n)
 
     checkStyle(n, &style);
     if (style & INVISIBLE)
-	gvrender_set_style(job, point_style);
+	gvrender_set_style(job, (const char **) point_style);
     else
-	gvrender_set_style(job, &point_style[1]);
+	gvrender_set_style(job, (const char **) &point_style[1]);
     if (N_penwidth)
 	gvrender_set_penwidth(job, late_double(n, N_penwidth, 1.0, 0.0));
 

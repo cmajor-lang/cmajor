@@ -66,8 +66,8 @@ UTILS_API void epsf_define(GVJ_t *job);
 UTILS_API void undoClusterEdges(graph_t *g);
 UTILS_API Dt_t *mkClustMap(Agraph_t *g);
 UTILS_API Agraph_t *findCluster(Dt_t *map, char *name);
-UTILS_API attrsym_t *safe_dcl(graph_t *g, int obj_kind, char *name,
-                              char *defaultValue);
+UTILS_API attrsym_t *safe_dcl(graph_t *g, int obj_kind, const char *name,
+                              const char *defaultValue);
 
 UTILS_API int late_int(void *obj, Agsym_t *attr, int defaultValue, int minimum);
 UTILS_API double late_double(void *obj, Agsym_t *attr, double defaultValue,

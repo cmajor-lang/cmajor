@@ -254,7 +254,7 @@ static void doBorder(GVJ_t * job, htmldata_t * dp, boxf b)
 	    sptr[0] = (char*) "dashed";
 	else if (dp->style & DOTTED)
 	    sptr[0] = (char*) "dotted";
-	gvrender_set_style(job, sptr);
+	gvrender_set_style(job, (const char **) sptr);
     } else
 	gvrender_set_style(job, job->gvc->defaultlinestyle);
     gvrender_set_penwidth(job, dp->border);

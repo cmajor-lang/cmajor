@@ -1566,7 +1566,7 @@ static void emit_xdot (GVJ_t * job, xdot* xd)
 	    break;
 	case xd_style :
 	    styles = parse_style (op->op.u.style);
-            gvrender_set_style (job, styles);
+            gvrender_set_style (job, (const char **) styles);
 	    break;
 	case xd_fontchar :
 	    /* font characteristics already encoded via xdotBB */
@@ -2184,7 +2184,7 @@ static int multicolor (GVJ_t * job, edge_t * e, char** styles, char* colors, int
 	    arrow_gen(job, EMIT_HDRAW, bz.ep, bz.list[bz.size - 1], arrowsize, penwidth, bz.eflag);
 	}
 	if (ED_spl(e)->size > 1 && (bz.sflag || bz.eflag) && styles)
-	    gvrender_set_style(job, styles);
+	    gvrender_set_style(job, (const char **) styles);
     }
     freeSegs (segs);
     return 0;
@@ -2451,7 +2451,7 @@ static void emit_edge_graphics(GVJ_t * job, edge_t * e, char** styles)
 				arrowsize, penwidth, bz.eflag);
 		    }
 		    if (ED_spl(e)->size > 1 && (bz.sflag || bz.eflag) && styles)
-			gvrender_set_style(job, styles);
+			gvrender_set_style(job, (const char **) styles);
 		}
 	    }
 	}
@@ -2500,7 +2500,7 @@ static void emit_begin_edge(GVJ_t * job, edge_t * e, char** styles)
     /* We handle the edge style and penwidth here because the width
      * is needed below for calculating polygonal image maps
      */
-    if (styles && ED_spl(e)) gvrender_set_style(job, styles);
+    if (styles && ED_spl(e)) gvrender_set_style(job, (const char **) styles);
 
     if (E_penwidth && (s = agxget(e, E_penwidth)) && s[0]) {
 	penwidth = late_double(e, E_penwidth, 1.0, 0.0);
@@ -3599,7 +3599,7 @@ void emit_clusters(GVJ_t * job, Agraph_t * g, int flags)
 	filled = FALSE;
 	istyle = 0;
 	if ((style = checkClusterStyle(sg, &istyle))) {
-	    gvrender_set_style(job, style);
+	    gvrender_set_style(job, (const char **) style);
 	    if (istyle & FILLED)
 		filled = FILL;
 	}
