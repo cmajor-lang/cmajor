@@ -85,9 +85,6 @@
 [submodule "3rdParty/boost/static_string"]
 	path = 3rdParty/boost/static_string
 	url = git@github.com:boostorg/static_string.git
-[submodule "3rdParty/JUCE"]
-	path = 3rdParty/JUCE
-	url = git@github.com:juce-framework/JUCE.git
 [submodule "3rdParty/llvm"]
 	path = 3rdParty/llvm
 	url = git@github.com:cmajor-lang/llvm.git
