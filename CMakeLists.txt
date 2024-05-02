@@ -22,7 +22,7 @@ project (cmaj)
 
 OPTION (BUILD_CMAJ      "Whether to build the comnand line tool" ON)
 OPTION (BUILD_CMAJ_LIB  "Whether to build the Cmajor shared library" ON)
-OPTION (BUILD_PLUGIN    "Whether to build the plugin" ON)
+OPTION (BUILD_PLUGIN    "Whether to build the plugin" OFF)
 OPTION (BUILD_EXAMPLES  "Whether to build the examples" ON)
 
 include(tools/scripts/cmake_warning_flags)
@@ -56,13 +56,13 @@ endif()
 if (BUILD_PLUGIN)
     message ("Including plugin build")
 
-    if (NOT JUCE_DIR)
-        set(JUCE_DIR "3rdParty/JUCE")
+    if (JUCE_PATH)
+       set(JUCE_ENABLE_MODULE_SOURCE_GROUPS ON)
+       add_subdirectory(${JUCE_PATH} juce)
+       add_subdirectory(tools/CmajPlugin)
+    else()
+        message (FATAL_ERROR "You must define the JUCE_PATH variable to point to your local JUCE folder")
     endif()
-
-    set(JUCE_ENABLE_MODULE_SOURCE_GROUPS ON)
-    add_subdirectory(${JUCE_DIR} juce)
-    add_subdirectory(tools/CmajPlugin)
 endif()
 
 if (BUILD_EXAMPLES)
