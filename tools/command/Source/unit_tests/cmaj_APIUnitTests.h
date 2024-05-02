@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <map>
 #include "cmajor/API/cmaj_Engine.h"
 
 namespace cmaj::api_tests

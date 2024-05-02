@@ -31,13 +31,6 @@ add_compile_definitions (
     $<$<CONFIG:Debug>:CMAJ_ENABLE_ALLOCATION_CHECKER=1>
     CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1
     CHOC_ASSERT=must_include_assertion_header_before_any_choc_headers
-    JUCE_DISABLE_JUCE_VERSION_PRINTING=1
-    JUCE_USE_CURL=0
-)
-
-target_include_directories(cmaj
-    SYSTEM PRIVATE
-        ../../3rdParty/JUCE/modules
 )
 
 target_compile_features(cmaj PRIVATE ${CMAJ_TARGET_COMPILER})
@@ -69,7 +62,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         target_link_libraries (cmaj PUBLIC atomic)
     endif()
 
-    set (EXTRA_LIBS dl ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES} "-pthread" "-lasound")
+    set (EXTRA_LIBS dl ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES} "-pthread" "-lasound" "-ljack")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -82,6 +75,10 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_libraries(cmaj PRIVATE "-framework IOKit")
     target_link_libraries(cmaj PRIVATE "-framework Cocoa")
     target_link_libraries(cmaj PRIVATE "-framework Security")
+endif()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set (EXTRA_LIBS "dsound")
 endif()
 
 MAKE_CMAJ_LIBRARY (

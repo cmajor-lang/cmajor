@@ -19,7 +19,9 @@
 #pragma once
 
 #include <unordered_map>
+#include <condition_variable>
 #include "../../compiler/include/cmaj_ErrorHandling.h"
+#include "../../../include/cmajor/helpers/cmaj_PatchManifest.h"
 
 namespace cmaj
 {

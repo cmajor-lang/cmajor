@@ -16,10 +16,10 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-#include "juce/cmaj_JUCEHeaders.h"
 #include "../../../modules/compiler/include/cmaj_ErrorHandling.h"
 #include "../../../modules/scripting/include/cmaj_ScriptEngine.h"
 #include "../../../modules/embedded_assets/cmaj_EmbeddedAssets.h"
+#include "cmaj_command_ArgumentList.h"
 
 #include "choc/text/choc_Files.h"
 #include "choc/text/choc_OpenSourceLicenseList.h"
@@ -28,15 +28,14 @@
 #include "cmaj_command_Render.h"
 #include "cmaj_command_CreatePatch.h"
 #include "cmaj_command_RunTests.h"
-#include "cmaj_JUCEAudioPlayer.h"
-#include "cmaj_command_OpenSourceLicenses.h"
+#include "cmaj_RtAudioPlayer.h"
 
-void runUnitTests (juce::ArgumentList&, const choc::value::Value&, cmaj::BuildSettings&);
+void runUnitTests (ArgumentList&, const choc::value::Value&, cmaj::BuildSettings&);
 
-void playFile (juce::ArgumentList&, const choc::value::Value& engineOptions,
+void playFile (ArgumentList&, const choc::value::Value& engineOptions,
                cmaj::BuildSettings&, const cmaj::audio_utils::AudioDeviceOptions&);
 
-void runServerProcess (juce::ArgumentList&, const choc::value::Value& engineOptions,
+void runServerProcess (ArgumentList&, const choc::value::Value& engineOptions,
                        cmaj::BuildSettings&, const cmaj::audio_utils::AudioDeviceOptions&);
 
 void printCmajorVersion()
@@ -150,115 +149,102 @@ cmaj unit-test              Runs internal unit tests.
 }
 
 //==============================================================================
-static cmaj::BuildSettings parseBuildArgs (juce::ArgumentList& args)
+static cmaj::BuildSettings parseBuildArgs (ArgumentList& args)
 {
     cmaj::BuildSettings buildSettings;
 
-    if (args.removeOptionIfFound("-O0") || args.removeOptionIfFound("--O0"))  buildSettings.setOptimisationLevel (0);
-    if (args.removeOptionIfFound("-O1") || args.removeOptionIfFound("--O1"))  buildSettings.setOptimisationLevel (1);
-    if (args.removeOptionIfFound("-O2") || args.removeOptionIfFound("--O2"))  buildSettings.setOptimisationLevel (2);
-    if (args.removeOptionIfFound("-O3") || args.removeOptionIfFound("--O3"))  buildSettings.setOptimisationLevel (3);
-    if (args.removeOptionIfFound("-O4") || args.removeOptionIfFound("--O4"))  buildSettings.setOptimisationLevel (4);
-    if (args.removeOptionIfFound("-Ofast") || args.removeOptionIfFound("--Ofast"))  buildSettings.setOptimisationLevel (4);
+    if (args.removeIfFound ("-O0")    || args.removeIfFound ("--O0"))     buildSettings.setOptimisationLevel (0);
+    if (args.removeIfFound ("-O1")    || args.removeIfFound ("--O1"))     buildSettings.setOptimisationLevel (1);
+    if (args.removeIfFound ("-O2")    || args.removeIfFound ("--O2"))     buildSettings.setOptimisationLevel (2);
+    if (args.removeIfFound ("-O3")    || args.removeIfFound ("--O3"))     buildSettings.setOptimisationLevel (3);
+    if (args.removeIfFound ("-O4")    || args.removeIfFound ("--O4"))     buildSettings.setOptimisationLevel (4);
+    if (args.removeIfFound ("-Ofast") || args.removeIfFound ("--Ofast"))  buildSettings.setOptimisationLevel (4);
 
-    if (args.removeOptionIfFound ("-debug") || args.removeOptionIfFound ("--debug"))
+    if (args.removeIfFound ("-debug") || args.removeIfFound ("--debug"))
         buildSettings.setDebugFlag (true);
 
-    if (args.containsOption ("--sessionID"))
-        buildSettings.setSessionID (args.removeValueForOption ("--sessionID").getIntValue());
+    if (auto sessID = args.removeIntValue<int32_t> ("--sessionID"))
+        buildSettings.setSessionID (*sessID);
 
-    if (args.containsOption ("--eventBufferSize"))
-        buildSettings.setEventBufferSize (static_cast<uint32_t> (args.removeValueForOption ("--eventBufferSize").getIntValue()));
+    if (auto bufferSize = args.removeIntValue<uint32_t> ("--eventBufferSize"))
+        buildSettings.setEventBufferSize (*bufferSize);
 
     return buildSettings;
 }
 
 
 //==============================================================================
-static cmaj::audio_utils::AudioDeviceOptions parseAudioDeviceArgs (juce::ArgumentList& args)
+static cmaj::audio_utils::AudioDeviceOptions parseAudioDeviceArgs (ArgumentList& args)
 {
     cmaj::audio_utils::AudioDeviceOptions options;
 
-    auto getIntArg = [&] (juce::StringRef name, uint32_t defaultValue) -> uint32_t
-    {
-        if (args.containsOption (name))
-            return static_cast<uint32_t> (std::max (0, args.removeValueForOption (name).getIntValue()));
+    options.sampleRate = args.removeIntValue<uint32_t> ("--rate", 0);
+    options.blockSize  = args.removeIntValue<uint32_t> ("--block-size", 0);
 
-        return defaultValue;
-    };
+    options.audioAPI = args.removeValueFor ("--audio-device-type", {});
 
-    auto getStringArg = [&] (juce::StringRef name, std::string defaultValue = {}) -> std::string
-    {
-        if (args.containsOption (name))
-            return args.removeValueForOption (name).unquoted().toStdString();
+    options.inputChannelCount  = args.removeIntValue<uint32_t> ("--inputs", 256);
+    options.outputChannelCount = args.removeIntValue<uint32_t> ("--outputs", 256);
 
-        return defaultValue;
-    };
+    options.outputDeviceName = args.removeValueFor ("--output-device", {});
+    options.inputDeviceName  = args.removeValueFor ("--input-device", {});
 
-    options.sampleRate = getIntArg ("--rate", 0);
-    options.blockSize  = getIntArg ("--block-size", 0);
-    options.audioAPI = getStringArg ("--audio-device-type");
-
-    options.inputChannelCount  = getIntArg ("--inputs", 256);
-    options.outputChannelCount = getIntArg ("--outputs", 256);
-
-    options.outputDeviceName = getStringArg ("--output-device");
-    options.inputDeviceName  = getStringArg ("--input-device");
-
-    options.createPlayer = cmaj::JUCEAudioMIDIPlayer::create;
+    options.createPlayer = cmaj::RtAudioMIDIPlayer::create;
 
     return options;
 }
 
 //==============================================================================
-static choc::value::Value parseEngineArgs (juce::ArgumentList& args)
+static choc::value::Value parseEngineArgs (ArgumentList& args)
 {
     auto engineOptions = choc::value::createObject ("options");
 
-    if (args.containsOption ("--engine"))
-        engineOptions.addMember ("engine", args.removeValueForOption ("--engine").toStdString());
+    if (auto engine = args.removeValueFor ("--engine"))
+        engineOptions.addMember ("engine", *engine);
 
-    if (args.removeOptionIfFound ("--validatePrint"))
+    if (args.removeIfFound ("--validatePrint"))
         engineOptions.addMember ("validatePrint", true);
 
-    if (args.removeOptionIfFound ("--simd"))      engineOptions.addMember ("SIMD", "enable");
-    if (args.removeOptionIfFound ("--no-simd"))   engineOptions.addMember ("SIMD", "disable");
-    if (args.removeOptionIfFound ("--simd-only")) engineOptions.addMember ("SIMD", "simd-only");
+    if (args.removeIfFound ("--simd"))      engineOptions.addMember ("SIMD", "enable");
+    if (args.removeIfFound ("--no-simd"))   engineOptions.addMember ("SIMD", "disable");
+    if (args.removeIfFound ("--simd-only")) engineOptions.addMember ("SIMD", "simd-only");
 
-    if (args.containsOption ("--worker"))
-        engineOptions.addMember ("worker", args.removeValueForOption ("--worker").toStdString());
+    if (auto worker = args.removeValueFor ("--worker"))
+        engineOptions.addMember ("worker", *worker);
 
     return engineOptions;
 }
 
 //==============================================================================
-static bool isCommand (juce::ArgumentList& args, juce::StringRef name)
+static bool isCommand (ArgumentList& args, std::string_view name)
 {
-    if (args.indexOfOption (name) == 0)
+    if (args.indexOf (name) == 0)
     {
-        args.arguments.remove (0);
+        args.removeIndex (0);
         return true;
     }
 
     return false;
 }
 
-static void performCommandLineTask (juce::ArgumentList& args)
+static void performCommandLineTask (ArgumentList& args)
 {
     if (isCommand (args, "version"))
         return printCmajorVersion();
 
     if (isCommand (args, "licenses") || isCommand (args, "licences"))
-        return printOpenSourceLicenses();
+    {
+        std::cout << choc::text::OpenSourceLicenseList::getAllLicenseText() << std::endl;
+        return;
+    }
 
     auto buildSettings = parseBuildArgs (args);
     auto engine = parseEngineArgs (args);
 
-    if (args.containsOption ("--assetFolder"))
+    if (auto assets = args.removeExistingFolderIfPresent ("--assetFolder"))
     {
-        auto localAssetFolder = choc::text::trim (args.getExistingFolderForOption ("--assetFolder").getFullPathName().toStdString());
-        cmaj::EmbeddedAssets::getInstance().setLocalAssetFolder (localAssetFolder);
-        args.removeOptionIfFound ("--assetFolder");
+        cmaj::EmbeddedAssets::getInstance().setLocalAssetFolder (*assets);
+        args.removeIfFound  ("--assetFolder");
     }
 
     if (isCommand (args, "play"))      return playFile (args, engine, buildSettings, parseAudioDeviceArgs (args));
@@ -276,23 +262,11 @@ static void performCommandLineTask (juce::ArgumentList& args)
 //==============================================================================
 int main (int argc, char** argv)
 {
-    juce::ScopedJuceInitialiser_GUI initialiser;
-    juce::ArgumentList args (argc, argv);
-
-   #if JUCE_MAC
-    auto macJunkArgs = args.indexOfOption ("-NSDocumentRevisionsDebugMode");
-
-    if (macJunkArgs >= 0)
-        args.arguments.removeRange (macJunkArgs, 2);
-   #endif
-
     try
     {
-        return juce::ConsoleApplication::invokeCatchingFailures ([&args]
-        {
-            performCommandLineTask (args);
-            return 0;
-        });
+        ArgumentList args (argc, argv);
+        performCommandLineTask (args);
+        return 0;
     }
     catch (const std::exception& e)
     {

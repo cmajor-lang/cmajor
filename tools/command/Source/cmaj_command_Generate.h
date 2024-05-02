@@ -79,7 +79,7 @@ static std::string getCodeGenTargetHelp()
 }
 
 //==============================================================================
-void generateFromPatch (juce::ArgumentList& args,
+void generateFromPatch (ArgumentList& args,
                         std::filesystem::path patchManifestFile,
                         std::string targetType,
                         std::string outputFile,
@@ -122,11 +122,11 @@ void generateFromPatch (juce::ArgumentList& args,
     {
         auto options = choc::value::createObject ({});
 
-        if (args.containsOption ("--targetTriple"))
-            options.addMember ("targetTriple", args.removeValueForOption ("--targetTriple").toStdString());
+        if (auto triple = args.removeValueFor ("--targetTriple"))
+            options.addMember ("targetTriple", *triple);
 
-        if (args.containsOption ("--targetFormat"))
-            options.addMember ("targetFormat", args.removeValueForOption ("--targetFormat").toStdString());
+        if (auto format = args.removeValueFor ("--targetFormat"))
+            options.addMember ("targetFormat", *format);
 
         optionsJSON = choc::json::toString (options, false);
     }
@@ -135,19 +135,19 @@ void generateFromPatch (juce::ArgumentList& args,
 }
 
 //==============================================================================
-void generate (juce::ArgumentList& args,
+void generate (ArgumentList& args,
                const choc::value::Value& engineOptions,
                cmaj::BuildSettings& buildSettings)
 {
-    std::string target;
-
-    if (args.containsOption ("--maxFramesPerBlock"))
-        buildSettings.setMaxBlockSize (static_cast<uint32_t> (args.removeValueForOption ("--maxFramesPerBlock").getIntValue()));
+    if (auto blockSize = args.removeIntValue<uint32_t> ("--maxFramesPerBlock"))
+        buildSettings.setMaxBlockSize (*blockSize);
     else
         buildSettings.setMaxBlockSize (512);
 
-    if (args.containsOption ("--target"))
-        target = args.removeValueForOption ("--target").toStdString();
+    std::string target;
+
+    if (auto t = args.removeValueFor ("--target"))
+        target = *t;
     else
         throw std::runtime_error ("Expected an argument --target=<format wanted>");
 
@@ -159,12 +159,12 @@ void generate (juce::ArgumentList& args,
 
     std::string outputFile;
 
-    if (args.containsOption ("--output"))
-        outputFile = args.getFileForOptionAndRemove ("--output").getFullPathName().toStdString();
+    if (args.contains ("--output"))
+        outputFile = args.getExistingFile ("--output", true).string();
 
-    bool shouldObfuscate = args.removeOptionIfFound ("--obfuscate");
+    bool shouldObfuscate = args.removeIfFound ("--obfuscate");
 
-    if (args.size() == 0)
+    if (args.empty())
         throw std::runtime_error ("Expected the name of a Cmajor file to compile");
 
     if (target == "module" && args[0] == "std_library")  // special magic name to generate binary std lib
@@ -174,8 +174,8 @@ void generate (juce::ArgumentList& args,
     {
         std::vector<std::string> files;
 
-        for (int i = 0; i < args.size(); ++i)
-            files.push_back (args[i].resolveAsExistingFile().getFullPathName().toStdString());
+        for (auto& f : args.getAllAsExistingFiles())
+            files.push_back (f.string());
 
         return files;
     };
@@ -186,10 +186,9 @@ void generate (juce::ArgumentList& args,
 
     auto findPatchManifestFile = [&]
     {
-        auto isPatchManifest = [] (const auto& arg) { return ! arg.isOption() && arg.text.endsWith (".cmajorpatch"); };
-
-        if (const auto it = std::find_if (args.arguments.begin(), args.arguments.end(), isPatchManifest); it != args.arguments.end())
-            return std::filesystem::path (it->resolveAsExistingFile().getFullPathName().toStdString());
+        for (auto& f : args.getAllAsExistingFiles())
+            if (f.extension() == ".cmajorpatch")
+                return f;
 
         throw std::runtime_error ("Expected a .cmajorpatch file");
     };

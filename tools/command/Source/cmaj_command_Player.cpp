@@ -16,11 +16,12 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-#include "juce/cmaj_JUCEHeaders.h"
-
+#include "cmaj_command_ArgumentList.h"
 #include "../../../modules/playback/include/cmaj_PatchWindow.h"
 #include "../../../modules/scripting/include/cmaj_ScriptEngine.h"
 #include "../../../modules/server/include/cmaj_PatchPlayerServer.h"
+
+#include <iomanip>
 
 void printCmajorVersion();
 
@@ -59,7 +60,7 @@ static void runPatch (cmaj::PatchPlayer& player, const std::string& filename, in
 }
 
 //==============================================================================
-void playFile (juce::ArgumentList& args,
+void playFile (ArgumentList& args,
                const choc::value::Value& engineOptions,
                cmaj::BuildSettings& buildSettings,
                const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
@@ -67,27 +68,31 @@ void playFile (juce::ArgumentList& args,
     if (args.size() == 0)
         throw std::runtime_error ("Expected a filename to play");
 
-    bool noGUI       = args.removeOptionIfFound ("--no-gui");
-    bool stopOnError = args.removeOptionIfFound ("--stop-on-error");
-    bool dryRun      = args.removeOptionIfFound ("--dry-run");
+    bool noGUI       = args.removeIfFound ("--no-gui");
+    bool stopOnError = args.removeIfFound ("--stop-on-error");
+    bool dryRun      = args.removeIfFound ("--dry-run");
 
     int64_t framesToRender = 0;
 
-    if (args.containsOption ("--length"))
+    if (auto length = args.removeIntValue<int64_t> ("--length"))
     {
-        framesToRender = args.removeValueForOption ("--length").getLargeIntValue();
+        framesToRender = *length;
 
         if (framesToRender < 0)
             throw std::runtime_error ("Illegal length");
     }
 
-    auto file = args[0].resolveAsExistingFile();
-    auto filename = file.getFullPathName().toStdString();
+    auto files = args.getAllAsExistingFiles();
 
-    if (file.hasFileExtension (".js"))
-        return cmaj::javascript::executeScript (filename, engineOptions, buildSettings, audioOptions);
+    if (files.size() != 1)
+        throw std::runtime_error ("Expected a .cmajorpatch file");
 
-    if (! file.hasFileExtension (".cmajorpatch"))
+    auto file = files[0];
+
+    if (file.extension() == ".js")
+        return cmaj::javascript::executeScript (file.string(), engineOptions, buildSettings, audioOptions);
+
+    if (file.extension() != ".cmajorpatch")
         throw std::runtime_error ("Expected a .cmajorpatch file");
 
     if (dryRun)
@@ -112,7 +117,7 @@ void playFile (juce::ArgumentList& args,
             patch.setPlaybackParams (params);
         }
 
-        patch.loadPatchFromFile (filename, true);
+        patch.loadPatchFromFile (file.string(), true);
         return;
     }
 
@@ -123,20 +128,20 @@ void playFile (juce::ArgumentList& args,
         cmaj::PatchPlayer player (engineOptions, buildSettings, true);
         player.setAudioMIDIPlayer (std::move (audioPlayer));
         player.startPlayback();
-        runPatch (player, filename, framesToRender, stopOnError);
+        runPatch (player, file.string(), framesToRender, stopOnError);
     }
     else
     {
         choc::ui::setWindowsDPIAwareness();
         cmaj::PatchWindow patchWindow (engineOptions, buildSettings);
         patchWindow.player.setAudioMIDIPlayer (std::move (audioPlayer));
-        runPatch (patchWindow.player, filename, framesToRender, stopOnError);
+        runPatch (patchWindow.player, file.string(), framesToRender, stopOnError);
     }
 }
 
 
 //==============================================================================
-void runServerProcess (juce::ArgumentList& args,
+void runServerProcess (ArgumentList& args,
                        const choc::value::Value& engineOptions,
                        cmaj::BuildSettings& buildSettings,
                        const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
@@ -144,9 +149,9 @@ void runServerProcess (juce::ArgumentList& args,
     std::string address = "127.0.0.1";
     std::string port = "51000";
 
-    if (args.containsOption ("--address"))
+    if (auto addr = args.removeValueFor ("--address"))
     {
-        address = choc::text::trim (args.removeValueForOption ("--address").toStdString());
+        address = choc::text::trim (*addr);
 
         if (auto lastColon = address.rfind (':'); lastColon != std::string::npos)
         {
@@ -170,32 +175,24 @@ void runServerProcess (juce::ArgumentList& args,
         }
     }
 
-    if (args.containsOption ("--port"))
-        port = choc::text::trim (args.removeValueForOption ("--port").toStdString());
+    if (auto p = args.removeValueFor ("--port"))
+        port = choc::text::trim (*p);
 
     auto portNum = std::stoi (port);
 
     if (portNum <= 0 || portNum >= 65536)
         throw std::runtime_error ("Out of range port number");
 
-    std::vector<std::filesystem::path> patchFolders;
+    auto patchFolders = args.getAllAsExistingFiles();
 
-    for (auto& arg : args.arguments)
-        patchFolders.push_back (arg.resolveAsExistingFolder().getFullPathName().toStdString());
+    auto timeNow = std::chrono::system_clock::to_time_t (std::chrono::system_clock::now());
 
     std::cout << "------------------------------------------------" << std::endl
-              << "Starting server process at " << juce::Time::getCurrentTime().toString (true, true, true, true) << std::endl;
+              << "Starting server process at " << std::put_time (std::localtime (&timeNow), "%c") << std::endl;
 
     printCmajorVersion();
-    std::cout << "Machine: " << juce::SystemStats::getDeviceDescription() << std::endl
-              << "OS: " << juce::SystemStats::getOperatingSystemName() << std::endl;
+    std::cout << "OS: " << CHOC_OPERATING_SYSTEM_NAME << std::endl;
 
-    cmaj::PatchPlayerServer server (address, static_cast<uint16_t> (portNum),
-                                    engineOptions, buildSettings, audioOptions, patchFolders);
-
-    std::cout << std::endl
-              << "------------------------------------------------" << std::endl
-              << std::endl;
-
-    choc::messageloop::run();
+    cmaj::runPatchPlayerServer (address, static_cast<uint16_t> (portNum),
+                                engineOptions, buildSettings, audioOptions, patchFolders);
 }

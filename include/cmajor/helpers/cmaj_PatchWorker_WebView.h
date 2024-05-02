@@ -22,7 +22,7 @@
 #include "../../choc/javascript/choc_javascript.h"
 #include "../../choc/javascript/choc_javascript_Console.h"
 #include "../../choc/gui/choc_WebView.h"
-#include "../../choc/text/choc_MIMETypes.h"
+#include "../../choc/network/choc_MIMETypes.h"
 
 
 namespace cmaj
@@ -142,7 +142,7 @@ inline void enableWebViewPatchWorker (Patch& p)
                     return choc::ui::WebView::Options::Resource (getHTML (*manifest), "text/html");
 
                 if (auto moduleText = readJavascriptResource (path, manifest))
-                    return choc::ui::WebView::Options::Resource (*moduleText, choc::web::getMIMETypeFromFilename (path, "application/octet-stream"));
+                    return choc::ui::WebView::Options::Resource (*moduleText, choc::network::getMIMETypeFromFilename (path, "application/octet-stream"));
             }
 
             return {};

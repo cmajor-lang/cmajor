@@ -26,46 +26,44 @@
 //==============================================================================
 struct RenderOptions
 {
-    void parseArguments (juce::ArgumentList& args)
+    void parseArguments (ArgumentList& args)
     {
         if (args.size() == 0)
             throw std::runtime_error ("Expected a filename to play");
 
-        if (args.containsOption ("--input"))
-            inputAudioFile = args.getExistingFileForOptionAndRemove ("--input").getFullPathName().toStdString();
+        if (auto input = args.removeExistingFileIfPresent ("--input"))
+            inputAudioFile = input->string();
 
-        if (args.containsOption ("--midi"))
-            inputMIDIFile = args.getExistingFileForOptionAndRemove ("--midi").getFullPathName().toStdString();
+        if (auto midi = args.removeExistingFileIfPresent ("--midi"))
+            inputMIDIFile  = midi->string();
 
-        if (args.containsOption ("--length"))
+        if (auto length = args.removeIntValue<int64_t> ("--length"))
         {
-            auto numFrames = args.removeValueForOption ("--length").getLargeIntValue();
-
-            if (numFrames < 0)
+            if (*length < 0)
                 throw std::runtime_error ("Illegal length");
 
-            framesToRender = static_cast<uint64_t> (numFrames);
+            framesToRender = static_cast<uint64_t> (*length);
         }
 
-        if (args.containsOption ("--rate"))
-            audioOptions.sampleRate = static_cast<uint32_t> (std::max (0.0, args.removeValueForOption ("--rate").getDoubleValue()));
+        if (auto rate = args.removeIntValue<uint32_t> ("--rate"))
+            audioOptions.sampleRate = *rate;
 
-        if (args.containsOption ("--channels"))
-            audioOptions.outputChannelCount = static_cast<uint32_t> (args.removeValueForOption ("--channels").getIntValue());
+        if (auto chans = args.removeIntValue<uint32_t> ("--channels"))
+            audioOptions.outputChannelCount = *chans;
 
-        if (args.containsOption ("--blockSize"))
-            audioOptions.blockSize = static_cast<uint32_t> (args.removeValueForOption ("--blockSize").getIntValue());
+        if (auto blockSize = args.removeIntValue<uint32_t> ("--blockSize"))
+            audioOptions.blockSize = *blockSize;
         else
             audioOptions.blockSize = 512;
 
-        outputAudioFile = args.getFileForOptionAndRemove ("--output").getFullPathName().toStdString();
+        outputAudioFile = args.removeExistingFile ("--output").string();
 
-        auto patch = args[0].resolveAsExistingFile();
+        auto files = args.getAllAsExistingFiles();
 
-        if (! patch.hasFileExtension (".cmajorpatch"))
+        if (files.size() != 1 || files[0].extension() != ".cmajorpatch")
             throw std::runtime_error ("Expected a .cmajorpatch file");
 
-        patchFile = patch.getFullPathName().toStdString();
+        patchFile = files[0].string();
     }
 
     std::string patchFile, inputAudioFile, inputMIDIFile, outputAudioFile;
@@ -245,7 +243,7 @@ struct RenderState
 
 
 //==============================================================================
-void render (juce::ArgumentList& args, const choc::value::Value& engineOptions, cmaj::BuildSettings& buildSettings)
+void render (ArgumentList& args, const choc::value::Value& engineOptions, cmaj::BuildSettings& buildSettings)
 {
     RenderOptions options;
     options.parseArguments (args);

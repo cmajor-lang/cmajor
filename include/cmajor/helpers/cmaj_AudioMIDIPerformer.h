@@ -19,6 +19,7 @@
 #pragma once
 
 #include <iostream>
+#include <thread>
 
 #include "../../choc/memory/choc_Endianness.h"
 #include "../../choc/containers/choc_VariableSizeFIFO.h"

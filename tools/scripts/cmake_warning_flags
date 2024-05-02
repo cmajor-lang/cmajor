@@ -29,7 +29,7 @@ set(CMAJ_WARNING_FLAGS
         -Wredundant-decls -Wsign-compare
         -Wsign-conversion -Wstrict-aliasing -Wswitch-enum -Wuninitialized
         -Wunreachable-code -Wunused-parameter -Wno-free-nonheap-object
-        $<$<COMPILE_LANGUAGE:CXX>:-Woverloaded-virtual -Wreorder -Wzero-as-null-pointer-constant>>
+        $<$<COMPILE_LANGUAGE:CXX>:-Woverloaded-virtual -Wreorder>>
     $<$<CXX_COMPILER_ID:MSVC>:
         /W4 /bigobj /Zc:strictStrings- /D_WIN32_WINNT=0x0601 ${EXTRA_WARNINGS} /D_CRT_SECURE_NO_WARNINGS /MP>
 )

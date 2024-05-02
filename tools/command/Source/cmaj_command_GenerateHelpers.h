@@ -19,7 +19,6 @@
 #pragma once
 
 #include <algorithm>
-
 #include "choc/text/choc_TextTable.h"
 #include "choc/text/choc_CodePrinter.h"
 #include "choc/text/choc_Wildcard.h"
@@ -79,8 +78,7 @@ struct GeneratedFiles
         if (outputFile.empty())
             throw std::runtime_error ("Expected an argument --output=<target folder>");
 
-        if (! juce::File (outputFile).createDirectory())
-            throw std::runtime_error ("Cannot create the target folder: " + outputFile);
+        std::filesystem::create_directories (outputFile);
 
         for (auto& f : files)
             f.write (outputFile);

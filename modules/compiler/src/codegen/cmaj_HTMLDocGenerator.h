@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <map>
 #include "choc/text/choc_HTML.h"
 #include "choc/containers/choc_Span.h"
 

@@ -53,7 +53,13 @@ namespace cmaj
             if (localAssetFolder != std::filesystem::path())
             {
                 if (auto local = localAssetFolder / "modules/embedded_assets/files" / path; exists (local))
-                    return choc::file::loadFileAsString (local.string());
+                {
+                    try
+                    {
+                        return choc::file::loadFileAsString (local.string());
+                    }
+                    catch (...) {}
+                }
 
                 if (choc::text::startsWith (path, "cmaj_api/"))
                     if (auto local = localAssetFolder / "javascript" / path; exists (local))

@@ -16,7 +16,8 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-#include "juce/cmaj_JUCEHeaders.h"
+#include <iostream>
+#include <set>
 
 #include "../../../modules/compiler/include/cmaj_ErrorHandling.h"
 #include "choc/text/choc_Files.h"

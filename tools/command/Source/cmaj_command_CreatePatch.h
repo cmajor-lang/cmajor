@@ -53,32 +53,33 @@ graph NAME  [[main]]
 
 )";
 
-void createPatch (juce::ArgumentList& args)
+void createPatch (ArgumentList& args)
 {
     std::string name;
 
-    if (args.containsOption ("--name"))
-        name = juce::File::createLegalFileName (args.removeValueForOption ("--name").unquoted()).toStdString();
+    if (auto n = args.removeValueFor ("--name"))
+        name = choc::file::makeSafeFilename (choc::text::removeDoubleQuotes (*n));
 
-    if (args.size() == 0)
+    auto files = args.getAllAsFiles();
+
+    if (files.size() != 1)
         throw std::runtime_error ("Expected the name of a folder to create");
 
-    auto folder = args[0].resolveAsFile();
+    auto folder = files[0];
 
-    if (folder.exists())
+    if (exists (folder))
         throw std::runtime_error ("This folder already exists");
 
-    if (! folder.createDirectory())
-        throw std::runtime_error ("Cannot create the folder: " + folder.getFullPathName().toStdString());
+    std::filesystem::create_directories (folder);
 
     if (name.empty())
-        name = folder.getFileNameWithoutExtension().toStdString();
+        name = folder.stem().string();
 
-    choc::file::replaceFileWithContent (folder.getChildFile (name).withFileExtension ("cmajorpatch").getFullPathName().toStdString(),
+    choc::file::replaceFileWithContent ((folder / name).replace_extension (".cmajorpatch"),
                                         choc::text::trimStart (choc::text::replace (patchManifest, "NAME", name)));
 
-    choc::file::replaceFileWithContent (folder.getChildFile (name).withFileExtension ("cmajor").getFullPathName().toStdString(),
+    choc::file::replaceFileWithContent ((folder / name).replace_extension (".cmajor"),
                                         choc::text::trimStart (choc::text::replace (patchCode, "NAME", name)));
 
-    std::cout << "Created Cmajor patch in: " << folder.getFullPathName() << std::endl;
+    std::cout << "Created Cmajor patch in: " << folder.string() << std::endl;
 }

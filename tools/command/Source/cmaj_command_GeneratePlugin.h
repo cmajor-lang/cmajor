@@ -21,43 +21,41 @@
 #include "../../../modules/compiler/include/cmaj_CppGenerationUtils.h"
 #include "cmaj_command_EmbeddedPluginHelpersFolder.h"
 #include "cmaj_command_EmbeddedIncludeFolder.h"
+#include "choc/containers/choc_ZipFile.h"
+
 
 namespace generate_cpp
 {
 
-inline std::string unzipCmajorHeaders (const std::string& outputFile)
+inline std::string unzipCmajorHeaders (const std::filesystem::path& outputFolder)
 {
-    juce::MemoryInputStream in (cmajorIncludeFolderZip, sizeof (cmajorIncludeFolderZip), false);
-    juce::ZipFile zip (in);
-
-    auto result = zip.uncompressTo (juce::File (outputFile).getChildFile ("include"));
-
-    if (result.failed())
-        throw std::runtime_error (result.getErrorMessage().toStdString());
-
+    auto compressed = std::string (reinterpret_cast<const char*> (cmajorIncludeFolderZip), sizeof (cmajorIncludeFolderZip));
+    auto in = std::make_shared<std::istringstream> (compressed, std::ios::binary);
+    choc::zip::ZipFile zip (in);
+    zip.uncompressToFolder (outputFolder / "include", true, false);
     return "include";
 }
 
 template <typename PredicateFn>
 std::filesystem::path unzipCmajorPluginHelpers (const std::filesystem::path& pathToOutput, const PredicateFn& shouldExtract)
 {
-    juce::MemoryInputStream in (cmajorPluginHelpersFolderZip, sizeof (cmajorPluginHelpersFolderZip), false);
-    juce::ZipFile zip (in);
-    zip.sortEntriesByFilename();
+    auto compressed = std::string (reinterpret_cast<const char*> (cmajorPluginHelpersFolderZip), sizeof (cmajorPluginHelpersFolderZip));
+    auto in = std::make_shared<std::istringstream> (compressed, std::ios::binary);
+    choc::zip::ZipFile zip (in);
 
-    const auto targetDirectory = juce::File (pathToOutput.string()).getChildFile ("helpers");
+    std::sort (zip.items.begin(),
+               zip.items.end(),
+               [] (auto& a, auto& b) { return a.filename < b.filename; });
 
-    for (int i = 0; i < zip.getNumEntries(); ++i)
+    auto targetFolder = pathToOutput / "helpers";
+
+    for (auto& item : zip.items)
     {
-        const auto* entry = zip.getEntry (i);
-
-        if (! shouldExtract (entry->filename.toStdString()))
+        if (! shouldExtract (item.filename))
             continue;
 
-        auto result = zip.uncompressEntry (i, targetDirectory);
-
-        if (result.failed())
-            throw std::runtime_error (result.getErrorMessage().toStdString());
+        if (! item.uncompressToFile (targetFolder, true, false))
+            throw std::runtime_error ("Failed to unpack helper files");
     }
 
     return "${CMAKE_CURRENT_SOURCE_DIR}/helpers";
@@ -469,13 +467,13 @@ endif()
 }
 
 //==============================================================================
-inline void generatePluginProject (juce::ArgumentList& args, std::string outputFile, cmaj::Patch& patch,
+inline void generatePluginProject (ArgumentList& args, std::string outputFile, cmaj::Patch& patch,
                                    const cmaj::Patch::LoadParams& loadParams, bool isCLAP)
 {
     std::string cmajorIncludePath;
 
-    if (args.containsOption ("--cmajorIncludePath"))
-        cmajorIncludePath = args.removeValueForOption ("--cmajorIncludePath").toStdString();
+    if (auto includePath = args.removeValueFor ("--cmajorIncludePath"))
+        cmajorIncludePath = *includePath;
     else
         cmajorIncludePath = unzipCmajorHeaders (outputFile);
 
@@ -483,8 +481,8 @@ inline void generatePluginProject (juce::ArgumentList& args, std::string outputF
 
     auto getLibraryPath = [&] (const char* argName) -> std::string
     {
-        if (args.containsOption (argName))
-            return args.getExistingFolderForOptionAndRemove (argName).getFullPathName().toStdString();
+        if (args.contains (argName))
+            return args.getExistingFolder (argName, true).string();
 
         return {};
     };

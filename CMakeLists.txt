@@ -27,10 +27,6 @@ OPTION (BUILD_EXAMPLES  "Whether to build the examples" ON)
 
 include(tools/scripts/cmake_warning_flags)
 
-if (NOT JUCE_DIR)
-    set(JUCE_DIR "3rdParty/JUCE")
-endif()
-
 if(NOT CMAJ_VERSION)
     set(CMAJ_VERSION "1.0")
     message ("Defaulting CMAJ_VERSION to ${CMAJ_VERSION}")
@@ -59,6 +55,11 @@ endif()
 
 if (BUILD_PLUGIN)
     message ("Including plugin build")
+
+    if (NOT JUCE_DIR)
+        set(JUCE_DIR "3rdParty/JUCE")
+    endif()
+
     set(JUCE_ENABLE_MODULE_SOURCE_GROUPS ON)
     add_subdirectory(${JUCE_DIR} juce)
     add_subdirectory(tools/CmajPlugin)

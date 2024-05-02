@@ -16,37 +16,37 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-#include "juce/cmaj_JUCEHeaders.h"
 #include "../../../modules/compiler/include/cmaj_ErrorHandling.h"
 #include "choc/tests/choc_UnitTest.h"
 
-#include "../../../modules/server/include/cmaj_HTTPServer.h"
+#include "../../../modules/server/include/cmaj_PatchPlayerServer.h"
 #include "../../../include/cmajor/COM/cmaj_Library.h"
 #include "unit_tests/cmaj_APIUnitTests.h"
 #include "unit_tests/cmaj_PatchHelperUnitTests.h"
 #include "unit_tests/cmaj_GraphvizUnitTests.h"
 #include "unit_tests/cmaj_CLAPPluginUnitTests.h"
+#include "cmaj_command_ArgumentList.h"
 
 //==============================================================================
 static void runAllTests (choc::test::TestProgress& progress)
 {
     /// Add your tests here!
 
-    cmaj::server::runUnitTests (progress);
     cmaj::api_tests::runUnitTests (progress);
     cmaj::patch_helper_tests::runUnitTests (progress);
     cmaj::graphviz_tests::runUnitTests (progress);
     cmaj::plugin::clap::test::runUnitTests (progress);
+    cmaj::runServerUnitTests (progress);
 }
 
 
 //==============================================================================
-void runUnitTests (juce::ArgumentList& args, const choc::value::Value&, cmaj::BuildSettings&)
+void runUnitTests (ArgumentList& args, const choc::value::Value&, cmaj::BuildSettings&)
 {
     int iterations = 1;
 
-    if (args.containsOption ("--iterations"))
-        iterations = args.removeValueForOption ("--iterations").getIntValue();
+    if (auto it = args.removeIntValue<int> ("--iterations"))
+        iterations = *it;
 
     while (iterations > 0)
     {

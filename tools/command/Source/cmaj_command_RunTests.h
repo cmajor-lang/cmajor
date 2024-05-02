@@ -30,12 +30,13 @@ namespace cmaj::test
                        std::string testScriptPath);
 }
 
-static void findTestFiles (std::vector<juce::File>& testFiles, const juce::File& file)
+static void findTestFiles (std::vector<std::filesystem::path>& testFiles, const std::filesystem::path& file)
 {
-    if (file.isDirectory())
+    if (is_directory (file))
     {
-        for (auto& f : file.findChildFiles (juce::File::findFilesAndDirectories, true, "*.cmajtest"))
-            testFiles.push_back (f);
+        for (auto& f : std::filesystem::recursive_directory_iterator (file))
+            if (f.path().extension() == ".cmajtest")
+                testFiles.push_back (f);
     }
     else
     {
@@ -43,51 +44,41 @@ static void findTestFiles (std::vector<juce::File>& testFiles, const juce::File&
     }
 }
 
-void runTests (juce::ArgumentList& args,
+void runTests (ArgumentList& args,
                const choc::value::Value& engineOptions,
                cmaj::BuildSettings& buildSettings)
 {
-    std::optional<int> testToRun;
-    int iterations = 1;
-    std::string testScriptPath;
-
-    if (args.containsOption ("--scriptFolder"))
-        testScriptPath = args.getExistingFolderForOptionAndRemove ("--scriptFolder").getFullPathName().toStdString();
-
-    if (args.containsOption ("--testToRun"))
-        testToRun = args.removeValueForOption ("--testToRun").getIntValue();
-
-    if (args.containsOption ("--iterations"))
-        iterations = args.removeValueForOption ("--iterations").getIntValue();
-
-    bool runDisabled = args.removeOptionIfFound ("--runDisabled");
+    auto testScriptPath = args.removeExistingFolderIfPresent ("--scriptFolder");
+    auto testToRun = args.removeIntValue<int32_t> ("--testToRun");
+    auto iterations = args.removeIntValue<int32_t> ("--iterations", 1);
+    bool runDisabled = args.removeIfFound ("--runDisabled");
 
     uint32_t threadCount = 0;
 
-    if (args.removeOptionIfFound ("--singleThread"))
+    if (args.removeIfFound ("--singleThread"))
         threadCount = 1;
-    else if (args.containsOption ("--threads"))
-        threadCount = static_cast<uint32_t> (args.removeValueForOption ("--threads").getIntValue());
+    else if (auto threads = args.removeIntValue<uint32_t> ("--threads"))
+        threadCount = *threads;
 
     std::string xmlFile;
 
-    if (args.containsOption ("--xmlOutput"))
-        xmlFile = args.removeValueForOption ("--xmlOutput").toStdString();
+    if (auto xml = args.removeValueFor ("--xmlOutput"))
+        xmlFile = *xml;
 
-    std::vector<juce::File> testFiles;
+    std::vector<std::filesystem::path> testFiles;
 
-    for (auto& arg : args.arguments)
-        findTestFiles (testFiles, arg.resolveAsFile());
+    for (auto& file : args.getAllAsFiles())
+        findTestFiles (testFiles, file);
 
-    std::sort (testFiles.begin(), testFiles.end(), [] (const juce::File& lhs, const juce::File& rhs)
+    std::sort (testFiles.begin(), testFiles.end(), [] (const std::filesystem::path& lhs, const std::filesystem::path& rhs)
     {
-        return lhs.getFileName() < rhs.getFileName();
+        return lhs.filename() < rhs.filename();
     });
 
     std::vector<std::string> paths;
 
     for (auto& f : testFiles)
-        paths.push_back (f.getFullPathName().toStdString());
+        paths.push_back (f.string());
 
     std::cout << "Cmajor Version: " << cmaj::Library::getVersion() << std::endl
               << "Engine: " << choc::json::toString (engineOptions, false) << std::endl;
@@ -101,8 +92,8 @@ void runTests (juce::ArgumentList& args,
         try
         {
             if (! cmaj::test::runTestFiles (buildSettings, std::cerr, xmlFile, paths,
-                                            testToRun, runDisabled, threadCount, iterations,
-                                            engineOptions, testScriptPath))
+                                            testToRun, runDisabled, threadCount, iterations, engineOptions,
+                                            testScriptPath ? testScriptPath->string() : std::string()))
                 throw std::exception();
         }
         catch (const std::exception& e)

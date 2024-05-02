@@ -21,7 +21,7 @@
 #include <memory>
 #include "cmaj_Patch.h"
 #include "../../choc/gui/choc_WebView.h"
-#include "../../choc/text/choc_MIMETypes.h"
+#include "../../choc/network/choc_MIMETypes.h"
 
 namespace cmaj
 {
@@ -262,7 +262,7 @@ inline std::optional<choc::ui::WebView::Options::Resource> PatchWebView::onReque
             if (auto m = getMIMETypeForExtension (extension); ! m.empty())
                 return m;
 
-        return choc::web::getMIMETypeFromFilename (extension, "application/octet-stream");
+        return choc::network::getMIMETypeFromFilename (extension, "application/octet-stream");
     };
 
     auto relativePath = std::filesystem::path (path).relative_path();
