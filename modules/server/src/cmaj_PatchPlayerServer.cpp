@@ -205,6 +205,9 @@ struct PatchPlayerServer
 
         choc::network::HTTPContent getHTTPContent (std::string_view path) override
         {
+            if (auto p = path.find ("?"); p != std::string::npos)
+                path = path.substr (0, path.find ("?"));
+
             if (path == "/")
                 return choc::network::HTTPContent::forHTML (createRedirectToNewSessionPage());
 
