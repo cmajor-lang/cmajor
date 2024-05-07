@@ -271,12 +271,12 @@ private:
             return false;
         }
 
-        currentSampleRate = rate;
+        currentSampleRate = rtAudio->getStreamSampleRate();
 
         options.audioAPI = RtAudio::getApiDisplayName (rtAudio->getCurrentApi());
         options.outputDeviceName = outputDeviceInfo ? outputDeviceInfo->name : std::string();
         options.inputDeviceName  = inputDeviceInfo ? inputDeviceInfo->name : std::string();
-        options.sampleRate = static_cast<uint32_t> (rate);
+        options.sampleRate = static_cast<uint32_t> (currentSampleRate);
         options.blockSize = static_cast<uint32_t> (framesPerBuffer);
         options.inputChannelCount = static_cast<uint32_t> (numInputChannels);
         options.outputChannelCount = static_cast<uint32_t> (numOutputChannels);
