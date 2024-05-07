@@ -79,7 +79,7 @@ static std::string getCodeGenTargetHelp()
 }
 
 //==============================================================================
-void generateFromPatch (ArgumentList& args,
+void generateFromPatch (choc::ArgumentList& args,
                         std::filesystem::path patchManifestFile,
                         std::string targetType,
                         std::string outputFile,
@@ -135,7 +135,7 @@ void generateFromPatch (ArgumentList& args,
 }
 
 //==============================================================================
-void generate (ArgumentList& args,
+void generate (choc::ArgumentList& args,
                const choc::value::Value& engineOptions,
                cmaj::BuildSettings& buildSettings)
 {

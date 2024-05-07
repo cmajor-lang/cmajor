@@ -53,7 +53,7 @@ graph NAME  [[main]]
 
 )";
 
-void createPatch (ArgumentList& args)
+void createPatch (choc::ArgumentList& args)
 {
     std::string name;
 

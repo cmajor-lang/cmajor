@@ -44,7 +44,7 @@ static void findTestFiles (std::vector<std::filesystem::path>& testFiles, const 
     }
 }
 
-void runTests (ArgumentList& args,
+void runTests (choc::ArgumentList& args,
                const choc::value::Value& engineOptions,
                cmaj::BuildSettings& buildSettings)
 {

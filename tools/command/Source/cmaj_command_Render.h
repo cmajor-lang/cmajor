@@ -26,7 +26,7 @@
 //==============================================================================
 struct RenderOptions
 {
-    void parseArguments (ArgumentList& args)
+    void parseArguments (choc::ArgumentList& args)
     {
         if (args.size() == 0)
             throw std::runtime_error ("Expected a filename to play");
@@ -243,7 +243,7 @@ struct RenderState
 
 
 //==============================================================================
-void render (ArgumentList& args, const choc::value::Value& engineOptions, cmaj::BuildSettings& buildSettings)
+void render (choc::ArgumentList& args, const choc::value::Value& engineOptions, cmaj::BuildSettings& buildSettings)
 {
     RenderOptions options;
     options.parseArguments (args);

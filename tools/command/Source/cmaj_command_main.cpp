@@ -19,8 +19,8 @@
 #include "../../../modules/compiler/include/cmaj_ErrorHandling.h"
 #include "../../../modules/scripting/include/cmaj_ScriptEngine.h"
 #include "../../../modules/embedded_assets/cmaj_EmbeddedAssets.h"
-#include "cmaj_command_ArgumentList.h"
 
+#include "choc/containers/choc_ArgumentList.h"
 #include "choc/text/choc_Files.h"
 #include "choc/text/choc_OpenSourceLicenseList.h"
 
@@ -30,12 +30,12 @@
 #include "cmaj_command_RunTests.h"
 #include "cmaj_RtAudioPlayer.h"
 
-void runUnitTests (ArgumentList&, const choc::value::Value&, cmaj::BuildSettings&);
+void runUnitTests (choc::ArgumentList&, const choc::value::Value&, cmaj::BuildSettings&);
 
-void playFile (ArgumentList&, const choc::value::Value& engineOptions,
+void playFile (choc::ArgumentList&, const choc::value::Value& engineOptions,
                cmaj::BuildSettings&, const cmaj::audio_utils::AudioDeviceOptions&);
 
-void runServerProcess (ArgumentList&, const choc::value::Value& engineOptions,
+void runServerProcess (choc::ArgumentList&, const choc::value::Value& engineOptions,
                        cmaj::BuildSettings&, const cmaj::audio_utils::AudioDeviceOptions&);
 
 void printCmajorVersion()
@@ -149,7 +149,7 @@ cmaj unit-test              Runs internal unit tests.
 }
 
 //==============================================================================
-static cmaj::BuildSettings parseBuildArgs (ArgumentList& args)
+static cmaj::BuildSettings parseBuildArgs (choc::ArgumentList& args)
 {
     cmaj::BuildSettings buildSettings;
 
@@ -174,7 +174,7 @@ static cmaj::BuildSettings parseBuildArgs (ArgumentList& args)
 
 
 //==============================================================================
-static cmaj::audio_utils::AudioDeviceOptions parseAudioDeviceArgs (ArgumentList& args)
+static cmaj::audio_utils::AudioDeviceOptions parseAudioDeviceArgs (choc::ArgumentList& args)
 {
     cmaj::audio_utils::AudioDeviceOptions options;
 
@@ -195,7 +195,7 @@ static cmaj::audio_utils::AudioDeviceOptions parseAudioDeviceArgs (ArgumentList&
 }
 
 //==============================================================================
-static choc::value::Value parseEngineArgs (ArgumentList& args)
+static choc::value::Value parseEngineArgs (choc::ArgumentList& args)
 {
     auto engineOptions = choc::value::createObject ("options");
 
@@ -216,7 +216,7 @@ static choc::value::Value parseEngineArgs (ArgumentList& args)
 }
 
 //==============================================================================
-static bool isCommand (ArgumentList& args, std::string_view name)
+static bool isCommand (choc::ArgumentList& args, std::string_view name)
 {
     if (args.indexOf (name) == 0)
     {
@@ -227,7 +227,7 @@ static bool isCommand (ArgumentList& args, std::string_view name)
     return false;
 }
 
-static void performCommandLineTask (ArgumentList& args)
+static void performCommandLineTask (choc::ArgumentList& args)
 {
     if (isCommand (args, "version"))
         return printCmajorVersion();
@@ -264,7 +264,7 @@ int main (int argc, char** argv)
 {
     try
     {
-        ArgumentList args (argc, argv);
+        choc::ArgumentList args (argc, argv);
         performCommandLineTask (args);
         return 0;
     }

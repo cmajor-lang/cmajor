@@ -16,10 +16,10 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-#include "cmaj_command_ArgumentList.h"
 #include "../../../modules/playback/include/cmaj_PatchWindow.h"
 #include "../../../modules/scripting/include/cmaj_ScriptEngine.h"
 #include "../../../modules/server/include/cmaj_PatchPlayerServer.h"
+#include "choc/containers/choc_ArgumentList.h"
 
 #include <iomanip>
 
@@ -60,7 +60,7 @@ static void runPatch (cmaj::PatchPlayer& player, const std::string& filename, in
 }
 
 //==============================================================================
-void playFile (ArgumentList& args,
+void playFile (choc::ArgumentList& args,
                const choc::value::Value& engineOptions,
                cmaj::BuildSettings& buildSettings,
                const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
@@ -141,7 +141,7 @@ void playFile (ArgumentList& args,
 
 
 //==============================================================================
-void runServerProcess (ArgumentList& args,
+void runServerProcess (choc::ArgumentList& args,
                        const choc::value::Value& engineOptions,
                        cmaj::BuildSettings& buildSettings,
                        const cmaj::audio_utils::AudioDeviceOptions& audioOptions)

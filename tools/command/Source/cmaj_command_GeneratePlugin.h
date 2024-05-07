@@ -467,7 +467,7 @@ endif()
 }
 
 //==============================================================================
-inline void generatePluginProject (ArgumentList& args, std::string outputFile, cmaj::Patch& patch,
+inline void generatePluginProject (choc::ArgumentList& args, std::string outputFile, cmaj::Patch& patch,
                                    const cmaj::Patch::LoadParams& loadParams, bool isCLAP)
 {
     std::string cmajorIncludePath;

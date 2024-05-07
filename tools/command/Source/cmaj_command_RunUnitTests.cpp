@@ -18,6 +18,7 @@
 
 #include "../../../modules/compiler/include/cmaj_ErrorHandling.h"
 #include "choc/tests/choc_UnitTest.h"
+#include "choc/containers/choc_ArgumentList.h"
 
 #include "../../../modules/server/include/cmaj_PatchPlayerServer.h"
 #include "../../../include/cmajor/COM/cmaj_Library.h"
@@ -25,7 +26,6 @@
 #include "unit_tests/cmaj_PatchHelperUnitTests.h"
 #include "unit_tests/cmaj_GraphvizUnitTests.h"
 #include "unit_tests/cmaj_CLAPPluginUnitTests.h"
-#include "cmaj_command_ArgumentList.h"
 
 //==============================================================================
 static void runAllTests (choc::test::TestProgress& progress)
@@ -41,7 +41,7 @@ static void runAllTests (choc::test::TestProgress& progress)
 
 
 //==============================================================================
-void runUnitTests (ArgumentList& args, const choc::value::Value&, cmaj::BuildSettings&)
+void runUnitTests (choc::ArgumentList& args, const choc::value::Value&, cmaj::BuildSettings&)
 {
     int iterations = 1;
 
