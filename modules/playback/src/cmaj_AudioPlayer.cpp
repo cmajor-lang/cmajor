@@ -171,6 +171,11 @@ std::unique_ptr<AudioMIDIPlayer> createDummyPlayer (const AudioDeviceOptions& op
 MultiClientAudioMIDIPlayer::MultiClientAudioMIDIPlayer (const AudioDeviceOptions& options)
     : player (options.createPlayer (options))
 {
+    player->onSampleRateUpdated = [&] (double sampleRate)
+    {
+        onSampleRateUpdated (sampleRate);
+    };
+
     CMAJ_ASSERT (player != nullptr);
 }
 

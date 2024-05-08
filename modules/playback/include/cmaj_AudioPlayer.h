@@ -88,6 +88,7 @@ struct AudioMIDIPlayer
     AudioDeviceOptions options;
     std::mutex callbackLock;
     std::function<void()> deviceOptionsChanged;
+    std::function<void(double)> onSampleRateUpdated;
 };
 
 std::unique_ptr<AudioMIDIPlayer> createDummyPlayer (const AudioDeviceOptions&);
@@ -104,6 +105,7 @@ struct MultiClientAudioMIDIPlayer  : private AudioMIDICallback
     void removeCallback (AudioMIDICallback&);
 
     std::shared_ptr<AudioMIDIPlayer> player;
+    std::function<void(double)> onSampleRateUpdated;
 
 private:
     std::vector<AudioMIDICallback*> clients;

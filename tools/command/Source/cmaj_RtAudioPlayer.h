@@ -166,6 +166,17 @@ private:
         (void) type;
     }
 
+    void handleStreamUpdate()
+    {
+        auto streamSampleRate = rtAudio->getStreamSampleRate();
+
+        if (streamSampleRate != currentSampleRate)
+        {
+            currentSampleRate = streamSampleRate;
+            onSampleRateUpdated (currentSampleRate);
+        }
+    }
+
     void handleMIDIError (RtMidiError::Type type, const std::string& errorText)
     {
         std::cout << "Audio device error: " << errorText << std::endl;
@@ -174,7 +185,9 @@ private:
 
     bool openAudio()
     {
-        rtAudio = std::make_unique<RtAudio> (getAPIToUse(), [this] (RtAudioErrorType type, const std::string& errorText) { handleAudioError (type, errorText); });
+        rtAudio = std::make_unique<RtAudio> (getAPIToUse(), 
+                                             [this] (RtAudioErrorType type, const std::string& errorText) { handleAudioError (type, errorText); },
+                                             [this] () { handleStreamUpdate (); });
 
         auto devices = getAudioDeviceList();
 
@@ -361,7 +374,7 @@ private:
 
         (void) streamTime;
 
-        if (status == RTAUDIO_INPUT_OVERFLOW || status == RTAUDIO_OUTPUT_UNDERFLOW)
+        if ((status & RTAUDIO_INPUT_OVERFLOW) || (status & RTAUDIO_OUTPUT_UNDERFLOW))
             ++xruns;
 
         for (uint32_t i = 0; i < numInputChannels; ++i)

@@ -75,6 +75,12 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
             params.sampleRate         = options.sampleRate;
             params.numInputChannels   = options.inputChannelCount;
             params.numOutputChannels  = options.outputChannelCount;
+
+            audioPlayer->onSampleRateUpdated = [&] (double sr)
+            {
+                params.sampleRate = sr;
+                patch.setPlaybackParams (params);
+            };
         }
         else
         {
