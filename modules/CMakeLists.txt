@@ -28,6 +28,8 @@ function (MAKE_CMAJ_LIBRARY)
 
         ENABLE_CODEGEN_CPP
         ENABLE_CODEGEN_LLVM_WASM
+
+        MSVC_STATIC_RUNTIME
     )
 
     set (oneValueArgs LIBRARY_NAME)
@@ -70,7 +72,11 @@ function (MAKE_CMAJ_LIBRARY)
         if (${CMAKE_GENERATOR_PLATFORM} MATCHES "arm64")
             set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win/arm64)
         else()
-            set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win/x64)
+            if (CMAJ_MSVC_STATIC_RUNTIME)
+                set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win-static/x64)
+            else()
+                set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win/x64)
+            endif()
         endif()
     endif()
 
