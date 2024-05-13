@@ -148,8 +148,11 @@ ${fileData}
 
 //==============================================================================
 inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
-                                   cmaj::Patch& patch, const cmaj::Patch::LoadParams& loadParams,
-                                   std::string cmajorIncludePath, std::string jucePath)
+                                   cmaj::Patch& patch,
+                                   const cmaj::Patch::LoadParams& loadParams,
+                                   std::string cmajorIncludePath,
+                                   std::string jucePath,
+                                   std::optional<std::string> formats)
 {
     std::string performerNamespace = "performer";
 
@@ -162,6 +165,7 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     std::string icon                 = loadParams.manifest.manifest["icon"].toString();
     std::string pluginCode;
     std::string manufacturerCode;
+    std::string pluginFormats        = "Standalone AU AUv3 VST3";
 
     auto plugin = loadParams.manifest.manifest["plugin"];
 
@@ -181,6 +185,11 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     {
         std::cerr << "No plugin/manufacturerCode specified, defaulting to 'Cmaj'" << std::endl;
         manufacturerCode = "Cmaj";
+    }
+
+    if (formats)
+    {
+        pluginFormats = *formats;
     }
 
     const auto& manifest = loadParams.manifest;
@@ -284,7 +293,7 @@ if (MSVC)
 endif()
 
 juce_add_plugin(${productName}
-    FORMATS Standalone AU AUv3 VST3
+    FORMATS ${pluginFormats}
     DESCRIPTION "${description}"
     BUNDLE_ID "${ID}"
     PLUGIN_CODE "${pluginCode}"
@@ -345,7 +354,8 @@ target_link_libraries(${productName}
         "${jucePath}", jucePath.empty() ? std::string() : "set(JUCE_PATH " + choc::text::replace (jucePath, "\\", "\\\\") + ")",
         "${mainSourceFile}", mainSourceFile,
         "${cmajorIncludePath}", cmajorIncludePath,
-        "${pluginExtras}", pluginExtras);
+        "${pluginExtras}", pluginExtras,
+        "${pluginFormats}", pluginFormats);
 
     generatedFiles.addFile (mainSourceFile, std::move (mainCpp));
     generatedFiles.addFile ("CMakeLists.txt", std::move (makefile));
@@ -490,7 +500,7 @@ inline void generatePluginProject (choc::ArgumentList& args, std::string outputF
     if (isCLAP)
         createClapPluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--clapIncludePath"), outputFile);
     else
-        createJucePluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--jucePath"));
+        createJucePluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--jucePath"), args.getValueFor ("--juceFormats", true));
 
     generatedFiles.writeToOutputFolder (outputFile);
 }
