@@ -29,7 +29,7 @@ juce_add_plugin(CmajPlugin
     COMPANY_NAME "Cmajor Software Ltd"
     COMPANY_COPYRIGHT "(C)2024 Cmajor Software Ltd"
     PLUGIN_CODE Cmaj
-    FORMATS Standalone AU VST3
+    FORMATS AU VST3
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE
     MICROPHONE_PERMISSION_ENABLED TRUE
