@@ -18,6 +18,18 @@
 
 #pragma once
 
+#if JUCE_LINUX
+ #define Font FontX  // Gotta love these C headers with global symbol clashes.. sigh..
+ #define Time TimeX
+ #define Drawable DrawableX
+ #define Status StatusX
+ #include <gtk/gtkx.h>
+ #undef Font
+ #undef Time
+ #undef Drawable
+ #undef Status
+#endif
+
 #include <utility>
 #include "../../choc/memory/choc_xxHash.h"
 #include "cmaj_PatchWebView.h"
@@ -27,16 +39,6 @@
  #include "cmaj_PatchWorker_QuickJS.h"
 #else
  #include "cmaj_PatchWorker_WebView.h"
-#endif
-
-#if JUCE_LINUX
- #define Font FontX  // Gotta love these C headers with global symbol clashes.. sigh..
- #define Time TimeX
- #define Drawable DrawableX
- #include <gtk/gtkx.h>
- #undef Font
- #undef Time
- #undef Drawable
 #endif
 
 namespace cmaj::plugin
