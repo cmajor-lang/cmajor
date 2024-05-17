@@ -511,40 +511,112 @@ IO_STRUCT io = {};
 
         out << blankLine;
 
-        out << "uint32_t readOutputEvent (EndpointHandle endpointHandle, uint32_t index, void* dest)" << newLine;
+        out << "uint32_t readOutputEvent (EndpointHandle endpointHandle, uint32_t index, unsigned char* dest)" << newLine;
         {
-            auto indent = out.createIndentWithBraces();
+            auto indent1 = out.createIndentWithBraces();
 
             for (auto& output : eventOutputs)
             {
                 auto dataTypes = output->dataTypes.getAsObjectTypeList<AST::TypeBase>();
                 auto details = AST::createEndpointDetails (output);
 
-                for (size_t type = 0; type < dataTypes.size(); ++type)
+                out << "if (endpointHandle == " << getEndpointHandle (output) << ")" << newLine;
+
                 {
-                    auto sourceValue = "event.value_" + std::to_string (type);
-                    auto source = "std::addressof (" + sourceValue + ")";
-                    auto size = "sizeof(" + sourceValue + ")";
+                    auto indent2 = out.createIndentWithBraces();
+                    out << "auto& event = state." << output->getName().get() << "[index];" << newLine;
 
-                    std::string copyData;
+                    for (size_t type = 0; type < dataTypes.size(); ++type)
+                    {
+                        out << "if (event.type == " << type << ")" << newLine;
 
-                    if (details.dataTypes[type].getValueDataSize() > 0)
-                        copyData = "memcpy (dest, " + source + ", " + size + "); ";
+                        {
+                            auto indent3 = out.createIndentWithBraces();
 
-                    out << "if (endpointHandle == " << getEndpointHandle (output)
-                        << ") { auto& event = state." << output->getName().get() << "[index]; "
-                        << " if (event.type == " << type << ") { "
-                        << copyData << "return event.frame; }}" << newLine;
+                            if (details.dataTypes[type].getValueDataSize() > 0)
+                                printPackValue ("dest", "event.value_" + std::to_string (type), details.dataTypes[type]);
+
+                            out << "return event.frame;" << newLine;
+                        }
+
+                        out << newLine;
+                    }
+
+                    out << newLine;
                 }
+
+                out << newLine;
             }
+
+            out << newLine;
 
             if (eventOutputs.empty())
                 out << "(void) endpointHandle; (void) index; (void) dest;" << blankLine;
 
-            out << "assert (false); return {};" << newLine;
+            out << "assert (false);" << newLine << "return {};" << newLine;
         }
 
         out << blankLine;
+    }
+
+    void printPackValue (const std::string& dest, const std::string& source, const choc::value::Type& type)
+    {
+        if (packedSizeMatchesNativeSize (type))
+        {
+            auto valueSize = type.getValueDataSize();
+            out << "memcpy (" << dest << ", std::addressof (" << source << "), " << valueSize << ");" << newLine;
+            out << "dest += " << valueSize << ";" << newLine;
+            return;
+        }
+
+        if (type.isBool())
+        {
+            out << "int32_t t = " << source << ";" << newLine;
+            printPackValue (dest, "t", choc::value::Type::createInt32());
+            return;
+        }
+
+        if (type.isArray() || type.isVector())
+        {
+            std::string loopVar = "i" + std::to_string (out.getTotalIndent());
+            out << "for (int " << loopVar << " = 0; " << loopVar << " < " << type.getNumElements() << "; " << loopVar << "++)" << newLine;
+
+            {
+                auto indent = out.createIndentWithBraces();
+                printPackValue (dest, source + "[" + loopVar + "]", type.getElementType());
+            }
+            out << newLine;
+            return;
+        }
+
+        if (type.isObject())
+        {
+            for (uint32_t i=0; i < type.getNumElements(); i++)
+            {
+                auto member = type.getObjectMember (i);
+                printPackValue (dest, source + "." + std::string (member.name), member.type);
+            }
+            return;
+        }
+    }
+
+    bool packedSizeMatchesNativeSize (const choc::value::Type& type)
+    {
+        if (type.isArray() || type.isVector())
+        {
+            if (type.getElementType().isPrimitive() && ! type.getElementType().isBool())
+                return true;
+
+            return false;
+        }
+
+        if (type.isObject())
+            return false;
+
+        if (type.isBool())
+            return false;
+
+        return true;
     }
 
     void printIncomingEventHandlerFunctions()
