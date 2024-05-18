@@ -553,7 +553,13 @@ namespace cmaj::test
                     currentTest->section.setNewHeader ("## " + header);
                 }
 
-                getContext().run (header);
+                getContext().run (header, [&] (const std::string& error, const choc::value::ValueView& result)
+                {
+                    (void) result;
+
+                    if (! error.empty())
+                        currentTest->reportTestFailed (error);
+                });
             }
         }
 

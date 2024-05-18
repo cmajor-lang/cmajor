@@ -1354,8 +1354,15 @@ function eventDataComparison (data, expectedData)
         if (data[i].frameOffset != expectedData[i].frameOffset)
             return "Event " + i + " has different frame offset - expected " + expectedData[i].frameOffset + ", got " + data[i].frameOffset;
 
-        let expectedValue = JSON.stringify (expectedData[i].value);
-        let dataValue = JSON.stringify (data[i].value);
+        // Handle support for value or event which occur in value/event json
+        var expectedValue = JSON.stringify (expectedData[i].value);
+        var dataValue = JSON.stringify (data[i].value);
+
+        if (dataValue != null && dataValue !== expectedValue)
+            return "Event " + i + " has different value data - expected " + expectedValue + ", got " + dataValue;
+
+        expectedValue = JSON.stringify (expectedData[i].event);
+        dataValue = JSON.stringify (data[i].event);
 
         if (dataValue != null && dataValue !== expectedValue)
             return "Event " + i + " has different event data - expected " + expectedValue + ", got " + dataValue;
