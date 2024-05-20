@@ -21,11 +21,6 @@
 #include <string>
 #include "cmaj_DefaultFlags.h"
 
-#ifndef CMAJOR_DLL
- // When building the compiler library source directly, must set a CMAJOR_DLL=0 globally
- #error
-#endif
-
 //==============================================================================
 #define CMAJ_ASSERT(x)        do { if (! (x)) cmaj::fatalError (__FUNCTION__, __LINE__); } while (false)
 #define CMAJ_ASSERT_FALSE     cmaj::fatalError (__FUNCTION__, __LINE__)

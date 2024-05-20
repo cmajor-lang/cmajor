@@ -27,7 +27,6 @@ add_executable(cmaj)
 
 add_compile_definitions (
     $<$<CONFIG:Debug>:DEBUG=1>
-    CMAJOR_DLL=0
     $<$<CONFIG:Debug>:CMAJ_ENABLE_ALLOCATION_CHECKER=1>
     CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1
     CHOC_ASSERT=must_include_assertion_header_before_any_choc_headers

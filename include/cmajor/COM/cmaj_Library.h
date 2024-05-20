@@ -26,7 +26,7 @@
 #ifndef CMAJOR_DLL
  /// This flag tells the helper functions below whether to load their functions
  /// from a DLL or whether they are being linked directly into the project
- #define CMAJOR_DLL 1
+ #define CMAJOR_DLL 0
 #endif
 
 #ifdef __clang__

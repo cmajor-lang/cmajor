@@ -62,15 +62,6 @@ static PatchManifest createManifestWithInMemoryFiles (const std::string& manifes
     return m;
 }
 
-static constexpr bool hasStaticallyLinkedPerformer()
-{
-   #ifdef CMAJOR_DLL
-    return CMAJOR_DLL == 0;
-   #else
-    return false;
-   #endif
-}
-
 static void initTestPatch (Patch& patch)
 {
     patch.createEngine      = [] { return Engine::create(); };
@@ -86,8 +77,6 @@ static void initTestPatch (Patch& patch)
 
 static bool runUnitTests (choc::test::TestProgress& progress)
 {
-    CMAJ_ASSERT (hasStaticallyLinkedPerformer());
-
     CHOC_CATEGORY (PatchUtilities);
 
     {

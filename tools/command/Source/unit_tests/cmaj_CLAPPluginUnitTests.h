@@ -670,16 +670,6 @@ struct StubGeneratedCppPatch
 
 inline void runUnitTests (choc::test::TestProgress& progress)
 {
-    constexpr auto hasStaticallyLinkedPerformer = []
-    {
-      #ifdef CMAJOR_DLL
-        return CMAJOR_DLL == 0;
-      #else
-        return false;
-      #endif
-    };
-    static_assert (hasStaticallyLinkedPerformer());
-
     CHOC_CATEGORY (CLAP);
 
     {

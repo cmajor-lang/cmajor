@@ -31,7 +31,6 @@ target_compile_options(CmajPerformer PRIVATE ${CMAJ_WARNING_FLAGS})
 
 add_compile_definitions (
     CMAJ_VERSION="${CMAJ_VERSION}"
-    CMAJOR_DLL=0
     CHOC_ASSERT=must_include_assertion_header_before_any_choc_headers
 )
 
