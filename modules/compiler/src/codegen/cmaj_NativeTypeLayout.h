@@ -150,18 +150,13 @@ private:
 
         static void copyIntsToBitVector (uint8_t* dest, const uint32_t* source, uint32_t numBits)
         {
-            uint8_t bitMask = 1;
+            uint8_t v = 0;
 
             for (uint32_t i = 0; i < numBits; ++i)
-            {
-                if (bitMask == 1)
-                    *dest = bitMask;
-                else if (*source != 0)
-                    *dest |= bitMask;
+                if (source[i] != 0)
+                    v += (1 << i);
 
-                bitMask <<= 1;
-                ++source;
-            }
+            *dest = v;
         }
     };
 
