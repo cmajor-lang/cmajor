@@ -423,7 +423,7 @@ protected:
 
     void handlePatchChange()
     {
-        auto changes = AudioProcessorListener::ChangeDetails::getDefaultFlags();
+        auto changes = juce::AudioProcessorListener::ChangeDetails::getDefaultFlags();
 
         auto newLatency = (int) patch->getFramesLatency();
 
