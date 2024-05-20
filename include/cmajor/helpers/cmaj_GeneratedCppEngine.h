@@ -165,7 +165,7 @@ private:
 
         void addInputEvent (EndpointHandle endpoint, uint32_t typeIndex, const void* eventData) override
         {
-            generatedObject.addEvent (endpoint, typeIndex, eventData);
+            generatedObject.addEvent (endpoint, typeIndex, (const unsigned char*) eventData);
         }
 
         void copyOutputValue (EndpointHandle endpoint, void* dest) override

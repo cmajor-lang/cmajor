@@ -600,6 +600,47 @@ IO_STRUCT io = {};
         }
     }
 
+    void printUnpackValue (const std::string& dest, const std::string& source, const choc::value::Type& type)
+    {
+        if (packedSizeMatchesNativeSize (type))
+        {
+            auto valueSize = type.getValueDataSize();
+            out << "memcpy (&" << dest << ", " << source << ", " << valueSize << ");" << newLine;
+            out << source << " += " << valueSize << ";" << newLine;
+            return;
+        }
+
+        if (type.isBool())
+        {
+            out << dest << " = *(bool *) " << source << ";" << newLine;
+            out << source << " += 4;" << newLine;
+            return;
+        }
+
+        if (type.isArray() || type.isVector())
+        {
+            std::string loopVar = "i" + std::to_string (out.getTotalIndent());
+            out << "for (int " << loopVar << " = 0; " << loopVar << " < " << type.getNumElements() << "; " << loopVar << "++)" << newLine;
+
+            {
+                auto indent = out.createIndentWithBraces();
+                printUnpackValue (dest + "[" + loopVar + "]", source, type.getElementType());
+            }
+            out << newLine;
+            return;
+        }
+
+        if (type.isObject())
+        {
+            for (uint32_t i=0; i < type.getNumElements(); i++)
+            {
+                auto member = type.getObjectMember (i);
+                printUnpackValue (dest + "." + std::string (member.name), source, member.type);
+            }
+            return;
+        }
+    }
+
     bool packedSizeMatchesNativeSize (const choc::value::Type& type)
     {
         if (type.isArray() || type.isVector())
@@ -621,14 +662,11 @@ IO_STRUCT io = {};
 
     void printIncomingEventHandlerFunctions()
     {
-        std::vector<std::string> eventDispatchers;
-
         for (auto& input : mainProcessor.getInputEndpoints (true))
         {
             if (input->isEvent())
             {
                 auto dataTypes = input->dataTypes.getAsObjectTypeList<AST::TypeBase>();
-                uint32_t index = 0;
 
                 for (auto& dataType : dataTypes)
                 {
@@ -659,6 +697,33 @@ IO_STRUCT io = {};
                                 out << codeGenerator->getFunctionName (*handlerFn) << " (state);" << newLine;
                             else
                                 out << codeGenerator->getFunctionName (*handlerFn) << " (state, event);" << newLine;
+                        }
+
+                        out << blankLine;
+                    }
+                }
+            }
+        }
+
+        out << "void addEvent (EndpointHandle endpointHandle, uint32_t typeIndex, const unsigned char* eventData)" << newLine;
+
+        {
+            auto indent = out.createIndentWithBraces();
+
+            out << "(void) endpointHandle; (void) typeIndex; (void) eventData;" << blankLine;
+
+            for (auto& input : mainProcessor.getInputEndpoints (true))
+            {
+                if (input->isEvent())
+                {
+                    auto dataTypes = input->dataTypes.getAsObjectTypeList<AST::TypeBase>();
+                    uint32_t index = 0;
+
+                    for (auto& dataType : dataTypes)
+                    {
+                        if (auto handlerFn = AST::findEventHandlerFunction (input, dataType))
+                        {
+                            auto functionName = "addEvent_" + std::string (input->getName());
 
                             std::string compareTypeIndex;
 
@@ -667,42 +732,31 @@ IO_STRUCT io = {};
                                 compareTypeIndex = " && typeIndex == " + std::to_string (index);
                             }
 
-                            if (dataType->isVoid())
+                            out << "if (endpointHandle == " << std::to_string (getEndpointHandle (input)) << compareTypeIndex << ")" << newLine;
+
                             {
-                                eventDispatchers.push_back ("if (endpointHandle == "
-                                                            + std::to_string (getEndpointHandle (input))
-                                                            + compareTypeIndex
-                                                            + ") return " + functionName + "();");
-                            }
-                            else
-                            {
-                                eventDispatchers.push_back ("if (endpointHandle == "
-                                                            + std::to_string (getEndpointHandle (input))
-                                                            + compareTypeIndex
-                                                            + ") return " + functionName + " (*reinterpret_cast<const "
-                                                            + getTypeName (dataType, false)
-                                                            + "*> (eventData));");
+                                auto indent2 = out.createIndentWithBraces();
+
+                                if (dataType->isVoid())
+                                {
+                                    out << "return " + functionName + "();" << newLine;
+                                }
+                                else
+                                {
+                                    out << getTypeName (dataType, false) << " value;" << newLine;
+                                    printUnpackValue ("value", "eventData", dataType->toChocType());
+                                    out << "return " << functionName << " (value);" << newLine;
+                                }
                             }
 
+                            out << blankLine;
                         }
 
-                        out << blankLine;
+                        ++index;
                     }
-
-                    ++index;
                 }
             }
-        }
 
-        out << "void addEvent (EndpointHandle endpointHandle, uint32_t typeIndex, const void* eventData)" << newLine;
-        {
-            auto indent = out.createIndentWithBraces();
-
-            if (eventDispatchers.empty())
-                out << "(void) endpointHandle; (void) typeIndex; (void) eventData;" << blankLine;
-
-            for (auto& d : eventDispatchers)
-                out << d << newLine;
         }
 
         out << blankLine;

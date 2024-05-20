@@ -91,13 +91,8 @@ struct NativeTypeLayout
     uint32_t convertPackedByteToNativeByte (uint32_t offset) const
     {
         for (auto& c : chunks)
-        {
             if (offset >= c.packedOffset && offset < c.getPackedEnd())
-            {
-                CMAJ_ASSERT (c.numBits == 0);
                 return offset + c.nativeOffset - c.packedOffset;
-            }
-        }
 
         CMAJ_ASSERT (offset == chunks.back().getPackedEnd());
         return getNativeSize();
