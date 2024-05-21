@@ -907,6 +907,8 @@ protected:
             patchWebViewHolder = choc::ui::createJUCEWebViewHolder (patchWebView->getWebView());
             patchWebViewHolder->setSize ((int) patchWebView->width, (int) patchWebView->height);
 
+            setResizeLimits (250, 160, 32768, 32768);
+
             lookAndFeel.setColour (juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
             lookAndFeel.setColour (juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
             setLookAndFeel (&lookAndFeel);
