@@ -118,22 +118,6 @@ graph P
 }
 
 
-## disabled runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"inputSwitch" })
-
-graph Test [[ main ]]
-{
-    input stream float in1, in2, switchIn;
-    output stream float out;
-
-    connection
-    {
-        if (switchIn > 0)
-            in1 -> out;
-        else
-            in2 -> out;
-    }
-}
-
 ## runScript ({ frequency:44100, blockSize:32, samplesToRender:256, subDir:"inputSwitch" })
 
 processor Test [[ main ]]
