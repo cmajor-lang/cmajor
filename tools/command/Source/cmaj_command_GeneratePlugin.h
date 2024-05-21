@@ -315,6 +315,7 @@ add_compile_definitions (
     CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=0
     JUCE_VST3_CAN_REPLACE_VST2=0
     JUCE_USE_CURL=0
+    CMAJOR_DLL=1
 )
 
 file(GLOB_RECURSE HEADERS
@@ -420,7 +421,7 @@ add_subdirectory("${CMAJ_PLUGIN_HELPERS_PATH}/clap" cmaj_clap_helpers)
 add_library(${CMAJ_TARGET_NAME} MODULE ${mainSourceFile})
 target_link_libraries(${CMAJ_TARGET_NAME} PRIVATE cmaj_clap)
 target_compile_options(${CMAJ_TARGET_NAME} PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/Zc:__cplusplus>)
-target_compile_definitions(${CMAJ_TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1>)
+target_compile_definitions(${CMAJ_TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:CMAJ_ENABLE_WEBVIEW_DEV_TOOLS=1> CMAJOR_DLL=1)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
