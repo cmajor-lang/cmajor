@@ -1092,7 +1092,7 @@ function runScript (options)
             }
             else
             {
-                let result = eventDataComparison (outputEndpoints[i].values, expectedData);
+                let result = eventDataComparison (testSection, outputEndpoints[i].values, expectedData);
 
                 if (result != null)
                 {
@@ -1113,7 +1113,7 @@ function runScript (options)
             }
             else
             {
-                let result = eventDataComparison (outputEndpoints[i].events, expectedData);
+                let result = eventDataComparison (testSection, outputEndpoints[i].events, expectedData);
 
                 if (result != null)
                 {
@@ -1341,7 +1341,7 @@ function removeObjNameValues (data)
             removeObjNameValues (data[key]);
 }
 
-function eventDataComparison (data, expectedData)
+function eventDataComparison (testSection, data, expectedData)
 {
     if (data.length != expectedData.length)
         return "Different number of events - expected " + expectedData.length + ", got " + data.length;
@@ -1355,17 +1355,23 @@ function eventDataComparison (data, expectedData)
             return "Event " + i + " has different frame offset - expected " + expectedData[i].frameOffset + ", got " + data[i].frameOffset;
 
         // Handle support for value or event which occur in value/event json
-        var expectedValue = JSON.stringify (expectedData[i].value);
-        var dataValue = JSON.stringify (data[i].value);
+        if ('value' in data[i] || 'value' in expectedData[i])
+        {
+            var expectedValue = JSON.stringify (expectedData[i].value);
+            var dataValue = JSON.stringify (data[i].value);
 
-        if (dataValue != null && dataValue !== expectedValue)
-            return "Event " + i + " has different value data - expected " + expectedValue + ", got " + dataValue;
+            if (dataValue !== expectedValue)
+                return "Event " + i + " has different value data - expected " + expectedValue + ", got " + dataValue;
+        }
 
-        expectedValue = JSON.stringify (expectedData[i].event);
-        dataValue = JSON.stringify (data[i].event);
+        if ('event' in data[i] || 'event' in expectedData[i])
+        {
+            expectedValue = JSON.stringify (expectedData[i].event);
+            dataValue = JSON.stringify (data[i].event);
 
-        if (dataValue != null && dataValue !== expectedValue)
-            return "Event " + i + " has different event data - expected " + expectedValue + ", got " + dataValue;
+            if (dataValue !== expectedValue)
+                return "Event " + i + " has different event data - expected " + expectedValue + ", got " + dataValue;
+        }
     }
 
     return null;

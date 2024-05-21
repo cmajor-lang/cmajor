@@ -569,12 +569,12 @@ getOutputEvent_ENDPOINT (index)
             auto eventArray1NativeOffset = module.stateStructLayout->convertPackedByteToNativeByte (eventArrayPackedOffsetFromState + eventEntryPackedSize);
             auto eventArrayNativeStride = eventArray1NativeOffset - eventArray0NativeOffset;
 
-            auto readEventMember = [&] (uint32_t index)
+            auto readEventMember = [&] (uint32_t index, uint32_t typeIndex)
             {
                 auto memberOffsetWithinState = eventArrayPackedOffsetFromState + static_cast<uint32_t> (eventEntryChocType.getElementTypeAndOffset (index).offset);
                 auto nativeMemberOffset = module.stateStructLayout->convertPackedByteToNativeByte (memberOffsetWithinState) - eventArray0NativeOffset;
 
-                auto type = index >= 2 ? getEndpointTypePair (output, index - 2)
+                auto type = index >= 2 ? getEndpointTypePair (output, typeIndex)
                                         : eventEntryTypePair.getElementType (index);
 
                 return getUnpackFunctionCall (module, type, addToValue ("eventAddress", nativeMemberOffset));
@@ -582,24 +582,35 @@ getOutputEvent_ENDPOINT (index)
 
             out << "const eventAddress = " << (module.module.stateStructAddress + eventArray0NativeOffset)
                 << " + (" << eventArrayNativeStride << " * index);" << newLine
-                << "const frame = " << readEventMember (0) << ";" << newLine;
+                << "const frame = " << readEventMember (0, 0) << ";" << newLine;
 
-            auto numEventTypes = eventEntryChocType.getNumElements() - 2;
+            auto dataTypes = output.getDataTypes();
+            auto numEventTypes = output.dataTypes.size();
+
+            uint32_t dataTypeIndex = 2;
 
             if (numEventTypes == 1)
             {
-                out << "return { frame, typeIndex: 0, event: " << readEventMember (2) << " };" << newLine;
+                if (dataTypes[0]->isVoid())
+                    out << "return { frame, typeIndex: 0, event: null };" << newLine;
+                else
+                    out << "return { frame, typeIndex: 0, event: " << readEventMember (dataTypeIndex, 0) << " };" << newLine;
             }
             else
             {
-                out << "const typeIndex = " << readEventMember (1) << ";" << blankLine;
+                out << "const typeIndex = " << readEventMember (1, 0) << ";" << blankLine;
 
                 out << "switch (typeIndex)" << newLine;
                 {
                     auto switchIndent = out.createIndentWithBraces();
 
                     for (uint32_t i = 0; i < numEventTypes; ++i)
-                        out << "case " << i << ": return { frame, typeIndex, event: " << readEventMember (i + 2) << " };" << newLine;
+                    {
+                        if (dataTypes[i]->isVoid())
+                            out << "case " << i << ": return { frame, typeIndex, event: null };" << newLine;
+                        else
+                            out << "case " << i << ": return { frame, typeIndex, event: " << readEventMember (dataTypeIndex++, i) << " };" << newLine;
+                    }
                 }
 
                 out << blankLine;
