@@ -1064,8 +1064,11 @@ function runScript (options)
 
             if (isError (expectedData))
             {
-                testSection.logMessage ("Can't find output file " + expectedStreamFilename + " - write it");
-                testSection.writeStreamData (expectedStreamFilename, outputEndpoints[i].frames);
+                if (options.skipMissing == null)
+                {
+                    testSection.logMessage ("Can't find output file " + expectedStreamFilename + " - write it");
+                    testSection.writeStreamData (expectedStreamFilename, outputEndpoints[i].frames);
+                }
             }
             else
             {
@@ -1087,8 +1090,11 @@ function runScript (options)
 
             if (isError (expectedData))
             {
-                testSection.logMessage ("Can't find output file " + expectedEventFilename + " - write it");
-                testSection.writeEventData (expectedEventFilename, (outputEndpoints[i].values));
+                if (options.skipMissing == null)
+                {
+                    testSection.logMessage ("Can't find output file " + expectedEventFilename + " - write it");
+                    testSection.writeEventData (expectedEventFilename, (outputEndpoints[i].values));
+                }
             }
             else
             {
@@ -1108,8 +1114,11 @@ function runScript (options)
 
             if (isError (expectedData))
             {
-                testSection.logMessage ("Can't find output file " + expectedEventFilename + " - write it");
-                testSection.writeEventData (expectedEventFilename, (outputEndpoints[i].events));
+                if (options.skipMissing == null)
+                {
+                    testSection.logMessage ("Can't find output file " + expectedEventFilename + " - write it");
+                    testSection.writeEventData (expectedEventFilename, (outputEndpoints[i].events));
+                }
             }
             else
             {
