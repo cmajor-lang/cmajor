@@ -368,6 +368,7 @@ inline void createClapPluginFiles (GeneratedFiles& generatedFiles,
                                    const cmaj::Patch::LoadParams& loadParams,
                                    const std::filesystem::path& cmajorIncludePath,
                                    const std::filesystem::path& clapIncludePath,
+                                   const std::filesystem::path& clapWrapperPath,
                                    const std::filesystem::path& pathToOutput)
 {
     const auto cmajorPluginHelpersPath = unzipCmajorPluginHelpers (pathToOutput, [] (const auto& path)
@@ -392,6 +393,8 @@ CLAP_EXPORT const clap_plugin_entry clap_entry = cmaj::plugin::clap::createGener
     const auto cmakeTemplate = R"cmake(
 cmake_minimum_required(VERSION 3.16)
 
+set(CMAKE_CXX_STANDARD 17)
+
 set(CMAJ_CMAKE_PROJECT_NAME "${projectName}")
 set(CMAJ_TARGET_BUNDLE_ID "${macOSBundleId}")
 set(CMAJ_TARGET_PATCH_VERSION "${version}")
@@ -400,6 +403,7 @@ set(CMAJ_TARGET_BUNDLE_NAME "${CMAJ_TARGET_NAME}")
 set(CMAJ_TARGET_BUNDLE_VERSION "${CMAJ_TARGET_PATCH_VERSION}")
 set(CMAJ_TARGET_SHORT_VERSION_STRING "${CMAJ_TARGET_PATCH_VERSION}")
 ${setClapIncludePathExplicitly}
+${setClapWrapperPathExplicitly}
 
 if(NOT CMAJ_INCLUDE_PATH)
     set(CMAJ_INCLUDE_PATH "${cmajorIncludePath}")
@@ -417,6 +421,13 @@ endif()
 
 add_subdirectory("${CMAJ_PLUGIN_HELPERS_PATH}/common" cmaj_plugin_helpers)
 add_subdirectory("${CMAJ_PLUGIN_HELPERS_PATH}/clap" cmaj_clap_helpers)
+
+if (CLAP_WRAPPER_PATH)
+    set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE CACHE BOOL "Get em")
+    set(CLAP_WRAPPER_DONT_ADD_TARGETS TRUE CACHE BOOL "I'll targetize")
+    set(CLAP_WRAPPER_BUILD_AUV2 TRUE CACHE BOOL "It's only logical")
+    add_subdirectory(${CLAP_WRAPPER_PATH} clap_wrapper)
+endif()
 
 add_library(${CMAJ_TARGET_NAME} MODULE ${mainSourceFile})
 target_link_libraries(${CMAJ_TARGET_NAME} PRIVATE cmaj_clap)
@@ -446,6 +457,15 @@ else()
         PREFIX ""
     )
 endif()
+
+if (CLAP_WRAPPER_PATH)
+    set(VST3_TARGET ${CMAJ_TARGET_NAME}_vst3)
+    add_library(${VST3_TARGET} MODULE)
+    target_link_libraries(${VST3_TARGET} PRIVATE cmaj_clap)
+    target_sources(${VST3_TARGET} PRIVATE entry.cpp)
+    target_add_vst3_wrapper(TARGET ${VST3_TARGET} OUTPUT_NAME ${CMAJ_CMAKE_PROJECT_NAME})
+    target_compile_definitions(${VST3_TARGET} PRIVATE CMAJOR_DLL=1)
+endif()
 )cmake";
 
     const auto performerNamespace = "performer";
@@ -470,7 +490,8 @@ endif()
         "${version}", loadParams.manifest.version,
         "${productName}", cmaj::makeSafeIdentifierName (choc::text::replace (loadParams.manifest.name, " ", "")),
         "${cmajorPluginHelpersPath}", cmajorPluginHelpersPath.generic_string(),
-        "${setClapIncludePathExplicitly}", clapIncludePath.empty() ? "" : "set(CLAP_INCLUDE_PATH \"" + clapIncludePath.generic_string() + "\")"
+        "${setClapIncludePathExplicitly}", clapIncludePath.empty() ? "" : "set(CLAP_INCLUDE_PATH \"" + clapIncludePath.generic_string() + "\")",
+        "${setClapWrapperPathExplicitly}", clapWrapperPath.empty() ? "" : "set(CLAP_WRAPPER_PATH \"" + clapWrapperPath.generic_string() + "\")"
     );
 
     generatedFiles.addFile (mainSourceFile, mainCpp);
@@ -499,7 +520,7 @@ inline void generatePluginProject (choc::ArgumentList& args, std::string outputF
     };
 
     if (isCLAP)
-        createClapPluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--clapIncludePath"), outputFile);
+        createClapPluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--clapIncludePath"), getLibraryPath ("--clapWrapperPath"), outputFile);
     else
         createJucePluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--jucePath"), args.getValueFor ("--juceFormats", true));
 
