@@ -376,6 +376,30 @@ inline void createClapPluginFiles (GeneratedFiles& generatedFiles,
         return choc::text::startsWith (path, "clap") || choc::text::startsWith (path, "common");
     });
 
+    std::string pluginCode;
+    std::string manufacturerCode;
+
+    const auto& manifest = loadParams.manifest;
+    auto plugin = manifest.manifest["plugin"];
+
+    if (plugin.isObject())
+    {
+        pluginCode       = plugin["pluginCode"].toString();
+        manufacturerCode = plugin["manufacturerCode"].toString();
+    }
+
+    if (pluginCode.empty())
+    {
+        std::cerr << "No plugin/pluginCode specified, defaulting to 'plug'" << std::endl;
+        pluginCode = "plug";
+    }
+
+    if (manufacturerCode.empty())
+    {
+        std::cerr << "No plugin/manufacturerCode specified, defaulting to 'Cmaj'" << std::endl;
+        manufacturerCode = "Cmaj";
+    }
+
     const auto mainCppTemplate = R"cpp(
 #include "cmaj_CLAPPlugin.h"
 #include "choc/javascript/choc_javascript_QuickJS.h"
@@ -402,6 +426,9 @@ set(CMAJ_TARGET_NAME "${productName}")
 set(CMAJ_TARGET_BUNDLE_NAME "${CMAJ_TARGET_NAME}")
 set(CMAJ_TARGET_BUNDLE_VERSION "${CMAJ_TARGET_PATCH_VERSION}")
 set(CMAJ_TARGET_SHORT_VERSION_STRING "${CMAJ_TARGET_PATCH_VERSION}")
+set(CMAJ_TARGET_MANUFACTURER "${manufacturer}")
+set(CMAJ_TARGET_MANUFACTURER_CODE "${manufacturerCode}")
+set(CMAJ_TARGET_PLUGIN_CODE "${pluginCode}")
 ${setClapIncludePathExplicitly}
 ${setClapWrapperPathExplicitly}
 
@@ -465,6 +492,24 @@ if (CLAP_WRAPPER_PATH)
     target_sources(${VST3_TARGET} PRIVATE entry.cpp)
     target_add_vst3_wrapper(TARGET ${VST3_TARGET} OUTPUT_NAME ${CMAJ_CMAKE_PROJECT_NAME})
     target_compile_definitions(${VST3_TARGET} PRIVATE CMAJOR_DLL=1)
+
+    if (APPLE)
+        set(AUV2_TARGET ${CMAJ_TARGET_NAME}_auv2)
+        add_library(${AUV2_TARGET} MODULE)
+        target_link_libraries(${AUV2_TARGET} PRIVATE cmaj_clap)
+        target_sources(${AUV2_TARGET} PRIVATE entry.cpp)
+        target_add_auv2_wrapper(
+            TARGET ${AUV2_TARGET}
+            OUTPUT_NAME ${CMAJ_CMAKE_PROJECT_NAME}
+            BUNDLE_IDENTIFIER ${CMAJ_TARGET_BUNDLE_ID}
+            BUNDLE_VERSION ${CMAJ_TARGET_PATCH_VERSION}
+            MANUFACTURER_NAME "${CMAJ_TARGET_MANUFACTURER}"
+            MANUFACTURER_CODE "${CMAJ_TARGET_MANUFACTURER_CODE}"
+            SUBTYPE_CODE "${CMAJ_TARGET_PLUGIN_CODE}"
+            INSTRUMENT_TYPE "aumu"
+        )
+        target_compile_definitions(${AUV2_TARGET} PRIVATE CMAJOR_DLL=1)
+    endif()
 endif()
 )cmake";
 
@@ -489,6 +534,9 @@ endif()
         "${macOSBundleId}", loadParams.manifest.ID,
         "${version}", loadParams.manifest.version,
         "${productName}", cmaj::makeSafeIdentifierName (choc::text::replace (loadParams.manifest.name, " ", "")),
+        "${pluginCode}", pluginCode,
+        "${manufacturerCode}", manufacturerCode,
+        "${manufacturer}", manifest.manufacturer,
         "${cmajorPluginHelpersPath}", cmajorPluginHelpersPath.generic_string(),
         "${setClapIncludePathExplicitly}", clapIncludePath.empty() ? "" : "set(CLAP_INCLUDE_PATH \"" + clapIncludePath.generic_string() + "\")",
         "${setClapWrapperPathExplicitly}", clapWrapperPath.empty() ? "" : "set(CLAP_WRAPPER_PATH \"" + clapWrapperPath.generic_string() + "\")"
