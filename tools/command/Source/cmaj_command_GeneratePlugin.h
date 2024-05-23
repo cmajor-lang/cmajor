@@ -442,6 +442,11 @@ endif()
 
 project("${CMAJ_CMAKE_PROJECT_NAME}" VERSION "${CMAJ_TARGET_PATCH_VERSION}" LANGUAGES CXX C)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+endif()
+
 if(NOT CMAJ_PLUGIN_HELPERS_PATH)
     message (FATAL_ERROR "You must define the CMAJ_PLUGIN_HELPERS_PATH variable to point to your local plugin helpers folder")
 endif()
@@ -450,9 +455,9 @@ add_subdirectory("${CMAJ_PLUGIN_HELPERS_PATH}/common" cmaj_plugin_helpers)
 add_subdirectory("${CMAJ_PLUGIN_HELPERS_PATH}/clap" cmaj_clap_helpers)
 
 if (CLAP_WRAPPER_PATH)
-    set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE CACHE BOOL "Get em")
-    set(CLAP_WRAPPER_DONT_ADD_TARGETS TRUE CACHE BOOL "I'll targetize")
-    set(CLAP_WRAPPER_BUILD_AUV2 TRUE CACHE BOOL "It's only logical")
+    set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE)
+    set(CLAP_WRAPPER_DONT_ADD_TARGETS TRUE)
+    set(CLAP_WRAPPER_BUILD_AUV2 TRUE)
     add_subdirectory(${CLAP_WRAPPER_PATH} clap_wrapper)
 endif()
 
