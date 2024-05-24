@@ -52,8 +52,10 @@ public:
     {
         try
         {
+            auto file = getFileFromPluginID (fileOrIdentifier);
+
             PatchManifest manifest;
-            manifest.initialiseWithFile (getFileFromPluginID (fileOrIdentifier));
+            manifest.initialiseWithFile (file);
 
             desc.name                = manifest.name;
             desc.descriptiveName     = manifest.description;
@@ -61,7 +63,7 @@ public:
             desc.manufacturerName    = manifest.manufacturer;
             desc.version             = manifest.version;
             desc.fileOrIdentifier    = SinglePatchJITPlugin::createPatchID (manifest);
-            desc.lastFileModTime     = juce::File (fileOrIdentifier).getLastModificationTime();
+            desc.lastFileModTime     = juce::File (file.string()).getLastModificationTime();
             desc.isInstrument        = manifest.isInstrument;
             desc.uniqueId            = static_cast<int> (std::hash<std::string>{} (manifest.ID));
             desc.pluginFormatName    = pluginFormatName;
