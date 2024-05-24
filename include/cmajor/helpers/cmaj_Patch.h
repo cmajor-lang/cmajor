@@ -72,7 +72,7 @@ struct Patch
 
     /// Triggers a rebuild of the current patch, which may be needed if the code
     /// or playback parameters change.
-    void rebuild();
+    void rebuild (bool synchronous = false);
 
     /// Unloads any currently loaded patch
     void unload();
@@ -1942,13 +1942,13 @@ inline void Patch::setErrorStatus (const std::string& error, const std::string& 
 
 inline void Patch::handleFileChange (PatchFileChangeChecker::ChangeType change)
 {
-    rebuild();
+    rebuild (false);
 
     if (patchFilesChanged)
         patchFilesChanged (change);
 }
 
-inline void Patch::rebuild()
+inline void Patch::rebuild (bool synchronous)
 {
     try
     {
@@ -1958,7 +1958,7 @@ inline void Patch::rebuild()
 
         if (lastLoadParams.manifest.reload())
         {
-            loadPatch (lastLoadParams, false);
+            loadPatch (lastLoadParams, synchronous);
             return;
         }
     }
@@ -2008,7 +2008,7 @@ inline void Patch::setPlaybackParams (PlaybackParams newParams)
     if (currentPlaybackParams != newParams)
     {
         currentPlaybackParams = newParams;
-        rebuild();
+        rebuild (true);
     }
 }
 
