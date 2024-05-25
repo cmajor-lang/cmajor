@@ -25,9 +25,43 @@
 import os
 import sys
 import zipfile
+import argparse
+
 sys.dont_write_bytecode = True
 from string_literal_helpers import *
 
+differencesFound = 0
+
+#####################################################################################################
+parser = argparse.ArgumentParser (description = "This script updates the embedded assets in the projuect")
+
+parser.add_argument ("--dryRun", help = "Specifies that we should do a dry run and not update files", action=argparse.BooleanOptionalAction, default=False)
+
+args = parser.parse_args()
+
+#####################################################################################################
+def replaceFileIfDifferent (file, newContent):
+    global differencesFound, args
+
+    oldContent = ""
+
+    if (os.path.exists (file)):
+        with open (file, 'r') as f:
+            oldContent = f.read()
+
+    if (oldContent != newContent):
+
+        differencesFound = differencesFound + 1
+
+        if (args.dryRun == False):
+            print ("Updating " + file)
+
+            with open (file, "w") as f:
+                f.write (newContent)
+        else:
+            print ("File would be updated " + file)
+    else:
+        print ("Skipping unchanged file: " + file)
 
 #####################################################################################################
 def createStringLiteralFile(variableName, targetFile, source):
@@ -243,3 +277,4 @@ createEmbeddedZipData ("cmajor/modules/plugin/include", "cmajorPluginHelpersFold
                        os.path.join (repoFolder, "tools/command/Source/cmaj_command_EmbeddedPluginHelpersFolder.h"),
                        os.path.join (repoFolder, "modules/plugin/include"))
 
+exit (differencesFound)

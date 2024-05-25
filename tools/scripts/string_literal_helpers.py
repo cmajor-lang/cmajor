@@ -106,22 +106,6 @@ def createCppDataLiteralFromData (data, isSigned, indent = "    "):
 
     return result + currentLine
 
-
-def replaceFileIfDifferent (file, newContent):
-    oldContent = ""
-
-    if (os.path.exists (file)):
-        with open (file, 'r') as f:
-            oldContent = f.read()
-
-    if (oldContent != newContent):
-        print ("Updating " + file)
-
-        with open (file, "w") as f:
-            f.write (newContent)
-    else:
-        print ("Skipping unchanged file: " + file)
-
 def isDigit (c):
     return (c >= '0' and c <= '9')
 
