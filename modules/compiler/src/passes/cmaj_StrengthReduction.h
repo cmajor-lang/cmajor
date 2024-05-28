@@ -39,6 +39,24 @@ struct StrengthReduction  : public PassAvoidingGenericFunctionsAndModules
                 if (range->start == 0 && range->end == *parentSize)
                     replaceObject (o, o.parent);
     }
+
+    void visit (AST::IfStatement& o) override
+    {
+        super::visit (o);
+
+        if (auto v = o.condition->getAsConstantBool())
+        {
+            if (v->getAsBool() == true)
+            {
+                replaceObject (o, o.trueBranch);
+            }
+            else if (v->getAsBool() == false)
+            {
+                if (! o.falseBranch.hasDefaultValue())
+                    replaceObject (o, o.falseBranch);
+            }
+        }
+    }
 };
 
 }
