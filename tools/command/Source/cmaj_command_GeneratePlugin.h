@@ -77,7 +77,8 @@ inline std::string createFileData (const GeneratedFiles& files)
         else
             fileList += ",\n";
 
-        if (f.content.find ('\0') == std::string_view::npos
+        if (f.content.length() < 32768
+             && f.content.find ('\0') == std::string_view::npos
              && choc::text::findInvalidUTF8Data (f.content.data(), f.content.size()) == nullptr)
         {
             result += "    static constexpr const char* " + name + " =\n        "
