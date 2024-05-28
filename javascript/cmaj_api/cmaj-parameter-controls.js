@@ -146,6 +146,7 @@ export class Knob  extends ParameterControlBase
         this.className = "knob-container";
         const min = endpointInfo?.annotation?.min || 0;
         const max = endpointInfo?.annotation?.max || 1;
+        const mid = endpointInfo?.annotation?.mid || undefined;
 
         const createSvgElement = tag => window.document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
@@ -187,8 +188,38 @@ export class Knob  extends ParameterControlBase
         const remap = (source, sourceFrom, sourceTo, targetFrom, targetTo) =>
                         (targetFrom + (source - sourceFrom) * (targetTo - targetFrom) / (sourceTo - sourceFrom));
 
-        const toValue = (knobRotation) => remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);
-        this.toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);
+        const toValue = (knobRotation) =>
+        {
+            if (mid > min && mid < max)
+            {
+                const normalisedKnob = remap (knobRotation, -maxKnobRotation, maxKnobRotation, 0, 1);
+                const range = max - min;
+                const power = Math.log ((mid - min) / (range)) / Math.log (0.5);
+
+                return min + range * Math.pow (normalisedKnob, power);
+            }
+            else
+            {
+                return remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);
+            }
+        };
+
+        this.toRotation = (value) =>
+        {
+            if (mid > min && mid < max)
+            {
+                const range = max - min;
+                const power = Math.log ((mid - min) / (range)) / Math.log (0.5);
+
+                const normalisedKnob = Math.pow ((value - min) / range, 1 / power);
+
+                return remap (normalisedKnob, 0, 1, -maxKnobRotation, maxKnobRotation);
+            }
+            else
+            {
+                return remap (value, min, max, -maxKnobRotation, maxKnobRotation);
+            }
+        };
 
         this.rotation = this.toRotation (this.defaultValue);
         this.setRotation (this.rotation, true);

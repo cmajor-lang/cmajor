@@ -14,7 +14,7 @@
 
 graph Filter [[ main ]]
 {
-    input filter.frequency;
+    input filter.frequency [[ mid: 1000 ]];
     input filter.q;
 
     input stream float<2> in;

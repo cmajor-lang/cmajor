@@ -95,6 +95,7 @@ The following properties can be added to the endpoint annotation in order to giv
 - `name` (required) - the name to display to the user
 - `min` - the minimum value for the parameter. If not specified, defaults to 0.0
 - `max` - the maximum value for the parameter. If not specified, defaults to 1.0
+- `mid` - the middle value in the parameter range. This is used by the standard rotary control to support non-linear scaling of the control if specified
 - `init` - if specified, this value will be sent to the parameter when the patch is initialised
 - `step` - the intervals to which the parameter value must "snap" when being changed
 - `unit` - an optional string which the host will display as the units for this value. E.g. "%" or "dB"

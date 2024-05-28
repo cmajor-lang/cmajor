@@ -436,6 +436,7 @@ struct EmbeddedWebAssets
         "        this.className = \"knob-container\";\n"
         "        const min = endpointInfo?.annotation?.min || 0;\n"
         "        const max = endpointInfo?.annotation?.max || 1;\n"
+        "        const mid = endpointInfo?.annotation?.mid || undefined;\n"
         "\n"
         "        const createSvgElement = tag => window.document.createElementNS (\"http://www.w3.org/2000/svg\", tag);\n"
         "\n"
@@ -477,8 +478,38 @@ struct EmbeddedWebAssets
         "        const remap = (source, sourceFrom, sourceTo, targetFrom, targetTo) =>\n"
         "                        (targetFrom + (source - sourceFrom) * (targetTo - targetFrom) / (sourceTo - sourceFrom));\n"
         "\n"
-        "        const toValue = (knobRotation) => remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);\n"
-        "        this.toRotation = (value) => remap (value, min, max, -maxKnobRotation, maxKnobRotation);\n"
+        "        const toValue = (knobRotation) =>\n"
+        "        {\n"
+        "            if (mid > min && mid < max)\n"
+        "            {\n"
+        "                const normalisedKnob = remap (knobRotation, -maxKnobRotation, maxKnobRotation, 0, 1);\n"
+        "                const range = max - min;\n"
+        "                const power = Math.log ((mid - min) / (range)) / Math.log (0.5);\n"
+        "\n"
+        "                return min + range * Math.pow (normalisedKnob, power);\n"
+        "            }\n"
+        "            else\n"
+        "            {\n"
+        "                return remap (knobRotation, -maxKnobRotation, maxKnobRotation, min, max);\n"
+        "            }\n"
+        "        };\n"
+        "\n"
+        "        this.toRotation = (value) =>\n"
+        "        {\n"
+        "            if (mid > min && mid < max)\n"
+        "            {\n"
+        "                const range = max - min;\n"
+        "                const power = Math.log ((mid - min) / (range)) / Math.log (0.5);\n"
+        "\n"
+        "                const normalisedKnob = Math.pow ((value - min) / range, 1 / power);\n"
+        "\n"
+        "                return remap (normalisedKnob, 0, 1, -maxKnobRotation, maxKnobRotation);\n"
+        "            }\n"
+        "            else\n"
+        "            {\n"
+        "                return remap (value, min, max, -maxKnobRotation, maxKnobRotation);\n"
+        "            }\n"
+        "        };\n"
         "\n"
         "        this.rotation = this.toRotation (this.defaultValue);\n"
         "        this.setRotation (this.rotation, true);\n"
@@ -3487,7 +3518,7 @@ struct EmbeddedWebAssets
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12712) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 29343) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30314) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
