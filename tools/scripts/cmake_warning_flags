@@ -16,7 +16,7 @@ set(CMAJ_TARGET_COMPILER
 
 set(CMAJ_WARNING_FLAGS
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
-        ${EXTRA_WARNINGS} -Wall -Wbool-conversion -Wcast-align -Wconditional-uninitialized -Wconstant-conversion
+        ${EXTRA_WARNINGS} -Wall -Wextra -Wbool-conversion -Wcast-align -Wconditional-uninitialized -Wconstant-conversion
         -Wconversion -Wextra-semi -Winconsistent-missing-destructor-override -Wint-conversion
         -Wno-ignored-qualifiers -Wno-missing-field-initializers -Wnullable-to-nonnull-conversion
         -Woverloaded-virtual -Wpedantic -Wshadow-all -Wshift-sign-overflow -Wshorten-64-to-32
