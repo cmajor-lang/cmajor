@@ -714,7 +714,10 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
                 if (! process ({ block.audioInput.getFrameRange ({ start, start + numToDo }),
                                  block.audioOutput.getFrameRange ({ start, start + numToDo }),
                                  start == 0 ? block.midiMessages : choc::span<choc::midi::ShortMessage>(),
-                                 block.onMidiOutputMessage }, replaceOutput))
+                                 [&] (uint32_t frame, choc::midi::ShortMessage m)
+                                 {
+                                     block.onMidiOutputMessage (start + frame, m);
+                                 }}, replaceOutput))
                     return false;
 
                 start += numToDo;
