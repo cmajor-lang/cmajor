@@ -1923,7 +1923,6 @@ struct Vector  : public Array<ElementType, numElements>
 {
     Vector() = default;
     Vector (Null) {}
-    Vector (const Vector&) noexcept = default;
 
     template <typename ElementOrList>
     Vector (const ElementOrList& value) noexcept  : Array<ElementType, numElements> (value) {}
