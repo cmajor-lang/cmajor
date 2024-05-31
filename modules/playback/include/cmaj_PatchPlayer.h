@@ -141,6 +141,27 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
             onStatusChange (s);
     }
 
+    bool handleClientMessage (PatchView& sourceView, const choc::value::ValueView& msg)
+    {
+        bool messageHandled = patch.handleClientMessage (sourceView, msg);
+
+        if (messageHandled)
+        {
+            auto typeMember = msg["type"];
+
+            if (typeMember.isString() && typeMember.getString() == "req_reset")
+            {
+                // Reset the patch player state
+                currentBPM = 0;
+                numerator = 0;
+                denominator = 0;
+                transportFlags = 0;
+            }
+        }
+
+        return messageHandled;
+    }
+
     cmaj::Patch patch;
 
     std::function<void()> onPatchLoaded, onPatchUnloaded;

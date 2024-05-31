@@ -428,7 +428,7 @@ struct PatchPlayerServer
                 if (typeMember.isString() && typeMember.getString() == "load_patch" && ! message["file"].toString().empty())
                     writeToConsole ("Loading patch: " + message["file"].toString());
 
-                if (patchPlayer != nullptr && patchPlayer->patch.handleClientMessage (*view, message))
+                if (patchPlayer != nullptr && patchPlayer->handleClientMessage (*view, message))
                     return true;
 
                 if (typeMember.isString())
