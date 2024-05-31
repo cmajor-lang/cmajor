@@ -1087,6 +1087,10 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             {
                 numAudioInputChans += numAudioChans;
             }
+            else if (e.isMIDI())
+            {
+                hasMIDIInputs = true;
+            }
             else
             {
                 if (e.isTimelineTimeSignature())        { timeSigEventID = e.endpointID;        hasTimecodeInputs = true; }
