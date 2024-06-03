@@ -1,0 +1,327 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+## global
+
+namespace IR
+{
+    const float[] terms =
+    (
+        0.00005615358168142848f, 0.0006938228034414351f, 0.004099281504750252f, 0.015480123460292817f, 0.04213390499353409f, 0.08829477429389954f, 0.14828309416770936f, 0.20427927374839784f, 0.23274798691272736f, 0.21666660904884339f, 0.15581533312797547f, 0.06848157942295075f, -0.016490735113620759f, -0.07267753779888153f, -0.08711397647857666f, -0.06421341001987457f, -0.021583708003163339f, 0.01922381855547428f, 0.04212377965450287f, 0.04191901162266731f, 0.024118512868881227f, 0.00030953437089920044f, -0.01804473251104355f, -0.024410469457507135f, -0.0188416987657547f, -0.006468249950557947f, 0.005842984654009342f, 0.012819250114262104f, 0.0126797491684556f, 0.007107231765985489f, -0.000261303735896945f, -0.005842392332851887f, -0.0076363165862858299f, -0.00572910625487566f, -0.0017826214898377658f, 0.00203879177570343f, 0.0041151465848088268f, 0.0039459895342588429f, 0.002112694550305605f, -0.00021718780044466257f, -0.001926176599226892f, -0.002417522482573986f, -0.0017547679599374533f, -0.0004849294200539589f, 0.0007068542181514204f, 0.001324117067269981f, 0.001230542897246778f, 0.000627294066362083f, -0.00011010805610567331f, -0.0006332158227451146f, -0.000764843134675175f, -0.0005367596750147641f, -0.00012872024672105908f, 0.0002425511192996055f, 0.0004252131038811058f, 0.0003831316716969013f, 0.00018529499357100576f, -0.00004772437387146056f, -0.00020744954235851765f, -0.00024155763094313443f, -0.00016374888946302235f, -0.000032902753446251157f, 0.00008254041313193738f, 0.00013626540021505207f, 0.00011905679275514558f, 0.000054382595408242199f, -0.00001912204606924206f, -0.00006775173096684739f, -0.0000761553892516531f, -0.0000498067238368094f, -0.00000793258732301183f, 0.00002789184873108752f, 0.00004358123624115251f, 0.00003692197788041085f, 0.000015841800632188098f, -0.0000073039445851463828f, -0.000022063559299567716f, -0.00002396700620010961f, -0.00001510115725977812f, -0.0000017264464986510575f, 0.00000936774904403137f, 0.000013911513633502182f, 0.000011426442142692395f, 0.000004574401373247383f, -0.000002701037828956032f, -0.000007165668193920283f, -0.000007529346930823522f, -0.000004562797585094813f, -2.989861513924552e-7f, 0.0000031293575375457296f, 0.000004432310561242048f, 0.0000035285602280055174f, 0.0000013071012290311047f, -9.757300176715945e-7f, -0.000002321296733498457f, -0.0000023611582946614364f, -0.0000013734603498960496f, -1.669684479566058e-8f, 0.000001040379402184044f, 0.000001409559899911983f
+    );
+}
+
+## runScript ({ frequency:44100, blockSize:10, samplesToRender:100 })
+
+processor Test
+{
+    output stream float impulseResponse;
+
+    void main()
+    {
+        var filter = std::filters::butterworth (8)::create (0, 44100, 5000);
+
+        impulseResponse <- filter.process (1.0f);
+        advance();
+
+        loop
+        {
+            impulseResponse <- filter.process (0.0f);
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000 })
+
+graph ApplyFilter [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node filter = std::filters::butterworth (8)::Processor (0, 5000);
+
+    connection
+    {
+        in -> filter.in;
+        filter.out -> out;
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000 })
+
+processor VectorConvolution [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    let convolutionLength = IR::terms.size;
+
+    float<convolutionLength> terms;
+
+    void main()
+    {
+        float<convolutionLength> i;
+
+        loop
+        {
+            i[1:] = i[0:(convolutionLength-1)];
+            i[0] = in;
+
+            out <- sum (i * terms);
+
+            advance();
+        }
+    }
+
+    void init()
+    {
+        for (wrap<convolutionLength> i)
+            terms[i] = IR::terms[i];
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000 })
+
+processor ArrayConvolution [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    let convolutionLength = IR::terms.size;
+
+    void main()
+    {
+        float[convolutionLength] i;
+
+        loop
+        {
+            i[1:] = i[0:(convolutionLength-1)];
+            i[0] = in;
+
+            float result;
+
+            for (wrap<convolutionLength> v)
+                result += i[v] * IR::terms[v];
+
+            out <- result;
+
+            advance();
+        }
+    }
+}
+
+## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000 })
+
+processor ArrayOfVectorConvolution [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    let convolutionLength = IR::terms.size;
+    let vectorSize = 4;
+    let arrayLength = convolutionLength / vectorSize + 1;
+
+    float<vectorSize>[vectorSize, arrayLength] coefficients;
+
+    void main()
+    {
+        float<vectorSize>[arrayLength] x;
+
+        loop
+        {
+            for (wrap<vectorSize> i)
+            {
+                x[0].at (vectorSize - 1 - i) = in;
+
+                float<vectorSize> result;
+
+                for (wrap<arrayLength> l)
+                    result += x[l] * coefficients[i, l];
+
+                out <- sum (result);
+                advance();
+            }
+
+            x[1:] = x[0:arrayLength-1];
+            x[0] = 0;
+        }
+    }
+
+    void init()
+    {
+        for (wrap<vectorSize> i)
+        {
+            wrap<arrayLength> arrayElement;
+            var vectorElement = (vectorSize -1 - i);
+
+            for (wrap<convolutionLength> j)
+            {
+                coefficients[i, arrayElement].at (vectorElement) = IR::terms[j];
+                vectorElement++;
+
+                if (vectorElement == vectorSize)
+                {
+                    vectorElement = 0;
+                    arrayElement++;
+                }
+            }
+
+        }
+    }
+}
+
+
+## performanceTest ({ frequency:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:1000000 })
+
+graph ApplyFilter [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    node filter = std::filters::butterworth (8)::Processor (0, 5000);
+
+    connection
+    {
+        in -> filter.in;
+        filter.out -> out;
+    }
+}
+
+## performanceTest ({ frequency:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:1000000 })
+
+processor VectorConvolution [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    let convolutionLength = IR::terms.size;
+
+    float<convolutionLength> terms;
+
+    void main()
+    {
+        float<convolutionLength> i;
+
+        loop
+        {
+            i[1:] = i[0:(convolutionLength-1)];
+            i[0] = in;
+
+            out <- sum (i * terms);
+
+            advance();
+        }
+    }
+
+    void init()
+    {
+        for (wrap<convolutionLength> i)
+            terms[i] = IR::terms[i];
+    }
+}
+
+## performanceTest ({ frequency:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:1000000 })
+
+processor ArrayConvolution [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    let convolutionLength = IR::terms.size;
+
+    void main()
+    {
+        float[convolutionLength] i;
+
+        loop
+        {
+            i[1:] = i[0:(convolutionLength-1)];
+            i[0] = in;
+
+            float result;
+
+            for (wrap<convolutionLength> v)
+                result += i[v] * IR::terms[v];
+
+            out <- result;
+
+            advance();
+        }
+    }
+}
+
+## performanceTest ({ frequency:44100, minBlockSize:4, maxBlockSize: 1024, samplesToRender:1000000 })
+
+processor ArrayOfVectorConvolution [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    let convolutionLength = IR::terms.size;
+    let vectorSize = 4;
+    let arrayLength = convolutionLength / vectorSize + 1;
+
+    float<vectorSize>[vectorSize, arrayLength] coefficients;
+
+    void main()
+    {
+        float<vectorSize>[arrayLength] x;
+
+        loop
+        {
+            for (wrap<vectorSize> i)
+            {
+                x[0].at (vectorSize - 1 - i) = in;
+
+                float<vectorSize> result;
+
+                for (wrap<arrayLength> l)
+                    result += x[l] * coefficients[i, l];
+
+                out <- sum (result);
+                advance();
+            }
+
+            x[1:] = x[0:arrayLength-1];
+            x[0] = 0;
+        }
+    }
+
+    void init()
+    {
+        for (wrap<vectorSize> i)
+        {
+            wrap<arrayLength> arrayElement;
+            var vectorElement = (vectorSize -1 - i);
+
+            for (wrap<convolutionLength> j)
+            {
+                coefficients[i, arrayElement].at (vectorElement) = IR::terms[j];
+                vectorElement++;
+
+                if (vectorElement == vectorSize)
+                {
+                    vectorElement = 0;
+                    arrayElement++;
+                }
+            }
+
+        }
+    }
+}
