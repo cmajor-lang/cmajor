@@ -27,7 +27,8 @@ namespace cmaj::audio_utils
 //==============================================================================
 struct RenderingPlayer  : public AudioMIDIPlayer
 {
-    RenderingPlayer (const AudioDeviceOptions& o) : AudioMIDIPlayer (o)
+    RenderingPlayer (const AudioDeviceOptions& o, ProvideInputFn in, HandleOutputFn out)
+       : AudioMIDIPlayer (o), provideInput (std::move (in)), handleOutput (std::move (out))
     {
     }
 
@@ -82,7 +83,7 @@ struct RenderingPlayer  : public AudioMIDIPlayer
             if (callback == nullptr)
                 return;
 
-            if (! options.provideInput (audioInput, midiMessages, midiMessageTimes))
+            if (! provideInput (audioInput, midiMessages, midiMessageTimes))
             {
                 callback = nullptr;
                 return;
@@ -131,7 +132,7 @@ struct RenderingPlayer  : public AudioMIDIPlayer
                 callback->process (audioInput, audioOutput, true);
             }
 
-            if (! options.handleOutput (audioOutput))
+            if (! handleOutput (audioOutput))
             {
                 callback = nullptr;
                 return;
@@ -139,37 +140,25 @@ struct RenderingPlayer  : public AudioMIDIPlayer
         }
     }
 
+    ProvideInputFn provideInput;
+    HandleOutputFn handleOutput;
     std::mutex startLock;
     AudioMIDICallback* callback = nullptr;
     std::thread renderThread;
 };
 
-std::unique_ptr<AudioMIDIPlayer> createRenderingPlayer (const AudioDeviceOptions& options)
+std::unique_ptr<AudioMIDIPlayer> createRenderingPlayer (const AudioDeviceOptions& options,
+                                                        ProvideInputFn provideInput,
+                                                        HandleOutputFn handleOutput)
 {
-    /// Must provide both functions
-    CMAJ_ASSERT (options.provideInput != nullptr && options.handleOutput != nullptr);
+    CMAJ_ASSERT (provideInput != nullptr && handleOutput != nullptr);
 
-    return std::make_unique<RenderingPlayer> (options);
+    return std::make_unique<RenderingPlayer> (options, std::move (provideInput), std::move (handleOutput));
 }
 
 //==============================================================================
-std::unique_ptr<AudioMIDIPlayer> createDummyPlayer (const AudioDeviceOptions& options)
-{
-    struct DummyPlayer : public AudioMIDIPlayer
-    {
-        DummyPlayer (const AudioDeviceOptions& o) : AudioMIDIPlayer (o) {}
-
-        AvailableAudioDevices getAvailableDevices() override    { return {}; }
-        void start (AudioMIDICallback&) override {}
-        void stop() override {}
-    };
-
-    return std::make_unique<DummyPlayer> (options);
-}
-
-//==============================================================================
-MultiClientAudioMIDIPlayer::MultiClientAudioMIDIPlayer (const AudioDeviceOptions& options)
-    : player (options.createPlayer (options))
+MultiClientAudioMIDIPlayer::MultiClientAudioMIDIPlayer (std::shared_ptr<AudioMIDIPlayer> p)
+    : player (std::move (p))
 {
     player->onSampleRateUpdated = [&] (double sampleRate)
     {

@@ -51,17 +51,6 @@ struct AudioDeviceOptions
     uint32_t inputChannelCount = 2;
     uint32_t outputChannelCount = 2;
     std::string audioAPI, inputDeviceName, outputDeviceName;
-
-    /// If these lambdas are provided, then a fake device is created and these
-    /// functions are called on a thread to do the rendering. They can return false to
-    /// stop the device
-    std::function<bool(choc::buffer::ChannelArrayView<float> audioInput,
-                       std::vector<choc::midi::ShortMessage>& midiMessages,
-                       std::vector<uint32_t>& midiMessageTimes)> provideInput;
-    std::function<bool(choc::buffer::ChannelArrayView<const float> audioOutput)> handleOutput;
-
-    using CreateAudioPlayerFn = std::function<std::shared_ptr<AudioMIDIPlayer>(const AudioDeviceOptions&)>;
-    CreateAudioPlayerFn createPlayer;
 };
 
 //==============================================================================
@@ -91,14 +80,21 @@ struct AudioMIDIPlayer
     std::function<void(double)> onSampleRateUpdated;
 };
 
-std::unique_ptr<AudioMIDIPlayer> createDummyPlayer (const AudioDeviceOptions&);
-std::unique_ptr<AudioMIDIPlayer> createRenderingPlayer (const AudioDeviceOptions&);
+//==============================================================================
+using ProvideInputFn = std::function<bool(choc::buffer::ChannelArrayView<float> audioInput,
+                                          std::vector<choc::midi::ShortMessage>& midiMessages,
+                                          std::vector<uint32_t>& midiMessageTimes)>;
 
+using HandleOutputFn = std::function<bool(choc::buffer::ChannelArrayView<const float> audioOutput)>;
+
+/// Creates a player that will render its audio stream via the given input/output functions
+std::unique_ptr<AudioMIDIPlayer> createRenderingPlayer (const AudioDeviceOptions&,
+                                                        ProvideInputFn, HandleOutputFn);
 
 //==============================================================================
 struct MultiClientAudioMIDIPlayer  : private AudioMIDICallback
 {
-    MultiClientAudioMIDIPlayer (const AudioDeviceOptions&);
+    MultiClientAudioMIDIPlayer (std::shared_ptr<AudioMIDIPlayer>);
     ~MultiClientAudioMIDIPlayer() override;
 
     void addCallback (AudioMIDICallback&);

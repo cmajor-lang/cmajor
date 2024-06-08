@@ -16,14 +16,20 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
+#include <iomanip>
 #include "../../../modules/playback/include/cmaj_PatchWindow.h"
 #include "../../../modules/scripting/include/cmaj_ScriptEngine.h"
 #include "../../../modules/server/include/cmaj_PatchPlayerServer.h"
 #include "choc/containers/choc_ArgumentList.h"
-
-#include <iomanip>
+#include "cmaj_RtAudioPlayer.h"
 
 void printCmajorVersion();
+
+static std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> createDefaultAudioDevice (const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
+{
+    return std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> (cmaj::createRtAudioMIDIPlayer (audioOptions));
+}
+
 
 //==============================================================================
 static void runPatch (cmaj::PatchPlayer& player, const std::string& filename, int64_t framesToRender, bool stopOnError)
@@ -121,12 +127,13 @@ void playFile (choc::ArgumentList& args,
         return;
     }
 
-    auto audioPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (audioOptions);
+    auto audioPlayer = createDefaultAudioDevice (audioOptions);
+    auto multiClientPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (audioPlayer);
 
     if (noGUI)
     {
         cmaj::PatchPlayer player (engineOptions, buildSettings, true);
-        player.setAudioMIDIPlayer (std::move (audioPlayer));
+        player.setAudioMIDIPlayer (std::move (multiClientPlayer));
         player.startPlayback();
         runPatch (player, file.string(), framesToRender, stopOnError);
     }
@@ -134,7 +141,7 @@ void playFile (choc::ArgumentList& args,
     {
         choc::ui::setWindowsDPIAwareness();
         cmaj::PatchWindow patchWindow (engineOptions, buildSettings);
-        patchWindow.player.setAudioMIDIPlayer (std::move (audioPlayer));
+        patchWindow.player.setAudioMIDIPlayer (std::move (multiClientPlayer));
         runPatch (patchWindow.player, file.string(), framesToRender, stopOnError);
     }
 }
@@ -194,5 +201,7 @@ void runServerProcess (choc::ArgumentList& args,
     std::cout << "OS: " << CHOC_OPERATING_SYSTEM_NAME << std::endl;
 
     cmaj::runPatchPlayerServer (address, static_cast<uint16_t> (portNum),
-                                engineOptions, buildSettings, audioOptions, patchFolders);
+                                engineOptions, buildSettings, audioOptions,
+                                [] (const auto& options) { return createDefaultAudioDevice (options); },
+                                patchFolders);
 }

@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "choc/gui/choc_MessageLoop.h"
+#include "choc/text/choc_OpenSourceLicenseList.h"
 #include "../../../modules/playback/include/cmaj_AudioPlayer.h"
 #include "../../../modules/playback/include/cmaj_AllocationChecker.h"
 
@@ -52,17 +54,6 @@ struct RtAudioMIDIPlayer  : public cmaj::audio_utils::AudioMIDIPlayer
     ~RtAudioMIDIPlayer() override
     {
         close();
-    }
-
-    //==============================================================================
-    static std::unique_ptr<AudioMIDIPlayer> create (const cmaj::audio_utils::AudioDeviceOptions& o)
-    {
-        auto player = std::make_unique<RtAudioMIDIPlayer> (o);
-
-        if (player->open())
-            return player;
-
-        return {};
     }
 
     //==============================================================================
@@ -185,7 +176,7 @@ private:
 
     bool openAudio()
     {
-        rtAudio = std::make_unique<RtAudio> (getAPIToUse(), 
+        rtAudio = std::make_unique<RtAudio> (getAPIToUse(),
                                              [this] (RtAudioErrorType type, const std::string& errorText) { handleAudioError (type, errorText); },
                                              [this] () { handleStreamUpdate (); });
 
@@ -574,6 +565,18 @@ private:
         }
     }
 };
+
+//==============================================================================
+inline std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer> createRtAudioMIDIPlayer (const cmaj::audio_utils::AudioDeviceOptions& o)
+{
+    auto player = std::make_unique<RtAudioMIDIPlayer> (o);
+
+    if (player->open())
+        return player;
+
+    return {};
+}
+
 
 CHOC_REGISTER_OPEN_SOURCE_LICENCE(RtAudio, R"(
 ==============================================================================

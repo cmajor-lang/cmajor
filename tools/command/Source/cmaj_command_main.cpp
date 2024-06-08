@@ -28,7 +28,6 @@
 #include "cmaj_command_Render.h"
 #include "cmaj_command_CreatePatch.h"
 #include "cmaj_command_RunTests.h"
-#include "cmaj_RtAudioPlayer.h"
 
 void runUnitTests (choc::ArgumentList&, const choc::value::Value&, cmaj::BuildSettings&);
 
@@ -188,8 +187,6 @@ static cmaj::audio_utils::AudioDeviceOptions parseAudioDeviceArgs (choc::Argumen
 
     options.outputDeviceName = args.removeValueFor ("--output-device", {});
     options.inputDeviceName  = args.removeValueFor ("--input-device", {});
-
-    options.createPlayer = cmaj::RtAudioMIDIPlayer::create;
 
     return options;
 }

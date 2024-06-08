@@ -24,6 +24,7 @@
 #include "../../playback/include/cmaj_PatchPlayer.h"
 #include "../../playback/include/cmaj_AudioSources.h"
 #include "../../embedded_assets/cmaj_EmbeddedAssets.h"
+#include "../include/cmaj_PatchPlayerServer.h"
 
 #define CHOC_ENABLE_HTTP_SERVER_TEST 1
 #include "choc/tests/choc_tests.h"
@@ -38,10 +39,12 @@ struct PatchPlayerServer
                        const choc::value::Value& engineOptionsToUse,
                        cmaj::BuildSettings& buildSettingsToUse,
                        const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
+                       CreateAudioMIDIPlayerFn createAudioPlayer,
                        std::vector<std::filesystem::path> patchLocationsToScan)
         : engineOptions (engineOptionsToUse),
           buildSettings (buildSettingsToUse),
-          patchLocations (std::move (patchLocationsToScan))
+          patchLocations (std::move (patchLocationsToScan)),
+          createAudioMIDIPlayer (std::move (createAudioPlayer))
     {
         if (httpServer.open (address, port, 0,
                              [this] { return std::make_unique<ClientRequestHandler> (*this); },
@@ -113,8 +116,9 @@ struct PatchPlayerServer
 
     void createAudioPlayer (const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
     {
-        audioPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (audioOptions);
-        audioPlayer->player->deviceOptionsChanged = [this] { broadcastAudioDeviceProperties(); };
+        auto player = createAudioMIDIPlayer (audioOptions);
+        player->deviceOptionsChanged = [this] { broadcastAudioDeviceProperties(); };
+        audioPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (player);
     }
 
     void sendAudioDeviceProperties (choc::value::Value options)
@@ -952,6 +956,7 @@ private:
     cmaj::BuildSettings buildSettings;
     std::vector<std::filesystem::path> patchLocations;
     choc::value::Value codeGenTargets;
+    CreateAudioMIDIPlayerFn createAudioMIDIPlayer;
 
     choc::threading::ThreadSafeFunctor<std::function<void(const choc::value::ValueView&)>> setAudioDevicePropsFn;
     std::shared_ptr<cmaj::audio_utils::MultiClientAudioMIDIPlayer> audioPlayer;
@@ -967,9 +972,11 @@ void runPatchPlayerServer (std::string address,
                            const choc::value::Value& engineOptions,
                            cmaj::BuildSettings& buildSettings,
                            const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
+                           CreateAudioMIDIPlayerFn createPlayer,
                            std::vector<std::filesystem::path> patchLocations)
 {
-    PatchPlayerServer server (address, port, engineOptions, buildSettings, audioOptions, patchLocations);
+    PatchPlayerServer server (address, port, engineOptions, buildSettings,
+                              audioOptions, std::move (createPlayer), patchLocations);
 
     std::cout << std::endl
               << "------------------------------------------------" << std::endl

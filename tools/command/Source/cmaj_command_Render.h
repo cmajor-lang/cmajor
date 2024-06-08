@@ -81,7 +81,6 @@ struct RenderState
       : patchPlayer (engineOptions, buildSettings, false)
     {
         auto audioOptions = options.audioOptions;
-        audioOptions.createPlayer = cmaj::audio_utils::createRenderingPlayer;
         framesToRender = options.framesToRender;
 
         if (! options.inputAudioFile.empty())
@@ -138,21 +137,23 @@ struct RenderState
         if (writer == nullptr)
             throw std::runtime_error ("Couldn't open output file");
 
-        audioOptions.provideInput = [this] (choc::buffer::ChannelArrayView<float> audioInput,
-                                            std::vector<choc::midi::ShortMessage>& midiMessages,
-                                            std::vector<uint32_t>& midiMessageTimes) -> bool
-        {
-            return this->provideInput (audioInput, midiMessages, midiMessageTimes);
-        };
-
-        audioOptions.handleOutput = [this] (const choc::buffer::ChannelArrayView<const float>& audioOutput) -> bool
-        {
-            return this->handleOutput (audioOutput);
-        };
-
         std::cout << "Rendering: " << options.patchFile << std::endl;
 
-        auto audioMIDIPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (audioOptions);
+        auto renderingPlayer = cmaj::audio_utils::createRenderingPlayer (audioOptions,
+            [this] (choc::buffer::ChannelArrayView<float> audioInput,
+                    std::vector<choc::midi::ShortMessage>& midiMessages,
+                    std::vector<uint32_t>& midiMessageTimes) -> bool
+            {
+                return this->provideInput (audioInput, midiMessages, midiMessageTimes);
+            },
+            [this] (const choc::buffer::ChannelArrayView<const float>& audioOutput) -> bool
+            {
+                return this->handleOutput (audioOutput);
+            });
+
+        auto audioMIDIPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer>
+                                    (std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> (std::move (renderingPlayer)));
+
         patchPlayer.setAudioMIDIPlayer (audioMIDIPlayer);
 
         patchPlayer.onStatusChange = [] (const cmaj::Patch::Status& s)

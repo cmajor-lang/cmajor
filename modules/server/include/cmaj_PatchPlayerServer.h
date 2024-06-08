@@ -27,11 +27,14 @@
 
 namespace cmaj
 {
+    using CreateAudioMIDIPlayerFn = std::function<std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> (const cmaj::audio_utils::AudioDeviceOptions&)>;
+
     void runPatchPlayerServer (std::string address,
                                uint16_t port,
                                const choc::value::Value& engineOptions,
                                cmaj::BuildSettings& buildSettings,
                                const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
+                               CreateAudioMIDIPlayerFn,
                                std::vector<std::filesystem::path> patchLocationsToScan);
 
     void runServerUnitTests (choc::test::TestProgress&);
