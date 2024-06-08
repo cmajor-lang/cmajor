@@ -111,7 +111,7 @@ struct Patch
 
     /// Updates the playback parameters, which may trigger a rebuild if
     /// they have changed.
-    void setPlaybackParams (PlaybackParams);
+    void setPlaybackParams (PlaybackParams, bool synchronousRebuild = true);
 
     /// Returns the current playback parameters.
     PlaybackParams getPlaybackParams() const        { return currentPlaybackParams; }
@@ -2007,12 +2007,12 @@ inline bool Patch::PlaybackParams::operator!= (const PlaybackParams& other) cons
     return ! (*this == other);
 }
 
-inline void Patch::setPlaybackParams (PlaybackParams newParams)
+inline void Patch::setPlaybackParams (PlaybackParams newParams, bool synchronousRebuild)
 {
     if (currentPlaybackParams != newParams)
     {
         currentPlaybackParams = newParams;
-        rebuild (true);
+        rebuild (synchronousRebuild);
     }
 }
 

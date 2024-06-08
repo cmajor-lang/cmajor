@@ -55,37 +55,18 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
     }
 
     //==============================================================================
-    static cmaj::Patch::PlaybackParams getPlaybackParamsFromPlayer (const cmaj::audio_utils::AudioMIDIPlayer& player)
+    void updatePlaybackParams (bool synchronousRebuild)
     {
         cmaj::Patch::PlaybackParams params;
-        params.blockSize          = player.options.blockSize;
-        params.sampleRate         = player.options.sampleRate;
-        params.numInputChannels   = player.options.inputChannelCount;
-        params.numOutputChannels  = player.options.outputChannelCount;
-        return params;
-    }
 
-    void setAudioMIDIPlayer (std::shared_ptr<cmaj::audio_utils::MultiClientAudioMIDIPlayer> audioPlayerToUse)
-    {
         if (audioPlayer != nullptr)
         {
-            audioPlayer->removeCallback (*this);
-            audioPlayer.reset();
-        }
+            auto& options = audioPlayer->getAudioMIDIPlayer().options;
 
-        cmaj::Patch::PlaybackParams params;
-
-        if (audioPlayerToUse != nullptr)
-        {
-            audioPlayer = std::move (audioPlayerToUse);
-            auto& player = audioPlayer->getAudioMIDIPlayer();
-
-            params = getPlaybackParamsFromPlayer (player);
-
-            player.deviceOptionsChanged = [&]
-            {
-                patch.setPlaybackParams (getPlaybackParamsFromPlayer (player));
-            };
+            params.blockSize          = options.blockSize;
+            params.sampleRate         = options.sampleRate;
+            params.numInputChannels   = options.inputChannelCount;
+            params.numOutputChannels  = options.outputChannelCount;
         }
         else
         {
@@ -97,7 +78,17 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
             params.numOutputChannels  = 2;
         }
 
-        patch.setPlaybackParams (params);
+        patch.setPlaybackParams (params, synchronousRebuild);
+    }
+
+    void setAudioMIDIPlayer (std::shared_ptr<cmaj::audio_utils::MultiClientAudioMIDIPlayer> audioPlayerToUse)
+    {
+        if (audioPlayer != nullptr)
+            audioPlayer->removeCallback (*this);
+
+        audioPlayer = std::move (audioPlayerToUse);
+
+        updatePlaybackParams (true);
         updatePlaybackState();
     }
 
@@ -231,39 +222,35 @@ private:
     }
 
     //==============================================================================
-    void prepareToStart (double newSampleRate, HandleMIDIOutEventFn handleOutgoingMIDI) override
+    void sampleRateChanged (double newRate) override
     {
-        sampleRate = newSampleRate;
         currentBPM = 0;
         numerator = 0;
         denominator = 0;
         transportFlags = 0;
-        dispatcher.reset (newSampleRate);
-        dispatcher.setMidiOutputCallback (std::move (handleOutgoingMIDI));
+
+        if (sampleRate != newRate)
+        {
+            sampleRate = newRate;
+            updatePlaybackParams (false);
+        }
     }
 
-    void addIncomingMIDIEvent (const void* data, uint32_t size) override
-    {
-        dispatcher.addMIDIEvent (data, size);
-    }
-
-    void process (choc::buffer::ChannelArrayView<const float> input,
-                  choc::buffer::ChannelArrayView<float> output,
-                  bool replaceOutput) override
+    void startBlock() override
     {
         patch.beginChunkedProcess();
-        dispatcher.setAudioBuffers (input, output);
-
         sendTimecodeEventsToPatch();
+    }
 
-        dispatcher.processInChunks ([p = std::addressof (patch), replaceOutput]
-                                    (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
-        {
-            p->processChunk (block, replaceOutput);
-        });
+    void processSubBlock (const choc::audio::AudioMIDIBlockDispatcher::Block& block, bool replaceOutput) override
+    {
+        patch.processChunk (block, replaceOutput);
+        totalFramesRendered += block.audioOutput.getNumFrames();
+    }
 
+    void endBlock() override
+    {
         patch.endChunkedProcess();
-        totalFramesRendered += output.getNumFrames();
         ++blockCounter;
     }
 
@@ -352,8 +339,6 @@ private:
     uint32_t blockCounter = 0;
 
     std::shared_ptr<cmaj::audio_utils::MultiClientAudioMIDIPlayer> audioPlayer;
-
-    choc::audio::AudioMIDIBlockDispatcher dispatcher;
 };
 
 } // namespace cmaj

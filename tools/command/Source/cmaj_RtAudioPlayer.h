@@ -82,21 +82,16 @@ struct RtAudioMIDIPlayer  : public cmaj::audio_utils::AudioMIDIPlayer
 
     void start (cmaj::audio_utils::AudioMIDICallback& c) override
     {
-        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
-        callback = std::addressof (c);
-
-        if (currentSampleRate != 0)
-            c.prepareToStart (currentSampleRate,
-                              [&] (uint32_t, choc::midi::ShortMessage message)
-                              {
-                                  handleOutgoingMidiMessage (message);
-                              });
+        prepareToStart (c, currentSampleRate,
+                        [this] (uint32_t, choc::midi::ShortMessage message)
+                        {
+                            handleOutgoingMidiMessage (message);
+                        });
     }
 
     void stop() override
     {
-        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
-        callback = nullptr;
+        clearCallback();
     }
 
     cmaj::audio_utils::AvailableAudioDevices getAvailableDevices() override
@@ -142,7 +137,6 @@ private:
     std::vector<NamedMIDIIn> rtMidiIns;
     std::vector<NamedMIDIOut> rtMidiOuts;
 
-    cmaj::audio_utils::AudioMIDICallback* callback = {};
     double currentSampleRate = 0;
     choc::buffer::ChannelCount numInputChannels = {}, numOutputChannels = {};
     std::vector<const float*> inputChannelPointers;
@@ -380,22 +374,14 @@ private:
         auto inputView = choc::buffer::createChannelArrayView (inputChannelPointers.data(), numInputChannels, numFrames);
         auto outputView = choc::buffer::createChannelArrayView (outputChannelPointers.data(), numOutputChannels, numFrames);
 
-        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
-
-        if (callback)
-            callback->process (inputView, outputView, true);
-        else
-            outputView.clear();
+        process (inputView, outputView, true);
 
         return 0;
     }
 
     void midiCallback (const void* data, uint32_t size)
     {
-        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
-
-        if (callback)
-            callback->addIncomingMIDIEvent (data, size);
+        addIncomingMIDIEvent (data, size);
     }
 
     std::vector<RtAudio::DeviceInfo> getAudioDeviceList() const

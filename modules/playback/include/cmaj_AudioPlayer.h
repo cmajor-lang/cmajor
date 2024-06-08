@@ -29,15 +29,10 @@ struct AudioMIDICallback
 {
     virtual ~AudioMIDICallback() = default;
 
-    using HandleMIDIOutEventFn = choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn;
-
-    virtual void prepareToStart (double sampleRate, HandleMIDIOutEventFn) = 0;
-
-    virtual void addIncomingMIDIEvent (const void* data, uint32_t size) = 0;
-
-    virtual void process (choc::buffer::ChannelArrayView<const float> input,
-                          choc::buffer::ChannelArrayView<float> output,
-                          bool replaceOutput) = 0;
+    virtual void sampleRateChanged (double newRate) = 0;
+    virtual void startBlock() = 0;
+    virtual void processSubBlock (const choc::audio::AudioMIDIBlockDispatcher::Block&, bool replaceOutput) = 0;
+    virtual void endBlock() = 0;
 };
 
 //==============================================================================
@@ -81,6 +76,62 @@ struct AudioMIDIPlayer
     /// are changed (e.g. the sample rate). No guarantees about which
     /// thread may call it.
     std::function<void()> deviceOptionsChanged;
+
+
+protected:
+    //==============================================================================
+    AudioMIDICallback* callback = nullptr;
+    choc::audio::AudioMIDIBlockDispatcher dispatcher;
+
+    void prepareToStart (cmaj::audio_utils::AudioMIDICallback& c, double newSampleRate, choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn handleOutgoingMIDI)
+    {
+        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+        callback = std::addressof (c);
+
+        if (newSampleRate != 0)
+        {
+            c.sampleRateChanged (newSampleRate);
+            dispatcher.reset (newSampleRate);
+            dispatcher.setMidiOutputCallback (std::move (handleOutgoingMIDI));
+        }
+    }
+
+    void clearCallback()
+    {
+        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+        callback = nullptr;
+    }
+
+    void addIncomingMIDIEvent (const void* data, uint32_t size)
+    {
+        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+        dispatcher.addMIDIEvent (data, size);
+    }
+
+    void process (choc::buffer::ChannelArrayView<const float> input,
+                  choc::buffer::ChannelArrayView<float> output,
+                  bool replaceOutput)
+    {
+        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+
+        if (callback)
+        {
+            callback->startBlock();
+            dispatcher.setAudioBuffers (input, output);
+
+            dispatcher.processInChunks ([this, replaceOutput]
+                                        (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+            {
+                callback->processSubBlock (block, replaceOutput);
+            });
+
+            callback->endBlock();
+        }
+        else
+        {
+            output.clear();
+        }
+    }
 };
 
 }

@@ -117,8 +117,7 @@ struct PatchPlayerServer
     void createAudioPlayer (const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
     {
         auto player = createAudioMIDIPlayer (audioOptions);
-        player->deviceOptionsChanged = [this] { broadcastAudioDeviceProperties(); };
-        audioPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (player);
+        audioPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (std::move (player));
     }
 
     void sendAudioDeviceProperties (choc::value::Value options)

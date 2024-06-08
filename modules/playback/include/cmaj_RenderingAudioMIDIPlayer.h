@@ -33,7 +33,7 @@ struct RenderingAudioMIDIPlayer  : public AudioMIDIPlayer
                                               std::vector<choc::midi::ShortMessage>& midiMessages,
                                               std::vector<uint32_t>& midiMessageTimes)>;
 
-    using HandleOutputFn = std::function<bool(choc::buffer::ChannelArrayView<const float> audioOutput)>;
+    using HandleOutputFn = std::function<bool(choc::buffer::ChannelArrayView<const float>)>;
 
     RenderingAudioMIDIPlayer (const AudioDeviceOptions&, ProvideInputFn, HandleOutputFn);
     ~RenderingAudioMIDIPlayer() override;
@@ -47,7 +47,6 @@ private:
     ProvideInputFn provideInput;
     HandleOutputFn handleOutput;
     std::mutex startLock;
-    AudioMIDICallback* callback = nullptr;
     std::thread renderThread;
 
     void render();
@@ -127,7 +126,7 @@ inline void RenderingAudioMIDIPlayer::render()
             return;
         }
 
-        callback->prepareToStart (options.sampleRate, [] (uint32_t, choc::midi::ShortMessage) {});
+        prepareToStart (*callback, options.sampleRate, [] (uint32_t, choc::midi::ShortMessage) {});
 
         CMAJ_ASSERT (midiMessages.size() == midiMessageTimes.size());
 
@@ -155,11 +154,11 @@ inline void RenderingAudioMIDIPlayer::render()
                 }
 
                 for (uint32_t i = midiStart; i < endOfMIDI; ++i)
-                    callback->addIncomingMIDIEvent (midiMessages[i].data, midiMessages[i].size());
+                    addIncomingMIDIEvent (midiMessages[i].data, midiMessages[i].size());
 
-                callback->process (audioInput.getFrameRange (chunkToDo),
-                                    audioOutput.getFrameRange (chunkToDo),
-                                    true);
+                process (audioInput.getFrameRange (chunkToDo),
+                         audioOutput.getFrameRange (chunkToDo),
+                         true);
 
                 frameRange.start = chunkToDo.end;
                 midiStart = endOfMIDI;
@@ -167,7 +166,7 @@ inline void RenderingAudioMIDIPlayer::render()
         }
         else
         {
-            callback->process (audioInput, audioOutput, true);
+            process (audioInput, audioOutput, true);
         }
 
         if (! handleOutput (audioOutput))

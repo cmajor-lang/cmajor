@@ -25,9 +25,9 @@
 
 void printCmajorVersion();
 
-static std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> createDefaultAudioDevice (const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
+static std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer> createDefaultAudioDevice (const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
 {
-    return std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> (cmaj::createRtAudioMIDIPlayer (audioOptions));
+    return cmaj::createRtAudioMIDIPlayer (audioOptions);
 }
 
 
@@ -128,7 +128,7 @@ void playFile (choc::ArgumentList& args,
     }
 
     auto audioPlayer = createDefaultAudioDevice (audioOptions);
-    auto multiClientPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (audioPlayer);
+    auto multiClientPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (std::move (audioPlayer));
 
     if (noGUI)
     {

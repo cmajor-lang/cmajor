@@ -27,7 +27,7 @@
 
 namespace cmaj
 {
-    using CreateAudioMIDIPlayerFn = std::function<std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> (const cmaj::audio_utils::AudioDeviceOptions&)>;
+    using CreateAudioMIDIPlayerFn = std::function<std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer>(const cmaj::audio_utils::AudioDeviceOptions&)>;
 
     void runPatchPlayerServer (std::string address,
                                uint16_t port,

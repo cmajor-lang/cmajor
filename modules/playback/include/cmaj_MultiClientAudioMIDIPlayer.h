@@ -31,7 +31,7 @@ namespace cmaj::audio_utils
  */
 struct MultiClientAudioMIDIPlayer  : private AudioMIDICallback
 {
-    MultiClientAudioMIDIPlayer (std::shared_ptr<AudioMIDIPlayer>);
+    MultiClientAudioMIDIPlayer (std::unique_ptr<AudioMIDIPlayer>);
     ~MultiClientAudioMIDIPlayer() override;
 
     void addCallback (AudioMIDICallback&);
@@ -43,17 +43,15 @@ struct MultiClientAudioMIDIPlayer  : private AudioMIDICallback
 
 private:
     //==============================================================================
-    std::shared_ptr<AudioMIDIPlayer> player;
+    std::unique_ptr<AudioMIDIPlayer> player;
     std::vector<AudioMIDICallback*> clients;
     double currentRate = 0;
-    HandleMIDIOutEventFn currentMIDIFn;
 
-    void prepareToStart (double, HandleMIDIOutEventFn) override;
-    void addIncomingMIDIEvent (const void*, uint32_t) override;
-    void process (choc::buffer::ChannelArrayView<const float>,
-                  choc::buffer::ChannelArrayView<float>, bool) override;
+    void sampleRateChanged (double newRate) override;
+    void startBlock() override;
+    void processSubBlock (const choc::audio::AudioMIDIBlockDispatcher::Block&, bool replaceOutput) override;
+    void endBlock() override;
 };
-
 
 
 
@@ -68,10 +66,15 @@ private:
 //
 //==============================================================================
 
-inline MultiClientAudioMIDIPlayer::MultiClientAudioMIDIPlayer (std::shared_ptr<AudioMIDIPlayer> p)
+inline MultiClientAudioMIDIPlayer::MultiClientAudioMIDIPlayer (std::unique_ptr<AudioMIDIPlayer> p)
     : player (std::move (p))
 {
     CMAJ_ASSERT (player != nullptr);
+
+    player->deviceOptionsChanged = [this]
+    {
+        sampleRateChanged (player->options.sampleRate);
+    };
 }
 
 inline MultiClientAudioMIDIPlayer::~MultiClientAudioMIDIPlayer() = default;
@@ -94,7 +97,7 @@ inline void MultiClientAudioMIDIPlayer::addCallback (AudioMIDICallback& c)
             clients.push_back (std::addressof (c));
 
             if (! needToStart && currentRate != 0)
-                c.prepareToStart (currentRate, currentMIDIFn);
+                c.sampleRateChanged (currentRate);
         }
     }
 
@@ -119,39 +122,44 @@ inline void MultiClientAudioMIDIPlayer::removeCallback (AudioMIDICallback& c)
     {
         player->stop();
         currentRate = 0;
-        currentMIDIFn = {};
     }
 }
 
-inline void MultiClientAudioMIDIPlayer::prepareToStart (double sampleRate, choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn handleOutgoingMIDI)
+inline void MultiClientAudioMIDIPlayer::sampleRateChanged (double newRate)
 {
-    currentRate = sampleRate;
-    currentMIDIFn = handleOutgoingMIDI;
+    currentRate = newRate;
 
     for (auto c : clients)
-        c->prepareToStart (sampleRate, handleOutgoingMIDI);
+        c->sampleRateChanged (newRate);
 }
 
-inline void MultiClientAudioMIDIPlayer::addIncomingMIDIEvent (const void* data, uint32_t size)
+inline void MultiClientAudioMIDIPlayer::startBlock()
 {
     for (auto c : clients)
-        c->addIncomingMIDIEvent (data, size);
+        c->startBlock();
 }
 
-inline void MultiClientAudioMIDIPlayer::process (choc::buffer::ChannelArrayView<const float> input,
-                                                 choc::buffer::ChannelArrayView<float> output,
-                                                 bool replaceOutput)
+inline void MultiClientAudioMIDIPlayer::processSubBlock (const choc::audio::AudioMIDIBlockDispatcher::Block& block, bool replaceOutput)
 {
     if (clients.empty())
     {
         if (replaceOutput)
-            output.clear();
+            block.audioOutput.clear();
     }
     else
     {
-        for (size_t i = 0; i < clients.size(); ++i)
-            clients[i]->process (input, output, replaceOutput && i == 0);
+        for (auto c : clients)
+        {
+            c->processSubBlock (block, replaceOutput);
+            replaceOutput = false;
+        }
     }
+}
+
+inline void MultiClientAudioMIDIPlayer::endBlock()
+{
+    for (auto c : clients)
+        c->endBlock();
 }
 
 } // namespace cmaj::audio_utils
