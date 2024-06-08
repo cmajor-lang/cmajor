@@ -164,7 +164,10 @@ private:
         if (streamSampleRate != currentSampleRate)
         {
             currentSampleRate = streamSampleRate;
-            onSampleRateUpdated (currentSampleRate);
+            options.sampleRate = static_cast<uint32_t> (currentSampleRate);
+
+            if (deviceOptionsChanged)
+                deviceOptionsChanged();
         }
     }
 
@@ -219,7 +222,7 @@ private:
             if (inputDeviceInfo != nullptr)
             {
                 numInputChannels = static_cast<choc::buffer::ChannelCount> (std::min (options.inputChannelCount,
-                                                                                    inputDeviceInfo->inputChannels));
+                                                                                      inputDeviceInfo->inputChannels));
                 inputChannelPointers.resize (numInputChannels);
                 inParams.deviceId = inputDeviceInfo->ID;
                 inParams.nChannels = static_cast<unsigned int> (numInputChannels);

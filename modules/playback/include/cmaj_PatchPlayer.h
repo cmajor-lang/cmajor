@@ -25,7 +25,7 @@
 #include "cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
 #include "cmajor/helpers/cmaj_PatchWorker_WebView.h"
 #include "choc/text/choc_JSON.h"
-#include "cmaj_AudioPlayer.h"
+#include "cmaj_MultiClientAudioMIDIPlayer.h"
 
 namespace cmaj
 {
@@ -55,6 +55,16 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
     }
 
     //==============================================================================
+    static cmaj::Patch::PlaybackParams getPlaybackParamsFromPlayer (const cmaj::audio_utils::AudioMIDIPlayer& player)
+    {
+        cmaj::Patch::PlaybackParams params;
+        params.blockSize          = player.options.blockSize;
+        params.sampleRate         = player.options.sampleRate;
+        params.numInputChannels   = player.options.inputChannelCount;
+        params.numOutputChannels  = player.options.outputChannelCount;
+        return params;
+    }
+
     void setAudioMIDIPlayer (std::shared_ptr<cmaj::audio_utils::MultiClientAudioMIDIPlayer> audioPlayerToUse)
     {
         if (audioPlayer != nullptr)
@@ -68,18 +78,13 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
         if (audioPlayerToUse != nullptr)
         {
             audioPlayer = std::move (audioPlayerToUse);
+            auto& player = audioPlayer->getAudioMIDIPlayer();
 
-            const auto& options = audioPlayer->player->options;
+            params = getPlaybackParamsFromPlayer (player);
 
-            params.blockSize          = options.blockSize;
-            params.sampleRate         = options.sampleRate;
-            params.numInputChannels   = options.inputChannelCount;
-            params.numOutputChannels  = options.outputChannelCount;
-
-            audioPlayer->onSampleRateUpdated = [&] (double sr)
+            player.deviceOptionsChanged = [&]
             {
-                params.sampleRate = sr;
-                patch.setPlaybackParams (params);
+                patch.setPlaybackParams (getPlaybackParamsFromPlayer (player));
             };
         }
         else

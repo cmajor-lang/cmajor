@@ -39,12 +39,12 @@ struct PatchPlayerServer
                        const choc::value::Value& engineOptionsToUse,
                        cmaj::BuildSettings& buildSettingsToUse,
                        const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
-                       CreateAudioMIDIPlayerFn createAudioPlayer,
+                       CreateAudioMIDIPlayerFn createPlayer,
                        std::vector<std::filesystem::path> patchLocationsToScan)
         : engineOptions (engineOptionsToUse),
           buildSettings (buildSettingsToUse),
           patchLocations (std::move (patchLocationsToScan)),
-          createAudioMIDIPlayer (std::move (createAudioPlayer))
+          createAudioMIDIPlayer (std::move (createPlayer))
     {
         if (httpServer.open (address, port, 0,
                              [this] { return std::make_unique<ClientRequestHandler> (*this); },
@@ -86,8 +86,8 @@ struct PatchPlayerServer
     {
         if (audioPlayer != nullptr)
         {
-            auto& o = audioPlayer->player->options;
-            auto availableDevices = audioPlayer->player->getAvailableDevices();
+            auto& o = audioPlayer->getAudioMIDIPlayer().options;
+            auto availableDevices = audioPlayer->getAudioMIDIPlayer().getAvailableDevices();
 
             return choc::json::create (
                      "availableAPIs", choc::value::createArray (availableDevices.availableAudioAPIs),
@@ -131,7 +131,7 @@ struct PatchPlayerServer
         if (audioPlayer == nullptr || ! options.isObject())
             return;
 
-        const auto& o = audioPlayer->player->options;
+        const auto& o = audioPlayer->getAudioMIDIPlayer().options;
         auto newOptions = o;
 
         newOptions.audioAPI = options["audioAPI"].getWithDefault<std::string> (o.audioAPI);

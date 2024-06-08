@@ -19,7 +19,6 @@
 #pragma once
 
 #include <mutex>
-
 #include "../../compiler/include/cmaj_ErrorHandling.h"
 #include "choc/audio/choc_AudioMIDIBlockDispatcher.h"
 
@@ -40,8 +39,6 @@ struct AudioMIDICallback
                           choc::buffer::ChannelArrayView<float> output,
                           bool replaceOutput) = 0;
 };
-
-struct AudioMIDIPlayer;
 
 //==============================================================================
 struct AudioDeviceOptions
@@ -74,45 +71,16 @@ struct AudioMIDIPlayer
 
     virtual AvailableAudioDevices getAvailableDevices() = 0;
 
+    /// The options that this device was created with.
     AudioDeviceOptions options;
+
+    /// The player will use this lock around any calls to the callback.
     std::mutex callbackLock;
+
+    /// Provide this callback if you want to know when the options
+    /// are changed (e.g. the sample rate). No guarantees about which
+    /// thread may call it.
     std::function<void()> deviceOptionsChanged;
-    std::function<void(double)> onSampleRateUpdated;
-};
-
-//==============================================================================
-using ProvideInputFn = std::function<bool(choc::buffer::ChannelArrayView<float> audioInput,
-                                          std::vector<choc::midi::ShortMessage>& midiMessages,
-                                          std::vector<uint32_t>& midiMessageTimes)>;
-
-using HandleOutputFn = std::function<bool(choc::buffer::ChannelArrayView<const float> audioOutput)>;
-
-/// Creates a player that will render its audio stream via the given input/output functions
-std::unique_ptr<AudioMIDIPlayer> createRenderingPlayer (const AudioDeviceOptions&,
-                                                        ProvideInputFn, HandleOutputFn);
-
-//==============================================================================
-struct MultiClientAudioMIDIPlayer  : private AudioMIDICallback
-{
-    MultiClientAudioMIDIPlayer (std::shared_ptr<AudioMIDIPlayer>);
-    ~MultiClientAudioMIDIPlayer() override;
-
-    void addCallback (AudioMIDICallback&);
-    void removeCallback (AudioMIDICallback&);
-
-    std::shared_ptr<AudioMIDIPlayer> player;
-    std::function<void(double)> onSampleRateUpdated;
-
-private:
-    std::vector<AudioMIDICallback*> clients;
-    double currentRate = 0;
-    HandleMIDIOutEventFn currentMIDIFn;
-
-    void prepareToStart (double sampleRate, HandleMIDIOutEventFn) override;
-    void addIncomingMIDIEvent (const void* data, uint32_t size) override;
-    void process (choc::buffer::ChannelArrayView<const float> input,
-                  choc::buffer::ChannelArrayView<float> output,
-                  bool replaceOutput) override;
 };
 
 }
