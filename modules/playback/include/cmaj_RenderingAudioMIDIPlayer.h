@@ -46,7 +46,6 @@ struct RenderingAudioMIDIPlayer  : public AudioMIDIPlayer
 private:
     ProvideInputFn provideInput;
     HandleOutputFn handleOutput;
-    std::mutex startLock;
     std::thread renderThread;
 
     void render();
@@ -78,21 +77,14 @@ inline RenderingAudioMIDIPlayer::~RenderingAudioMIDIPlayer()
 
 inline void RenderingAudioMIDIPlayer::start (AudioMIDICallback& c)
 {
-    const std::lock_guard<decltype(startLock)> lock (startLock);
-
-    if (callback == nullptr)
-    {
-        callback = std::addressof (c);
-        renderThread = std::thread ([this] { render(); });
-    }
+    stop();
+    prepareToStart (c, options.sampleRate, [] (uint32_t, choc::midi::ShortMessage) {});
+    renderThread = std::thread ([this] { render(); });
 }
 
 inline void RenderingAudioMIDIPlayer::stop()
 {
-    {
-        const std::lock_guard<decltype(startLock)> lock (startLock);
-        callback = nullptr;
-    }
+    clearCallback();
 
     if (renderThread.joinable())
         renderThread.join();
@@ -100,7 +92,7 @@ inline void RenderingAudioMIDIPlayer::stop()
 
 inline void RenderingAudioMIDIPlayer::render()
 {
-    CMAJ_ASSERT (options.blockSize != 0);
+    CHOC_ASSERT (options.blockSize != 0);
     choc::buffer::ChannelArrayBuffer<float> audioInput  (options.inputChannelCount,  options.blockSize);
     choc::buffer::ChannelArrayBuffer<float> audioOutput (options.outputChannelCount, options.blockSize);
     std::vector<choc::midi::ShortMessage> midiMessages;
@@ -115,20 +107,20 @@ inline void RenderingAudioMIDIPlayer::render()
         midiMessages.clear();
         midiMessageTimes.clear();
 
-        const std::lock_guard<decltype(startLock)> lock (startLock);
+        {
+            const std::scoped_lock lock (callbackLock);
 
-        if (callback == nullptr)
-            return;
+            if (callback == nullptr)
+                return;
+        }
 
         if (! provideInput (audioInput, midiMessages, midiMessageTimes))
         {
-            callback = nullptr;
+            clearCallback();
             return;
         }
 
-        prepareToStart (*callback, options.sampleRate, [] (uint32_t, choc::midi::ShortMessage) {});
-
-        CMAJ_ASSERT (midiMessages.size() == midiMessageTimes.size());
+        CHOC_ASSERT (midiMessages.size() == midiMessageTimes.size());
 
         if (auto totalNumMIDIMessages = static_cast<uint32_t> (midiMessages.size()))
         {
@@ -171,7 +163,7 @@ inline void RenderingAudioMIDIPlayer::render()
 
         if (! handleOutput (audioOutput))
         {
-            callback = nullptr;
+            clearCallback();
             return;
         }
     }

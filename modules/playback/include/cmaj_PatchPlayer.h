@@ -26,6 +26,7 @@
 #include "cmajor/helpers/cmaj_PatchWorker_WebView.h"
 #include "choc/text/choc_JSON.h"
 #include "cmaj_MultiClientAudioMIDIPlayer.h"
+#include "cmaj_AllocationChecker.h"
 
 namespace cmaj
 {
@@ -236,8 +237,12 @@ private:
         }
     }
 
+    std::optional<cmaj::ScopedAllocationTracker> allocationTracker;
+
     void startBlock() override
     {
+        allocationTracker.emplace();
+
         patch.beginChunkedProcess();
         sendTimecodeEventsToPatch();
     }
@@ -252,6 +257,7 @@ private:
     {
         patch.endChunkedProcess();
         ++blockCounter;
+        allocationTracker.reset();
     }
 
     void sendTimecodeEventsToPatch()

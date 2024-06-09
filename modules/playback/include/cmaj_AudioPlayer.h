@@ -85,7 +85,7 @@ protected:
 
     void prepareToStart (cmaj::audio_utils::AudioMIDICallback& c, double newSampleRate, choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn handleOutgoingMIDI)
     {
-        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+        const std::scoped_lock lock (callbackLock);
         callback = std::addressof (c);
 
         if (newSampleRate != 0)
@@ -98,13 +98,13 @@ protected:
 
     void clearCallback()
     {
-        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+        const std::scoped_lock lock (callbackLock);
         callback = nullptr;
     }
 
     void addIncomingMIDIEvent (const void* data, uint32_t size)
     {
-        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+        const std::scoped_lock lock (callbackLock);
         dispatcher.addMIDIEvent (data, size);
     }
 
@@ -112,7 +112,7 @@ protected:
                   choc::buffer::ChannelArrayView<float> output,
                   bool replaceOutput)
     {
-        const std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+        const std::scoped_lock lock (callbackLock);
 
         if (callback)
         {

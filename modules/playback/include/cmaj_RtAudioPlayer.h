@@ -20,8 +20,7 @@
 
 #include "choc/gui/choc_MessageLoop.h"
 #include "choc/text/choc_OpenSourceLicenseList.h"
-#include "../../../modules/playback/include/cmaj_AudioPlayer.h"
-#include "../../../modules/playback/include/cmaj_AllocationChecker.h"
+#include "cmaj_AudioPlayer.h"
 
 #if CHOC_OSX
  #define __MACOSX_CORE__ 1
@@ -358,8 +357,6 @@ private:
     int audioCallback (float* output, const float* input, choc::buffer::FrameCount numFrames,
                        double streamTime, RtAudioStreamStatus status)
     {
-        cmaj::ScopedAllocationTracker allocationTracker;
-
         (void) streamTime;
 
         if ((status & RTAUDIO_INPUT_OVERFLOW) || (status & RTAUDIO_OUTPUT_UNDERFLOW))

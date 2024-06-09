@@ -21,7 +21,7 @@
 #include "../../../modules/scripting/include/cmaj_ScriptEngine.h"
 #include "../../../modules/server/include/cmaj_PatchPlayerServer.h"
 #include "choc/containers/choc_ArgumentList.h"
-#include "cmaj_RtAudioPlayer.h"
+#include "../../../modules/playback/include/cmaj_RtAudioPlayer.h"
 
 void printCmajorVersion();
 

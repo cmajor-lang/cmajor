@@ -25,8 +25,8 @@ namespace cmaj::audio_utils
 
 //==============================================================================
 /**
- *   This object lets a single instance of an AudioMIDIPlayer share
- *   multiple callbacks, which can be dynamically added and removed
+ *   This object owns a single instance of an AudioMIDIPlayer, and allows it
+ *   to serve multiple callbacks, which can be dynamically added and removed
  *   while it's running.
  */
 struct MultiClientAudioMIDIPlayer  : private AudioMIDICallback
@@ -89,7 +89,7 @@ inline void MultiClientAudioMIDIPlayer::addCallback (AudioMIDICallback& c)
     bool needToStart = false;
 
     {
-        const std::lock_guard<decltype(player->callbackLock)> lock (player->callbackLock);
+        const std::scoped_lock lock (player->callbackLock);
 
         if (std::find (clients.begin(), clients.end(), std::addressof (c)) == clients.end())
         {
@@ -110,7 +110,7 @@ inline void MultiClientAudioMIDIPlayer::removeCallback (AudioMIDICallback& c)
     bool needToStop = false;
 
     {
-        const std::lock_guard<decltype(player->callbackLock)> lock (player->callbackLock);
+        const std::scoped_lock lock (player->callbackLock);
 
         if (auto i = std::find (clients.begin(), clients.end(), std::addressof (c)); i != clients.end())
             clients.erase (i);
