@@ -38,7 +38,9 @@ struct RenderingAudioMIDIPlayer  : public AudioMIDIPlayer
     RenderingAudioMIDIPlayer (const AudioDeviceOptions&, ProvideInputFn, HandleOutputFn);
     ~RenderingAudioMIDIPlayer() override;
 
-    AvailableAudioDevices getAvailableDevices() override    { return {}; }
+    AvailableAudioDevices getAvailableDevices() override      { return {}; }
+    std::vector<int32_t> getAvailableSampleRates() override   { return {}; }
+    std::vector<int32_t> getAvailableBlockSizes() override    { return {}; }
 
 private:
     ProvideInputFn provideInput;
@@ -68,6 +70,9 @@ private:
 inline RenderingAudioMIDIPlayer::RenderingAudioMIDIPlayer (const AudioDeviceOptions& o, ProvideInputFn in, HandleOutputFn out)
     : AudioMIDIPlayer (o), provideInput (std::move (in)), handleOutput (std::move (out))
 {
+    // Because these can be anything, they need to be specified by the caller
+    CHOC_ASSERT (options.blockSize != 0);
+    CHOC_ASSERT (options.sampleRate != 0);
 }
 
 inline RenderingAudioMIDIPlayer::~RenderingAudioMIDIPlayer()
@@ -88,7 +93,6 @@ inline void RenderingAudioMIDIPlayer::stop()
 
 inline void RenderingAudioMIDIPlayer::render()
 {
-    CHOC_ASSERT (options.blockSize != 0);
     choc::buffer::ChannelArrayBuffer<float> audioInput  (options.inputChannelCount,  options.blockSize);
     choc::buffer::ChannelArrayBuffer<float> audioOutput (options.outputChannelCount, options.blockSize);
     std::vector<choc::midi::ShortMessage> midiMessages;

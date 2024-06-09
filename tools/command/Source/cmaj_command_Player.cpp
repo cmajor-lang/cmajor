@@ -27,7 +27,7 @@ void printCmajorVersion();
 
 static std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer> createDefaultAudioDevice (const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
 {
-    return cmaj::createRtAudioMIDIPlayer (audioOptions);
+    return cmaj::audio_utils::createRtAudioMIDIPlayer (audioOptions);
 }
 
 

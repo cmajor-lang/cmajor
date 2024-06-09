@@ -20,7 +20,7 @@
 
 #include "cmaj_AudioMIDIPlayer.h"
 
-namespace cmaj
+namespace cmaj::audio_utils
 {
 
 //==============================================================================
@@ -30,8 +30,6 @@ namespace cmaj
 std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer> createRtAudioMIDIPlayer (const cmaj::audio_utils::AudioDeviceOptions&);
 
 }
-
-
 
 //==============================================================================
 //        _        _           _  _
@@ -63,13 +61,13 @@ std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer> createRtAudioMIDIPlayer (con
 #include "../../../3rdParty/rtaudio/RtMidi.cpp"
 #include "choc/platform/choc_ReenableAllWarnings.h"
 
-namespace cmaj
+namespace cmaj::audio_utils
 {
 
 //==============================================================================
-struct RtAudioMIDIPlayer  : public cmaj::audio_utils::AudioMIDIPlayer
+struct RtAudioMIDIPlayer  : public AudioMIDIPlayer
 {
-    RtAudioMIDIPlayer (const cmaj::audio_utils::AudioDeviceOptions& o)
+    RtAudioMIDIPlayer (const AudioDeviceOptions& o)
         : AudioMIDIPlayer (o)
     {
         close();
@@ -108,6 +106,9 @@ private:
     void start() override {}
     void stop() override {}
 
+    std::vector<int32_t> getAvailableSampleRates() override   { return availableSampleRates; }
+    std::vector<int32_t> getAvailableBlockSizes() override    { return { 16, 32, 48, 64, 96, 128, 196, 224, 256, 320, 480, 512, 768, 1024, 1536, 2048 }; }
+
     cmaj::audio_utils::AvailableAudioDevices getAvailableDevices() override
     {
         cmaj::audio_utils::AvailableAudioDevices result;
@@ -126,9 +127,6 @@ private:
             if (device.inputChannels != 0)
                 result.availableInputDevices.push_back (device.name);
         }
-
-        result.sampleRates = availableSampleRates;
-        result.blockSizes = { 16, 32, 48, 64, 96, 128, 196, 224, 256, 320, 480, 512, 768, 1024, 1536, 2048 };
 
         return result;
     }
@@ -553,7 +551,7 @@ private:
 };
 
 //==============================================================================
-inline std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer> createRtAudioMIDIPlayer (const cmaj::audio_utils::AudioDeviceOptions& o)
+inline std::unique_ptr<AudioMIDIPlayer> createRtAudioMIDIPlayer (const AudioDeviceOptions& o)
 {
     auto player = std::make_unique<RtAudioMIDIPlayer> (o);
 
@@ -642,4 +640,4 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 )")
 
-} // namespace cmaj
+} // namespace cmaj::audio_utils

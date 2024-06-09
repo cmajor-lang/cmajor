@@ -54,7 +54,8 @@ struct RenderOptions
 
         if (auto blockSize = args.removeIntValue<uint32_t> ("--blockSize"))
             audioOptions.blockSize = *blockSize;
-        else
+
+        if (audioOptions.blockSize == 0)
             audioOptions.blockSize = 512;
 
         outputAudioFile = args.removeExistingFile ("--output").string();

@@ -26,23 +26,43 @@ namespace cmaj::audio_utils
 {
 
 //==============================================================================
+/**
+ *   Contains properties to control the choice and setup of the audio devices when
+ *   creating an AudioMIDIPlayer object.
+ */
 struct AudioDeviceOptions
 {
+    /// Preferred sample rate, or 0 to use the default.
     uint32_t sampleRate = 0;
+
+    /// Preferred block size, or 0 to use the default.
     uint32_t blockSize = 0;
-    uint32_t inputChannelCount = 2;
+
+    /// Number of input channels required.
+    uint32_t inputChannelCount = 0;
+
+    /// Number of output channels required.
     uint32_t outputChannelCount = 2;
-    std::string audioAPI, inputDeviceName, outputDeviceName;
+
+    /// Optional API to use (e.g. "CoreAudio", "WASAPI").
+    /// Leave empty to use the default.
+    std::string audioAPI;
+
+    /// Optional input device name - leave empty for a default.
+    /// You can get these names from AudioMIDIPlayer::getAvailableDevices()
+    std::string inputDeviceName;
+
+    /// Optional output device name - leave empty for a default.
+    /// You can get these names from AudioMIDIPlayer::getAvailableDevices()
+    std::string outputDeviceName;
 };
 
 //==============================================================================
 struct AvailableAudioDevices
 {
-    std::vector<std::string> availableAudioAPIs,
-                             availableInputDevices,
-                             availableOutputDevices;
-
-    std::vector<int32_t> sampleRates, blockSizes;
+    std::vector<std::string> availableAudioAPIs;
+    std::vector<std::string> availableInputDevices;
+    std::vector<std::string> availableOutputDevices;
 };
 
 //==============================================================================
@@ -84,10 +104,7 @@ struct AudioMIDICallback
 */
 struct AudioMIDIPlayer
 {
-    AudioMIDIPlayer (const AudioDeviceOptions&);
     virtual ~AudioMIDIPlayer() = default;
-
-    virtual AvailableAudioDevices getAvailableDevices() = 0;
 
     /// Attaches a callback to this device.
     void addCallback (AudioMIDICallback&);
@@ -102,9 +119,20 @@ struct AudioMIDIPlayer
     /// thread may call it.
     std::function<void()> deviceOptionsChanged;
 
+    /// Returns a list of sample rates that this device could be opened with.
+    virtual std::vector<int32_t> getAvailableSampleRates() = 0;
+    /// Returns a list of block sizes that could be used to open this device.
+    virtual std::vector<int32_t> getAvailableBlockSizes() = 0;
+
+    /// Returns various device options that this device could be opened with.
+    virtual AvailableAudioDevices getAvailableDevices() = 0;
 
 protected:
     //==============================================================================
+    /// This is an abstract base class, so you don't construct one of them directly.
+    /// To get one,
+    AudioMIDIPlayer (const AudioDeviceOptions&);
+
     std::vector<AudioMIDICallback*> callbacks;
     std::mutex callbackLock;
     choc::audio::AudioMIDIBlockDispatcher dispatcher;
