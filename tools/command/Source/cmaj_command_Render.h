@@ -140,7 +140,7 @@ struct RenderState
 
         std::cout << "Rendering: " << options.patchFile << std::endl;
 
-        auto renderingPlayer = std::make_unique<cmaj::audio_utils::RenderingAudioMIDIPlayer> (audioOptions,
+        auto audioMIDIPlayer = std::make_shared<cmaj::audio_utils::RenderingAudioMIDIPlayer> (audioOptions,
             [this] (choc::buffer::ChannelArrayView<float> audioInput,
                     std::vector<choc::midi::ShortMessage>& midiMessages,
                     std::vector<uint32_t>& midiMessageTimes) -> bool
@@ -151,8 +151,6 @@ struct RenderState
             {
                 return this->handleOutput (audioOutput);
             });
-
-        auto audioMIDIPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (std::move (renderingPlayer));
 
         patchPlayer.setAudioMIDIPlayer (audioMIDIPlayer);
 

@@ -128,12 +128,11 @@ void playFile (choc::ArgumentList& args,
     }
 
     auto audioPlayer = createDefaultAudioDevice (audioOptions);
-    auto multiClientPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (std::move (audioPlayer));
 
     if (noGUI)
     {
         cmaj::PatchPlayer player (engineOptions, buildSettings, true);
-        player.setAudioMIDIPlayer (std::move (multiClientPlayer));
+        player.setAudioMIDIPlayer (std::move (audioPlayer));
         player.startPlayback();
         runPatch (player, file.string(), framesToRender, stopOnError);
     }
@@ -141,7 +140,7 @@ void playFile (choc::ArgumentList& args,
     {
         choc::ui::setWindowsDPIAwareness();
         cmaj::PatchWindow patchWindow (engineOptions, buildSettings);
-        patchWindow.player.setAudioMIDIPlayer (std::move (multiClientPlayer));
+        patchWindow.player.setAudioMIDIPlayer (std::move (audioPlayer));
         runPatch (patchWindow.player, file.string(), framesToRender, stopOnError);
     }
 }

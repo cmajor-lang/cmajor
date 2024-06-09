@@ -21,7 +21,7 @@
 #include <filesystem>
 #include "../../compiler/include/cmaj_ErrorHandling.h"
 #include "../../../include/cmajor/API/cmaj_Engine.h"
-#include "../../playback/include/cmaj_AudioPlayer.h"
+#include "../../playback/include/cmaj_AudioMIDIPlayer.h"
 #include "choc/tests/choc_UnitTest.h"
 
 

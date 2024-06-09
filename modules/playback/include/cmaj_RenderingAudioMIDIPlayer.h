@@ -17,7 +17,7 @@
 //  DISCLAIMED.
 
 #include <thread>
-#include "cmaj_AudioPlayer.h"
+#include "cmaj_AudioMIDIPlayer.h"
 
 namespace cmaj::audio_utils
 {
@@ -40,14 +40,14 @@ struct RenderingAudioMIDIPlayer  : public AudioMIDIPlayer
 
     AvailableAudioDevices getAvailableDevices() override    { return {}; }
 
-    void start (AudioMIDICallback& c) override;
-    void stop() override;
-
 private:
     ProvideInputFn provideInput;
     HandleOutputFn handleOutput;
     std::thread renderThread;
 
+    void start() override;
+    void stop() override;
+    void handleOutgoingMidiMessage (const void*, uint32_t) override {}
     void render();
 };
 
@@ -75,17 +75,13 @@ inline RenderingAudioMIDIPlayer::~RenderingAudioMIDIPlayer()
     stop();
 }
 
-inline void RenderingAudioMIDIPlayer::start (AudioMIDICallback& c)
+inline void RenderingAudioMIDIPlayer::start()
 {
-    stop();
-    prepareToStart (c, options.sampleRate, [] (uint32_t, choc::midi::ShortMessage) {});
     renderThread = std::thread ([this] { render(); });
 }
 
 inline void RenderingAudioMIDIPlayer::stop()
 {
-    clearCallback();
-
     if (renderThread.joinable())
         renderThread.join();
 }
@@ -110,15 +106,12 @@ inline void RenderingAudioMIDIPlayer::render()
         {
             const std::scoped_lock lock (callbackLock);
 
-            if (callback == nullptr)
+            if (callbacks.empty())
                 return;
         }
 
         if (! provideInput (audioInput, midiMessages, midiMessageTimes))
-        {
-            clearCallback();
             return;
-        }
 
         CHOC_ASSERT (midiMessages.size() == midiMessageTimes.size());
 
@@ -162,10 +155,7 @@ inline void RenderingAudioMIDIPlayer::render()
         }
 
         if (! handleOutput (audioOutput))
-        {
-            clearCallback();
             return;
-        }
     }
 }
 

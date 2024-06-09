@@ -25,8 +25,8 @@
 #include "cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
 #include "cmajor/helpers/cmaj_PatchWorker_WebView.h"
 #include "choc/text/choc_JSON.h"
-#include "cmaj_MultiClientAudioMIDIPlayer.h"
 #include "cmaj_AllocationChecker.h"
+#include "cmaj_AudioMIDIPlayer.h"
 
 namespace cmaj
 {
@@ -62,7 +62,7 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
 
         if (audioPlayer != nullptr)
         {
-            auto& options = audioPlayer->getAudioMIDIPlayer().options;
+            auto& options = audioPlayer->options;
 
             params.blockSize          = options.blockSize;
             params.sampleRate         = options.sampleRate;
@@ -82,7 +82,7 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
         patch.setPlaybackParams (params, synchronousRebuild);
     }
 
-    void setAudioMIDIPlayer (std::shared_ptr<cmaj::audio_utils::MultiClientAudioMIDIPlayer> audioPlayerToUse)
+    void setAudioMIDIPlayer (std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> audioPlayerToUse)
     {
         if (audioPlayer != nullptr)
             audioPlayer->removeCallback (*this);
@@ -344,7 +344,7 @@ private:
     std::atomic<uint32_t> newTransportState { 0 };
     uint32_t blockCounter = 0;
 
-    std::shared_ptr<cmaj::audio_utils::MultiClientAudioMIDIPlayer> audioPlayer;
+    std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> audioPlayer;
 };
 
 } // namespace cmaj

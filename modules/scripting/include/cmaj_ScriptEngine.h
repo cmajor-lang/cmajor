@@ -21,7 +21,7 @@
 #include "../../compiler/include/cmaj_ErrorHandling.h"
 #include "choc/javascript/choc_javascript.h"
 #include "../../../include/cmajor/helpers/cmaj_Patch.h"
-#include "../../playback/include/cmaj_AudioPlayer.h"
+#include "../../playback/include/cmaj_AudioMIDIPlayer.h"
 
 
 namespace cmaj::javascript

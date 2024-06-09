@@ -18,9 +18,34 @@
 
 #pragma once
 
+#include "cmaj_AudioMIDIPlayer.h"
+
+namespace cmaj
+{
+
+//==============================================================================
+///
+///  Creates an RtAudio based AudioMIDIPlayer object.
+///
+std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer> createRtAudioMIDIPlayer (const cmaj::audio_utils::AudioDeviceOptions&);
+
+}
+
+
+
+//==============================================================================
+//        _        _           _  _
+//     __| |  ___ | |_   __ _ (_)| | ___
+//    / _` | / _ \| __| / _` || || |/ __|
+//   | (_| ||  __/| |_ | (_| || || |\__ \ _  _  _
+//    \__,_| \___| \__| \__,_||_||_||___/(_)(_)(_)
+//
+//   Code beyond this point is implementation detail...
+//
+//==============================================================================
+
 #include "choc/gui/choc_MessageLoop.h"
 #include "choc/text/choc_OpenSourceLicenseList.h"
-#include "cmaj_AudioPlayer.h"
 
 #if CHOC_OSX
  #define __MACOSX_CORE__ 1
@@ -79,19 +104,9 @@ struct RtAudioMIDIPlayer  : public cmaj::audio_utils::AudioMIDIPlayer
         closeAudio();
     }
 
-    void start (cmaj::audio_utils::AudioMIDICallback& c) override
-    {
-        prepareToStart (c, currentSampleRate,
-                        [this] (uint32_t, choc::midi::ShortMessage message)
-                        {
-                            handleOutgoingMidiMessage (message);
-                        });
-    }
-
-    void stop() override
-    {
-        clearCallback();
-    }
+private:
+    void start() override {}
+    void stop() override {}
 
     cmaj::audio_utils::AvailableAudioDevices getAvailableDevices() override
     {
@@ -118,7 +133,6 @@ struct RtAudioMIDIPlayer  : public cmaj::audio_utils::AudioMIDIPlayer
         return result;
     }
 
-private:
     //==============================================================================
     struct NamedMIDIIn
     {
@@ -136,7 +150,6 @@ private:
     std::vector<NamedMIDIIn> rtMidiIns;
     std::vector<NamedMIDIOut> rtMidiOuts;
 
-    double currentSampleRate = 0;
     choc::buffer::ChannelCount numInputChannels = {}, numOutputChannels = {};
     std::vector<const float*> inputChannelPointers;
     std::vector<float*> outputChannelPointers;
@@ -152,16 +165,7 @@ private:
 
     void handleStreamUpdate()
     {
-        auto streamSampleRate = rtAudio->getStreamSampleRate();
-
-        if (streamSampleRate != currentSampleRate)
-        {
-            currentSampleRate = streamSampleRate;
-            options.sampleRate = static_cast<uint32_t> (currentSampleRate);
-
-            if (deviceOptionsChanged)
-                deviceOptionsChanged();
-        }
+        updateSampleRate (static_cast<uint32_t> (rtAudio->getStreamSampleRate()));
     }
 
     void handleMIDIError (RtMidiError::Type type, const std::string& errorText)
@@ -271,12 +275,10 @@ private:
             return false;
         }
 
-        currentSampleRate = rtAudio->getStreamSampleRate();
-
         options.audioAPI = RtAudio::getApiDisplayName (rtAudio->getCurrentApi());
         options.outputDeviceName = outputDeviceInfo ? outputDeviceInfo->name : std::string();
         options.inputDeviceName  = inputDeviceInfo ? inputDeviceInfo->name : std::string();
-        options.sampleRate = static_cast<uint32_t> (currentSampleRate);
+        options.sampleRate = static_cast<uint32_t> (rtAudio->getStreamSampleRate());
         options.blockSize = static_cast<uint32_t> (framesPerBuffer);
         options.inputChannelCount = static_cast<uint32_t> (numInputChannels);
         options.outputChannelCount = static_cast<uint32_t> (numOutputChannels);
@@ -305,7 +307,6 @@ private:
             rtAudio.reset();
         }
 
-        currentSampleRate = 0;
         xruns = 0;
         numInputChannels = {};
         numOutputChannels = {};
@@ -328,11 +329,10 @@ private:
     }
 
     //==============================================================================
-    void handleOutgoingMidiMessage (choc::midi::ShortMessage message)
+    void handleOutgoingMidiMessage (const void* data, uint32_t length) override
     {
-        if (auto len = message.length())
-            for (auto& out : rtMidiOuts)
-                out.midiOut->sendMessage (message.data, len);
+        for (auto& out : rtMidiOuts)
+            out.midiOut->sendMessage (static_cast<const unsigned char*> (data), length);
     }
 
     static int rtAudioCallback (void* output, void* input, unsigned int numFrames,

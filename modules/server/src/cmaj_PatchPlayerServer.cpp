@@ -54,7 +54,7 @@ struct PatchPlayerServer
 
             writeToConsole ("\nCmajor server active: " + httpServer.getHTTPAddress() + "\n\n");
 
-            createAudioPlayer (audioOptions);
+            audioPlayer = createAudioMIDIPlayer (audioOptions);
             refreshAllSessionAudioDevices();
         }
         else
@@ -86,8 +86,8 @@ struct PatchPlayerServer
     {
         if (audioPlayer != nullptr)
         {
-            auto& o = audioPlayer->getAudioMIDIPlayer().options;
-            auto availableDevices = audioPlayer->getAudioMIDIPlayer().getAvailableDevices();
+            auto& o = audioPlayer->options;
+            auto availableDevices = audioPlayer->getAvailableDevices();
 
             return choc::json::create (
                      "availableAPIs", choc::value::createArray (availableDevices.availableAudioAPIs),
@@ -114,12 +114,6 @@ struct PatchPlayerServer
                                                         "message", p));
     }
 
-    void createAudioPlayer (const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
-    {
-        auto player = createAudioMIDIPlayer (audioOptions);
-        audioPlayer = std::make_shared<cmaj::audio_utils::MultiClientAudioMIDIPlayer> (std::move (player));
-    }
-
     void sendAudioDeviceProperties (choc::value::Value options)
     {
         choc::messageloop::postMessage ([f = setAudioDevicePropsFn, options = std::move (options)] { f (options); });
@@ -130,7 +124,7 @@ struct PatchPlayerServer
         if (audioPlayer == nullptr || ! options.isObject())
             return;
 
-        const auto& o = audioPlayer->getAudioMIDIPlayer().options;
+        const auto& o = audioPlayer->options;
         auto newOptions = o;
 
         newOptions.audioAPI = options["audioAPI"].getWithDefault<std::string> (o.audioAPI);
@@ -147,7 +141,7 @@ struct PatchPlayerServer
         {
             audioPlayer = nullptr;
             refreshAllSessionAudioDevices();
-            createAudioPlayer (newOptions);
+            audioPlayer = createAudioMIDIPlayer (newOptions);
             refreshAllSessionAudioDevices();
             broadcastAudioDeviceProperties();
         }
@@ -958,7 +952,7 @@ private:
     CreateAudioMIDIPlayerFn createAudioMIDIPlayer;
 
     choc::threading::ThreadSafeFunctor<std::function<void(const choc::value::ValueView&)>> setAudioDevicePropsFn;
-    std::shared_ptr<cmaj::audio_utils::MultiClientAudioMIDIPlayer> audioPlayer;
+    std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> audioPlayer;
     choc::network::HTTPServer httpServer;
 
     std::unordered_map<std::string, std::shared_ptr<Session>> activeSessions;
