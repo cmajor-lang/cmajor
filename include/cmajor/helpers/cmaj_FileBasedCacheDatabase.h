@@ -42,7 +42,7 @@ struct FileBasedCacheDatabase   : public choc::com::ObjectWithAtomicRefCount<Cac
     {
         try
         {
-            std::lock_guard<decltype(lock)> l (lock);
+            std::scoped_lock l (lock);
             choc::file::replaceFileWithContent (getCacheFile (key).string(),
                                                 std::string_view (static_cast<const char*> (dataToSave),
                                                                   static_cast<std::string_view::size_type> (dataSize)));
@@ -54,7 +54,7 @@ struct FileBasedCacheDatabase   : public choc::com::ObjectWithAtomicRefCount<Cac
 
     uint64_t reload (const char* key, void* destAddress, uint64_t destSize) override
     {
-        std::lock_guard<decltype(lock)> l (lock);
+        std::scoped_lock l (lock);
 
         try
         {
@@ -97,7 +97,7 @@ private:
 
     void removeOldFiles()
     {
-        std::lock_guard<decltype(lock)> l (lock);
+        std::scoped_lock l (lock);
 
         struct File
         {

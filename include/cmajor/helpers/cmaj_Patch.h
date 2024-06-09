@@ -1224,7 +1224,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             if (source != nullptr)
                 source->prepare (sampleRate);
 
-            std::lock_guard<decltype(processLock)> lock (processLock);
+            std::scoped_lock lock (processLock);
             l->customSource = source;
             return true;
         }
@@ -1240,7 +1240,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             {
                 auto monitor = std::make_unique<AudioLevelMonitor> (view, *details, std::move (replyType), granularity, fullData);
 
-                std::lock_guard<decltype(processLock)> lock (processLock);
+                std::scoped_lock lock (processLock);
                 l->audioMonitors.push_back (std::move (monitor));
                 return true;
             }
@@ -1249,7 +1249,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             {
                 auto monitor = std::make_unique<EndpointListeners::EventMonitor> (view, *details, std::move (replyType));
 
-                std::lock_guard<decltype(processLock)> lock (processLock);
+                std::scoped_lock lock (processLock);
                 endpointListeners.add (std::move (monitor));
                 return true;
             }
@@ -1260,7 +1260,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
     bool stopEndpointData (PatchView& view, const EndpointID& e, std::string replyType)
     {
-        std::lock_guard<decltype(processLock)> lock (processLock);
+        std::scoped_lock lock (processLock);
         return endpointListeners.remove (view, e, replyType);
     }
 
@@ -1376,7 +1376,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         CMAJ_ASSERT (newPerformer);
 
         {
-            std::lock_guard<decltype(processLock)> lock (processLock);
+            std::scoped_lock lock (processLock);
             std::swap (performer->performer, newPerformer);
         }
 
@@ -1453,7 +1453,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
     void removeReferencesToView (PatchView& v)
     {
-        std::lock_guard<decltype(processLock)> lock (processLock);
+        std::scoped_lock lock (processLock);
         endpointListeners.removeReferencesToView (v);
     }
 
@@ -1677,7 +1677,7 @@ struct Patch::BuildThread
 
     void startBuild (std::unique_ptr<Build> build)
     {
-        std::lock_guard<decltype(buildLock)> lock (buildLock);
+        std::scoped_lock lock (buildLock);
         cancelBuild();
         activeTasks.push_back (std::make_unique<BuildTask> (*this, std::move (build)));
     }
@@ -1742,7 +1742,7 @@ private:
         std::unique_ptr<BuildTask> finishedTask;
 
         {
-            std::lock_guard<decltype(buildLock)> lock (buildLock);
+            std::scoped_lock lock (buildLock);
 
             if (activeTasks.empty())
                 return;

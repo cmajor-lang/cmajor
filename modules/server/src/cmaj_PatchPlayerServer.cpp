@@ -270,7 +270,7 @@ struct PatchPlayerServer
                 if (! v.isObject())
                     return;
 
-                std::lock_guard<decltype(messageQueueLock)> l (messageQueueLock);
+                std::scoped_lock l (messageQueueLock);
 
                 if (currentSession != nullptr
                      && currentSession->handleMessageFromClientConcurrently (v))
@@ -287,7 +287,7 @@ struct PatchPlayerServer
 
         std::unique_ptr<choc::value::Value> popNextMessage()
         {
-            std::lock_guard<decltype(messageQueueLock)> l (messageQueueLock);
+            std::scoped_lock l (messageQueueLock);
 
             if (messageQueue.empty())
                 return {};
@@ -344,14 +344,14 @@ struct PatchPlayerServer
 
         void add (ClientRequestHandler& r)
         {
-            std::lock_guard<decltype(clientLock)> sl (clientLock);
+            std::scoped_lock sl (clientLock);
             clients.insert (std::addressof (r));
             cleanUpTimer.clear();
         }
 
         void remove (ClientRequestHandler& r)
         {
-            std::lock_guard<decltype(clientLock)> sl (clientLock);
+            std::scoped_lock sl (clientLock);
             clients.erase (std::addressof (r));
             cleanUpTimer.clear();
 
@@ -369,7 +369,7 @@ struct PatchPlayerServer
         void send (const choc::value::ValueView& message)
         {
             auto json = choc::json::toString (message);
-            std::lock_guard<decltype(clientLock)> sl (clientLock);
+            std::scoped_lock sl (clientLock);
 
             for (auto* c : clients)
                 c->sendWebSocketMessage (json);
@@ -791,7 +791,7 @@ struct PatchPlayerServer
     //==============================================================================
     std::shared_ptr<Session> findSession (const std::string& sessionID)
     {
-        std::lock_guard<decltype(activeSessionLock)> sl (activeSessionLock);
+        std::scoped_lock sl (activeSessionLock);
 
         auto s = activeSessions.find (sessionID);
 
@@ -803,7 +803,7 @@ struct PatchPlayerServer
 
     std::shared_ptr<Session> getOrCreateSession (const std::string& sessionID)
     {
-        std::lock_guard<decltype(activeSessionLock)> sl (activeSessionLock);
+        std::scoped_lock sl (activeSessionLock);
 
         auto s = activeSessions.find (sessionID);
 
@@ -822,7 +822,7 @@ struct PatchPlayerServer
 
     void removeSession (std::string sessionID)
     {
-        std::lock_guard<decltype(activeSessionLock)> sl (activeSessionLock);
+        std::scoped_lock sl (activeSessionLock);
         activeSessions.erase (sessionID);
         writeToConsole ("Session deleted: " + sessionID);
         dumpActiveSessionStats();
@@ -830,7 +830,7 @@ struct PatchPlayerServer
 
     void refreshAllSessionAudioDevices()
     {
-        std::lock_guard<decltype(activeSessionLock)> sl (activeSessionLock);
+        std::scoped_lock sl (activeSessionLock);
 
         for (auto& s : activeSessions)
             if (s.second->patchPlayer != nullptr)
@@ -839,7 +839,7 @@ struct PatchPlayerServer
 
     void broadcastToAllSessions (const choc::value::ValueView& message)
     {
-        std::lock_guard<decltype(activeSessionLock)> sl (activeSessionLock);
+        std::scoped_lock sl (activeSessionLock);
 
         for (auto& s : activeSessions)
             s.second->sendMessageToClient (message);
