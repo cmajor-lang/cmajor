@@ -166,8 +166,8 @@ LIBRARY_DATA
 )");
 
     cmaj::AST::Program program;
-    buildProgram (program, { repoFolder + "/cmajor/standard_library",
-                             repoFolder + "/cmajor/standard_library/internal" }, true);
+    buildProgram (program, { repoFolder + "/standard_library",
+                             repoFolder + "/standard_library/internal" }, true);
 
     auto modules = program.rootNamespace.getSubModules();
     CMAJ_ASSERT (modules.size() == 1);

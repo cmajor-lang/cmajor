@@ -83,26 +83,26 @@ static std::string getSetValueFunctionName (const EndpointDeclaration& inputEndp
 template <typename ObjectOrContext>
 [[noreturn]] static void throwError (const ObjectOrContext& errorContext, DiagnosticMessage message, bool isStaticAssertion = false)
 {
-    ObjectRefVector<const Expression> genericFuncionCallChain;
+    ObjectRefVector<const Expression> genericFunctionCallChain;
 
     ref<const ObjectContext> context = getContext (errorContext);
 
-    for (auto p = context->parentScope; p != nullptr && genericFuncionCallChain.size() < 10; p = p->getParentScope())
+    for (auto p = context->parentScope; p != nullptr && genericFunctionCallChain.size() < 10; p = p->getParentScope())
         if (auto f = p->getAsFunction())
             if (auto originalCall = castTo<Expression> (f->originalCallLeadingToSpecialisation))
-                genericFuncionCallChain.push_back (*originalCall);
+                genericFunctionCallChain.push_back (*originalCall);
 
     DiagnosticMessageList messages;
 
     if (isStaticAssertion && context->isInSystemModule())
     {
-        for (auto& genericCall : genericFuncionCallChain)
+        for (auto& genericCall : genericFunctionCallChain)
             if (context->isInSystemModule())
                 context = getContext (genericCall);
     }
     else
     {
-        for (auto& genericCall : genericFuncionCallChain)
+        for (auto& genericCall : genericFunctionCallChain)
         {
             auto callDescription = AST::printFunctionCallDescription (genericCall, AST::PrintOptionFlags::useShortNames);
             messages.prepend (Errors::cannotResolveGenericFunction (callDescription).withContext (genericCall->context));
@@ -551,7 +551,7 @@ struct FunctionInfoGenerator
     {
         uint64_t localStackSize = 0;
 
-        bool calledFromRun    = false;
+        bool calledFromMain   = false;
         bool calledFromEvent  = false;
         bool calledFromInit   = false;
 
@@ -564,7 +564,7 @@ struct FunctionInfoGenerator
         void setWriteValueCall  (const Statement& s)   { if (writeValueCall  == nullptr)  writeValueCall = s; }
         void setReadValueCall   (const Statement& s)   { if (readValueCall   == nullptr)  readValueCall = s; }
 
-        bool isOnlyCalledFromMain() const { return calledFromRun && ! (calledFromInit || calledFromEvent); }
+        bool isOnlyCalledFromMain() const { return calledFromMain && ! (calledFromInit || calledFromEvent); }
 
         ptr<const Statement> getStreamAccessStatement() const
         {
@@ -681,7 +681,7 @@ private:
         auto& info = getInfo (f);
 
         info.calledFromEvent = info.calledFromEvent || callerInfo.calledFromEvent  || f.isEventHandler;
-        info.calledFromRun   = info.calledFromRun   || callerInfo.calledFromRun    || f.isMainFunction();
+        info.calledFromMain   = info.calledFromMain   || callerInfo.calledFromMain    || f.isMainFunction();
         info.calledFromInit  = info.calledFromInit  || callerInfo.calledFromInit   || f.isUserInitFunction();
 
         CallStack newStack { previous, nullptr, f };
