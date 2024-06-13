@@ -1146,7 +1146,12 @@ public:
         {
             unloadButton.setVisible (plugin.patch->isLoaded());
 
+           #if JUCE_MAJOR_VERSION == 8
+            juce::Font f (juce::FontOptions (18.0f));
+           #else
             juce::Font f (18.0f);
+           #endif
+
             f.setTypefaceName (juce::Font::getDefaultMonospacedFontName());
             messageBox.setFont (f);
 
