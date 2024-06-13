@@ -31,5 +31,5 @@ set(CMAJ_WARNING_FLAGS
         -Wunreachable-code -Wunused-parameter -Wno-free-nonheap-object
         $<$<COMPILE_LANGUAGE:CXX>:-Woverloaded-virtual -Wreorder>>
     $<$<CXX_COMPILER_ID:MSVC>:
-        /W4 /bigobj /Zc:strictStrings- /D_WIN32_WINNT=0x0601 ${EXTRA_WARNINGS} /D_CRT_SECURE_NO_WARNINGS /MP>
+        /W4 /bigobj /Zc:strictStrings- $<$<CONFIG:Debug>:/wd4702> /D_WIN32_WINNT=0x0601 ${EXTRA_WARNINGS} /D_CRT_SECURE_NO_WARNINGS /MP>
 )

@@ -50,6 +50,7 @@ function (MAKE_CMAJ_LIBRARY)
     # LLVM Stuff
 
     set (LLVM_RELEASE_DIR ${CMAJ_MODULE_DIR}/../3rdParty/llvm/release)
+    set (LLVM_LIBRARY_DIR "lib")
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/osx/universal)
@@ -74,6 +75,7 @@ function (MAKE_CMAJ_LIBRARY)
         else()
             if (CMAJ_MSVC_STATIC_RUNTIME)
                 set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win-static/x64)
+                set (LLVM_LIBRARY_DIR "lib$<$<CONFIG:Debug>:-debug>")
             else()
                 set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win/x64)
             endif()
@@ -384,7 +386,7 @@ function (MAKE_CMAJ_LIBRARY)
 
     target_link_directories (${CMAJ_LIBRARY_NAME}
         PUBLIC
-            ${LLVM_PATH_ROOT}/lib
+            ${LLVM_PATH_ROOT}/${LLVM_LIBRARY_DIR}
     )
 
     target_link_libraries (${CMAJ_LIBRARY_NAME}
