@@ -232,6 +232,23 @@ export default function createPatchView (patchConnection)
 }
 ```
 
+#### Resizable and Auto-Scaling GUI
+
+The `.cmajorpatch` file's `view.resizable` property controls whether the patch window can be resized.
+
+If you want your GUI to automatically scale when the window is resized, your web component should include a `getScaleFactorLimits()` method. This method should return an object specifying the minimum and maximum scale factors for your GUI.
+
+```js
+class MyAmazingPatchView extends HTMLElement {
+    // constructor and other methods...
+
+    getScaleFactorLimits()
+    {
+        return { minScale: 0.5, maxScale: 1.25 };
+    }
+}
+```
+
 ### The `PatchConnection` object
 
 The `PatchConnection` object is provided by the host and your `HTMLElement` class uses it to control and communicate with the running patch.
