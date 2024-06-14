@@ -1,0 +1,17 @@
+{
+  "CmajorVersion": 1,
+  "ID": "com.your_name.your_patch_ID",
+  "version": "1.0",
+  "name": "FilterBank",
+  "description": "fixed filter bank with spectrum analyzer",
+  "category": "processor",
+  "manufacturer": "RR",
+  "isInstrument": false,
+  "source": "FilterBank.cmajor",
+  "view": {
+    "src": "gui/dist/index.js",
+    "width": 1000,
+    "height": 500,
+    "resizable": true
+  }
+}

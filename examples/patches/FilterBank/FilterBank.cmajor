@@ -1,0 +1,187 @@
+
+namespace FilterBank
+{
+    let DFT_BUFFER_SIZE = 8192;
+
+    struct DFTOutput { float[DFT_BUFFER_SIZE/2] magnitudes; }
+
+    graph FFB  [[main]]
+    {
+        input  stream float<2> audioIn;
+        output stream float<2> audioOut;
+        output dft.dftOut;
+
+        // pan controls for each band
+        input value float panBand0 [[name: "Pan 1", min: -1.0, max: 1.0, init: 0.0]];
+        input value float panBand1 [[name: "Pan 2", min: -1.0, max: 1.0, init: 0.0]];
+        input value float panBand2 [[name: "Pan 3", min: -1.0, max: 1.0, init: 0.0]];
+        input value float panBand3 [[name: "Pan 4", min: -1.0, max: 1.0, init: 0.0]];
+        input value float panBand4 [[name: "Pan 5", min: -1.0, max: 1.0, init: 0.0]];
+        input value float panBand5 [[name: "Pan 6", min: -1.0, max: 1.0, init: 0.0]];
+        input value float panBand6 [[name: "Pan 7", min: -1.0, max: 1.0, init: 0.0]];
+        input value float panBand7 [[name: "Pan 8", min: -1.0, max: 1.0, init: 0.0]];
+
+        // amp controls for each band
+        input value float ampBand0 [[name: "Amp 1", min: 0.0, max: 1.0, init: 1.0]];
+        input value float ampBand1 [[name: "Amp 2", min: 0.0, max: 1.0, init: 1.0]];
+        input value float ampBand2 [[name: "Amp 3", min: 0.0, max: 1.0, init: 1.0]];
+        input value float ampBand3 [[name: "Amp 4", min: 0.0, max: 1.0, init: 1.0]];
+        input value float ampBand4 [[name: "Amp 5", min: 0.0, max: 1.0, init: 1.0]];
+        input value float ampBand5 [[name: "Amp 6", min: 0.0, max: 1.0, init: 1.0]];
+        input value float ampBand6 [[name: "Amp 7", min: 0.0, max: 1.0, init: 1.0]];
+        input value float ampBand7 [[name: "Amp 8", min: 0.0, max: 1.0, init: 1.0]];
+
+        // 8 panmixers and filters
+        node panners = PanMix[8];
+
+        let Q = 1.00f;
+        node
+        {
+            filter0 = std::filters (float<2>)::tpt::svf::Processor(std::filters::tpt::svf::Mode::bandPass, 61.0f, Q);
+            filter1 = std::filters (float<2>)::tpt::svf::Processor(std::filters::tpt::svf::Mode::bandPass, 115.0f, Q);
+            filter2 = std::filters (float<2>)::tpt::svf::Processor(std::filters::tpt::svf::Mode::bandPass, 218.0f, Q);
+            filter3 = std::filters (float<2>)::tpt::svf::Processor(std::filters::tpt::svf::Mode::bandPass, 411.0f, Q);
+            filter4 = std::filters (float<2>)::tpt::svf::Processor(std::filters::tpt::svf::Mode::bandPass, 777.0f, Q);
+            filter5 = std::filters (float<2>)::tpt::svf::Processor(std::filters::tpt::svf::Mode::bandPass, 1500.0f, Q);
+            filter6 = std::filters (float<2>)::tpt::svf::Processor(std::filters::tpt::svf::Mode::bandPass, 2800.0f, Q);
+            filter7 = std::filters (float<2>)::tpt::svf::Processor(std::filters::tpt::svf::Mode::bandPass, 5200.0f, Q);
+        }
+
+        node dft = DFT;
+
+        // connect input controllers
+        connection
+        {
+            panBand0 -> panners[0].pan;
+            panBand1 -> panners[1].pan;
+            panBand2 -> panners[2].pan;
+            panBand3 -> panners[3].pan;
+            panBand4 -> panners[4].pan;
+            panBand5 -> panners[5].pan;
+            panBand6 -> panners[6].pan;
+            panBand7 -> panners[7].pan;
+
+            ampBand0 -> panners[0].amp;
+            ampBand1 -> panners[1].amp;
+            ampBand2 -> panners[2].amp;
+            ampBand3 -> panners[3].amp;
+            ampBand4 -> panners[4].amp;
+            ampBand5 -> panners[5].amp;
+            ampBand6 -> panners[6].amp;
+            ampBand7 -> panners[7].amp;
+        }
+
+        // audio routing
+        // TODO: should the filters come before the panmixers?
+        connection
+        {
+            // send audio to filters in parallel
+            audioIn -> filter0.in,
+                    filter1.in,
+                    filter2.in,
+                    filter3.in,
+                    filter4.in,
+                    filter5.in,
+                    filter6.in,
+                    filter7.in;
+
+            // send each filter output to a panner
+            filter0.out -> panners[0].in;
+            filter1.out -> panners[1].in;
+            filter2.out -> panners[2].in;
+            filter3.out -> panners[3].in;
+            filter4.out -> panners[4].in;
+            filter5.out -> panners[5].in;
+            filter6.out -> panners[6].in;
+            filter7.out -> panners[7].in;
+
+            // sum the output of the panners and adjust gain
+            (panners[0].out +
+            panners[1].out +
+            panners[2].out +
+            panners[3].out +
+            panners[4].out +
+            panners[5].out +
+            panners[6].out +
+            panners[7].out) / 2.0f -> audioOut, dft.in;
+        }
+    }
+
+    processor PanMix
+    {
+        input value float pan [[name: "Pan", min: -1.0, max: 1.0, init: 0.0]];
+        input value float amp [[name: "Amp", min: 0.0, max: 1.0, init: 1.0]];
+
+        input stream float<2> in;
+        output stream float<2> out;
+
+        void main()
+        {
+            loop
+            {
+                float<2> gains = std::pan_law::linear (pan);
+                out <- float<2> (in[0] * gains[0] * amp, in[1] * gains[1] * amp);
+                advance();
+            }
+        }
+    }
+
+    processor DFT
+    {
+        input stream float<2> in;
+        output event DFTOutput dftOut;
+
+        let fftSize = DFT_BUFFER_SIZE / 2;
+        let windowSize = DFT_BUFFER_SIZE / 4;
+        let fftsPerSecond = 20;
+        let framesBetweenFtts = (processor.frequency / fftsPerSecond) - windowSize;
+
+        float[DFT_BUFFER_SIZE] buffer;
+
+        float[windowSize] hann()
+        {
+            float[windowSize] window;
+            for (int i = 0; i < windowSize; i++)
+            {
+                window.at(i) = float (0.5 * (1.0 - cos(2.0 * pi * i / (windowSize - 1))));
+            }
+            return window;
+        }
+
+        float[windowSize] window = hann();
+
+        float normalizationFactor = 1.0f / windowSize;
+
+        void main()
+        {
+            loop
+            {
+                for (wrap<windowSize> counter)
+                {
+                    buffer[counter] = ((in[0] + in[1]) / 2.0f) * window[counter];
+                    advance();
+                }
+
+                // perform the FFT
+                float[DFT_BUFFER_SIZE] fft;
+                std::frequency::realOnlyForwardFFT(buffer, fft);
+
+                // calculate magnitudes
+                DFTOutput result;
+
+                for (wrap<fftSize> i)
+                {
+                    float real = fft[i];
+                    float imag = fft.at(fftSize + i);
+                    result.magnitudes[i] = sqrt(real * real + imag * imag) * normalizationFactor * 1000.0f;
+                }
+
+                dftOut <- result;
+
+                if const (framesBetweenFtts > 0)
+                    loop (framesBetweenFtts)
+                        advance();
+            }
+        }
+    }
+}
