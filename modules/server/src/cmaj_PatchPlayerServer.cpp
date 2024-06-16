@@ -87,12 +87,11 @@ struct PatchPlayerServer
         if (audioPlayer != nullptr)
         {
             auto& o = audioPlayer->options;
-            auto availableDevices = audioPlayer->getAvailableDevices();
 
             return choc::json::create (
-                     "availableAPIs", choc::value::createArray (availableDevices.availableAudioAPIs),
-                     "availableOutputDevices", choc::value::createArray (availableDevices.availableOutputDevices),
-                     "availableInputDevices", choc::value::createArray (availableDevices.availableInputDevices),
+                     "availableAPIs", choc::value::createArray (audioPlayer->getAvailableAudioAPIs()),
+                     "availableOutputDevices", choc::value::createArray (audioPlayer->getAvailableOutputDevices()),
+                     "availableInputDevices", choc::value::createArray (audioPlayer->getAvailableInputDevices()),
                      "sampleRates", choc::value::createArray (audioPlayer->getAvailableSampleRates()),
                      "blockSizes", choc::value::createArray (audioPlayer->getAvailableBlockSizes()),
                      "audioAPI", o.audioAPI,

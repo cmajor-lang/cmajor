@@ -46,24 +46,18 @@ struct AudioDeviceOptions
 
     /// Optional API to use (e.g. "CoreAudio", "WASAPI").
     /// Leave empty to use the default.
+    /// @seeAudioMIDIPlayer::getAvailableAudioAPIs()
     std::string audioAPI;
 
     /// Optional input device name - leave empty for a default.
-    /// You can get these names from AudioMIDIPlayer::getAvailableDevices()
+    /// You can get these names from AudioMIDIPlayer::getAvailableInputDevices()
     std::string inputDeviceName;
 
     /// Optional output device name - leave empty for a default.
-    /// You can get these names from AudioMIDIPlayer::getAvailableDevices()
+    /// You can get these names from AudioMIDIPlayer::getAvailableOutputDevices()
     std::string outputDeviceName;
 };
 
-//==============================================================================
-struct AvailableAudioDevices
-{
-    std::vector<std::string> availableAudioAPIs;
-    std::vector<std::string> availableInputDevices;
-    std::vector<std::string> availableOutputDevices;
-};
 
 //==============================================================================
 /**
@@ -106,11 +100,13 @@ struct AudioMIDIPlayer
 {
     virtual ~AudioMIDIPlayer() = default;
 
+    //==============================================================================
     /// Attaches a callback to this device.
     void addCallback (AudioMIDICallback&);
     /// Removes a previously-attached callback to this device.
     void removeCallback (AudioMIDICallback&);
 
+    //==============================================================================
     /// The options that this device was created with.
     AudioDeviceOptions options;
 
@@ -119,13 +115,24 @@ struct AudioMIDIPlayer
     /// thread may call it.
     std::function<void()> deviceOptionsChanged;
 
+    /// Returns a list of values that AudioDeviceOptions::audioAPI
+    /// could be given.
+    virtual std::vector<std::string> getAvailableAudioAPIs() = 0;
+
     /// Returns a list of sample rates that this device could be opened with.
     virtual std::vector<int32_t> getAvailableSampleRates() = 0;
+
     /// Returns a list of block sizes that could be used to open this device.
     virtual std::vector<int32_t> getAvailableBlockSizes() = 0;
 
-    /// Returns various device options that this device could be opened with.
-    virtual AvailableAudioDevices getAvailableDevices() = 0;
+    /// Returns a list of devices that could be used for
+    /// AudioDeviceOptions::inputDeviceName
+    virtual std::vector<std::string> getAvailableInputDevices() = 0;
+
+    /// Returns a list of devices that could be used for
+    /// AudioDeviceOptions::outputDeviceName
+    virtual std::vector<std::string> getAvailableOutputDevices() = 0;
+
 
 protected:
     //==============================================================================

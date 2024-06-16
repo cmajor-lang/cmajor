@@ -109,24 +109,36 @@ private:
     std::vector<int32_t> getAvailableSampleRates() override   { return availableSampleRates; }
     std::vector<int32_t> getAvailableBlockSizes() override    { return { 16, 32, 48, 64, 96, 128, 196, 224, 256, 320, 480, 512, 768, 1024, 1536, 2048 }; }
 
-    cmaj::audio_utils::AvailableAudioDevices getAvailableDevices() override
+    std::vector<std::string> getAvailableAudioAPIs() override
     {
-        cmaj::audio_utils::AvailableAudioDevices result;
-
+        std::vector<std::string> result;
         std::vector<RtAudio::Api> apis;
         RtAudio::getCompiledApi (apis);
 
         for (auto& api : apis)
-            result.availableAudioAPIs.push_back (RtAudio::getApiDisplayName (api));
+            result.push_back (RtAudio::getApiDisplayName (api));
+
+        return result;
+    }
+
+    std::vector<std::string> getAvailableInputDevices() override
+    {
+        std::vector<std::string> result;
 
         for (auto& device : getAudioDeviceList())
-        {
-            if (device.outputChannels != 0)
-                result.availableOutputDevices.push_back (device.name);
-
             if (device.inputChannels != 0)
-                result.availableInputDevices.push_back (device.name);
-        }
+                result.push_back (device.name);
+
+        return result;
+    }
+
+    std::vector<std::string> getAvailableOutputDevices() override
+    {
+        std::vector<std::string> result;
+
+        for (auto& device : getAudioDeviceList())
+            if (device.outputChannels != 0)
+                result.push_back (device.name);
 
         return result;
     }
