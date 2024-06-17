@@ -141,10 +141,10 @@ namespace FilterBank
         float[windowSize] hann()
         {
             float[windowSize] window;
-            for (int i = 0; i < windowSize; i++)
-            {
-                window.at(i) = float (0.5 * (1.0 - cos(2.0 * pi * i / (windowSize - 1))));
-            }
+
+            for (wrap<windowSize> i)
+                window[i] = float (0.5 * (1.0 - cos(2.0 * pi * i / (windowSize - 1))));
+
             return window;
         }
 

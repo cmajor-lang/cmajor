@@ -1324,3 +1324,13 @@ processor ClampMinValue [[ main ]]
         advance();
     }
 }
+
+## testFunction()
+
+bool test()
+{
+    let i = 4;
+    wrap<10> j = 4;
+
+    return (2.0f * i) == (2.0f * j);
+}

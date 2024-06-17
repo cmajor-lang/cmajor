@@ -296,16 +296,12 @@ struct TypeRules
             if (a.isIdentical (b))
                 return { a, a };
 
-            // If either side is a bounded int, only allow the other side to be an integer
-            if (a.isBoundedType())  { if (b.isPrimitiveInt()) return { b, b }; return BinaryOperatorTypes::invalid (a); }
-            if (b.isBoundedType())  { if (a.isPrimitiveInt()) return { a, a }; return BinaryOperatorTypes::invalid (a); }
-
             if (canSilentlyCastTo (a, b)) return { a, a };
             if (canSilentlyCastTo (b, a)) return { b, b };
 
-            // Allow silent promotion of ints to float32s
-            if (a.isPrimitiveFloat() && b.isPrimitiveInt()) return { a, a };
-            if (b.isPrimitiveFloat() && a.isPrimitiveInt()) return { b, b };
+            // Allow silent promotion of ints/bound types to float
+            if (a.isPrimitiveFloat() && (b.isPrimitiveInt() || b.isBoundedType())) return { a, a };
+            if (b.isPrimitiveFloat() && (a.isPrimitiveInt() || a.isBoundedType())) return { b, b };
 
             // Allow silent promotion of ints to complex
             if (a.isPrimitiveComplex() && b.isPrimitiveInt()) return { a, a };
