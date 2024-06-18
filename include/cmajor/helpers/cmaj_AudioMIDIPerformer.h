@@ -246,8 +246,6 @@ inline bool AudioMIDIPerformer::Builder::connectAudioInputTo (const std::vector<
 {
     CMAJ_ASSERT (inputChannels.size() == endpointChannels.size());
 
-    result->preRenderFunctions.clear();
-
     if (auto numChannelsInEndpoint = getNumFloatChannelsInStream (endpoint))
     {
         ensureInputScratchBufferChannelCount (numChannelsInEndpoint);

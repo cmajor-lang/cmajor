@@ -992,7 +992,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     //==============================================================================
     void build (cmaj::Engine& engine,
                 LoadParams& loadParams,
-                const PlaybackParams& playbackParams,
+                PlaybackParams playbackParams,
                 bool shouldResolveExternals,
                 bool shouldLink,
                 const cmaj::CacheDatabaseInterface::Ptr& c,
@@ -1001,6 +1001,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     {
         try
         {
+            configuredPlaybackParams = playbackParams;
             manifest = std::move (loadParams.manifest);
 
             if (! loadProgram (engine, playbackParams, shouldResolveExternals, checkForStopSignal))
@@ -1485,6 +1486,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     PatchManifest manifest;
     cmaj::DiagnosticMessageList errors;
     std::string lastBuildLog;
+    PlaybackParams configuredPlaybackParams;
 
     choc::value::Value programDetails;
     std::vector<PatchParameterPtr> parameterList;
@@ -2354,6 +2356,9 @@ inline void Patch::sendPatchChange()
 inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
 {
     if (renderer == nullptr && newRenderer == nullptr)
+        return;
+
+    if (currentPlaybackParams != newRenderer->configuredPlaybackParams)
         return;
 
     if (stopPlayback)
