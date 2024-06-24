@@ -890,7 +890,7 @@ inline clap_process_status Plugin::Impl::clapPlugin_process (const clap_process_
             patch.process ({
                 inputChannels.getFrameRange ({ range.start, range.end }),
                 outputChannels.getFrameRange ({ range.start, range.end }),
-                choc::span<choc::midi::ShortMessage> {}, // handle splitting events externally, for sample-accurate automation etc.
+                {}, // handle splitting events externally, for sample-accurate automation etc.
                 [&, this] (auto frameIndex, const auto& message)
                 {
                     if (infoForOutputNotePorts.empty())
@@ -1521,7 +1521,7 @@ clap_event_midi_t Plugin::Impl::toClapMidiEvent (uint32_t sampleOffset,
     clapEvent.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
     clapEvent.header.flags = 0;
     clapEvent.port_index = portIndex;
-    std::copy (std::begin (msg.data), std::end (msg.data), std::begin (clapEvent.data));
+    std::copy (std::begin (msg.midiData.bytes), std::end (msg.midiData.bytes), std::begin (clapEvent.data));
 
     return clapEvent;
 }
@@ -1846,7 +1846,7 @@ inline bool setViewSize (void* view, uint32_t width, uint32_t height)
 {
   #if CHOC_OSX
     CHOC_AUTORELEASE_BEGIN
-    auto frame = choc::ui::macos_ui_helpers::createCGRect ({ 0, 0, (int) width, (int) height });
+    auto frame = choc::objc::CGRect {{ 0, 0 }, { (choc::objc::CGFloat) width, (choc::objc::CGFloat) height }};
     choc::objc::call<void> ((id) view, "setFrame:", frame);
     CHOC_AUTORELEASE_END
     return true;

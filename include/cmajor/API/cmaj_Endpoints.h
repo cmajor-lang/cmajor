@@ -287,16 +287,16 @@ inline std::string_view getEndpointPurposeName (EndpointPurpose p)
 
 inline int32_t MIDIEvents::midiMessageToPackedInt (choc::midi::ShortMessage m)
 {
-    return static_cast<int32_t> (m.data[0]) << 16
-            | static_cast<int32_t> (m.data[1]) << 8
-            | static_cast<int32_t> (m.data[2]);
+    return static_cast<int32_t> (m.midiData.bytes[0]) << 16
+         | static_cast<int32_t> (m.midiData.bytes[1]) << 8
+         | static_cast<int32_t> (m.midiData.bytes[2]);
 }
 
 inline choc::midi::ShortMessage MIDIEvents::packedMIDIDataToMessage (int32_t packed)
 {
     return choc::midi::ShortMessage (static_cast<uint8_t> (packed >> 16),
-                                        static_cast<uint8_t> (packed >> 8),
-                                        static_cast<uint8_t> (packed));
+                                     static_cast<uint8_t> (packed >> 8),
+                                     static_cast<uint8_t> (packed));
 }
 
 inline bool MIDIEvents::isMIDIMessageType (const choc::value::Type& type)

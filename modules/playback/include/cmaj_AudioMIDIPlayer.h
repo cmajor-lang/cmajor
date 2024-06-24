@@ -149,7 +149,7 @@ protected:
     virtual void handleOutgoingMidiMessage (const void* data, uint32_t length) = 0;
 
     void updateSampleRate (uint32_t);
-    void addIncomingMIDIEvent (const void*, uint32_t);
+    void addIncomingMIDIEvent (choc::audio::AudioMIDIBlockDispatcher::MIDIDeviceID, const void*, uint32_t);
     void process (choc::buffer::ChannelArrayView<const float> input,
                   choc::buffer::ChannelArrayView<float> output, bool replaceOutput);
 };
@@ -170,10 +170,10 @@ protected:
 
 inline AudioMIDIPlayer::AudioMIDIPlayer (const AudioDeviceOptions& o) : options (o)
 {
-    dispatcher.setMidiOutputCallback ([this] (uint32_t, choc::midi::ShortMessage m)
+    dispatcher.setMidiOutputCallback ([this] (uint32_t, choc::midi::MessageView m)
     {
         if (auto len = m.length())
-            handleOutgoingMidiMessage (m.data, len);
+            handleOutgoingMidiMessage (m.data(), len);
     });
 
     dispatcher.reset (options.sampleRate);
@@ -238,10 +238,10 @@ inline void AudioMIDIPlayer::updateSampleRate (uint32_t newRate)
     }
 }
 
-inline void AudioMIDIPlayer::addIncomingMIDIEvent (const void* data, uint32_t size)
+inline void AudioMIDIPlayer::addIncomingMIDIEvent (choc::audio::AudioMIDIBlockDispatcher::MIDIDeviceID deviceID, const void* data, uint32_t size)
 {
     const std::scoped_lock lock (callbackLock);
-    dispatcher.addMIDIEvent (data, size);
+    dispatcher.addMIDIEvent (deviceID, data, size);
 }
 
 inline void AudioMIDIPlayer::process (choc::buffer::ChannelArrayView<const float> input,

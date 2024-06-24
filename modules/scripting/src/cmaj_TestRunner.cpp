@@ -760,13 +760,13 @@ namespace cmaj::test
 
                     auto midiEvents = choc::value::createEmptyArray();
 
-                    midi.iterateEvents ([&] (const choc::midi::Message& m, double timeInSeconds)
+                    midi.iterateEvents ([&] (const choc::midi::LongMessage& m, double timeInSeconds)
                     {
                         (void) m;
 
                         if (m.isShortMessage())
                         {
-                            int v = (m[0] << 16) + (m[1] << 8) + m[2];
+                            int v = (m.data()[0] << 16) + (m.data()[1] << 8) + m.data()[2];
                             double sampleRate = 48000.0;
 
                             midiEvents.addArrayElement(choc::value::createObject ("midiEvent",

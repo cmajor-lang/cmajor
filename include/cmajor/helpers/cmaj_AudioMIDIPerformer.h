@@ -121,7 +121,7 @@ struct AudioMIDIPerformer
     /// times into sub-blocks, and process each chunk separately
     bool processWithTimeStampedMIDI (const choc::buffer::ChannelArrayView<const float> audioInput,
                                      const choc::buffer::ChannelArrayView<float> audioOutput,
-                                     const choc::midi::ShortMessage* midiInMessages,
+                                     const choc::audio::AudioMIDIBlockDispatcher::MIDIMessage* midiInMessages,
                                      const int* midiInMessageTimes,
                                      uint32_t totalNumMIDIMessages,
                                      const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn& sendMidiOut,
@@ -713,7 +713,7 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
 
                 if (! process ({ block.audioInput.getFrameRange ({ start, start + numToDo }),
                                  block.audioOutput.getFrameRange ({ start, start + numToDo }),
-                                 start == 0 ? block.midiMessages : choc::span<choc::midi::ShortMessage>(),
+                                 start == 0 ? block.midiMessages : choc::span<choc::audio::AudioMIDIBlockDispatcher::MIDIMessage>(),
                                  [&] (uint32_t frame, choc::midi::ShortMessage m)
                                  {
                                      block.onMidiOutputMessage (start + frame, m);
@@ -752,11 +752,19 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
         {
             for (auto midiEvent : block.midiMessages)
             {
-                auto bytes = midiEvent.data;
-                auto packedMIDI = static_cast<int32_t> ((bytes[0] << 16) | (bytes[1] << 8) | bytes[2]);
+                auto length = midiEvent.message.length();
 
-                for (auto& midiEndpoint : midiInputEndpoints)
-                    performer.addInputEvent (midiEndpoint, 0, packedMIDI);
+                if (length < 4 && length != 0)
+                {
+                    auto bytes = midiEvent.message.data();
+                    int32_t packedMIDI = 0;
+
+                    for (uint32_t i = 0; i < length; ++i)
+                        packedMIDI = (packedMIDI << 8) | static_cast<int32_t> (bytes[i]);
+
+                    for (auto& midiEndpoint : midiInputEndpoints)
+                        performer.addInputEvent (midiEndpoint, 0, packedMIDI);
+                }
             }
         }
 
@@ -793,7 +801,7 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
 
 inline bool AudioMIDIPerformer::processWithTimeStampedMIDI (const choc::buffer::ChannelArrayView<const float> audioInput,
                                                             const choc::buffer::ChannelArrayView<float> audioOutput,
-                                                            const choc::midi::ShortMessage* midiInMessages,
+                                                            const choc::audio::AudioMIDIBlockDispatcher::MIDIMessage* midiInMessages,
                                                             const int* midiInMessageTimes,
                                                             uint32_t totalNumMIDIMessages,
                                                             const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn& sendMidiOut,
@@ -823,11 +831,12 @@ inline bool AudioMIDIPerformer::processWithTimeStampedMIDI (const choc::buffer::
             ++endOfMIDI;
         }
 
-        if (! process (choc::audio::AudioMIDIBlockDispatcher::Block {
+        if (! process (choc::audio::AudioMIDIBlockDispatcher::Block
+                       {
                            audioInput.getFrameRange (chunkToDo),
                            audioOutput.getFrameRange (chunkToDo),
-                           choc::span<const choc::midi::ShortMessage> (midiInMessages + midiStartIndex,
-                                                                       midiInMessages + endOfMIDI),
+                           choc::span<const choc::audio::AudioMIDIBlockDispatcher::MIDIMessage> (midiInMessages + midiStartIndex,
+                                                                                                 midiInMessages + endOfMIDI),
                            [&] (uint32_t frame, choc::midi::ShortMessage m)
                            {
                                sendMidiOut (chunkToDo.start + frame, m);

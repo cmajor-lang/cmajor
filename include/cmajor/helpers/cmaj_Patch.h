@@ -346,7 +346,8 @@ private:
 
     static constexpr uint32_t performerEventQueueSize = 65536;
 
-    std::vector<choc::midi::ShortMessage> midiMessages;
+    std::vector<char> midiMessageSpace;
+    std::vector<choc::audio::AudioMIDIBlockDispatcher::MIDIMessage> midiMessages;
     std::vector<int> midiMessageTimes;
 
     std::unique_ptr<BuildThread> buildThread;
@@ -1424,7 +1425,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             for (auto& monitor : endpointListeners.eventMonitors)
                 if (monitor->isMIDI)
                     for (auto& m : block.midiMessages)
-                        monitor->process (*patch.clientEventQueue, monitor->endpointID, m);
+                        monitor->process (*patch.clientEventQueue, monitor->endpointID, m.message);
     }
 
     //==============================================================================
@@ -1777,6 +1778,7 @@ inline Patch::Patch()
     const size_t midiBufferSize = 256;
     midiMessageTimes.reserve (midiBufferSize);
     midiMessages.reserve (midiBufferSize);
+    midiMessageSpace.reserve (midiBufferSize * 4);
 
     clientEventQueue = std::make_unique<ClientEventQueue> (*this);
 }
@@ -2114,8 +2116,11 @@ inline void Patch::addMIDIMessage (int frameIndex, const void* data, uint32_t le
 {
     if (length < 4)
     {
-        auto message = choc::midi::ShortMessage (data, static_cast<size_t> (length));
-        midiMessages.push_back (message);
+        auto offset = midiMessageSpace.size();
+        midiMessageSpace.insert (midiMessageSpace.end(), static_cast<const char*> (data), static_cast<const char*> (data) + length);
+        auto messageData = midiMessageSpace.data() + offset;
+        auto message = choc::midi::MessageView (messageData, static_cast<size_t> (length));
+        midiMessages.push_back ({ {}, {}, message });
         midiMessageTimes.push_back (frameIndex);
 
         if (renderer != nullptr)
@@ -2132,6 +2137,7 @@ inline void Patch::process (float* const* audioChannels, uint32_t numFrames,
                                                          midiMessages.data(), midiMessageTimes.data(), static_cast<uint32_t> (midiMessages.size()),
                                                          handleMIDIOut, true);
     midiMessages.clear();
+    midiMessageSpace.clear();
     midiMessageTimes.clear();
     endChunkedProcess();
 }

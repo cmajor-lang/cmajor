@@ -146,6 +146,7 @@ private:
     //==============================================================================
     struct NamedMIDIIn
     {
+        RtAudioMIDIPlayer* owner = {};
         std::unique_ptr<RtMidiIn> midiIn;
         std::string name;
     };
@@ -157,7 +158,7 @@ private:
     };
 
     std::unique_ptr<RtAudio> rtAudio;
-    std::vector<NamedMIDIIn> rtMidiIns;
+    std::vector<std::unique_ptr<NamedMIDIIn>> rtMidiIns;
     std::vector<NamedMIDIOut> rtMidiOuts;
 
     choc::buffer::ChannelCount numInputChannels = {}, numOutputChannels = {};
@@ -178,9 +179,9 @@ private:
         updateSampleRate (static_cast<uint32_t> (rtAudio->getStreamSampleRate()));
     }
 
-    void handleMIDIError (RtMidiError::Type type, const std::string& errorText)
+    void handleMIDIError (NamedMIDIIn& m, RtMidiError::Type type, const std::string& errorText)
     {
-        std::cout << "Audio device error: " << errorText << std::endl;
+        std::cout << "MIDI device error: Device: " << m.name << ": " << errorText << std::endl;
         (void) type;
     }
 
@@ -355,13 +356,14 @@ private:
 
     static void rtMidiCallback (double, std::vector<unsigned char>* message, void* userData)
     {
-        static_cast<RtAudioMIDIPlayer*> (userData)
-            ->midiCallback (message->data(), static_cast<uint32_t> (message->size()));
+        auto& m = *static_cast<NamedMIDIIn*> (userData);
+        m.owner->midiCallback (m, message->data(), static_cast<uint32_t> (message->size()));
     }
 
     static void rtMidiErrorCallback (RtMidiError::Type type, const std::string& errorText, void* userData)
     {
-        static_cast<RtAudioMIDIPlayer*> (userData)->handleMIDIError (type, errorText);
+        auto& m = *static_cast<NamedMIDIIn*> (userData);
+        m.owner->handleMIDIError (m, type, errorText);
     }
 
     int audioCallback (float* output, const float* input, choc::buffer::FrameCount numFrames,
@@ -386,9 +388,9 @@ private:
         return 0;
     }
 
-    void midiCallback (const void* data, uint32_t size)
+    void midiCallback (NamedMIDIIn& m, const void* data, uint32_t size)
     {
-        addIncomingMIDIEvent (data, size);
+        addIncomingMIDIEvent (m.name.c_str(), data, size);
     }
 
     std::vector<RtAudio::DeviceInfo> getAudioDeviceList() const
@@ -426,23 +428,24 @@ private:
             availableSampleRates = { 44100, 48000 };
     }
 
-    NamedMIDIIn openMIDIIn (unsigned int portNum)
+    std::unique_ptr<NamedMIDIIn> openMIDIIn (unsigned int portNum)
     {
         static constexpr unsigned int queueSize = 512;
 
-        NamedMIDIIn m;
-        m.midiIn = std::make_unique<RtMidiIn> (RtMidi::Api::UNSPECIFIED, "Cmajor", queueSize);
-        m.midiIn->setCallback (rtMidiCallback, this);
-        m.midiIn->setErrorCallback (rtMidiErrorCallback, this);
-        m.midiIn->openPort (portNum, "Cmajor Input");
-        m.name = m.midiIn->getPortName (portNum);
+        auto m = std::make_unique<NamedMIDIIn>();
+        m->owner = this;
+        m->midiIn = std::make_unique<RtMidiIn> (RtMidi::Api::UNSPECIFIED, "Cmajor", queueSize);
+        m->midiIn->setCallback (rtMidiCallback, m.get());
+        m->midiIn->setErrorCallback (rtMidiErrorCallback, m.get());
+        m->midiIn->openPort (portNum, "Cmajor Input");
+        m->name = m->midiIn->getPortName (portNum);
         return m;
     }
 
     bool isMIDIInOpen (const std::string& name) const
     {
         for (auto& m : rtMidiIns)
-            if (m.name == name)
+            if (m->name == name)
                 return true;
 
         return false;
@@ -491,9 +494,9 @@ private:
 
             for (auto i = rtMidiIns.begin(); i != rtMidiIns.end();)
             {
-                if (std::find (newInputs.begin(), newInputs.end(), i->name) == newInputs.end())
+                if (std::find (newInputs.begin(), newInputs.end(), (*i)->name) == newInputs.end())
                 {
-                    std::cout << "Closing MIDI input: " << i->name << std::endl;
+                    std::cout << "Closing MIDI input: " << (*i)->name << std::endl;
                     i = rtMidiIns.erase(i);
                 }
                 else

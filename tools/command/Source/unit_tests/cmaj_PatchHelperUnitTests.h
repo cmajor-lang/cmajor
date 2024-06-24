@@ -1133,13 +1133,7 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         auto inputs = choc::buffer::createChannelArrayView (inputBuffers.data(), static_cast<uint32_t> (inputBuffers.size()), params.blockSize);
         auto outputs = choc::buffer::createChannelArrayView (outputBuffers.data(), static_cast<uint32_t> (outputBuffers.size()), params.blockSize);
 
-        const auto block = choc::audio::AudioMIDIBlockDispatcher::Block
-        {
-            inputs,
-            outputs,
-            choc::span<choc::midi::ShortMessage> {},
-            choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn {}
-        };
+        const auto block = choc::audio::AudioMIDIBlockDispatcher::Block { inputs, outputs, {}, {} };
         const auto replaceOutput = true;
         patch.process (block, replaceOutput);
 
