@@ -137,3 +137,55 @@ target_link_libraries(RenderPatch
         $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
         ${EXTRA_LIBS}
 )
+
+
+
+# -----------------------------------------------------------------------------
+# RenderPatchSharedLib example
+# -----------------------------------------------------------------------------
+
+project(
+    RenderPatchSharedLib
+    VERSION 0.1
+    LANGUAGES CXX C)
+
+add_executable(RenderPatchSharedLib)
+
+target_compile_features(RenderPatchSharedLib PRIVATE cxx_std_17)
+target_compile_options(RenderPatchSharedLib PRIVATE ${CMAJ_WARNING_FLAGS})
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules (GTK3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
+    pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
+    target_include_directories (RenderPatchSharedLib PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
+    target_link_libraries (RenderPatchSharedLib PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
+
+    if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
+        target_link_libraries (RenderPatchSharedLib PUBLIC atomic)
+    endif()
+
+    set (EXTRA_LIBS dl ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES} "-pthread" "-lasound")
+endif()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    target_link_libraries(RenderPatchSharedLib PRIVATE "-framework WebKit")
+    target_link_libraries(RenderPatchSharedLib PRIVATE "-framework Accelerate")
+    target_link_libraries(RenderPatchSharedLib PRIVATE "-framework CoreAudio")
+    target_link_libraries(RenderPatchSharedLib PRIVATE "-framework CoreMIDI")
+    target_link_libraries(RenderPatchSharedLib PRIVATE "-framework AudioToolbox")
+    target_link_libraries(RenderPatchSharedLib PRIVATE "-framework Foundation")
+    target_link_libraries(RenderPatchSharedLib PRIVATE "-framework IOKit")
+    target_link_libraries(RenderPatchSharedLib PRIVATE "-framework Cocoa")
+endif()
+
+target_sources(RenderPatchSharedLib
+    PRIVATE
+    RenderPatchSharedLib/Main.cpp)
+
+target_link_libraries(RenderPatchSharedLib
+    PRIVATE
+        ${CMAKE_DL_LIBS}
+        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
+        ${EXTRA_LIBS}
+)
