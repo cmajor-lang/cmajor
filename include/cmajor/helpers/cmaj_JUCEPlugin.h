@@ -304,7 +304,7 @@ public:
         patch->process (audioChannels, numFrames,
                         [&] (uint32_t frame, choc::midi::ShortMessage m)
                         {
-                            midi.addEvent (m.data(), m.length(), static_cast<int> (frame));
+                            midi.addEvent (m.data(), static_cast<int> (m.length()), static_cast<int> (frame));
                         });
     }
 
