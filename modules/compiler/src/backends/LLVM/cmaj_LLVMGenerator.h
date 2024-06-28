@@ -1568,6 +1568,9 @@ struct LLVMCodeGenerator
 
     ValueReader createIntrinsicCall (::llvm::Intrinsic::ID intrinsicID, ::llvm::ArrayRef<::llvm::Value*> args, const AST::TypeBase& returnType)
     {
+        if (webAssemblyMode)
+            return {};
+
         if (! returnType.isFloatOrVectorOfFloat())
             return {};
 
@@ -1595,15 +1598,15 @@ struct LLVMCodeGenerator
         switch (intrinsic)
         {
             case AST::Intrinsic::Type::abs:           return createIntrinsicCall (::llvm::Intrinsic::fabs,   args, returnType);
-            case AST::Intrinsic::Type::min:           return webAssemblyMode ? ValueReader() : createIntrinsicCall (::llvm::Intrinsic::minnum, args, returnType);
-            case AST::Intrinsic::Type::max:           return webAssemblyMode ? ValueReader() : createIntrinsicCall (::llvm::Intrinsic::maxnum, args, returnType);
+            case AST::Intrinsic::Type::min:           return createIntrinsicCall (::llvm::Intrinsic::minnum, args, returnType);
+            case AST::Intrinsic::Type::max:           return createIntrinsicCall (::llvm::Intrinsic::maxnum, args, returnType);
             case AST::Intrinsic::Type::floor:         return createIntrinsicCall (::llvm::Intrinsic::floor,  args, returnType);
             case AST::Intrinsic::Type::ceil:          return createIntrinsicCall (::llvm::Intrinsic::ceil,   args, returnType);
             case AST::Intrinsic::Type::rint:          return createIntrinsicCall (::llvm::Intrinsic::rint,   args, returnType);
             case AST::Intrinsic::Type::sqrt:          return createIntrinsicCall (::llvm::Intrinsic::sqrt,   args, returnType);
             case AST::Intrinsic::Type::log:           return createIntrinsicCall (::llvm::Intrinsic::log,    args, returnType);
             case AST::Intrinsic::Type::log10:         return createIntrinsicCall (::llvm::Intrinsic::log10,  args, returnType);
-            case AST::Intrinsic::Type::exp:           return webAssemblyMode ? ValueReader() : createIntrinsicCall (::llvm::Intrinsic::exp,    args, returnType);
+            case AST::Intrinsic::Type::exp:           return createIntrinsicCall (::llvm::Intrinsic::exp,    args, returnType);
             case AST::Intrinsic::Type::pow:           return createIntrinsicCall (::llvm::Intrinsic::pow,    args, returnType);
             case AST::Intrinsic::Type::sin:           return createIntrinsicCall (::llvm::Intrinsic::sin,    args, returnType);
             case AST::Intrinsic::Type::cos:           return createIntrinsicCall (::llvm::Intrinsic::cos,    args, returnType);
