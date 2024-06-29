@@ -571,8 +571,9 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
         {
             if (auto functionReturnType = AST::castToTypeBase (r.getParentFunction().returnType))
             {
-                if (functionReturnType->isVoid())
-                    throwError (r.value, Errors::voidFunctionCannotReturnValue());
+                if (functionReturnType->isResolved())
+                    if (functionReturnType->isVoid())
+                        throwError (r.value, Errors::voidFunctionCannotReturnValue());
 
                 convertUntypedValueOrListToValue (r.value, *functionReturnType, true);
             }
