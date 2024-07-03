@@ -91,43 +91,43 @@ struct PerformerAllocationCheckWrapper  : public choc::com::ObjectWithAtomicRefC
         target = std::move (p);
     }
 
-    void reset() override
+    Result reset() override
     {
         ScopedAllocationTracker allocationTracker;
-        target->reset();
+        return target->reset();
     }
 
-    void setBlockSize (uint32_t numFramesForNextBlock) override
+    Result setBlockSize (uint32_t numFramesForNextBlock) override
     {
         ScopedAllocationTracker allocationTracker;
-        target->setBlockSize (numFramesForNextBlock);
+        return target->setBlockSize (numFramesForNextBlock);
     }
 
-    void setInputFrames (EndpointHandle endpoint, const void* frameData, uint32_t numFrames) override
+    Result setInputFrames (EndpointHandle endpoint, const void* frameData, uint32_t numFrames) override
     {
         ScopedAllocationTracker allocationTracker;
-        target->setInputFrames (endpoint, frameData, numFrames);
+        return target->setInputFrames (endpoint, frameData, numFrames);
     }
 
-    void setInputValue (EndpointHandle endpoint, const void* valueData, uint32_t rampFrames) override
+    Result setInputValue (EndpointHandle endpoint, const void* valueData, uint32_t rampFrames) override
     {
         ScopedAllocationTracker allocationTracker;
-        target->setInputValue (endpoint, valueData, rampFrames);
+        return target->setInputValue (endpoint, valueData, rampFrames);
     }
 
-    void addInputEvent (EndpointHandle endpoint, uint32_t typeIndex, const void* eventData) override
+    Result addInputEvent (EndpointHandle endpoint, uint32_t typeIndex, const void* eventData) override
     {
         ScopedAllocationTracker allocationTracker;
-        target->addInputEvent (endpoint, typeIndex, eventData);
+        return target->addInputEvent (endpoint, typeIndex, eventData);
     }
 
-    void copyOutputValue (EndpointHandle h, void* dest) override
+    Result copyOutputValue (EndpointHandle h, void* dest) override
     {
         ScopedAllocationTracker allocationTracker;
-        target->copyOutputValue (h, dest);
+        return target->copyOutputValue (h, dest);
     }
 
-    void iterateOutputEvents (EndpointHandle h, void* context, HandleOutputEventCallback fn) override
+    Result iterateOutputEvents (EndpointHandle h, void* context, HandleOutputEventCallback fn) override
     {
         ScopedAllocationTracker allocationTracker;
 
@@ -146,13 +146,13 @@ struct PerformerAllocationCheckWrapper  : public choc::com::ObjectWithAtomicRefC
         };
 
         auto cb = CallbackInfo { context, fn };
-        target->iterateOutputEvents (h, &cb, CallbackInfo::handleEvent);
+        return target->iterateOutputEvents (h, &cb, CallbackInfo::handleEvent);
     }
 
-    void advance() override
+    Result advance() override
     {
         ScopedAllocationTracker allocationTracker;
-        target->advance();
+        return target->advance();
     }
 };
 

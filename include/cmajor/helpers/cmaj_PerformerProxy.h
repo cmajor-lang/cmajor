@@ -30,15 +30,15 @@ struct PerformerProxy  : public PerformerInterface
 {
     virtual ~PerformerProxy() = default;
 
-    void reset() override                                                                           { target->reset(); }
-    void setBlockSize (uint32_t numFramesForNextBlock) override                                     { target->setBlockSize (numFramesForNextBlock); }
-    void setInputFrames (EndpointHandle e, const void* data, uint32_t numFrames) override           { target->setInputFrames (e, data, numFrames); }
-    void setInputValue (EndpointHandle e, const void* data, uint32_t n) override                    { target->setInputValue (e, data, n); }
-    void addInputEvent (EndpointHandle e, uint32_t index, const void* data) override                { target->addInputEvent (e, index, data); }
-    void copyOutputValue (EndpointHandle e, void* dest) override                                    { target->copyOutputValue (e, dest); }
-    void copyOutputFrames (EndpointHandle e, void* dest, uint32_t num) override                     { target->copyOutputFrames (e, dest, num); }
-    void iterateOutputEvents (EndpointHandle e, void* c, HandleOutputEventCallback h) override      { return target->iterateOutputEvents (e, c, h); }
-    void advance() override                                                                         { target->advance(); }
+    Result reset() override                                                                         { return target->reset(); }
+    Result setBlockSize (uint32_t numFramesForNextBlock) override                                   { return target->setBlockSize (numFramesForNextBlock); }
+    Result setInputFrames (EndpointHandle e, const void* data, uint32_t numFrames) override         { return target->setInputFrames (e, data, numFrames); }
+    Result setInputValue (EndpointHandle e, const void* data, uint32_t n) override                  { return target->setInputValue (e, data, n); }
+    Result addInputEvent (EndpointHandle e, uint32_t index, const void* data) override              { return target->addInputEvent (e, index, data); }
+    Result copyOutputValue (EndpointHandle e, void* dest) override                                  { return target->copyOutputValue (e, dest); }
+    Result copyOutputFrames (EndpointHandle e, void* dest, uint32_t num) override                   { return target->copyOutputFrames (e, dest, num); }
+    Result iterateOutputEvents (EndpointHandle e, void* c, HandleOutputEventCallback h) override    { return target->iterateOutputEvents (e, c, h); }
+    Result advance() override                                                                       { return target->advance(); }
     const char* getStringForHandle (uint32_t h, size_t& len) override                               { return target->getStringForHandle (h, len); }
     uint32_t getXRuns() override                                                                    { return target->getXRuns(); }
     uint32_t getMaximumBlockSize() override                                                         { return target->getMaximumBlockSize(); }

@@ -146,10 +146,11 @@ initialisePatch();
             return out.str();
         }
 
-        void reset()
+        Result reset()
         {
             ScopedDisableAllocationTracking disableTracking;
             context.evaluate (instanceName + ".reset()");
+            return Result::Ok;
         }
 
         void advance (uint32_t framesToAdvance)
@@ -158,7 +159,7 @@ initialisePatch();
             context.evaluate (instanceName + ".advance (" + std::to_string (framesToAdvance) + ")");
         }
 
-        std::function<void(void*, uint32_t)> createCopyOutputValueFunction (const EndpointInfo& e)
+        std::function<Result(void*, uint32_t)> createCopyOutputValueFunction (const EndpointInfo& e)
         {
             const auto& name = e.details.endpointID.toString();
             CMAJ_ASSERT (e.details.dataTypes.size() == 1);
@@ -180,22 +181,24 @@ initialisePatch();
 
                 return [this,
                         frameType = e.details.dataTypes.front(),
-                        functionName = "returnOutputFrames_" + name] (void* destBuffer, uint32_t numFrames)
+                        functionName = "returnOutputFrames_" + name] (void* destBuffer, uint32_t numFrames) -> Result
                 {
                     ScopedDisableAllocationTracking disableTracking;
                     auto result = context.evaluateWithResult (functionName + "(" + std::to_string (numFrames) + ")");
                     writeToValueWithType (destBuffer, choc::value::Type::createArray (frameType, numFrames), result);
+                    return Result::Ok;
                 };
             }
             else
             {
                 return [this,
                         command = instanceName + ".getOutputValue_" + name + "()",
-                        endpointType = e.details.dataTypes.front()] (void* destBuffer, uint32_t)
+                        endpointType = e.details.dataTypes.front()] (void* destBuffer, uint32_t) -> Result
                 {
                     ScopedDisableAllocationTracking disableTracking;
                     auto result = context.evaluateWithResult (command);
                     writeToValueWithType (destBuffer, endpointType, result);
+                    return Result::Ok;
                 };
             }
         }

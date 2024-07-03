@@ -137,48 +137,57 @@ private:
 
         virtual ~Performer() = default;
 
-        void setBlockSize (uint32_t numFramesForNextBlock) override
+        Result setBlockSize (uint32_t numFramesForNextBlock) override
         {
             currentBlockSize = numFramesForNextBlock;
+
+            return Result::Ok;
         }
 
-        void reset() override
+        Result reset() override
         {
             generatedObject.initialise (sessionID, frequency);
+            return Result::Ok;
         }
 
-        void advance() override
+        Result advance() override
         {
             generatedObject.advance (static_cast<int32_t> (currentBlockSize));
+            return Result::Ok;
         }
 
-        void setInputFrames (EndpointHandle endpoint, const void* frameData, uint32_t numFrames) override
+        Result setInputFrames (EndpointHandle endpoint, const void* frameData, uint32_t numFrames) override
         {
             generatedObject.setInputFrames (endpoint, frameData, numFrames,
                                             currentBlockSize > numFrames ? currentBlockSize - numFrames : 0);
+            return Result::Ok;
         }
 
-        void setInputValue (EndpointHandle endpoint, const void* valueData, uint32_t numFramesToReachValue) override
+        Result setInputValue (EndpointHandle endpoint, const void* valueData, uint32_t numFramesToReachValue) override
         {
             generatedObject.setValue (endpoint, valueData, static_cast<int32_t> (numFramesToReachValue));
+            return Result::Ok;
         }
 
-        void addInputEvent (EndpointHandle endpoint, uint32_t typeIndex, const void* eventData) override
+        Result addInputEvent (EndpointHandle endpoint, uint32_t typeIndex, const void* eventData) override
         {
             generatedObject.addEvent (endpoint, typeIndex, (const unsigned char*) eventData);
+            return Result::Ok;
         }
 
-        void copyOutputValue (EndpointHandle endpoint, void* dest) override
+        Result copyOutputValue (EndpointHandle endpoint, void* dest) override
         {
             generatedObject.copyOutputValue (endpoint, dest);
+            return Result::Ok;
         }
 
-        void copyOutputFrames (EndpointHandle endpoint, void* dest, uint32_t numFramesToCopy) override
+        Result copyOutputFrames (EndpointHandle endpoint, void* dest, uint32_t numFramesToCopy) override
         {
             generatedObject.copyOutputFrames (endpoint, dest, numFramesToCopy);
+            return Result::Ok;
         }
 
-        void iterateOutputEvents (EndpointHandle endpoint, void* context, PerformerInterface::HandleOutputEventCallback callback) override
+        Result iterateOutputEvents (EndpointHandle endpoint, void* context, PerformerInterface::HandleOutputEventCallback callback) override
         {
             if (auto numEvents = generatedObject.getNumOutputEvents (endpoint))
             {
@@ -201,6 +210,7 @@ private:
 
                 generatedObject.resetOutputEventCount (endpoint);
             }
+            return Result::Ok;
         }
 
         const char* getStringForHandle (uint32_t handle, size_t& stringLength) override

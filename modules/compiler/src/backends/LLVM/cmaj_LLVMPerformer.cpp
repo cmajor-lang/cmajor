@@ -482,13 +482,15 @@ struct LLVMEngine
         const double frequency;
 
         //==============================================================================
-        void reset() noexcept
+        Result reset() noexcept
         {
             stateMemory.clear();
             ioMemory.clear();
 
             int processorID = 0;
             code->initialiseFn (statePointer, &processorID, sessionID, frequency);
+
+            return Result::Ok;
         }
 
         void advance (uint32_t framesToAdvance) noexcept
@@ -499,7 +501,7 @@ struct LLVMEngine
                 advanceBlockFn (statePointer, ioPointer, framesToAdvance);
         }
 
-        std::function<void(void*, uint32_t)> createCopyOutputValueFunction (const EndpointInfo& e)
+        std::function<Result(void*, uint32_t)> createCopyOutputValueFunction (const EndpointInfo& e)
         {
             if (e.details.isStream())
             {
@@ -510,17 +512,18 @@ struct LLVMEngine
 
                 if (destStride == sourceStride)
                 {
-                    return [source, destStride] (void* destBuffer, uint32_t numFrames)
+                    return [source, destStride] (void* destBuffer, uint32_t numFrames) -> Result
                     {
                         memcpy (destBuffer, source, destStride * numFrames);
                         memset (source, 0, destStride * numFrames);
+                        return Result::Ok;
                     };
                 }
                 else
                 {
                     auto* frameLayout = info.frameLayout.get();
 
-                    return [source, destStride, sourceStride, frameLayout] (void* destBuffer, uint32_t numFrames)
+                    return [source, destStride, sourceStride, frameLayout] (void* destBuffer, uint32_t numFrames) -> Result
                     {
                         auto dest = static_cast<uint8_t*> (destBuffer);
                         auto src = source;
@@ -533,6 +536,7 @@ struct LLVMEngine
                         }
 
                         memset (source, 0, sourceStride * numFrames);
+                        return Result::Ok;
                     };
                 }
             }
@@ -542,9 +546,10 @@ struct LLVMEngine
                 auto* source = statePointer + info.addressOffset;
                 auto layout = info.layout.get();
 
-                return [layout, source] (void* destBuffer, uint32_t)
+                return [layout, source] (void* destBuffer, uint32_t) -> Result
                 {
                     layout->copyNativeToPacked (destBuffer, source);
+                    return Result::Ok;
                 };
             }
         }

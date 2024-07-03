@@ -449,53 +449,76 @@ struct PerformerBase  : public choc::com::ObjectWithAtomicRefCount<cmaj::Perform
     virtual ~PerformerBase() = default;
 
     //==============================================================================
-    void reset() override
+    Result reset() override
     {
-        jit.reset();
+        return jit.reset();
     }
 
-    void setBlockSize (uint32_t numFramesForNextBlock) override
+    Result setBlockSize (uint32_t numFramesForNextBlock) override
     {
-        CMAJ_ASSERT (numFramesForNextBlock != 0 && numFramesForNextBlock <= maxBlockSize);
+        if (numFramesForNextBlock == 0 || numFramesForNextBlock > maxBlockSize)
+            return Result::InvalidBlockSize;
+
         numFramesToDo = numFramesForNextBlock;
+        return Result::Ok;
     }
 
-    void setInputFrames (EndpointHandle handle, const void* frameData, uint32_t numFrames) override
+    Result setInputFrames (EndpointHandle handle, const void* frameData, uint32_t numFrames) override
     {
-        getEndpointHandler (handle).setInputFrames (frameData, numFrames, numFramesToDo);
+        if (auto* endpointHandler = getEndpointHandler (handle))
+            return endpointHandler->setInputFrames (frameData, numFrames, numFramesToDo);
+
+        return Result::InvalidEndpointHandle;
     }
 
-    void setInputValue (EndpointHandle handle, const void* valueData, uint32_t numFramesToReachValue) override
+    Result setInputValue (EndpointHandle handle, const void* valueData, uint32_t numFramesToReachValue) override
     {
-        getEndpointHandler (handle).setInputValue (valueData, numFramesToReachValue);
+        if (auto* endpointHandler = getEndpointHandler (handle))
+            return endpointHandler->setInputValue (valueData, numFramesToReachValue);
+
+        return Result::InvalidEndpointHandle;
     }
 
-    void addInputEvent (EndpointHandle handle, uint32_t typeIndex, const void* eventData) override
+    Result addInputEvent (EndpointHandle handle, uint32_t typeIndex, const void* eventData) override
     {
-        getEndpointHandler (handle).addInputEvent (typeIndex, eventData);
+        if (auto* endpointHandler = getEndpointHandler (handle))
+            return endpointHandler->addInputEvent (typeIndex, eventData);
+
+        return Result::InvalidEndpointHandle;
     }
 
-    void copyOutputValue (EndpointHandle handle, void* dest) override
+    Result copyOutputValue (EndpointHandle handle, void* dest) override
     {
-        getEndpointHandler (handle).copyOutputValue (dest);
+        if (auto* endpointHandler = getEndpointHandler (handle))
+            return endpointHandler->copyOutputValue (dest);
+
+        return Result::InvalidEndpointHandle;
     }
 
-    void copyOutputFrames (EndpointHandle handle, void* dest, uint32_t numFramesToCopy) override
+    Result copyOutputFrames (EndpointHandle handle, void* dest, uint32_t numFramesToCopy) override
     {
-        getEndpointHandler (handle).copyOutputFrames (dest, numFramesToCopy);
+        if (auto* endpointHandler = getEndpointHandler (handle))
+            return endpointHandler->copyOutputFrames (dest, numFramesToCopy);
+
+        return Result::InvalidEndpointHandle;
     }
 
-    void iterateOutputEvents (EndpointHandle handle, void* context, PerformerInterface::HandleOutputEventCallback handler) override
+    Result iterateOutputEvents (EndpointHandle handle, void* context, PerformerInterface::HandleOutputEventCallback handler) override
     {
-        getEndpointHandler (handle).iterateOutputEvents (context, handler);
+        if (auto* endpointHandler = getEndpointHandler (handle))
+            return endpointHandler->iterateOutputEvents (context, handler);
+
+        return Result::InvalidEndpointHandle;
     }
 
-    void advance() override
+    Result advance() override
     {
         jit.advance (numFramesToDo);
 
         for (auto& e : outputEventHandlers)
             e->moveOutputEventsToQueue();
+
+        return Result::Ok;
     }
 
     uint32_t getMaximumBlockSize() override     { return maxBlockSize; }
@@ -572,12 +595,12 @@ private:
         EndpointHandler() = default;
         virtual ~EndpointHandler() = default;
 
-        virtual void setInputFrames (const void*, uint32_t, uint32_t)           { CMAJ_ASSERT_FALSE; }
-        virtual void setInputValue (const void*, uint32_t)                      { CMAJ_ASSERT_FALSE; }
-        virtual void addInputEvent (uint32_t, const void*)                      { CMAJ_ASSERT_FALSE; }
-        virtual void copyOutputValue (void*)                                    { CMAJ_ASSERT_FALSE; }
-        virtual void copyOutputFrames (void*, uint32_t)                         { CMAJ_ASSERT_FALSE; }
-        virtual void iterateOutputEvents (void*, PerformerInterface::HandleOutputEventCallback)  { CMAJ_ASSERT_FALSE; }
+        virtual Result setInputFrames (const void*, uint32_t, uint32_t)                            { CMAJ_ASSERT_FALSE; }
+        virtual Result setInputValue (const void*, uint32_t)                                       { CMAJ_ASSERT_FALSE; }
+        virtual Result addInputEvent (uint32_t, const void*)                                       { CMAJ_ASSERT_FALSE; }
+        virtual Result copyOutputValue (void*)                                                     { CMAJ_ASSERT_FALSE; }
+        virtual Result copyOutputFrames (void*, uint32_t)                                          { CMAJ_ASSERT_FALSE; }
+        virtual Result iterateOutputEvents (void*, PerformerInterface::HandleOutputEventCallback)  { CMAJ_ASSERT_FALSE; }
     };
 
     //==============================================================================
@@ -588,7 +611,7 @@ private:
             setInputStreamFrames = owner.jit.createSetInputStreamFramesFunction (endpoint);
         }
 
-        void setInputFrames (const void* frameData, uint32_t numFrames, uint32_t framesForBlock) override
+        Result setInputFrames (const void* frameData, uint32_t numFrames, uint32_t framesForBlock) override
         {
             if (numFrames == framesForBlock)
             {
@@ -603,6 +626,8 @@ private:
 
                 setInputStreamFrames (frameData, numFrames, framesForBlock - numFrames);
             }
+
+            return Result::Ok;
         }
 
         PerformerBase& owner;
@@ -617,9 +642,10 @@ private:
             setInputValueFn = owner.jit.createSetInputValueFunction (endpoint);
         }
 
-        void setInputValue (const void* valueData, uint32_t numFramesToReachValue) override
+        Result setInputValue (const void* valueData, uint32_t numFramesToReachValue) override
         {
             setInputValueFn (valueData, numFramesToReachValue);
+            return Result::Ok;
         }
 
         std::function<void(const void*, uint32_t)> setInputValueFn;
@@ -648,10 +674,13 @@ private:
             }
         }
 
-        void addInputEvent (uint32_t typeIndex, const void* eventData) override
+        Result addInputEvent (uint32_t typeIndex, const void* eventData) override
         {
-            CMAJ_ASSERT (typeIndex < typeHandlers.size());
+            if (typeIndex >= typeHandlers.size())
+                return Result::TypeIndexOutOfRange;
+
             typeHandlers[typeIndex].handler (eventData);
+            return Result::Ok;
         }
 
         struct TypeHandler
@@ -673,20 +702,20 @@ private:
             isStream = endpoint.details.isStream();
         }
 
-        void copyOutputValue (void* dest) override
+        Result copyOutputValue (void* dest) override
         {
-            copyOutputValueFn (dest, 1);
+            return copyOutputValueFn (dest, 1);
         }
 
-        void copyOutputFrames (void* dest, uint32_t numFramesToCopy) override
+        Result copyOutputFrames (void* dest, uint32_t numFramesToCopy) override
         {
-            copyOutputValueFn (dest, numFramesToCopy);
+            return copyOutputValueFn (dest, numFramesToCopy);
         }
 
         uint32_t dataTypeSize = 0;
         bool isStream = false;
 
-        std::function<void(void*, uint32_t)> copyOutputValueFn;
+        std::function<Result(void*, uint32_t)> copyOutputValueFn;
     };
 
     //==============================================================================
@@ -703,7 +732,7 @@ private:
             queue.initialise (endpoint.details, owner.eventBufferSize);
         }
 
-        void iterateOutputEvents (void* context, PerformerInterface::HandleOutputEventCallback handler) override
+        Result iterateOutputEvents (void* context, PerformerInterface::HandleOutputEventCallback handler) override
         {
             auto numEvents = queue.numEvents;
 
@@ -714,6 +743,8 @@ private:
                 if (! handler (context, handle, event.type, event.frame, event.data, queue.eventSizes[event.type]))
                     break;
             }
+
+            return Result::Ok;
         }
 
         void moveOutputEventsToQueue()
@@ -799,10 +830,12 @@ private:
     uint32_t firstHandle = 0, lastHandle = 0;
     std::vector<OutputEventHandler*> outputEventHandlers;
 
-    EndpointHandler& getEndpointHandler (EndpointHandle handle)
+    EndpointHandler* getEndpointHandler (EndpointHandle handle)
     {
-        CMAJ_ASSERT (handle >= firstHandle && handle < lastHandle);
-        return *endpointHandlers[handle - firstHandle];
+        if (handle >= firstHandle && handle < lastHandle)
+            return endpointHandlers[handle - firstHandle].get();
+
+        return nullptr;
     }
 };
 

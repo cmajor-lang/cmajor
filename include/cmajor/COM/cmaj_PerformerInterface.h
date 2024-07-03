@@ -19,6 +19,7 @@
 #pragma once
 
 #include "cmaj_ProgramInterface.h"
+#include "cmaj_Result.h"
 
 #ifdef __clang__
  #pragma clang diagnostic push
@@ -62,7 +63,7 @@ struct PerformerInterface   : public choc::com::Object
     ///   - call advance() to perform the rendering
     ///   - empty any outgoing events or stream data from any output endpoints
     ///
-    virtual void setBlockSize (uint32_t numFramesForNextBlock) = 0;
+    virtual Result setBlockSize (uint32_t numFramesForNextBlock) = 0;
 
     /// Provides a block of frames to an input stream endpoint.
     /// This function must only be called on the rendering thread, as part of the preparations for
@@ -72,13 +73,13 @@ struct PerformerInterface   : public choc::com::Object
     /// size set by the last call to setBlockSize().
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// It should only be called once before each advance() call.
-    virtual void setInputFrames (EndpointHandle, const void* frameData, uint32_t numFrames) = 0;
+    virtual Result setInputFrames (EndpointHandle, const void* frameData, uint32_t numFrames) = 0;
 
     /// Sets the current value for a latching input value endpoint.
     /// Before calling advance(), this can optionally be called for a value input to change its value.
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// It should only be called once for each stream within the same advance call.
-    virtual void setInputValue (EndpointHandle, const void* valueData, uint32_t numFramesToReachValue) = 0;
+    virtual Result setInputValue (EndpointHandle, const void* valueData, uint32_t numFramesToReachValue) = 0;
 
     /// Adds an event to the queue for an input event endpoint.
     /// This function must only be called on the rendering thread, as part of the preparations for
@@ -89,7 +90,7 @@ struct PerformerInterface   : public choc::com::Object
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// If the endpoint is an event that supports multiple types, the typeIndex selects the one to use
     /// (just set it to 0 for endpoints with only one type).
-    virtual void addInputEvent (EndpointHandle, uint32_t typeIndex, const void* eventData) = 0;
+    virtual Result addInputEvent (EndpointHandle, uint32_t typeIndex, const void* eventData) = 0;
 
     /// Fetches the data for the current value of an output stream or value endpoint.
     /// This function must only be called on the rendering thread, after a call to advance().
@@ -98,7 +99,7 @@ struct PerformerInterface   : public choc::com::Object
     /// The data pointer and size returned point to a chunk of choc::value::ValueView data, whose type
     /// the caller should know in advance by getting the endpoint's details.
     /// The pointer that is returned will become invalid as soon as another method is called on the performer.
-    virtual void copyOutputValue (EndpointHandle, void* dest) = 0;
+    virtual Result copyOutputValue (EndpointHandle, void* dest) = 0;
 
     /// Copies out the data from an output stream endpoint.
     /// This function must only be called on the rendering thread, after a call to advance().
@@ -106,7 +107,7 @@ struct PerformerInterface   : public choc::com::Object
     /// After calling advance(), this can be called to retrieve the value or frame data for the given endpoint.
     /// The pointer provided will have a chunk of choc::value::ValueView data written to it, whose type
     /// the caller should know in advance by getting the endpoint's details.
-    virtual void copyOutputFrames (EndpointHandle, void* dest, uint32_t numFramesToCopy) = 0;
+    virtual Result copyOutputFrames (EndpointHandle, void* dest, uint32_t numFramesToCopy) = 0;
 
     /// A user-callback function that is passed to iterateOutputEvents().
     /// The frameOffset is an index into the block that was last rendered during the advance() call.
@@ -118,15 +119,15 @@ struct PerformerInterface   : public choc::com::Object
     /// This function must only be called on the rendering thread, after a call to advance().
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// After calling advance(), this can be called to fetch events that were sent to the given endpoint.
-    virtual void iterateOutputEvents (EndpointHandle, void* context, HandleOutputEventCallback) = 0;
+    virtual Result iterateOutputEvents (EndpointHandle, void* context, HandleOutputEventCallback) = 0;
 
     /// Resets the processor.
     /// Returns the processor to the state it was in before it processed any frames.
-    virtual void reset() = 0;
+    virtual Result reset() = 0;
 
     /// Renders the next block.
     /// The number of frames rendered will be the number that was last specified by a call to setBlockSize().
-    virtual void advance() = 0;
+    virtual Result advance() = 0;
 
     /// Retrieves the string from a handle used in the current program, or nullptr if not found.
     virtual const char* getStringForHandle (uint32_t handle, size_t& stringLength) = 0;

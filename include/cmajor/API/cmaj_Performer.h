@@ -58,11 +58,11 @@ struct Performer
 
     //==============================================================================
     /// Resets the performer to the state it was before it processed any data
-    void reset();
+    Result reset();
 
     //==============================================================================
     /// Sets the number of frames which should be rendered during the next call to advance().
-    void setBlockSize (uint32_t numFramesForNextBlock);
+    Result setBlockSize (uint32_t numFramesForNextBlock);
 
     /// Provides a block of frames to an input stream endpoint.
     /// This function must only be called on the rendering thread, as part of the preparations for
@@ -72,7 +72,7 @@ struct Performer
     /// size set by the last call to setBlockSize().
     /// The handle must have been obtained by calling getEndpointHandle() before the program is linked.
     /// It should only be called once before each advance() call.
-    void setInputFrames (EndpointHandle, const void* frameData, uint32_t numFrames);
+    Result setInputFrames (EndpointHandle, const void* frameData, uint32_t numFrames);
 
     /// Provides a block of frames to an input stream endpoint.
     /// This is a helper function for calling the other setInputFrames() method with an audio buffer.
@@ -80,7 +80,7 @@ struct Performer
     /// sanity-checking to make sure that the format of data provided matches the endpoint,
     /// so it's up to the caller to make sure you get it right!
     template <typename SampleType>
-    void setInputFrames (EndpointHandle, const choc::buffer::InterleavedView<SampleType>&);
+    Result setInputFrames (EndpointHandle, const choc::buffer::InterleavedView<SampleType>&);
 
     /// Sets the current value for a latching input value endpoint.
     /// This function must only be called on the rendering thread, as part of the preparations for
@@ -95,7 +95,7 @@ struct Performer
     ///     a choc::value::ValueView internally, but whose type is still expected to be correct.
     /// Note that if the format of data passed in isn't correct, the result will be undefined behaviour.
     template <typename ValueType>
-    void setInputValue (EndpointHandle, const ValueType& newValue, uint32_t numFramesToReachValue);
+    Result setInputValue (EndpointHandle, const ValueType& newValue, uint32_t numFramesToReachValue);
 
     /// Adds an event to the queue for an input event endpoint.
     /// This function must only be called on the rendering thread, as part of the preparations for
@@ -113,7 +113,7 @@ struct Performer
     ///     a choc::value::ValueView internally, but whose type is still expected to be correct.
     /// Note that if the format of data passed in isn't correct, the result will be undefined behaviour.
     template <typename ValueType>
-    void addInputEvent (EndpointHandle, uint32_t typeIndex, const ValueType& eventValue);
+    Result addInputEvent (EndpointHandle, uint32_t typeIndex, const ValueType& eventValue);
 
     /// Copies-out the frame data from an output stream endpoint.
     /// This function must only be called on the rendering thread, after a call to advance().
@@ -121,7 +121,7 @@ struct Performer
     /// After calling advance(), this can be called to retrieve the frame data for the given endpoint.
     /// The pointer provided will have a chunk of choc::value::ValueView data written to it, whose type
     /// the caller should know in advance by getting the endpoint's details.
-    void copyOutputFrames (EndpointHandle, void* dest, uint32_t numFramesToCopy) const;
+    Result copyOutputFrames (EndpointHandle, void* dest, uint32_t numFramesToCopy) const;
 
     /// Copies the last block of samples from a stream endpoint to a sample buffer.
     /// This is a helper function to make it easier to invoke copyOutputFrames() with an audio buffer.
@@ -129,7 +129,7 @@ struct Performer
     /// sanity-checking to make sure that you're asking for the correct format of data,
     /// so it's up to the caller to make sure you get it right!
     template <typename SampleType>
-    void copyOutputFrames (EndpointHandle, const choc::buffer::InterleavedView<SampleType>& destBuffer) const;
+    Result copyOutputFrames (EndpointHandle, const choc::buffer::InterleavedView<SampleType>& destBuffer) const;
 
     /// Copies the last block of samples from a stream endpoint to a sample buffer.
     /// This is a helper function to make it easier to invoke copyOutputFrames() with an audio buffer.
@@ -137,7 +137,7 @@ struct Performer
     /// sanity-checking to make sure that you're asking for the correct format of data,
     /// so it's up to the caller to make sure you get it right!
     template <typename SampleType>
-    void copyOutputFrames (EndpointHandle, choc::buffer::InterleavedBuffer<SampleType>& destBuffer) const;
+    Result copyOutputFrames (EndpointHandle, choc::buffer::InterleavedBuffer<SampleType>& destBuffer) const;
 
     /// Copies-out the data for the current value of an output value endpoint.
     /// This function must only be called on the rendering thread, after a call to advance().
@@ -146,7 +146,7 @@ struct Performer
     /// The pointer provided will have a chunk of choc::value::ValueView data written to it, whose type
     /// the caller should know in advance by getting the endpoint's details.
     /// The pointer that is returned will become invalid as soon as another method is called on the performer.
-    void copyOutputValue (EndpointHandle, void* dest) const;
+    Result copyOutputValue (EndpointHandle, void* dest) const;
 
     /// Iterates the events that were pushed into an output event stream during the last advance() call.
     /// This function must only be called on the rendering thread, after a call to advance().
@@ -157,11 +157,11 @@ struct Performer
     ///  (EndpointHandle, uint32_t dataTypeIndex, uint32_t frameOffset,
     ///   const void* valueData, uint32_t valueDataSize) -> bool
     template <typename HandlerFn>
-    void iterateOutputEvents (EndpointHandle, HandlerFn&&);
+    Result iterateOutputEvents (EndpointHandle, HandlerFn&&);
 
     /// Renders the next block.
     /// The number of frames rendered will be the number that was last specified by a call to setBlockSize().
-    void advance();
+    Result advance();
 
     /// Retrieves the string from a handle used in the current program, or an empty string if not found.
     std::string_view getStringForHandle (uint32_t handle) const;
@@ -212,24 +212,24 @@ inline Performer::~Performer()
     library = {};
 }
 
-inline void Performer::setBlockSize (uint32_t numFramesForNextBlock)
+inline Result Performer::setBlockSize (uint32_t numFramesForNextBlock)
 {
-    performer->setBlockSize (numFramesForNextBlock);
+    return performer->setBlockSize (numFramesForNextBlock);
 }
 
-inline void Performer::setInputFrames (EndpointHandle endpoint, const void* frameData, uint32_t numFrames)
+inline Result Performer::setInputFrames (EndpointHandle endpoint, const void* frameData, uint32_t numFrames)
 {
-    performer->setInputFrames (endpoint, frameData, numFrames);
+    return performer->setInputFrames (endpoint, frameData, numFrames);
 }
 
 template <typename SampleType>
-void Performer::setInputFrames (EndpointHandle endpoint, const choc::buffer::InterleavedView<SampleType>& buffer)
+Result Performer::setInputFrames (EndpointHandle endpoint, const choc::buffer::InterleavedView<SampleType>& buffer)
 {
-    performer->setInputFrames (endpoint, buffer.data.data, buffer.getNumFrames());
+    return performer->setInputFrames (endpoint, buffer.data.data, buffer.getNumFrames());
 }
 
 template <typename ValueType>
-void Performer::setInputValue (EndpointHandle e, const ValueType& newValue, uint32_t numFramesToReachValue)
+Result Performer::setInputValue (EndpointHandle e, const ValueType& newValue, uint32_t numFramesToReachValue)
 {
     static_assert (std::is_same<const ValueType, const int32_t>::value
                    || std::is_same<const ValueType, const int64_t>::value
@@ -248,28 +248,28 @@ void Performer::setInputValue (EndpointHandle e, const ValueType& newValue, uint
                    || std::is_same<const ValueType, const double>::value)
     {
         ValueType v = newValue;
-        performer->setInputValue (e, std::addressof (v), numFramesToReachValue);
+        return performer->setInputValue (e, std::addressof (v), numFramesToReachValue);
     }
     else if constexpr (std::is_same<const ValueType, const void* const>::value
                         || std::is_same<const ValueType, const char* const>::value)
     {
-        performer->setInputValue (e, newValue, numFramesToReachValue);
+        return performer->setInputValue (e, newValue, numFramesToReachValue);
     }
     else if constexpr (std::is_same<const ValueType, const bool>::value)
     {
         int32_t v = newValue ? 1 : 0;
-        performer->setInputValue (e, std::addressof (v), numFramesToReachValue);
+        return performer->setInputValue (e, std::addressof (v), numFramesToReachValue);
 
     }
     else if constexpr (std::is_same<const ValueType, const choc::value::ValueView>::value
                         || std::is_same<const ValueType, const choc::value::Value>::value)
     {
-        performer->setInputValue (e, newValue.getRawData(), numFramesToReachValue);
+        return performer->setInputValue (e, newValue.getRawData(), numFramesToReachValue);
     }
 }
 
 template <typename ValueType>
-void Performer::addInputEvent (EndpointHandle e, uint32_t type, const ValueType& value)
+Result Performer::addInputEvent (EndpointHandle e, uint32_t type, const ValueType& value)
 {
     static_assert (std::is_same<const ValueType, const int32_t>::value
                    || std::is_same<const ValueType, const int64_t>::value
@@ -288,49 +288,49 @@ void Performer::addInputEvent (EndpointHandle e, uint32_t type, const ValueType&
                    || std::is_same<const ValueType, const double>::value)
     {
         ValueType v = value;
-        performer->addInputEvent (e, type, std::addressof (v));
+        return performer->addInputEvent (e, type, std::addressof (v));
     }
     else if constexpr (std::is_same<const ValueType, const void* const>::value
                         || std::is_same<const ValueType, const char* const>::value)
     {
-        performer->addInputEvent (e, type, value);
+        return performer->addInputEvent (e, type, value);
     }
     else if constexpr (std::is_same<const ValueType, const bool>::value)
     {
         int32_t v = value ? 1 : 0;
-        performer->addInputEvent (e, type, std::addressof (v));
+        return performer->addInputEvent (e, type, std::addressof (v));
     }
     else if constexpr (std::is_same<const ValueType, const choc::value::ValueView>::value
                         || std::is_same<const ValueType, const choc::value::Value>::value)
     {
-        performer->addInputEvent (e, type, value.getRawData());
+        return performer->addInputEvent (e, type, value.getRawData());
     }
 }
 
-inline void Performer::copyOutputValue (EndpointHandle endpoint, void* dest) const
+inline Result Performer::copyOutputValue (EndpointHandle endpoint, void* dest) const
 {
-    performer->copyOutputValue (endpoint, dest);
+    return performer->copyOutputValue (endpoint, dest);
 }
 
-inline void Performer::copyOutputFrames (EndpointHandle endpoint, void* dest, uint32_t numFramesToCopy) const
+inline Result Performer::copyOutputFrames (EndpointHandle endpoint, void* dest, uint32_t numFramesToCopy) const
 {
-    performer->copyOutputFrames (endpoint, dest, numFramesToCopy);
-}
-
-template <typename SampleType>
-void Performer::copyOutputFrames (EndpointHandle endpoint, const choc::buffer::InterleavedView<SampleType>& destBuffer) const
-{
-    performer->copyOutputFrames (endpoint, destBuffer.data.data, destBuffer.getNumFrames());
+    return performer->copyOutputFrames (endpoint, dest, numFramesToCopy);
 }
 
 template <typename SampleType>
-void Performer::copyOutputFrames (EndpointHandle endpoint, choc::buffer::InterleavedBuffer<SampleType>& destBuffer) const
+Result Performer::copyOutputFrames (EndpointHandle endpoint, const choc::buffer::InterleavedView<SampleType>& destBuffer) const
 {
-    performer->copyOutputFrames (endpoint, destBuffer.getView().data.data, destBuffer.getNumFrames());
+    return performer->copyOutputFrames (endpoint, destBuffer.data.data, destBuffer.getNumFrames());
+}
+
+template <typename SampleType>
+Result Performer::copyOutputFrames (EndpointHandle endpoint, choc::buffer::InterleavedBuffer<SampleType>& destBuffer) const
+{
+    return performer->copyOutputFrames (endpoint, destBuffer.getView().data.data, destBuffer.getNumFrames());
 }
 
 template <typename HandlerFn>
-inline void Performer::iterateOutputEvents (EndpointHandle endpoint, HandlerFn&& handler)
+inline Result Performer::iterateOutputEvents (EndpointHandle endpoint, HandlerFn&& handler)
 {
     struct Callback
     {
@@ -342,17 +342,17 @@ inline void Performer::iterateOutputEvents (EndpointHandle endpoint, HandlerFn&&
         }
     };
 
-    performer->iterateOutputEvents (endpoint, std::addressof (handler), Callback::handleEvent);
+    return performer->iterateOutputEvents (endpoint, std::addressof (handler), Callback::handleEvent);
 }
 
-inline void Performer::reset()
+inline Result Performer::reset()
 {
-    performer->reset();
+    return performer->reset();
 }
 
-inline void Performer::advance()
+inline Result Performer::advance()
 {
-    performer->advance();
+    return performer->advance();
 }
 
 inline std::string_view Performer::getStringForHandle (uint32_t handle) const

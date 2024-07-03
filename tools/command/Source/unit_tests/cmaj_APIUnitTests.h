@@ -219,7 +219,7 @@ namespace cmaj::api_tests
         CHOC_EXPECT_NEAR (4.0f, out2Value, 0.0001);
 
         // Exceeds maxBlockSize = 10
-        CHOC_EXPECT_TRUE (throwsException ([&] { performer.setBlockSize (100); }));
+        CHOC_EXPECT_TRUE ( performer.setBlockSize (100) == cmaj::Result::InvalidBlockSize );
     }
 
     static void checkOutputEventWithMultipleTypes (choc::test::TestProgress& progress)
