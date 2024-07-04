@@ -28,8 +28,25 @@ OPTION (BUILD_EXAMPLES  "Whether to build the examples" ON)
 include(tools/scripts/cmake_warning_flags)
 
 if(NOT CMAJ_VERSION)
+    # Determine the version - use the latest tag for the checkout out repo
     set(CMAJ_VERSION "1.0")
-    message ("Defaulting CMAJ_VERSION to ${CMAJ_VERSION}")
+    find_package (Git)
+
+    if (GIT_FOUND)
+        execute_process (
+            COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            RESULT_VARIABLE GIT_RESULT
+            OUTPUT_VARIABLE GIT_STDOUT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+        if (GIT_RESULT EQUAL 0)
+            set(CMAJ_VERSION ${GIT_STDOUT})
+        endif()
+    endif()
+
+    message ("Setting CMAJ_VERSION to ${CMAJ_VERSION}")
 endif()
 
 if(NOT CMAJ_TARGET_COMPILER)
