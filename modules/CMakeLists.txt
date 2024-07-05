@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.16..3.22)
 
 set_property (GLOBAL PROPERTY CMAJ_MODULE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set_property (GLOBAL PROPERTY CMAJ_VERSION ${CMAJ_VERSION})
 
 macro (TRANSFORM_BOOL VARIABLE)
     if (${VARIABLE})
@@ -13,6 +14,7 @@ endmacro()
 function (MAKE_CMAJ_LIBRARY)
 
     get_property (CMAJ_MODULE_DIR GLOBAL PROPERTY CMAJ_MODULE_DIR)
+    get_property (CMAJ_VERSION GLOBAL PROPERTY CMAJ_VERSION)
 
     # -------------------------------------------------------------------
     # Parse arguments to determine options

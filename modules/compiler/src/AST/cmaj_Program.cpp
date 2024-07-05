@@ -29,6 +29,8 @@ namespace cmaj
 {
     const char* Library::getVersion()
     {
+        // This needs to be set to something sensible
+        static_assert (CMAJ_VERSION[0] != 0);
         return CMAJ_VERSION;
     }
 
