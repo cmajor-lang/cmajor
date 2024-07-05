@@ -25,7 +25,7 @@ namespace cmaj
 
     If a method returning Result succeeds, it will return Ok.
 */
-enum class Result
+enum class Result : int32_t
 {
     Ok = 0,
     InvalidEndpointHandle   = -1,
