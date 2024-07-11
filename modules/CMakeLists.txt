@@ -75,12 +75,11 @@ function (MAKE_CMAJ_LIBRARY)
         if (${CMAKE_GENERATOR_PLATFORM} MATCHES "arm64")
             set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win/arm64)
         else()
-            if (CMAJ_MSVC_STATIC_RUNTIME)
-                set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win-static/x64)
-                set (LLVM_LIBRARY_DIR "lib$<$<CONFIG:Debug>:-debug>")
-            else()
-                set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win/x64)
-            endif()
+            set (LLVM_PATH_ROOT ${LLVM_RELEASE_DIR}/win/x64)
+        endif()
+
+        if (CMAJ_MSVC_STATIC_RUNTIME)
+            set (LLVM_LIBRARY_DIR "lib-static$<$<CONFIG:Debug>:-debug>")
         endif()
     endif()
 
@@ -164,20 +163,28 @@ function (MAKE_CMAJ_LIBRARY)
         )
     endif()
 
+    if (LLVM_INCLUDE_POLLY)
+        set (LLVM_POLLY_LIBS
+            Polly
+            PollyISL
+        )
+    endif()
 
     set (LLVM_LIBS
 
         LLVMWindowsManifest
-        LLVMWindowsDriver
         LLVMXRay
         LLVMLibDriver
         LLVMDlltoolDriver
+        LLVMTextAPIBinaryReader
         LLVMCoverage
         LLVMLineEditor
 
         ${LLVM_PLATFORM_LIBS}
 
+        LLVMOrcDebugging
         LLVMOrcJIT
+        LLVMWindowsDriver
         LLVMMCJIT
         LLVMJITLink
         LLVMInterpreter
@@ -186,6 +193,7 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMOrcTargetProcess
         LLVMOrcShared
         LLVMDWP
+        LLVMDebugInfoLogicalView
         LLVMDebugInfoGSYM
         LLVMOption
         LLVMObjectYAML
@@ -193,31 +201,38 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMMCA
         LLVMMCDisassembler
         LLVMLTO
-        LLVMCFGuard
         LLVMFrontendOpenACC
+        LLVMFrontendHLSL
+        LLVMFrontendDriver
         LLVMExtensions
-        Polly
-        PollyISL
+
+        ${LLVM_POLLY_LIBS}
+
         LLVMPasses
-        LLVMObjCARCOpts
+        LLVMHipStdPar
         LLVMCoroutines
+        LLVMCFGuard
         LLVMipo
         LLVMInstrumentation
         LLVMVectorize
         LLVMLinker
         LLVMFrontendOpenMP
+        LLVMFrontendOffloading
+        LLVMDWARFLinkerParallel
+        LLVMDWARFLinkerClassic
         LLVMDWARFLinker
         LLVMGlobalISel
         LLVMMIRParser
         LLVMAsmPrinter
         LLVMSelectionDAG
         LLVMCodeGen
-        LLVMIRReader
-        LLVMAsmParser
+        LLVMTarget
+        LLVMObjCARCOpts
+        LLVMCodeGenTypes
+        LLVMIRPrinter
         LLVMInterfaceStub
         LLVMFileCheck
         LLVMFuzzMutate
-        LLVMTarget
         LLVMScalarOpts
         LLVMInstCombine
         LLVMAggressiveInstCombine
@@ -226,12 +241,15 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMAnalysis
         LLVMProfileData
         LLVMSymbolize
+        LLVMDebugInfoBTF
         LLVMDebugInfoPDB
         LLVMDebugInfoMSF
         LLVMDebugInfoDWARF
         LLVMObject
         LLVMTextAPI
         LLVMMCParser
+        LLVMIRReader
+        LLVMAsmParser
         LLVMMC
         LLVMDebugInfoCodeView
         LLVMBitReader
@@ -240,6 +258,7 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMRemarks
         LLVMBitstreamReader
         LLVMBinaryFormat
+        LLVMTargetParser
         LLVMTableGen
         LLVMSupport
         LLVMDemangle
@@ -402,6 +421,7 @@ function (MAKE_CMAJ_LIBRARY)
             find_package(PkgConfig REQUIRED)
             pkg_check_modules (GTK3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
             pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
+            pkg_check_modules (JACK REQUIRED jack IMPORTED_TARGET)
             target_link_libraries (${CMAJ_LIBRARY_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
             target_include_directories(${CMAJ_LIBRARY_NAME} PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
         endif()
@@ -413,5 +433,8 @@ function (MAKE_CMAJ_LIBRARY)
         endif()
     endif()
 
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        target_link_libraries (${CMAJ_LIBRARY_NAME} PUBLIC ws2_32)
+    endif()
 
 endfunction()

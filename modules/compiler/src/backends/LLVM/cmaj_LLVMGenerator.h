@@ -201,6 +201,12 @@ struct LLVMCodeGenerator
             level = 1;
        #endif
 
+       #if defined (__linux__) && defined (__arm__)
+        // Linux arm32 use O1 as a minimum to avoid relocation type errors
+        if (level == 0)
+            level = 1;
+       #endif
+
         return level >= 0 && level <= 4 ? level : defaultOptimisationLevel;
     }
 
@@ -272,7 +278,7 @@ struct LLVMCodeGenerator
 
     static bool isFatPointer (::llvm::Type* type)
     {
-        return type->isStructTy() && type->getStructName().startswith (getFatPointerStructName());
+        return type->isStructTy() && type->getStructName().starts_with (getFatPointerStructName());
     }
 
     //==============================================================================
@@ -293,16 +299,16 @@ struct LLVMCodeGenerator
         return result;
     }
 
-    static ::llvm::CodeGenOpt::Level getCodeGenOptLevel (int level)
+    static ::llvm::CodeGenOptLevel getCodeGenOptLevel (int level)
     {
         switch (getOptimisationLevelWithDefault (level))
         {
-            case 0:    return ::llvm::CodeGenOpt::Level::None;
-            case 1:    return ::llvm::CodeGenOpt::Level::Less;
-            case 2:    return ::llvm::CodeGenOpt::Level::Default;
-            case 3:    return ::llvm::CodeGenOpt::Level::Aggressive;
-            case 4:    return ::llvm::CodeGenOpt::Level::Aggressive;
-            default:   return ::llvm::CodeGenOpt::Level::Default;
+            case 0:    return ::llvm::CodeGenOptLevel::None;
+            case 1:    return ::llvm::CodeGenOptLevel::Less;
+            case 2:    return ::llvm::CodeGenOptLevel::Default;
+            case 3:    return ::llvm::CodeGenOptLevel::Aggressive;
+            case 4:    return ::llvm::CodeGenOptLevel::Aggressive;
+            default:   return ::llvm::CodeGenOptLevel::Default;
         }
     }
 
@@ -322,8 +328,8 @@ struct LLVMCodeGenerator
         ::llvm::legacy::PassManager passManager;
 
         targetMachine.addPassesToEmitFile (passManager, ostream, nullptr,
-                                           generateObjectCode ? ::llvm::CGFT_ObjectFile
-                                                              : ::llvm::CGFT_AssemblyFile);
+                                           generateObjectCode ? ::llvm::CodeGenFileType::ObjectFile
+                                                              : ::llvm::CodeGenFileType::AssemblyFile);
 
         passManager.run (*targetModule);
 
@@ -366,7 +372,7 @@ struct LLVMCodeGenerator
         ::llvm::legacy::PassManager passManager;
 
         targetMachine.get()->Options.MCOptions.AsmVerbose = true;
-        targetMachine.get()->addPassesToEmitFile (passManager, ostream, nullptr, ::llvm::CGFT_AssemblyFile);
+        targetMachine.get()->addPassesToEmitFile (passManager, ostream, nullptr, ::llvm::CodeGenFileType::AssemblyFile);
         passManager.run (*targetModule);
 
         return std::string (result.begin(), result.end());
@@ -376,19 +382,17 @@ struct LLVMCodeGenerator
     {
         auto optLevel = getOptimisationLevelWithDefault (buildSettings.getOptimisationLevel());
 
-        ::llvm::LoopAnalysisManager     loopAnalysisManager;
-        ::llvm::FunctionAnalysisManager functionAnalysisManager;
-        ::llvm::CGSCCAnalysisManager    cGSCCAnalysisManager;
-        ::llvm::ModuleAnalysisManager   moduleAnalysisManager;
-
-        functionAnalysisManager.registerPass ([&] { return ::llvm::AAManager(); });
+        ::llvm::LoopAnalysisManager             loopAnalysisManager;
+        ::llvm::FunctionAnalysisManager         functionAnalysisManager;
+        ::llvm::CGSCCAnalysisManager            cGSCCAnalysisManager;
+        ::llvm::ModuleAnalysisManager           moduleAnalysisManager;
 
         ::llvm::PassBuilder passBuilder;
 
-        passBuilder.registerLoopAnalyses     (loopAnalysisManager);
-        passBuilder.registerFunctionAnalyses (functionAnalysisManager);
-        passBuilder.registerCGSCCAnalyses    (cGSCCAnalysisManager);
-        passBuilder.registerModuleAnalyses   (moduleAnalysisManager);
+        passBuilder.registerModuleAnalyses          (moduleAnalysisManager);
+        passBuilder.registerCGSCCAnalyses           (cGSCCAnalysisManager);
+        passBuilder.registerFunctionAnalyses        (functionAnalysisManager);
+        passBuilder.registerLoopAnalyses            (loopAnalysisManager);
 
         passBuilder.crossRegisterProxies (loopAnalysisManager,
                                           functionAnalysisManager,
@@ -1881,7 +1885,7 @@ struct LLVMCodeGenerator
             valuePointer = getPointer (value);
         }
 
-        auto address = b.CreateBitCast (valuePointer, ::llvm::Type::getInt8PtrTy (*context));
+        auto address = b.CreateBitCast (valuePointer, ::llvm::Type::getInt8Ty(*context)->getPointerTo());
         ::llvm::Value* indexes[] = { createConstantInt32 (-static_cast<int32_t> (getStructMemberOffset (parentType, index))).value };
         auto offsetAddress = b.CreateInBoundsGEP (::llvm::Type::getInt8Ty (*context), address, indexes);
         return makeReference (b.CreateBitCast (offsetAddress, getLLVMType (parentType)->getPointerTo()), parentType);

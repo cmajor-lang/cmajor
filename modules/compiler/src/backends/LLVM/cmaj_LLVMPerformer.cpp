@@ -177,18 +177,18 @@ struct LLJITHolder
 private:
     std::unique_ptr<::llvm::orc::LLJIT> lljit;
 
-    static ::llvm::CodeGenOpt::Level getCodeGenOptLevel (int level)
+    static ::llvm::CodeGenOptLevel getCodeGenOptLevel (int level)
     {
         switch (LLVMCodeGenerator::getOptimisationLevelWithDefault (level))
         {
             // NB: If we skip optimisation altogether, then some large array alloca operations
             // spew out millions of instructions and cause llvm to meltdown.. so if asked for -O0,
             // we'll actually do -O1, which seems to mitigate the troublesome examples we've found.
-            case 0:    return ::llvm::CodeGenOpt::Level::Less;
-            case 1:    return ::llvm::CodeGenOpt::Level::Less;
-            case 2:    return ::llvm::CodeGenOpt::Level::Default;
-            case 3:    return ::llvm::CodeGenOpt::Level::Aggressive;
-            default:   return ::llvm::CodeGenOpt::Level::Default;
+            case 0:    return ::llvm::CodeGenOptLevel::Less;
+            case 1:    return ::llvm::CodeGenOptLevel::Less;
+            case 2:    return ::llvm::CodeGenOptLevel::Default;
+            case 3:    return ::llvm::CodeGenOptLevel::Aggressive;
+            default:   return ::llvm::CodeGenOptLevel::Default;
         }
     }
 };
