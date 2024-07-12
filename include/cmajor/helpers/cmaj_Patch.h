@@ -661,7 +661,7 @@ struct Patch::ClientEventQueue
         if (auto view = patch.findViewForID (viewID))
         {
             auto eventNameLen = d[3] == 0 ? 256u : static_cast<uint32_t> (static_cast<uint8_t> (d[3]));
-            CMAJ_ASSERT (eventNameLen + 6 < size);
+            CMAJ_ASSERT (eventNameLen + 4 < size);
             auto valueData = choc::value::InputData { reinterpret_cast<const uint8_t*> (d + 4 + eventNameLen),
                                                       reinterpret_cast<const uint8_t*> (d + size) };
 
