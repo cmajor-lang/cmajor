@@ -96,6 +96,9 @@ struct PatchManifest
     /// An optional path to a patch worker .js file
     std::string patchWorker;
 
+    /// An optional path to a source transformer .js file
+    std::string sourceTransformer;
+
     /// The "resources" field can be a string (or array of strings) which provides
     /// wildcards at which to find resource files in the patch bundle - this is used
     /// by exporters to know which resource files a patch is going to need
@@ -164,13 +167,16 @@ struct PatchManifest
 
     /// Parses and adds all the source files from this patch to the given Program,
     /// returning true if no errors were encountered.
-    bool addSourceFilesToProgram (Program&, DiagnosticMessageList&,
+    bool addSourceFilesToProgram (Program&, 
+                                  DiagnosticMessageList&,
+                                  const std::function<std::string(DiagnosticMessageList&, const std::string&, const std::string&)>& transformSource,
                                   const std::function<void()>& checkForStopSignal);
 
 private:
     static void addStrings (std::vector<std::string>&, const choc::value::ValueView&);
     void addView (const choc::value::ValueView&);
     void addWorker (const choc::value::ValueView&);
+    void addSourceTransformer (const choc::value::ValueView&);
 };
 
 
@@ -315,6 +321,7 @@ inline bool PatchManifest::reload()
             addStrings (sourceFiles, manifest["source"]);
             addView (manifest["view"]);
             addWorker (manifest["worker"]);
+            addSourceTransformer (manifest["sourceTransformer"]);
             addStrings (resources, manifest["resources"]);
 
             return true;
@@ -379,6 +386,12 @@ inline void PatchManifest::addWorker (const choc::value::ValueView& worker)
 {
     if (worker.isString())
         patchWorker = worker.toString();
+}
+
+inline void PatchManifest::addSourceTransformer (const choc::value::ValueView& transformer)
+{
+    if (transformer.isString())
+        sourceTransformer = transformer.toString();
 }
 
 inline const PatchManifest::View* PatchManifest::findDefaultView() const
@@ -456,8 +469,11 @@ inline std::function<choc::value::Value(const cmaj::ExternalVariable&)> PatchMan
 
 inline bool PatchManifest::addSourceFilesToProgram (Program& program,
                                                     DiagnosticMessageList& errors,
+                                                    const std::function<std::string(DiagnosticMessageList&, const std::string&, const std::string&)>& transformSource,
                                                     const std::function<void()>& checkForStopSignal)
 {
+    (void) transformSource;
+    
     if (needsToBuildSource)
     {
         for (auto& file : sourceFiles)
@@ -466,7 +482,7 @@ inline bool PatchManifest::addSourceFilesToProgram (Program& program,
 
             if (auto content = readFileContent (file))
             {
-                if (! program.parse (errors, getFullPathForFile (file), std::move (*content)))
+                if (! program.parse (errors, getFullPathForFile (file), std::move (transformSource (errors, getFullPathForFile (file), *content))))
                     return false;
             }
             else

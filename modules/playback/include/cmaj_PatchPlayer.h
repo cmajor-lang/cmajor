@@ -89,7 +89,7 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
 
         audioPlayer = std::move (audioPlayerToUse);
 
-        updatePlaybackParams (true);
+        updatePlaybackParams (false);
         updatePlaybackState();
     }
 

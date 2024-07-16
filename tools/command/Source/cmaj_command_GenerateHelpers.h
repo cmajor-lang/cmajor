@@ -150,13 +150,18 @@ static inline cmaj::Engine::CodeGenOutput generateCodeAndCheckResult (cmaj::Patc
                                                                       const std::string& targetType,
                                                                       const std::string& extraOptions)
 {
-    auto result = patch.generateCode (loadParams, targetType, extraOptions);
+    choc::messageloop::initialise();
 
-    if (result.messages.hasErrors())
-        throw std::runtime_error (result.messages.toString());
+    cmaj::Engine::CodeGenOutput result;
 
-    if (result.messages.hasWarnings())
-        std::cerr << result.messages.toString();
+    auto t = std::thread ([&]
+    {
+        result = patch.generateCode (loadParams, targetType, extraOptions);
+        choc::messageloop::stop();
+    });
+
+    choc::messageloop::run();
+    t.join();
 
     return result;
 }

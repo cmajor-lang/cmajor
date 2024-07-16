@@ -65,7 +65,7 @@ static PatchManifest createManifestWithInMemoryFiles (const std::string& manifes
 static void initTestPatch (Patch& patch)
 {
     patch.createEngine      = [] { return Engine::create(); };
-    patch.createContextForPatchWorker = [] { return std::unique_ptr<Patch::WorkerContext>(); };
+    patch.createContextForPatchWorker = [] (const std::string&) { return std::unique_ptr<Patch::WorkerContext>(); };
     patch.stopPlayback      = [] {};
     patch.startPlayback     = [] {};
     patch.patchChanged      = [] {};

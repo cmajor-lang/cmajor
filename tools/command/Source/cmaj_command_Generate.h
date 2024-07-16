@@ -18,6 +18,8 @@
 
 #include "../../../include/cmajor/API/cmaj_Program.h"
 #include "../../../include/cmajor/helpers/cmaj_Patch.h"
+#include "../../../include/cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
+#include "../../../include/cmajor/helpers/cmaj_PatchWorker_WebView.h"
 #include "../../../modules/embedded_assets/cmaj_EmbeddedAssets.h"
 
 #include "cmaj_command_GenerateHelpers.h"
@@ -95,9 +97,17 @@ void generateFromPatch (choc::ArgumentList& args,
         return engine;
     };
 
+    patch.statusChanged = [] (const cmaj::Patch::Status& s)
+    {
+        std::cout << s.statusMessage << std::endl;
+    };
+
     patch.setHostDescription ("Cmajor Generate");
 
-    patch.createContextForPatchWorker = [] { return std::unique_ptr<cmaj::Patch::WorkerContext>(); };
+    if (engineOptions.isObject() && engineOptions["worker"].toString() == "quickjs")
+        enableQuickJSPatchWorker (patch);
+    else
+        enableWebViewPatchWorker (patch);
 
     patch.setPlaybackParams ({ 44100, buildSettings.getMaxBlockSize(), 0, 0 });
 

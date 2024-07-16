@@ -521,7 +521,7 @@ struct PatchPlayerServer
             bool loaded = false;
             std::string buildLog;
 
-            if (patchPlayer != nullptr)
+            if (patchPlayer != nullptr && patchPlayer->patch.isLoaded())
             {
                 if (auto f = patchPlayer->patch.getManifestFile(); ! f.empty())
                     status.setMember ("manifestFile", f);
@@ -629,7 +629,7 @@ struct PatchPlayerServer
                              const std::string& replyType,
                              const choc::value::ValueView& options)
         {
-            if (patchPlayer != nullptr)
+            if (patchPlayer != nullptr && patchPlayer->patch.isLoaded())
             {
                 if (auto manifest = patchPlayer->patch.getManifest())
                 {
@@ -642,7 +642,9 @@ struct PatchPlayerServer
                         cmaj::Patch p;
                         p.setPlaybackParams (patchPlayer->patch.getPlaybackParams());
                         p.createEngine = [] { return cmaj::Engine::create(); };
-                        p.createContextForPatchWorker = [] { return std::unique_ptr<Patch::WorkerContext>(); };
+                        p.createContextForPatchWorker = [] (const std::string&) { return std::unique_ptr<Patch::WorkerContext>(); };
+                        enableWebViewPatchWorker (p);
+
                         auto output = p.generateCode (params, type, choc::json::toString (options));
 
                         sendMessageToClient (replyType,

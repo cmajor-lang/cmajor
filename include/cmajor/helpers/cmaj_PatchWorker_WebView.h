@@ -36,7 +36,7 @@ inline void enableWebViewPatchWorker (Patch& p)
 {
     struct Worker : Patch::WorkerContext
     {
-        Worker (Patch& p) : patch (p) {}
+        Worker (Patch& p, const std::string& wt) : patch (p), workerType (wt) {}
         ~Worker() override {}
 
         void initialise (std::function<void(const choc::value::ValueView&)> sendMessageToPatch,
@@ -126,7 +126,7 @@ inline void enableWebViewPatchWorker (Patch& p)
 
         void sendMessage (const std::string& msg, std::function<void(const std::string&)> reportError) override
         {
-            webview->evaluateJavascript ("window.currentView?.deliverMessageFromServer(" + msg + ");",
+            webview->evaluateJavascript ("window.currentView?.deliverMessageFromServer (" + msg + ");",
                                          [reportError = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
             {
                 if (! error.empty())
@@ -148,7 +148,49 @@ inline void enableWebViewPatchWorker (Patch& p)
             return {};
         }
 
-        static std::string getHTML (const PatchManifest& manifest)
+        std::string getHTML (const PatchManifest& manifest)
+        {
+            if (workerType == "sourceTransformer")
+                return getSourceTransformerHTML (manifest);
+
+            return getPatchWorkerHTML (manifest);
+        }
+
+        std::string getSourceTransformerHTML (const PatchManifest& manifest)
+        {
+            auto patchWorkerPath = manifest.sourceTransformer;
+
+            if (! choc::text::startsWith (patchWorkerPath, "/"))
+                patchWorkerPath = "/" + patchWorkerPath;
+
+            return choc::text::replace (R"(
+<!DOCTYPE html>
+<html></html>
+
+<script type="module">
+
+window.console.log   =  function() { for (let a of arguments) _cmaj_console_log (a, 0); };
+window.console.info  =  function() { for (let a of arguments) _cmaj_console_log (a, 1); };
+window.console.warn  =  function() { for (let a of arguments) _cmaj_console_log (a, 2); };
+window.console.error =  function() { for (let a of arguments) _cmaj_console_log (a, 3); };
+window.console.debug =  function() { for (let a of arguments) _cmaj_console_log (a, 4); };
+
+try
+{
+    const workerModule = await import (WORKER_MODULE);
+    await workerModule.default();
+}
+catch (e)
+{
+    window.cmaj_reportError (e.toString());
+}
+
+</script>
+)",
+            "WORKER_MODULE", choc::json::getEscapedQuotedString (patchWorkerPath));
+        }
+
+        std::string getPatchWorkerHTML (const PatchManifest& manifest)
         {
             auto patchWorkerPath = manifest.patchWorker;
 
@@ -218,12 +260,14 @@ catch (e)
         }
 
         Patch& patch;
+        std::string workerType;
         std::unique_ptr<choc::ui::WebView> webview;
     };
 
-    p.createContextForPatchWorker = [&p]
+
+    p.createContextForPatchWorker = [&p] (const std::string& workerType) -> std::unique_ptr<Patch::WorkerContext>
     {
-        return std::make_unique<Worker> (p);
+        return std::make_unique<Worker> (p, workerType);
     };
 }
 

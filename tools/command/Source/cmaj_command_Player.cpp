@@ -110,7 +110,7 @@ void playFile (choc::ArgumentList& args,
         patch.startPlayback               = [] {};
         patch.patchChanged                = [] {};
         patch.statusChanged               = [] (const cmaj::Patch::Status& s)   { std::cout << s.statusMessage << std::endl; };
-        patch.createContextForPatchWorker = [] { return std::unique_ptr<cmaj::Patch::WorkerContext>(); };
+        patch.createContextForPatchWorker = [] (const std::string&)             { return std::unique_ptr<cmaj::Patch::WorkerContext>(); };
 
         patch.setHostDescription ("Cmajor Player");
 

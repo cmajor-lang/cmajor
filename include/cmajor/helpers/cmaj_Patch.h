@@ -305,7 +305,7 @@ struct Patch
         virtual void sendMessage (const std::string& json, std::function<void(const std::string&)> reportError) = 0;
     };
 
-    std::function<std::unique_ptr<WorkerContext>()> createContextForPatchWorker;
+    std::function<std::unique_ptr<WorkerContext>(std::string)> createContextForPatchWorker;
 
     /// A client can provide this callback to get a callback when something modifies
     /// one of the patches in the bundle
@@ -320,11 +320,11 @@ struct Patch
     /// because if no callback is supplied, no checking will be done.
     std::function<void()> handleInfiniteLoop;
 
-
 private:
     //==============================================================================
     struct PatchRenderer;
     struct PatchWorker;
+    struct SourceTransformer;
     struct Build;
     struct BuildThread;
     friend struct PatchView;
@@ -771,7 +771,7 @@ struct Patch::PatchWorker  : public PatchView
     void initialiseWorker()
     {
         // NB: Some types of context need to be created by the thread that uses it
-        context = patch.createContextForPatchWorker();
+        context = patch.createContextForPatchWorker ("patchWorker");
 
         if (context)
             context->initialise ([this] (const choc::value::ValueView& msg) { patch.handleClientMessage (*this, msg); },
@@ -780,6 +780,121 @@ struct Patch::PatchWorker  : public PatchView
 
 private:
     std::unique_ptr<WorkerContext> context;
+    choc::threading::ThreadSafeFunctor<std::function<void()>> initCallback;
+    choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> sendMessageCallback, setErrorCallback;
+};
+
+struct Patch::SourceTransformer  : public PatchView
+{
+    SourceTransformer (Patch& p) : PatchView (p)
+    {
+        initCallback = [this] { initialiseWorker(); };
+
+        setErrorCallback = [this, &p] (const std::string& error)
+        {
+            p.setErrorStatus ("Error in source transformer script: " + error,
+                              p.getManifest() != nullptr ? p.getManifest()->sourceTransformer : std::string(),
+                              {}, true);
+
+            std::unique_lock<std::mutex> l (m);
+            responseMessage = choc::value::Value();
+            translatorError = true;
+            cv.notify_all();
+        };
+
+        sendMessageCallback = [this, setError = setErrorCallback] (const std::string& msg)
+        {
+            if (context)
+                context->sendMessage (msg, [setError] (const std::string& error) { setError (error); });
+        };
+
+        choc::messageloop::postMessage ([f = initCallback] { f(); });
+    }
+
+    ~SourceTransformer() override
+    {
+        initCallback.reset();
+        sendMessageCallback.reset();
+        setErrorCallback.reset();
+        context = {};
+    }
+
+    std::string transform (DiagnosticMessageList& errors, const std::string& filename, const std::string& contents)
+    {
+        if (! translatorReady)
+        {
+            std::unique_lock<std::mutex> lock (m);
+
+            if (responseMessage.isVoid())
+            {
+                cv.wait (lock);
+            }
+
+            translatorReady = true;
+        }
+
+        if (translatorError)
+            return "";
+
+        std::unique_lock<std::mutex> lock (m);
+        sendMessage (choc::value::createObject ("transformRequest",
+                                                "type",     "transformRequest",
+                                                "message",  choc::value::createObject ("file",
+                                                                                       "filename", filename,
+                                                                                       "contents", contents )));
+
+        cv.wait (lock);
+
+        if (responseMessage.isObject())
+        {
+            if (responseMessage["type"].toString() == "transformResponse")
+                return responseMessage["message"]["contents"].toString();
+
+            if (responseMessage["type"].toString() == "transformError")
+            {
+                auto line = static_cast<size_t> (responseMessage["message"]["line"].getInt64());
+                auto col  = static_cast<size_t> (responseMessage["message"]["column"].getInt64());
+
+                cmaj::FullCodeLocation location { filename, {}, { line, col }};
+
+                errors.add (cmaj::DiagnosticMessage::createError (std::string (responseMessage["message"]["description"].getString()), location));
+                return {};
+            }
+        }
+
+        return {};
+    }
+
+    void sendMessage (const choc::value::ValueView& msg) override
+    {
+        choc::messageloop::postMessage ([f = sendMessageCallback,
+                                         json = choc::json::toString (msg, true)] { f (json); });
+    }
+
+    void receivedMessage (const choc::value::ValueView& msg)
+    {
+        std::unique_lock<std::mutex> l (m);
+        responseMessage = msg;
+        cv.notify_all();
+    }
+
+    void initialiseWorker()
+    {
+        context = patch.createContextForPatchWorker ("sourceTransformer");
+
+        if (context)
+            context->initialise ([this] (const choc::value::ValueView& msg)         { receivedMessage (msg); },
+                                 [f = setErrorCallback] (const std::string& error)  { f (error); });
+    }
+
+private:
+    std::unique_ptr<WorkerContext> context;
+    std::condition_variable cv;
+    std::mutex m;
+    choc::value::Value responseMessage;
+    std::atomic<bool> translatorReady = false;
+    std::atomic<bool> translatorError = false;
+
     choc::threading::ThreadSafeFunctor<std::function<void()>> initCallback;
     choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> sendMessageCallback, setErrorCallback;
 };
@@ -997,6 +1112,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 bool shouldResolveExternals,
                 bool shouldLink,
                 const cmaj::CacheDatabaseInterface::Ptr& c,
+                const std::function<std::string(DiagnosticMessageList&, const std::string&, const std::string&)>& transformSource,
                 const std::function<void()>& checkForStopSignal,
                 uint32_t eventFIFOSize)
     {
@@ -1005,7 +1121,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             configuredPlaybackParams = playbackParams;
             manifest = std::move (loadParams.manifest);
 
-            if (! loadProgram (engine, playbackParams, shouldResolveExternals, checkForStopSignal))
+            if (! loadProgram (engine, playbackParams, shouldResolveExternals, transformSource, checkForStopSignal))
                 return;
 
             if (! shouldResolveExternals)
@@ -1046,11 +1162,15 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     bool loadProgram (cmaj::Engine& engine,
                       const PlaybackParams& playbackParams,
                       bool shouldResolveExternals,
+                      const std::function<std::string(DiagnosticMessageList&, const std::string&, const std::string&)>& transformSource,
                       const std::function<void()>& checkForStopSignal)
     {
         cmaj::Program program;
 
-        if (! manifest.addSourceFilesToProgram (program, errors, checkForStopSignal))
+        if (! manifest.addSourceFilesToProgram (program, 
+                                                errors,
+                                                transformSource,
+                                                checkForStopSignal))
             return false;
 
         engine.setBuildSettings (engine.getBuildSettings()
@@ -1643,11 +1763,23 @@ struct Patch::Build
         auto engine = patch.createEngine();
         CMAJ_ASSERT (engine);
 
+        if (! loadParams.manifest.sourceTransformer.empty())
+            sourceTransformer = std::make_unique<SourceTransformer> (patch);
+
         renderer = std::make_shared<PatchRenderer> (patch);
         renderer->build (engine, loadParams, patch.currentPlaybackParams,
                          resolveExternals, performLink, patch.cache,
+                         [&] (DiagnosticMessageList& errors, const std::string& filename, const std::string& content) -> std::string { return transformSource (errors, filename, content); },
                          checkForStopSignal, patch.performerEventQueueSize);
         return engine;
+    }
+
+    std::string transformSource (DiagnosticMessageList& errors, const std::string& filename, const std::string& content)
+    {
+        if (sourceTransformer)
+            return sourceTransformer->transform (errors, filename, content);
+
+        return content;
     }
 
     std::shared_ptr<PatchRenderer> takeRenderer()
@@ -1662,6 +1794,7 @@ private:
     const bool resolveExternals, performLink;
     std::shared_ptr<PatchRenderer> renderer;
     std::unique_ptr<AudioMIDIPerformer::Builder> performerBuilder;
+    std::unique_ptr<SourceTransformer> sourceTransformer;
 };
 
 //==============================================================================
@@ -1872,6 +2005,20 @@ inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, cons
 {
     unload();
 
+    if (choc::messageloop::callerIsOnMessageThread())
+    {
+        auto message = DiagnosticMessage::create ("Code generation cannot be called from the main thread",
+                                                  {},
+                                                  DiagnosticMessage::Type::internalCompilerError,
+                                                  DiagnosticMessage::Category::none);
+
+        Engine::CodeGenOutput result;
+        result.messages.add (message);
+        return result;
+    }
+
+    lastLoadParams = params;
+
     auto build = std::make_unique<Build> (*this, params, true, false);
     auto engine = build->build ([] {});
 
@@ -2043,7 +2190,13 @@ inline std::string Patch::getName() const
             : "Cmajor Patch Loader";
 }
 
-inline const PatchManifest* Patch::getManifest() const      { return renderer != nullptr ? std::addressof (renderer->manifest) : nullptr; }
+inline const PatchManifest* Patch::getManifest() const      
+{
+    if (renderer != nullptr)
+        return std::addressof (renderer->manifest);
+
+    return std::addressof (lastLoadParams.manifest);
+}
 
 inline std::string Patch::getManifestFile() const
 {

@@ -35,7 +35,7 @@ inline void enableQuickJSPatchWorker (Patch& p)
 {
     struct Worker : Patch::WorkerContext
     {
-        Worker (Patch& p) : patch (p) {}
+        Worker (Patch& p, const std::string& wt) : patch (p), workerType (wt) {}
         ~Worker() override {}
 
         void initialise (std::function<void(const choc::value::ValueView&)> sendMessageToPatch,
@@ -111,8 +111,7 @@ inline void enableQuickJSPatchWorker (Patch& p)
 
             if (auto manifest = p.getManifest())
             {
-                context.runModule (getGlueCode (choc::json::toString (manifest->manifest),
-                                                choc::json::getEscapedQuotedString (manifest->patchWorker)),
+                context.runModule (getGlueCode (choc::json::toString (manifest->manifest), getWorkerSource (*manifest)),
                                    resolveModule,
                                    [reportError = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
                                    {
@@ -120,6 +119,13 @@ inline void enableQuickJSPatchWorker (Patch& p)
                                            reportError (error);
                                    });
             }
+        }
+
+        std::string getWorkerSource (const PatchManifest& manifest)
+        {
+            auto s = (workerType == "sourceTransformer") ? manifest.sourceTransformer : manifest.patchWorker;
+
+            return choc::json::getEscapedQuotedString (s);
         }
 
         void sendMessage (const std::string& msg, std::function<void(const std::string&)> reportError) override
@@ -205,12 +211,13 @@ runWorker (connection);
         }
 
         Patch& patch;
+        std::string workerType;
         choc::javascript::Context context;
     };
 
-    p.createContextForPatchWorker = [&p]
+    p.createContextForPatchWorker = [&p] (const std::string& workerType)
     {
-        return std::make_unique<Worker> (p);
+        return std::make_unique<Worker> (p, workerType);
     };
 }
 
