@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <chrono>
+#include <condition_variable>
 
 namespace cmaj
 {
