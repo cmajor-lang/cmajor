@@ -785,9 +785,9 @@ private:
     choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> sendMessageCallback, setErrorCallback;
 };
 
-struct Patch::SourceTransformer  : public PatchView
+struct Patch::SourceTransformer
 {
-    SourceTransformer (Patch& p) : PatchView (p)
+    SourceTransformer (Patch& p) : patch (p)
     {
         initCallback = [this] { initialiseWorker(); };
 
@@ -812,7 +812,7 @@ struct Patch::SourceTransformer  : public PatchView
         choc::messageloop::postMessage ([f = initCallback] { f(); });
     }
 
-    ~SourceTransformer() override
+    ~SourceTransformer()
     {
         initCallback.reset();
         sendMessageCallback.reset();
@@ -837,10 +837,13 @@ struct Patch::SourceTransformer  : public PatchView
         if (translatorError)
             return "";
 
+        int requestId = nextRequestId++;
+
         std::unique_lock<std::mutex> lock (m);
         sendMessage (choc::value::createObject ("transformRequest",
                                                 "type",     "transformRequest",
                                                 "message",  choc::value::createObject ("file",
+                                                                                       "requestId", requestId,
                                                                                        "filename", filename,
                                                                                        "contents", contents )));
 
@@ -848,8 +851,19 @@ struct Patch::SourceTransformer  : public PatchView
 
         if (responseMessage.isObject())
         {
+            auto responseId = responseMessage["message"]["requestId"].isInt64() ? responseMessage["message"]["requestId"].getInt64() : 0;
+
+            if (responseId != requestId)
+            {
+                cmaj::FullCodeLocation location { filename, {}, { 0, 0}};
+                errors.add (cmaj::DiagnosticMessage::createError ("Invalid responseId received - got " + std::to_string (responseId) + " when expecting " + std::to_string (requestId), location));
+                return {};
+            }
+
             if (responseMessage["type"].toString() == "transformResponse")
+            {
                 return responseMessage["message"]["contents"].toString();
+            }
 
             if (responseMessage["type"].toString() == "transformError")
             {
@@ -866,7 +880,7 @@ struct Patch::SourceTransformer  : public PatchView
         return {};
     }
 
-    void sendMessage (const choc::value::ValueView& msg) override
+    void sendMessage (const choc::value::ValueView& msg)
     {
         choc::messageloop::postMessage ([f = sendMessageCallback,
                                          json = choc::json::toString (msg, true)] { f (json); });
@@ -889,12 +903,14 @@ struct Patch::SourceTransformer  : public PatchView
     }
 
 private:
+    Patch& patch;
     std::unique_ptr<WorkerContext> context;
     std::condition_variable cv;
     std::mutex m;
     choc::value::Value responseMessage;
     std::atomic<bool> translatorReady = false;
     std::atomic<bool> translatorError = false;
+    int nextRequestId = 1;
 
     choc::threading::ThreadSafeFunctor<std::function<void()>> initCallback;
     choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> sendMessageCallback, setErrorCallback;
