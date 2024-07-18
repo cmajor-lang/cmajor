@@ -39,6 +39,7 @@ static std::vector<std::string> getCodeGenTargetList()
     list.push_back ("webaudio-html");
     list.push_back ("webaudio");
     list.push_back ("javascript");
+    list.push_back ("wast");
    #endif
     list.push_back ("juce");
     list.push_back ("clap");
@@ -62,7 +63,7 @@ static std::string getCodeGenTargetHelp (std::string_view type)
     if (type == "webaudio")       return "Converts a patch to Javascript/WebAssembly with WebAudio helpers";
     if (type == "webaudio-html")  return "Converts a patch to some HTML/Javascript which plays the patch and shows its GUI";
     if (type == "wast")           return "Compiles a patch to a chunk of WAST code";
-    if (type == "llvm")           return "Dumps the LLVM IR for a patch or set of .cmajor files";
+    if (type == "llvm")           return "Dumps the assembly code for a patch or set of .cmajor files for the specified target architecture";
 
     return {};
 }

@@ -305,10 +305,6 @@ struct EngineBase  : public choc::com::ObjectWithAtomicRefCount<EngineInterface,
             availableTargets.append (" cpp");
            #endif
 
-           #if CMAJ_ENABLE_CODEGEN_LLVM_WASM
-            availableTargets.append (" wasm wast");
-           #endif
-
            #if CMAJ_ENABLE_PERFORMER_LLVM
             availableTargets.append (" " + choc::text::joinStrings(::cmaj::llvm::getAssemberTargets(), " "));
            #endif
