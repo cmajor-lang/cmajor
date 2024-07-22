@@ -847,36 +847,42 @@ struct Patch::SourceTransformer
                                                                                        "filename", filename,
                                                                                        "contents", contents )));
 
-        cv.wait (lock);
+        auto startTime = std::chrono::steady_clock::now();
 
-        if (responseMessage.isObject())
+        while (std::chrono::duration<double> (std::chrono::steady_clock::now() - startTime).count() < 1.0)
         {
-            auto responseId = responseMessage["message"]["requestId"].isInt64() ? responseMessage["message"]["requestId"].getInt64() : 0;
-
-            if (responseId != requestId)
+            if (cv.wait_for (lock, std::chrono::seconds (1)) == std::cv_status::no_timeout)
             {
-                cmaj::FullCodeLocation location { filename, {}, { 0, 0}};
-                errors.add (cmaj::DiagnosticMessage::createError ("Invalid responseId received - got " + std::to_string (responseId) + " when expecting " + std::to_string (requestId), location));
-                return {};
-            }
+                if (responseMessage.isObject())
+                {
+                    auto responseId = responseMessage["message"]["requestId"].isInt64() ? responseMessage["message"]["requestId"].getInt64() : 0;
 
-            if (responseMessage["type"].toString() == "transformResponse")
-            {
-                return responseMessage["message"]["contents"].toString();
-            }
+                    if (responseId != requestId)
+                    {
+                        reportWarning (errors, filename, "Invalid responseId received - got " + std::to_string (responseId) + " when expecting " + std::to_string (requestId));
+                        continue;
+                    }
 
-            if (responseMessage["type"].toString() == "transformError")
-            {
-                auto line = static_cast<size_t> (responseMessage["message"]["line"].getInt64());
-                auto col  = static_cast<size_t> (responseMessage["message"]["column"].getInt64());
+                    if (responseMessage["type"].toString() == "transformResponse")
+                    {
+                        return responseMessage["message"]["contents"].toString();
+                    }
 
-                cmaj::FullCodeLocation location { filename, {}, { line, col }};
+                    if (responseMessage["type"].toString() == "transformError")
+                    {
+                        auto line = static_cast<size_t> (responseMessage["message"]["line"].getInt64());
+                        auto col  = static_cast<size_t> (responseMessage["message"]["column"].getInt64());
 
-                errors.add (cmaj::DiagnosticMessage::createError (std::string (responseMessage["message"]["description"].getString()), location));
-                return {};
+                        cmaj::FullCodeLocation location { filename, {}, { line, col }};
+
+                        errors.add (cmaj::DiagnosticMessage::createError (std::string (responseMessage["message"]["description"].getString()), location));
+                        return {};
+                    }
+                }
             }
         }
 
+        reportError (errors, filename, "Timeout out waiting for SourceTransformer response");
         return {};
     }
 
@@ -891,6 +897,18 @@ struct Patch::SourceTransformer
         std::unique_lock<std::mutex> l (m);
         responseMessage = msg;
         cv.notify_all();
+    }
+
+    void reportError (DiagnosticMessageList& errors, const std::string& filename, const std::string& msg)
+    {
+        cmaj::FullCodeLocation location { filename, {}, { 0, 0}};
+        errors.add (cmaj::DiagnosticMessage::createError (msg, location));
+    }
+
+    void reportWarning (DiagnosticMessageList& errors, const std::string& filename, const std::string& msg)
+    {
+        cmaj::FullCodeLocation location { filename, {}, { 0, 0}};
+        errors.add (cmaj::DiagnosticMessage::createWarning (msg, location));
     }
 
     void initialiseWorker()

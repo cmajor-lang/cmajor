@@ -98,6 +98,11 @@ struct DiagnosticMessage  final
         return create (std::move (desc), std::move (l), Type::error, Category::compile);
     }
 
+    static DiagnosticMessage createWarning (std::string desc, FullCodeLocation l)
+    {
+        return create (std::move (desc), std::move (l), Type::warning, Category::compile);
+    }
+
     FullCodeLocation location;
     std::string description;
     Type type = Type::error;
