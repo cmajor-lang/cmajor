@@ -43,6 +43,7 @@ struct BuildSettings
     bool         isDebugFlagSet() const                    { return getWithDefault (debugMember, false); }
     bool         shouldUseFastMaths() const                { return getOptimisationLevel() >= 4; }
     std::string  getMainProcessor() const                  { return getWithDefault (mainProcessorMember, ""); }
+    double       getTransformTimeout() const               { return getWithDefault (transformTimeoutMember, defaultTransformTimeout); }
 
     BuildSettings& setMaxFrequency (double f)              { setProperty (maxFrequencyMember, f); return *this; }
     BuildSettings& setFrequency (double f)                 { setProperty (frequencyMember, f); return *this; }
@@ -55,6 +56,7 @@ struct BuildSettings
     BuildSettings& setSessionID (int32_t id)               { setProperty (sessionIDMember, id); return *this; }
     BuildSettings& setDebugFlag (bool b)                   { setProperty (debugMember, b); return *this; }
     BuildSettings& setMainProcessor (std::string_view s)   { setProperty (mainProcessorMember, s); return *this; }
+    BuildSettings& setTransformTimeout (double f)          { setProperty (transformTimeoutMember, f); return *this; }
 
     void reset()                                           { settings = choc::value::Value(); }
 
@@ -105,12 +107,13 @@ struct BuildSettings
         }
     }
 
-    static constexpr double   defaultMaxFrequency    = 192000.0;
-    static constexpr uint64_t defaultMaxStateSize    = 20 * 1024 * 1024;
-    static constexpr uint64_t defaultMaxStackSize    = 5 * 1024 * 1024;
-    static constexpr uint32_t defaultEventBufferSize = 32;
-    static constexpr uint32_t defaultMaxBlockSize    = 1024;
-    static constexpr uint32_t defaultMaxPoolSize     = 50 * 1024 * 1024;
+    static constexpr double   defaultMaxFrequency       = 192000.0;
+    static constexpr uint64_t defaultMaxStateSize       = 20 * 1024 * 1024;
+    static constexpr uint64_t defaultMaxStackSize       = 5 * 1024 * 1024;
+    static constexpr uint32_t defaultEventBufferSize    = 32;
+    static constexpr uint32_t defaultMaxBlockSize       = 1024;
+    static constexpr uint32_t defaultMaxPoolSize        = 50 * 1024 * 1024;
+    static constexpr double   defaultTransformTimeout   = 30.0;
 
 private:
     choc::value::Value settings;
@@ -127,6 +130,7 @@ private:
     static constexpr auto ignoreWarningsMember     = "ignoreWarnings";
     static constexpr auto debugMember              = "debug";
     static constexpr auto mainProcessorMember      = "mainProcessor";
+    static constexpr auto transformTimeoutMember   = "transformTimeout";
 
     template <typename Type>
     Type getWithDefault (std::string_view name, Type defaultValue) const

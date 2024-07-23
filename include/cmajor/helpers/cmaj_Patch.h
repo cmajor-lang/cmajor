@@ -787,7 +787,7 @@ private:
 
 struct Patch::SourceTransformer
 {
-    SourceTransformer (Patch& p) : patch (p)
+    SourceTransformer (Patch& p, double t) : patch (p), timeout (t)
     {
         initCallback = [this] { initialiseWorker(); };
 
@@ -849,7 +849,7 @@ struct Patch::SourceTransformer
 
         auto startTime = std::chrono::steady_clock::now();
 
-        while (std::chrono::duration<double> (std::chrono::steady_clock::now() - startTime).count() < 1.0)
+        while (std::chrono::duration<double> (std::chrono::steady_clock::now() - startTime).count() < timeout)
         {
             if (cv.wait_for (lock, std::chrono::seconds (1)) == std::cv_status::no_timeout)
             {
@@ -929,6 +929,7 @@ private:
     std::atomic<bool> translatorReady = false;
     std::atomic<bool> translatorError = false;
     int nextRequestId = 1;
+    double timeout;
 
     choc::threading::ThreadSafeFunctor<std::function<void()>> initCallback;
     choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> sendMessageCallback, setErrorCallback;
@@ -1799,7 +1800,7 @@ struct Patch::Build
         CMAJ_ASSERT (engine);
 
         if (! loadParams.manifest.sourceTransformer.empty())
-            sourceTransformer = std::make_unique<SourceTransformer> (patch);
+            sourceTransformer = std::make_unique<SourceTransformer> (patch, engine.getBuildSettings().getTransformTimeout());
 
         renderer = std::make_shared<PatchRenderer> (patch);
         renderer->build (engine, loadParams, patch.currentPlaybackParams,
