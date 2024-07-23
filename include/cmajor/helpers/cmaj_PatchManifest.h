@@ -472,8 +472,6 @@ inline bool PatchManifest::addSourceFilesToProgram (Program& program,
                                                     const std::function<std::string(DiagnosticMessageList&, const std::string&, const std::string&)>& transformSource,
                                                     const std::function<void()>& checkForStopSignal)
 {
-    (void) transformSource;
-    
     if (needsToBuildSource)
     {
         for (auto& file : sourceFiles)

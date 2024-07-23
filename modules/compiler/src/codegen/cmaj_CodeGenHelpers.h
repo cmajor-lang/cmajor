@@ -294,7 +294,7 @@ struct CompilePerformanceTimes
         ~PerformanceCounter()
         {
             Seconds elapsed = Clock::now() - startTime;
-            category.result = elapsed;
+            category.result += elapsed;
         }
 
         Category& category;

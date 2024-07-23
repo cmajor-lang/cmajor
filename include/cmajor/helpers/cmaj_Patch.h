@@ -1203,7 +1203,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     {
         cmaj::Program program;
 
-        if (! manifest.addSourceFilesToProgram (program, 
+        if (! manifest.addSourceFilesToProgram (program,
                                                 errors,
                                                 transformSource,
                                                 checkForStopSignal))
