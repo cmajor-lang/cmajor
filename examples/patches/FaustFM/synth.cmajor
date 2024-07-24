@@ -14,7 +14,7 @@ graph Synth [[ main ]]
 
     output stream float<2> out;
 
-    let voiceCount = 4;
+    let voiceCount = 16;
 
     node
     {
