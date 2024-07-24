@@ -1,0 +1,92 @@
+graph Synth [[ main ]]
+{
+    input event std::midi::Message midiIn  [[ name: "MIDI input" ]];
+
+     // Input events for "karpsichord"
+  	input event float32 amp_modulation [[ name: "amp modulation", group: "/v:voice/amp_modulation", min: 0.0f, max: 1.0f, init: 0.0f, step: 0.01f ]];
+	input event float32 freq_modulation [[ name: "freq modulation", group: "/v:voice/freq_modulation", min: 1e+01f, max: 1e+03f, init: 2e+02f, step: 1.0f ]];
+
+    // Input events for "reverb"
+    input event float32 damp [[ name: "damp", group: "/v:freeverb/damp", min: 0.0f, max: 1.0f, init: 0.5f, step: 0.025f, meta_knob0: "1" ]];
+	input event float32 roomsize [[ name: "roomsize", group: "/v:freeverb/roomsize", min: 0.0f, max: 1.0f, init: 0.9f, step: 0.025f, meta_knob1: "2" ]];
+	input event float32 wet [[ name: "wet", group: "/v:freeverb/wet", min: 0.0f, max: 1.0f, init: 0.9f, step: 0.025f, meta_knob2: "3" ]];
+    input value float volume  [[ name: "Volume", min: 0, max: 1, init: 0.5, rampFrames: 4000 ]];
+
+    output stream float<2> out;
+
+    let voiceCount = 4;
+
+    node
+    {
+        voiceAllocator = std::voices::VoiceAllocator (voiceCount);
+        voices = Voice[voiceCount];
+        reverb = faust::freeverb;
+    }
+
+    connection
+    {
+        midiIn -> std::midi::MPEConverter -> voiceAllocator -> voices.eventIn;
+
+        // Connect the input events to the FM voice
+        amp_modulation -> voices.amp_modulation;
+        freq_modulation -> voices.freq_modulation;
+
+        // Connect the input events to the reverb
+        damp     -> reverb.damp;
+        roomsize -> reverb.roomsize;
+        wet      -> reverb.wet;
+
+        // Connect the output of the FM voice to the input of the reverb
+        voices.output0 -> reverb.input0;
+        voices.output1 -> reverb.input1;
+
+        // Connect the output of the reverb to the output of the graph
+        float<2> (reverb.output0, reverb.output1) * volume -> out;
+    }
+}
+
+// The voice uses a Faust FM oscillator, and drives it with midi events
+graph Voice
+{
+    input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
+    input fm.*;
+
+    output stream float output0, output1;
+
+    node
+    {
+        noteToFaust = NoteToFaust;
+        fm = faust::voice;
+    }
+
+    connection
+    {
+        eventIn -> noteToFaust.eventIn;
+        noteToFaust.gate -> fm.gate;
+        noteToFaust.freq -> fm.freq_carrier;
+
+        fm.output0 -> output0;
+        fm.output1 -> output1;
+    }
+}
+
+/// Processor to convert note on/off events into control events for the Faust oscillator
+processor NoteToFaust
+{
+    input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
+
+    output event float freq, gain, gate;
+
+    event eventIn (std::notes::NoteOn e)
+    {
+        freq <- std::notes::noteToFrequency (e.pitch);
+        gain <- e.velocity;
+        gate <- 1.0f;
+    }
+
+    event eventIn (std::notes::NoteOff e)
+    {
+        gate <- 0.0f;
+    }
+
+}

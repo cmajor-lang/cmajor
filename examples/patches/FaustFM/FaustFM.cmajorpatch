@@ -1,0 +1,16 @@
+{
+    "CmajorVersion": 1,
+    "ID": "com.grame.cmajor.integration",
+    "version": "1.0",
+    "name": "Faust + Cmajor integration example",
+    "description": "Faust DSP and Cmajor patch",
+    "category": "generator",
+    "manufacturer": "GRAME",
+    "isInstrument": true,
+    "sourceTransformer": "transform/faustTransformer.js",
+    "source": [
+        "synth.cmajor",
+        "freeverb.dsp",
+        "voice.dsp"
+    ]
+}
