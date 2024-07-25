@@ -10,7 +10,8 @@ graph Synth [[ main ]]
     input event float32 damp [[ name: "damp", group: "/v:freeverb/damp", min: 0.0f, max: 1.0f, init: 0.5f, step: 0.025f, meta_knob0: "1" ]];
 	input event float32 roomsize [[ name: "roomsize", group: "/v:freeverb/roomsize", min: 0.0f, max: 1.0f, init: 0.9f, step: 0.025f, meta_knob1: "2" ]];
 	input event float32 wet [[ name: "wet", group: "/v:freeverb/wet", min: 0.0f, max: 1.0f, init: 0.9f, step: 0.025f, meta_knob2: "3" ]];
-    input value float volume  [[ name: "Volume", min: 0, max: 1, init: 0.5, rampFrames: 4000 ]];
+
+    input dbScaler.gainDb [[ name: "volume", min: -36, max: 0, init: -12 ]];
 
     output stream float<2> out;
 
@@ -21,6 +22,7 @@ graph Synth [[ main ]]
         voiceAllocator = std::voices::VoiceAllocator (voiceCount);
         voices = Voice[voiceCount];
         reverb = faust::freeverb;
+        dbScaler = DbScaler;
     }
 
     connection
@@ -41,7 +43,8 @@ graph Synth [[ main ]]
         voices.output1 -> reverb.input1;
 
         // Connect the output of the reverb to the output of the graph
-        float<2> (reverb.output0, reverb.output1) * volume -> out;
+        float<2> (reverb.output0, reverb.output1) -> dbScaler.in;
+        dbScaler.out -> out;
     }
 }
 
@@ -88,5 +91,45 @@ processor NoteToFaust
     {
         gate <- 0.0f;
     }
+}
 
+processor DbScaler
+{
+    input stream float<2> in;
+    output stream float<2> out;
+    input event float32 gainDb [[ name: "Gain", min: -24.0, max: 24.0, step: 0.1, init: 0, unit: "db" ]];
+
+    event gainDb (float v)
+    {
+        targetGain = std::levels::dBtoGain (v);
+    }
+
+    float gain = 1.0f;
+    float targetGain = 1.0f;
+
+    // Smooth changes over 10ms
+    let smoothingFrames = int (processor.frequency * 0.01);
+
+    void main()
+    {
+        loop
+        {
+            while (gain == targetGain)
+            {
+                out <- in * gain;
+                advance();
+            }
+
+            let perFrameIncrement = (targetGain - gain) / smoothingFrames;
+
+            loop (smoothingFrames)
+            {
+                gain += perFrameIncrement;
+                out <- in * gain;
+                advance();
+            }
+
+            gain = targetGain;
+        }
+    }
 }
