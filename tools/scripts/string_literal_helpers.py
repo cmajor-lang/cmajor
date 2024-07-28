@@ -23,9 +23,9 @@ import struct
 maxStringLiteralSize = 2040
 
 def hexDigitToInt (digit):
-    if digit >= '0' and digit <= '9': return digit - '0'
-    if digit >= 'a' and digit <= 'f': return digit - 'a'
-    if digit >= 'A' and digit <= 'F': return digit - 'A'
+    if digit >= ord('0') and digit <= ord('9'): return digit - ord('0')
+    if digit >= ord('a') and digit <= ord('f'): return digit - ord('a')
+    if digit >= ord('A') and digit <= ord('F'): return digit - ord('A')
     return -1
 
 def escapeCppStringLiteral (text):
@@ -33,24 +33,24 @@ def escapeCppStringLiteral (text):
     lastChar = 0
     result = ""
 
-    for c in text:
-        if c == '\t': result += "\\t"
-        elif c == '\n': result += "\\n"
-        elif c == '\r': result += "\\r"
-        elif c == '\"': result += "\\\""
-        elif c == '\\': result += "\\\\"
+    for c in text.encode('utf-8'):
+        if   c == ord('\t'): result += "\\t"
+        elif c == ord('\n'): result += "\\n"
+        elif c == ord('\r'): result += "\\r"
+        elif c == ord('\"'): result += "\\\""
+        elif c == ord('\\'): result += "\\\\"
 
-        elif c == '?':
+        elif c == ord('?'):
             # NB: two consecutive unescaped question-marks would form a trigraph
-            result += "\\?" if lastChar == '?' else "?"
+            result += "\\?" if lastChar == ord('?') else "?"
 
-        elif c >= ' ' and ord(c) < 127:
+        elif c >= ord(' ') and c < 127:
             if avoidHexDigit and hexDigitToInt (c) >= 0:
                 result += "\"\""
 
-            result += c
+            result += chr(c)
         else:
-            result += ("\\x0" if ord(c) < 16 else "\\x") + format (ord(c), 'x')
+            result += f"\\{c:o}"
             avoidHexDigit = True
             lastChar = c
             continue
