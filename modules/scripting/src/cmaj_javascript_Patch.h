@@ -21,7 +21,7 @@
 #include <random>
 
 #include "../../../include/cmajor/helpers/cmaj_Patch.h"
-#include "../../../include/cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
+#include "../../../include/cmajor/helpers/cmaj_PatchWorker_WebView.h"
 
 namespace cmaj::javascript
 {
@@ -36,7 +36,7 @@ struct PatchLibrary
             choc::value::Value lastError;
             cmaj::Patch patch;
 
-            enableQuickJSPatchWorker (patch);
+            enableWebViewPatchWorker (patch);
 
             patch.setHostDescription ("Cmajor Test");
 
