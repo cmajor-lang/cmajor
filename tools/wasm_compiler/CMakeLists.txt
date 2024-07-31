@@ -162,5 +162,5 @@ target_link_libraries (cmajor_compiler
 
 target_link_directories (cmajor_compiler
     PUBLIC
-        ../../cmajor/3rdParty/llvm/release/wasm/wasm32/lib
+        ../../3rdParty/llvm/release/wasm/wasm32/lib
 )
