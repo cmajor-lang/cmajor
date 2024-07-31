@@ -21,7 +21,7 @@ target_sources(cmajor_compiler
 
 set_target_properties(cmajor_compiler PROPERTIES OUTPUT_NAME "cmaj-compiler-wasm")
 
-include (../../scripts/cmake_warning_flags)
+include (../scripts/cmake_warning_flags)
 
 target_compile_features(cmajor_compiler PRIVATE ${CMAJ_TARGET_COMPILER})
 target_compile_options(cmajor_compiler PRIVATE ${CMAJ_WARNING_FLAGS})

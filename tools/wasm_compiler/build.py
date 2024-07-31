@@ -26,13 +26,14 @@ def writeFile (file, content):
 # ==============================================================================
 parser = argparse.ArgumentParser (description = "This script builds the wasm compiler and puts everything needed into a target folder")
 parser.add_argument ("--target", type = str, help = "The path to the target folder to put the results", required = True)
+parser.add_argument ("--version", type = str, help = "The build version", required = True)
 args = parser.parse_args()
 
 scriptFolder = os.path.dirname (os.path.realpath(__file__))
 buildFolder = os.path.join (scriptFolder, "build")
 
 checkSysCall ("rm -rf " + buildFolder)
-checkSysCall (f'emcmake cmake -DCMAKE_BUILD_TYPE=Release -S' + scriptFolder + " -B " + buildFolder + " -GNinja")
+checkSysCall (f'emcmake cmake -DCMAKE_BUILD_TYPE=Release -DCMAJ_VERSION=' + args.version + ' -S' + scriptFolder + " -B " + buildFolder + " -GNinja")
 checkSysCall ("cd " + buildFolder + " && ninja")
 
 from rjsmin import jsmin
