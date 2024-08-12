@@ -401,7 +401,7 @@ protected:
     {
         BusesProperties layout;
 
-        int32_t inputChannelCount = 0, outputChannelCount = 0;
+        uint32_t inputChannelCount = 0, outputChannelCount = 0;
 
         for (auto& input : inputs)
             inputChannelCount += input.getNumAudioChannels();
