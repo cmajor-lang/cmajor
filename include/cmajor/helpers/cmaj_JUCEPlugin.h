@@ -401,13 +401,19 @@ protected:
     {
         BusesProperties layout;
 
+        int32_t inputChannelCount = 0, outputChannelCount = 0;
+
         for (auto& input : inputs)
-            if (auto chans = input.getNumAudioChannels())
-                layout.addBus (true, input.endpointID.toString(), juce::AudioChannelSet::canonicalChannelSet ((int) chans), true);
+            inputChannelCount += input.getNumAudioChannels();
 
         for (auto& output : outputs)
-            if (auto chans = output.getNumAudioChannels())
-                layout.addBus (false, output.endpointID.toString(), juce::AudioChannelSet::canonicalChannelSet ((int) chans), true);
+            outputChannelCount += output.getNumAudioChannels();
+
+        if (inputChannelCount > 0)
+            layout.addBus (true, "in", juce::AudioChannelSet::canonicalChannelSet ((int) inputChannelCount), true);
+
+        if (outputChannelCount > 0)
+            layout.addBus (false, "out", juce::AudioChannelSet::canonicalChannelSet ((int) outputChannelCount), true);
 
         return layout;
     }
