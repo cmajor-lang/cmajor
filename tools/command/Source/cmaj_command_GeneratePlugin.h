@@ -200,8 +200,20 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     bool hasAudioIn = false;
     bool hasAudioOut = false;
 
-    patch.unload();
-    patch.preload (manifest);
+    {
+        patch.unload();
+
+        choc::messageloop::initialise();
+
+        auto t = std::thread ([&]
+        {
+            patch.preload (manifest);
+            choc::messageloop::stop();
+        });
+
+        choc::messageloop::run();
+        t.join();
+    }
 
     for (auto& e : patch.getInputEndpoints())
     {

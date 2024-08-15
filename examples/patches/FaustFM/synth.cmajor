@@ -78,13 +78,12 @@ processor NoteToFaust
 {
     input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
 
-    output event float freq, gain, gate;
+    output event float freq, gate;
 
     event eventIn (std::notes::NoteOn e)
     {
         freq <- std::notes::noteToFrequency (e.pitch);
-        gain <- e.velocity;
-        gate <- 1.0f;
+        gate <- e.velocity;
     }
 
     event eventIn (std::notes::NoteOff e)
