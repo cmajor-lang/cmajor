@@ -1,8 +1,8 @@
 graph Synth [[ main ]]
 {
-    input event std::midi::Message midiIn  [[ name: "MIDI input" ]];
+    input event std::midi::Message midiIn [[ name: "MIDI input" ]];
 
-     // Input events for "karpsichord"
+    // Input events for "FM voice"
   	input event float32 amp_modulation [[ name: "amp modulation", group: "/v:voice/amp_modulation", min: 0.0f, max: 1.0f, init: 0.0f, step: 0.01f ]];
 	input event float32 freq_modulation [[ name: "freq modulation", group: "/v:voice/freq_modulation", min: 1e+01f, max: 1e+03f, init: 2e+02f, step: 1.0f ]];
 
