@@ -1495,8 +1495,8 @@ struct EndpointInfo
     }
 
     //==============================================================================
-    ValueReader createConstantInt32   (int32_t v)           { return createReaderNoParensNeeded (ProgramPrinter::formatInt32 (v)); }
-    ValueReader createConstantInt64   (int64_t v)           { return createReaderNoParensNeeded (std::string ("int64_t (") + ProgramPrinter::formatInt64 (v, "L)")); }
+    ValueReader createConstantInt32   (int32_t v)           { return createReaderNoParensNeeded (std::string ("int32_t {") + ProgramPrinter::formatInt32 (v) + "}"); }
+    ValueReader createConstantInt64   (int64_t v)           { return createReaderNoParensNeeded (std::string ("int64_t {") + ProgramPrinter::formatInt64 (v, "L}")); }
     ValueReader createConstantFloat32 (float v)             { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v)); }
     ValueReader createConstantFloat64 (double v)            { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v)); }
     ValueReader createConstantBool    (bool b)              { return createReaderNoParensNeeded (b ? std::string_view ("true") : std::string_view ("false")); }
