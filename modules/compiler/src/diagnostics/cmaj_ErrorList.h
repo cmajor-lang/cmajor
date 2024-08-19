@@ -366,7 +366,7 @@ DECL_COMPILE_ERROR (failedToLink,                           "Failed to link {0}"
 DECL_COMPILE_ERROR (failedToJit,                            "Failed to construct jit {0}")
 
 // Warnings
-DECL_WARNING (indexHasRuntimeOverhead,                      "Performance warning: the type of this array index could not be proven to be safe, so a runtime check was added")
+DECL_WARNING (indexHasRuntimeOverhead,                      "Performance warning: using an array index of type 'int' will add a runtime range check. To avoid this, use a `wrap<>` or `clamp<>` type for the index. To hide this warning, use .at() instead of []")
 DECL_WARNING (localVariableShadow,                          "'{0}' shadows another declaration with the same name")
 
 DECL_NOTE (seePreviousDeclaration,                          "See previous declaration")
