@@ -36,7 +36,7 @@ static void runAllTests (choc::test::TestProgress& progress)
     cmaj::patch_helper_tests::runUnitTests (progress);
     cmaj::graphviz_tests::runUnitTests (progress);
     cmaj::plugin::clap::test::runUnitTests (progress);
-//    cmaj::runServerUnitTests (progress);
+    cmaj::runServerUnitTests (progress);
 }
 
 

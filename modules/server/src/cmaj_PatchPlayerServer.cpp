@@ -26,9 +26,6 @@
 #include "../../embedded_assets/cmaj_EmbeddedAssets.h"
 #include "../include/cmaj_PatchPlayerServer.h"
 
-#define CHOC_ENABLE_HTTP_SERVER_TEST 1
-#include "choc/tests/choc_tests.h"
-
 namespace cmaj
 {
 
@@ -979,9 +976,270 @@ void runPatchPlayerServer (std::string address,
     choc::messageloop::run();
 }
 
+namespace
+{
+    struct CallHistory
+    {
+        void addCall (const std::string& s)
+        {
+            calls.push_back (s);
+        }
+
+        std::string get()
+        {
+            std::ostringstream oss;
+
+            for (auto c : calls)
+                oss << c << std::endl;
+
+            return oss.str();
+        }
+
+        std::vector<std::string> calls;
+    };
+
+    class StubAudioMidiPlayer : public cmaj::audio_utils::AudioMIDIPlayer
+    {
+    public:
+        StubAudioMidiPlayer (CallHistory& ch, const cmaj::audio_utils::AudioDeviceOptions& o) : cmaj::audio_utils::AudioMIDIPlayer (o), callHistory (ch)
+        {
+        }
+
+        std::vector<std::string> getAvailableAudioAPIs() override
+        {
+            callHistory.addCall ("getAvailableAudioAPIs()");
+            return {};
+        }
+
+        std::vector<int32_t> getAvailableSampleRates() override
+        {
+            callHistory.addCall ("getAvailableSampleRates()");
+            return { 44100, 48000 };
+        }
+
+        std::vector<int32_t> getAvailableBlockSizes() override
+        {
+            callHistory.addCall ("getAvailableBlockSizes()");
+            return { 32, 64, 128};
+        }
+
+        std::vector<std::string> getAvailableInputDevices() override
+        {
+            callHistory.addCall ("getAvailableInputDevices()");
+            return { "in" };
+        }
+
+        virtual std::vector<std::string> getAvailableOutputDevices() override
+        {
+            callHistory.addCall ("getAvailableOutputDevices()");
+            return { "out" };
+        }
+
+        void start() override
+        {
+            callHistory.addCall ("start()");
+        }
+
+        void stop() override
+        {
+            callHistory.addCall ("stop()");
+        }
+
+        void handleOutgoingMidiMessage (const void* data, uint32_t length) override
+        {
+            callHistory.addCall ("handleOutgoingMidiMessage()");
+            (void) data;
+            (void) length;
+        }
+
+    private:
+        CallHistory& callHistory;
+    };
+
+    struct TestClient
+    {
+        TestClient (std::string host, uint16_t port, std::string clientId)
+        {
+            // Look up the domain name
+            auto results = resolver.resolve (host, std::to_string (port));
+
+            // Make the connection on the IP address we get from a lookup
+            boost::asio::connect (ws.next_layer(), results.begin(), results.end());
+
+            // Set a decorator to change the User-Agent of the handshake
+            ws.set_option (boost::beast::websocket::stream_base::decorator(
+                [] (boost::beast::websocket::request_type& req)
+                {
+                    req.set (boost::beast::http::field::user_agent,
+                        std::string (BOOST_BEAST_VERSION_STRING) + " websocket-client-coro");
+                }));
+
+            // Perform the websocket handshake
+            ws.handshake (host, "/" + clientId);
+            ws.async_read (destBuffer, [this] (auto code, auto bytes) { readMessage (code, bytes); });
+
+            std::atomic<bool> threadStarted { false };
+
+            connection = std::thread ([this, &threadStarted]
+            {
+                try
+                {
+                    threadStarted = true;
+
+                    while (! threadShouldExit)
+                        ioc.run();
+                }
+                catch (std::exception const&) {}
+            });
+
+            // Wait for thread to be waiting for events
+            while (! threadStarted)
+                std::this_thread::sleep_for (std::chrono::milliseconds (1));
+        }
+
+        ~TestClient()
+        {
+            try
+            {
+                threadShouldExit = true;
+                ioc.stop();
+                ws.close (boost::beast::websocket::close_code::normal);
+            }
+            catch (std::exception const& e)
+            {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
+
+            connection.join();
+        }
+
+        choc::value::Value sendRequest (std::string text)
+        {
+            messageText.clear();
+
+            ws.write (boost::asio::buffer (text));
+
+            std::unique_lock<std::mutex> lock (mutex);
+            condition.wait_for (lock, std::chrono::milliseconds (100));
+
+            return choc::json::parse (messageText);
+        }
+
+        boost::asio::io_context ioc;
+        boost::asio::ip::tcp::resolver resolver { ioc };
+        boost::beast::websocket::stream<boost::asio::ip::tcp::socket> ws { ioc };
+        boost::beast::flat_buffer destBuffer;
+
+        std::thread connection;
+        std::atomic<bool> threadShouldExit { false };
+
+        void readMessage (boost::beast::error_code ec, std::size_t numBytes)
+        {
+            if (numBytes > 0 && ! ec)
+            {
+                std::unique_lock<std::mutex> lock (mutex);
+                messageText = (boost::beast::buffers_to_string (destBuffer.data()));
+
+                destBuffer.clear();
+
+                // Prepare another read callback to be processed by the thread
+                ws.async_read (destBuffer,
+                            [this] (auto code, auto bytes) { readMessage (code, bytes); });
+
+                condition.notify_all();
+            }
+        }
+
+        std::mutex mutex;
+        std::condition_variable condition;
+
+        std::string messageText;
+    };
+
+    void testServer (choc::test::TestProgress& progress)
+    {
+        CHOC_TEST (testServer);
+
+        choc::value::Value engineOptions;
+        cmaj::BuildSettings buildSettings;
+        cmaj::audio_utils::AudioDeviceOptions audioOptions;
+
+        CallHistory callHistory;
+
+        std::string hostname = "127.0.0.1";
+        uint16_t    port     = 8081;
+        std::string url      = "http://127.0.0.1:8081/";
+
+        PatchPlayerServer server (hostname, port, engineOptions, buildSettings, audioOptions, [&] (const cmaj::audio_utils::AudioDeviceOptions& options)
+                                  {
+                                      return std::make_unique<StubAudioMidiPlayer> (callHistory, options);
+                                  }, {});
+
+        
+        auto t = std::thread ([&]
+        {
+            try
+            {
+                TestClient client1 (hostname, port, "client1");
+                TestClient client2 (hostname, port, "client2");
+
+                choc::value::Value response;
+
+                response = client1.sendRequest ("{ \"type\": \"ping\" }");
+                CHOC_EXPECT_EQ (response.isVoid(), true);
+
+                // Check client1 status
+                response = client1.sendRequest ("{ \"type\": \"req_session_status\" }");
+                CHOC_EXPECT_EQ (response.isObject(), true);
+                CHOC_EXPECT_EQ (response["type"].toString(), "session_status");
+                CHOC_EXPECT_EQ (response["message"]["httpRootURL"].toString(), url + "session_client1/");
+                CHOC_EXPECT_EQ (response["message"]["playing"].getBool(), true);
+                CHOC_EXPECT_EQ (response["message"]["loaded"].getBool(), false);
+
+                // Disable playback on client1
+                response = client1.sendRequest ("{ \"type\": \"set_audio_playback_active\", \"active\":false }");
+                CHOC_EXPECT_EQ (response.isObject(), true);
+                CHOC_EXPECT_EQ (response["type"].toString(), "session_status");
+                CHOC_EXPECT_EQ (response["message"]["playing"].getBool(), false);
+
+                // Check client2 status
+                response = client2.sendRequest ("{ \"type\": \"req_session_status\" }");
+                CHOC_EXPECT_EQ (response.isObject(), true);
+                CHOC_EXPECT_EQ (response["type"].toString(), "session_status");
+                CHOC_EXPECT_EQ (response["message"]["httpRootURL"].toString(), url + "session_client2/");
+                CHOC_EXPECT_EQ (response["message"]["playing"].getBool(), true);
+                CHOC_EXPECT_EQ (response["message"]["loaded"].getBool(), false);
+
+                // Re-enable playback on client1
+                response = client1.sendRequest ("{ \"type\": \"set_audio_playback_active\", \"active\":true }");
+                CHOC_EXPECT_EQ (response.isObject(), true);
+                CHOC_EXPECT_EQ (response["type"].toString(), "session_status");
+                CHOC_EXPECT_EQ (response["message"]["playing"].getBool(), true);
+
+                // Retrieve the patch list
+                response = client1.sendRequest ("{ \"type\": \"req_patchlist\" }");
+                CHOC_EXPECT_EQ (response.isObject(), true);
+                CHOC_EXPECT_EQ (response["type"].toString(), "");
+                CHOC_EXPECT_EQ (response["message"].isArray(), true);
+            }
+            catch (boost::system::system_error& error)
+            {
+                CHOC_FAIL ("Failed to connect to server");
+            }
+
+            choc::messageloop::stop();
+        });
+
+        choc::messageloop::run();
+
+        t.join();
+    }
+}
+
 void runServerUnitTests (choc::test::TestProgress& progress)
 {
-    choc_unit_tests::testHTTPServer (progress);
+    CHOC_CATEGORY (Server);
+    testServer (progress);
 }
 
 } // namespace cmaj
