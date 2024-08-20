@@ -1222,7 +1222,7 @@ namespace
                 CHOC_EXPECT_EQ (response["type"].toString(), "");
                 CHOC_EXPECT_EQ (response["message"].isArray(), true);
             }
-            catch (boost::system::system_error& error)
+            catch (boost::system::system_error&)
             {
                 CHOC_FAIL ("Failed to connect to server");
             }
