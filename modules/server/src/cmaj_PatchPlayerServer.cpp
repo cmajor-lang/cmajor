@@ -1221,10 +1221,39 @@ namespace
                 CHOC_EXPECT_EQ (response.isObject(), true);
                 CHOC_EXPECT_EQ (response["type"].toString(), "");
                 CHOC_EXPECT_EQ (response["message"].isArray(), true);
+
+                // Audio device properties
+                response = client1.sendRequest (R"({ "type": "req_audio_device_props" })");
+                CHOC_EXPECT_EQ (response["type"].toString(), "audio_device_properties");
+                CHOC_EXPECT_EQ (response["message"]["sampleRates"].isArray(), true);
+                CHOC_EXPECT_EQ (response["message"]["sampleRates"][0].get<int32_t>(), 44100);
+                CHOC_EXPECT_EQ (response["message"]["sampleRates"][1].get<int32_t>(), 48000);
+                CHOC_EXPECT_EQ (response["message"]["blockSizes"].isArray(), true);
+                CHOC_EXPECT_EQ (response["message"]["blockSizes"][0].get<int32_t>(), 32);
+                CHOC_EXPECT_EQ (response["message"]["blockSizes"][1].get<int32_t>(), 64);
+                CHOC_EXPECT_EQ (response["message"]["blockSizes"][2].get<int32_t>(), 128);
+                CHOC_EXPECT_EQ (response["message"]["rate"].get<int32_t>(), 0);
+                CHOC_EXPECT_EQ (response["message"]["blockSize"].get<int32_t>(), 0);
+
+                // Set the audio device sample rate / block size
+                response = client1.sendRequest (R"({ "type": "set_audio_device_props", "properties": { "rate":44100, "blockSize":64 } })");
+                CHOC_EXPECT_EQ (response["type"].toString(), "audio_device_properties");
+                CHOC_EXPECT_EQ (response["message"]["rate"].get<int32_t>(), 44100);
+                CHOC_EXPECT_EQ (response["message"]["blockSize"].get<int32_t>(), 64);
+
+                // Device shared between clients
+                response = client2.sendRequest (R"({ "type": "req_audio_device_props" })");
+                CHOC_EXPECT_EQ (response["type"].toString(), "audio_device_properties");
+                CHOC_EXPECT_EQ (response["message"]["rate"].get<int32_t>(), 44100);
+                CHOC_EXPECT_EQ (response["message"]["blockSize"].get<int32_t>(), 64);
             }
             catch (boost::system::system_error&)
             {
                 CHOC_FAIL ("Failed to connect to server");
+            }
+            catch (choc::value::Error&)
+            {
+                CHOC_FAIL ("Invalid choc value");
             }
 
             choc::messageloop::stop();
