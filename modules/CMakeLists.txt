@@ -423,7 +423,7 @@ function (MAKE_CMAJ_LIBRARY)
             pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
             pkg_check_modules (JACK REQUIRED jack IMPORTED_TARGET)
             target_link_libraries (${CMAJ_LIBRARY_NAME} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
-            target_include_directories(${CMAJ_LIBRARY_NAME} PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
+            target_include_directories(${CMAJ_LIBRARY_NAME} SYSTEM PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
         endif()
     endif()
 
