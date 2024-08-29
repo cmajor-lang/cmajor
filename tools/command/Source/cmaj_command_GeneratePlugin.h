@@ -27,13 +27,12 @@
 namespace generate_cpp
 {
 
-inline std::string unzipCmajorHeaders (const std::filesystem::path& outputFolder)
+inline void unzipCmajorHeaders (const std::filesystem::path& outputPath)
 {
     auto compressed = std::string (reinterpret_cast<const char*> (cmajorIncludeFolderZip), sizeof (cmajorIncludeFolderZip));
     auto in = std::make_shared<std::istringstream> (compressed, std::ios::binary);
     choc::zip::ZipFile zip (in);
-    zip.uncompressToFolder (outputFolder / "include", true, false);
-    return "include";
+    zip.uncompressToFolder (outputPath, true, false);
 }
 
 template <typename PredicateFn>
@@ -111,6 +110,9 @@ inline GeneratedMainClass generateMainClass (cmaj::Patch& patch,
 {
     auto cpp = generateCodeAndCheckResult (patch, loadParams, "cpp",
                                            "{ \"bare\": false, \"namespace\": \"" + performerNamespace + "\" }");
+
+    if (cpp.messages.hasErrors())
+        throw std::runtime_error (cpp.messages.toString());
 
     const auto& manifest = loadParams.manifest;
 
@@ -581,11 +583,12 @@ inline void generatePluginProject (choc::ArgumentList& args, std::string outputF
                                    const cmaj::Patch::LoadParams& loadParams, bool isCLAP)
 {
     std::string cmajorIncludePath;
+    auto includePath = args.removeValueFor ("--cmajorIncludePath");
 
-    if (auto includePath = args.removeValueFor ("--cmajorIncludePath"))
+    if (includePath)
         cmajorIncludePath = *includePath;
     else
-        cmajorIncludePath = unzipCmajorHeaders (outputFile);
+        cmajorIncludePath = "include";
 
     GeneratedFiles generatedFiles;
 
@@ -601,6 +604,9 @@ inline void generatePluginProject (choc::ArgumentList& args, std::string outputF
         createClapPluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--clapIncludePath"), getLibraryPath ("--clapWrapperPath"), outputFile);
     else
         createJucePluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--jucePath"), args.getValueFor ("--juceFormats", true));
+
+    if (! includePath)
+        unzipCmajorHeaders (outputFile + "/include");
 
     generatedFiles.writeToOutputFolder (outputFile);
 }
