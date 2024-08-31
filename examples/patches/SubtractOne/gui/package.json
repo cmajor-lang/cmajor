@@ -1,0 +1,45 @@
+{
+  "name": "synth",
+  "version": "0.1.0",
+  "private": true,
+  "homepage": "./",
+  "dependencies": {
+    "@tonaljs/midi": "^3.3.1",
+    "framer-motion": "^1.6.7",
+    "react": "^16.9.0",
+    "react-dom": "^16.9.0",
+    "react-redux": "^7.1.1",
+    "react-scripts": "^5.0.1",
+    "styled-components": "^4.4.0",
+    "tonal": "^2.2.2"
+  },
+  "scripts": {
+    "start": "cross-env REACT_APP_ENV=native-web-audio-environment react-scripts start",
+    "start:cmaj-patch": "cross-env REACT_APP_ENV=cmaj-patch-environment react-scripts start",
+    "start:cmaj-wasm": "cross-env REACT_APP_ENV=cmaj-wasm-audio-worklet-environment react-scripts start",
+    "build": "cross-env GENERATE_SOURCEMAP=false REACT_APP_ENV=native-web-audio-environment react-scripts build",
+    "build:cmaj-patch": "cross-env GENERATE_SOURCEMAP=false REACT_APP_ENV=cmaj-patch-environment react-scripts build",
+    "build:cmaj-wasm": "cross-env GENERATE_SOURCEMAP=false REACT_APP_ENV=cmaj-wasm-audio-worklet-environment react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "redux": "^4.0.4"
+  }
+}

@@ -1,0 +1,19 @@
+{
+    "CmajorVersion":    1,
+    "pluginCode":       "DEMO",
+    "ID":               "com.your_name.your_patch_ID",
+    "version":          "1.0",
+    "name":             "SubtractOne",
+    "description":      "SubtractOne",
+    "category":         "generator",
+    "manufacturer":     "Your Company Goes Here",
+    "isInstrument":     true,
+
+    "source":           "SubtractOne.cmajor",
+    "view":             {
+                            "src": "gui/stripped-build/index.js",
+                            "width": 1024,
+                            "height": 768,
+                            "resizable": false
+                        }
+}
