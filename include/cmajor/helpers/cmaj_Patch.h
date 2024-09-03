@@ -2236,11 +2236,13 @@ inline const PatchManifest* Patch::getManifest() const
 
 inline std::string Patch::getManifestFile() const
 {
-    if (auto m = getManifest())
-        return m->getFullPathForFile (m->manifestFile);
-
     if (lastLoadParams.manifest.getFullPathForFile)
+    {
+        if (auto m = getManifest())
+            return m->getFullPathForFile (m->manifestFile);
+
         return lastLoadParams.manifest.getFullPathForFile (lastLoadParams.manifest.manifestFile);
+    }
 
     return {};
 }
