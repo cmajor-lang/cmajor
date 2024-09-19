@@ -112,6 +112,12 @@ struct GeneratedFiles
             readAndAddFile (manifestFolder / trimLeadingSlash (manifest.patchWorker), manifestFolder);
     }
 
+    void addWamResources()
+    {
+        for (auto& f : cmaj::EmbeddedWamAssets::files)
+            addFile (std::string (f.name), std::string (f.content));
+    }
+
     //==============================================================================
     struct File
     {

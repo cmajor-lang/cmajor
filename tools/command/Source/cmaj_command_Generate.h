@@ -21,6 +21,7 @@
 #include "../../../include/cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
 #include "../../../include/cmajor/helpers/cmaj_PatchWorker_WebView.h"
 #include "../../../modules/embedded_assets/cmaj_EmbeddedAssets.h"
+#include "../../../modules/embedded_assets/cmaj_EmbeddedWamAssets.h"
 
 #include "cmaj_command_GenerateHelpers.h"
 #include "cmaj_command_GenerateJavascript.h"
@@ -40,6 +41,7 @@ static std::vector<std::string> getCodeGenTargetList()
     list.push_back ("webaudio");
     list.push_back ("javascript");
     list.push_back ("wast");
+    list.push_back ("wam");
    #endif
     list.push_back ("juce");
     list.push_back ("clap");
@@ -62,6 +64,7 @@ static std::string getCodeGenTargetHelp (std::string_view type)
     if (type == "javascript")     return "Converts a patch to a Javascript/WebAssembly class";
     if (type == "webaudio")       return "Converts a patch to Javascript/WebAssembly with WebAudio helpers";
     if (type == "webaudio-html")  return "Converts a patch to some HTML/Javascript which plays the patch and shows its GUI";
+    if (type == "wam")            return "Converts a patch to a Javascript web audio module";
     if (type == "wast")           return "Compiles a patch to a chunk of WAST code";
     if (type == "llvm")           return "Dumps the assembly code for a patch or set of .cmajor files for the specified target architecture";
 
@@ -122,6 +125,9 @@ void generateFromPatch (choc::ArgumentList& args,
 
     if (targetType == "webaudio-html")
         return generate_javascript::generateWebAudioHTML (patch, loadParams, engineOptions).writeToOutputFolder (outputFile);
+
+    if (targetType == "wam")
+        return generate_javascript::generateWebAudioModule (patch, loadParams, engineOptions).writeToOutputFolder (outputFile);
 
     if (targetType == "webaudio")
         return writeToFolderOrConsole (outputFile, generate_javascript::generateJavascriptWorklet (patch, loadParams, engineOptions));

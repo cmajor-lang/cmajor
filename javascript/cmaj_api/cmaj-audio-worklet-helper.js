@@ -554,7 +554,13 @@ export class AudioWorkletPatchConnection extends PatchConnection
         }
         else
         {
-            this.rootResourcePath = window.location.href;
+            const getBaseUrl = (relativeURL) =>
+            {
+                const baseURL = relativeURL.href.substring(0, relativeURL.href.lastIndexOf('/'));
+                return baseURL;
+            };
+
+            this.rootResourcePath = getBaseUrl(new URL('.', import.meta.url));
 
             if (! this.rootResourcePath.endsWith ("/"))
                 this.rootResourcePath += "/../";

@@ -93,6 +93,8 @@ class GenericPatchView extends HTMLElement
     /** @private */
     getHTML()
     {
+        const baseUrl = import.meta.url;
+
         return `
             <style>
             * {
@@ -144,9 +146,9 @@ class GenericPatchView extends HTMLElement
                 margin-left: 0.3rem;
                 margin-right: 0.3rem;
                 background-color: var(--foreground);
-                mask: url(cmaj_api/assets/cmajor-logo.svg);
+                mask: url(${baseUrl}/../assets/cmajor-logo.svg);
                 mask-repeat: no-repeat;
-                -webkit-mask: url(cmaj_api/assets/cmajor-logo.svg);
+                -webkit-mask: url(${baseUrl}/../assets/cmajor-logo.svg);
                 -webkit-mask-repeat: no-repeat;
                 min-width: 6.25rem;
             }

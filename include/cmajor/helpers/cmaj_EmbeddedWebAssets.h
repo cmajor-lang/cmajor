@@ -2474,6 +2474,8 @@ struct EmbeddedWebAssets
         "    /** @private */\n"
         "    getHTML()\n"
         "    {\n"
+        "        const baseUrl = import.meta.url;\n"
+        "\n"
         "        return `\n"
         "            <style>\n"
         "            * {\n"
@@ -2525,9 +2527,9 @@ struct EmbeddedWebAssets
         "                margin-left: 0.3rem;\n"
         "                margin-right: 0.3rem;\n"
         "                background-color: var(--foreground);\n"
-        "                mask: url(cmaj_api/assets/cmajor-logo.svg);\n"
+        "                mask: url(${baseUrl}/../assets/cmajor-logo.svg);\n"
         "                mask-repeat: no-repeat;\n"
-        "                -webkit-mask: url(cmaj_api/assets/cmajor-logo.svg);\n"
+        "                -webkit-mask: url(${baseUrl}/../assets/cmajor-logo.svg);\n"
         "                -webkit-mask-repeat: no-repeat;\n"
         "                min-width: 6.25rem;\n"
         "            }\n"
@@ -3303,7 +3305,13 @@ struct EmbeddedWebAssets
         "        }\n"
         "        else\n"
         "        {\n"
-        "            this.rootResourcePath = window.location.href;\n"
+        "            const getBaseUrl = (relativeURL) =>\n"
+        "            {\n"
+        "                const baseURL = relativeURL.href.substring(0, relativeURL.href.lastIndexOf('/'));\n"
+        "                return baseURL;\n"
+        "            };\n"
+        "\n"
+        "            this.rootResourcePath = getBaseUrl(new URL('.', import.meta.url));\n"
         "\n"
         "            if (! this.rootResourcePath.endsWith (\"/\"))\n"
         "                this.rootResourcePath += \"/../\";\n"
@@ -3523,9 +3531,9 @@ struct EmbeddedWebAssets
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
         File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 15540) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6282) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6334) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 7221) },
-        File { "cmaj-audio-worklet-helper.js", std::string_view (cmajaudioworklethelper_js, 27974) },
+        File { "cmaj-audio-worklet-helper.js", std::string_view (cmajaudioworklethelper_js, 28203) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
     };
 

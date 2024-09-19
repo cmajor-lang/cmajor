@@ -198,6 +198,71 @@ FILE_DATA
     replaceFileIfDifferent (targetHeader, output)
 
 
+
+#####################################################################################################
+def createWamAssetsFile (assetFolder, targetHeader):
+    output = '''\
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  Cmajor may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+#pragma once
+
+#include <array>
+#include <string_view>
+
+namespace cmaj
+{
+
+/// This contains the javascript support classes for web audio modules
+///
+struct EmbeddedWamAssets
+{
+    static std::string_view findResource (std::string_view path)
+    {
+        for (auto& file : files)
+            if (path == file.name)
+                return file.content;
+
+        return {};
+    }
+
+    struct File { std::string_view name, content; };
+
+FILE_DATA
+};
+
+} // namespace cmaj
+'''
+    filesToAdd = []
+
+    for root, dirs, files in os.walk (assetFolder):
+        for file in files:
+            if file.find (".DS_Store") < 0:
+                with open (os.path.join (root, file), 'rb') as f:
+                    filesToAdd.append ([ os.path.relpath (os.path.join (root, file), assetFolder), f.read() ])
+
+    output = output.replace ("FILE_DATA", createCppFileData (filesToAdd))
+    replaceFileIfDifferent (targetHeader, output)
+
+
 #####################################################################################################
 def createServerWebAssetsFile (assetFolder, targetHeader):
     output = '''\
@@ -259,6 +324,11 @@ print ("-------------------------------------------------------------")
 
 createWebAPIAssetsFile (os.path.join (repoFolder, "javascript/cmaj_api"),
                         os.path.join (repoFolder, "include/cmajor/helpers/cmaj_EmbeddedWebAssets.h"))
+
+print ("-------------------------------------------------------------")
+
+createWamAssetsFile (os.path.join (repoFolder, "modules/embedded_assets/wam"),
+                     os.path.join (repoFolder, "modules/embedded_assets/cmaj_EmbeddedWamAssets.h"))
 
 print ("-------------------------------------------------------------")
 
