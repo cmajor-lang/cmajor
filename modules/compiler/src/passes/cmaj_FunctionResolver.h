@@ -175,7 +175,7 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
         {
             if (auto types = op.getOperatorTypes())
             {
-                if (types.operandType.isPrimitiveFloat() && intrinsicsNamespace != nullptr)
+                if (types.operandType.isFloatOrVectorOfFloat() && intrinsicsNamespace != nullptr)
                 {
                     if (auto lhs = AST::castToValue (op.lhs))
                     {

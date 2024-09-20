@@ -1334,3 +1334,33 @@ bool test()
 
     return (2.0f * i) == (2.0f * j);
 }
+
+## testFunction()
+
+bool testIntModulo()
+{
+    var i = 10;
+    var i3 = int<3> (11, 12, 13);
+
+    i++;
+    i3++;
+
+    var m = i % 7;
+    var m3 = i3 % 7;
+
+    return m == 4 && m3[0] == 5 && m3[1] == 6 && m3[2] == 0;
+}
+
+bool testFloatModulo()
+{
+    var f = 10.0f;
+    var f3 = float<3> (11.0f, 12.0f, 13.0f);
+
+    f++;
+    f3++;
+
+    var m = f % 7.0f;
+    var m3 = f3 % 7.0f;
+
+    return m == 4.0f && m3[0] == 5.0f && m3[1] == 6.0f && m3[2] == 0.0f;
+}

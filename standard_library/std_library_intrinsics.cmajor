@@ -98,7 +98,7 @@ namespace intrinsics
     /// Rounds the argument to an integer value. This follows the same rules as the standard C/C++ std::rint() function.
     T rint<T> (T n)                                 { static_assert (n.isScalar && n.primitiveType.isFloat, "rint() requires floating point arguments");   return T(roundToInt (n)); }
     /// Returns the floating point modulo operation of its arguments. This follows the same rules as the standard C/C++ std::fmod() function.
-    T fmod<T> (T x, T y)                            { static_assert (x.isScalar && x.primitiveType.isFloat, "fmod() requires floating point arguments");      return x - (y * T(int64(x / y))); }
+    T fmod<T> (T x, T y)                            { static_assert (x.isScalar && x.primitiveType.isFloat, "fmod() requires floating point arguments");      if const (x.isVector) return internal::vec_fmod (x, y); else return x - (y * T(int64(x / y))); }
     /// Returns the floating remainder of its arguments. This follows the same rules as the standard C/C++ std::remainder() function.
     T remainder<T> (T x, T y)                       { static_assert (x.isScalar && x.primitiveType.isFloat, "remainder() requires floating point arguments"); return x - (y * T(int64(x / y + 0.5f))); }
     /// Performs a linear-interpolation between a pair of scalar values.

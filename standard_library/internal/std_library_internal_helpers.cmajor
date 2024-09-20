@@ -41,7 +41,8 @@ T vec_cos<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = cos   (n[i]);  return 
 T vec_tan<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = tan   (n[i]);  return r; }
 T vec_atan<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = atan  (n[i]);  return r; }
 
-T vec_pow<T>   (T v1, T v2)  { T r; for (wrap<T.size> i) r[i] = pow (v1[i], v2[i]); return r; }
+T vec_fmod<T>  (T v1, T v2) { T r; for (wrap<T.size> i) r[i] = fmod (v1[i], v2[i]);  return r; }
+T vec_pow<T>   (T v1, T v2) { T r; for (wrap<T.size> i) r[i] = pow (v1[i], v2[i]); return r; }
 
 //==============================================================================
 T atan_pos<T> (T n)
