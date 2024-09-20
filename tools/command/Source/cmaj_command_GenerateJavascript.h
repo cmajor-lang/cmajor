@@ -457,14 +457,19 @@ auto index_html = choc::text::trimStart (choc::text::replace (R"(
 <head>
   <script type="module" src="https://mainline.i3s.unice.fr/wam_wc/wam-host/wamHost.js"> </script>
   <script type="module" src="https://mainline.i3s.unice.fr/wam_wc/wam-plugin/wamPlugin.js"></script>
-  </head>
-      <wam-host>
-      <wam-plugin
-        id="wamRemote"
-        src="./index.js"
-      ></wam-plugin>
-    </wam-host>
+</head>
 
+<wam-host id="host">
+</wam-host>
+
+<body>
+  <script>
+    const plugin = document.createElement ("wam-plugin");
+    plugin.id = "wamRemote";
+    plugin.src = window.location.href + "/../index.js";
+
+    document.getElementById ("host").appendChild (plugin);
+  </script>
 </body>
 </html>
 )",
