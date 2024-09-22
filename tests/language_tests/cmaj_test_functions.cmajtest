@@ -991,3 +991,99 @@ bool parenthesisOkAroundFunctioCalls()
 {
     return ((min)) (1, 2) == 1;
 }
+
+
+
+## testCompile()
+
+namespace N (using Type = int32)
+{
+    void test (Type& t) {}
+    void test (int32 i) {}
+}
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+## expectError ("6:10: error: A function with matching parameters has already been defined")
+
+namespace N (using Type = int32)
+{
+    void test (Type& t) {}
+    void test (int32 i) {}
+    void test (int32 i) {}
+}
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        advance();
+    }
+}
+
+## expectError ("5:10: error: A function with matching parameters has already been defined")
+
+namespace N (using Type = int32)
+{
+    void test (Type& t) {}
+    void test (int32 i) {}
+}
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        N::test (1);
+        advance();
+    }
+}
+
+## expectError ("5:10: error: A function with matching parameters has already been defined")
+
+namespace N (using Type = int32)
+{
+    void test (Type& t) {}
+    void test (int32 i) {}
+}
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        N (int32)::test (1);
+        advance();
+    }
+}
+
+## testCompile()
+
+namespace N (using Type = int32)
+{
+    void test (Type& t) {}
+    void test (int32 i) {}
+}
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        N (float32)::test (1);
+        advance();
+    }
+}

@@ -1020,7 +1020,10 @@ struct MakeConstOrRef  : public TypeBase
         if ((flags & ComparisonFlags::ignoreConst) == 0 && isConst() != other.isConst())
             return false;
 
-        return getSource()->isSameType (other.skipConstAndRefModifiers(), flags);
+        if (auto s = getSource())
+            return s->isSameType (other.skipConstAndRefModifiers(), flags);
+
+        return false;
     }
 
     std::string getLayoutSignature() const override
