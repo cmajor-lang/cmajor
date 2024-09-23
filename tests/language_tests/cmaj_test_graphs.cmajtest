@@ -5311,3 +5311,119 @@ processor Oscillator
         }
     }
 }
+
+
+## testCompile()
+
+graph Subgraph
+{
+    input event float in[100];
+    input event void inVoid[100];
+    output event float out;
+
+    event in (int i, float f)
+    {
+        out <- f;
+    }
+
+    event inVoid (int i)
+    {
+        out <- 0.0f;
+    }
+}
+
+graph Test [[ main ]]
+{
+    input event float in;
+    input event void inVoid;
+    output event float out;
+
+    node subgraph = Subgraph * 2;
+
+    connection
+    {
+        in -> subgraph.in;
+        inVoid -> subgraph.inVoid;
+        subgraph.out -> out;
+    }
+}
+
+
+## testProcessor()
+
+processor VoidEvents
+{
+    input event void in;
+    output event int out;
+
+    event in()
+    {
+        out <- 1;
+        out <- -1;
+    }
+}
+
+processor Trigger
+{
+    output event void out;
+
+    void main()
+    {
+        out <- void;
+        advance();
+    }
+}
+
+graph Test [[ main ]]
+{
+    output event int out;
+
+    node v = VoidEvents * 2;
+    node t = Trigger;
+
+    connection
+    {
+        t.out -> v.in;
+        v.out -> out;
+    }
+}
+
+## testProcessor()
+
+processor VoidEvents
+{
+    input event void in[100];
+    output event int out;
+
+    event in(int i)
+    {
+        out <- 1;
+        out <- -1;
+    }
+}
+
+processor Trigger
+{
+    output event void out;
+
+    void main()
+    {
+        out <- void;
+        advance();
+    }
+}
+
+graph Test [[ main ]]
+{
+    output event int out;
+
+    node v = VoidEvents * 2;
+    node t = Trigger;
+
+    connection
+    {
+        t.out -> v.in;
+        v.out -> out;
+    }
+}
+

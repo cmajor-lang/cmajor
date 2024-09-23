@@ -97,19 +97,32 @@ inline AST::ProcessorBase& cloneProcessor (AST::ProcessorBase& originalProcessor
         {
             for (auto& type : eventEndpoint->dataTypes.iterateAs<AST::TypeBase>())
             {
-                if (auto targetFunction = EventHandlerUtilities::findEventFunctionForType (originalProcessor, eventEndpoint->name, type, false))
+                bool isArray = eventEndpoint->isArray();
+
+                if (auto targetFunction = EventHandlerUtilities::findEventFunctionForType (originalProcessor, eventEndpoint->name, type, isArray))
                 {
                     // Create event forwarding function
                     auto& forwardEvent = AST::createFunctionInModule (blockProcessor, blockProcessor.context.allocator.voidType, eventEndpoint->name);
+
+                    AST::VariableRefGenerator indexParam;
+
                     auto stateParam = AST::addFunctionParameter (forwardEvent, stateType, forwardEvent.getStrings()._state, true, false);
+
+                    if (isArray)
+                        indexParam = AST::addFunctionParameter (forwardEvent, targetFunction->context.allocator.int32Type, "index", false, false);
+
                     forwardEvent.isEventHandler = true;
                     auto& mainBlock = *forwardEvent.getMainBlock();
 
                     if (type.isVoid())
                     {
-                        auto& functionCall = AST::createFunctionCall (mainBlock.context,
-                                                                      *targetFunction,
-                                                                      AST::createGetStructMember (mainBlock.context, stateParam, "_state"));
+                        auto& functionCall = isArray ? AST::createFunctionCall (mainBlock.context,
+                                                                                *targetFunction,
+                                                                                AST::createGetStructMember (mainBlock.context, stateParam, "_state"),
+                                                                                indexParam)
+                                                     : AST::createFunctionCall (mainBlock.context,
+                                                                                *targetFunction,
+                                                                                AST::createGetStructMember (mainBlock.context, stateParam, "_state"));
 
                         mainBlock.addStatement (functionCall);
                     }
@@ -117,10 +130,16 @@ inline AST::ProcessorBase& cloneProcessor (AST::ProcessorBase& originalProcessor
                     {
                         auto eventParam = AST::addFunctionParameter (forwardEvent, type,      forwardEvent.getStrings().value, false, false);
 
-                        auto& functionCall = AST::createFunctionCall (mainBlock.context,
-                                                                      *targetFunction,
-                                                                      AST::createGetStructMember (mainBlock.context, stateParam, "_state"),
-                                                                      eventParam);
+                        auto& functionCall = isArray ? AST::createFunctionCall (mainBlock.context,
+                                                                                *targetFunction,
+                                                                                AST::createGetStructMember (mainBlock.context, stateParam, "_state"),
+                                                                                indexParam,
+                                                                                eventParam) :
+                                                       AST::createFunctionCall (mainBlock.context,
+                                                                                *targetFunction,
+                                                                                AST::createGetStructMember (mainBlock.context, stateParam, "_state"),
+                                                                                eventParam);
+
 
                         mainBlock.addStatement (functionCall);
                     }
