@@ -2518,3 +2518,21 @@ processor Test [[ main ]]
 
     void main() { advance(); }
 }
+
+## expectError ("14:24: error: No member called 'unknown' found in struct 'tests::Test::S3'")
+
+processor Test [[ main ]]
+{
+    input event S3 in;
+    output event float out;
+
+	struct S3 { float[] m; }
+
+    event in (S3 mt)
+    {
+        S3 s;
+        s = mt;
+
+        let a =  S3(mt.unknown);
+    }
+}

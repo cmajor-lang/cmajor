@@ -1112,7 +1112,8 @@ private:
                 CMAJ_ASSERT (gs->memberTypes.size() == c->arguments.size());
 
                 for (size_t i = 0; i < c->arguments.size(); ++i)
-                    addSources (AST::castToValueRef (c->arguments[i]), gs->getMemberType(i), nullptr);
+                    if (auto v = AST::castToValue (c->arguments[i]))
+                        addSources (*v, gs->getMemberType(i), nullptr);
 
                 return;
             }
