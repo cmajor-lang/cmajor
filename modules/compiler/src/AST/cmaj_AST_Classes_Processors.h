@@ -1005,10 +1005,12 @@ struct GraphNode  : public Object
     double getClockMultiplier() const
     {
         if (auto v = getAsFoldedConstant (clockMultiplierRatio))
-            return *v->getAsFloat64();
+            if (auto f = v->getAsFloat64())
+                return *f;
 
         if (auto v = getAsFoldedConstant (clockDividerRatio))
-            return 1.0 / *v->getAsFloat64();
+            if (auto f = v->getAsFloat64())
+                return 1.0 / *f;
 
         return 1.0;
     }

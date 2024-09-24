@@ -112,7 +112,7 @@ struct PatchPlayerServer
 
     void sendAudioDeviceProperties (choc::value::Value options)
     {
-        choc::messageloop::postMessage ([f = setAudioDevicePropsFn, options = std::move (options)] { f (options); });
+        choc::messageloop::postMessage ([f = setAudioDevicePropsFn, o = std::move (options)] { f (o); });
     }
 
     void setAudioDeviceProperties (const choc::value::ValueView& options)
@@ -634,7 +634,7 @@ struct PatchPlayerServer
                     params.manifest = *manifest;
 
                     codeGenThread.stop();
-                    codeGenThread.start (0, [this, params, type, replyType, options = choc::value::Value (options)]
+                    codeGenThread.start (0, [this, params, type, replyType, o = choc::value::Value (options)]
                     {
                         cmaj::Patch p;
                         p.setPlaybackParams (patchPlayer->patch.getPlaybackParams());
@@ -642,7 +642,7 @@ struct PatchPlayerServer
                         p.createContextForPatchWorker = [] (const std::string&) { return std::unique_ptr<Patch::WorkerContext>(); };
                         enableWebViewPatchWorker (p);
 
-                        auto output = p.generateCode (params, type, choc::json::toString (options));
+                        auto output = p.generateCode (params, type, choc::json::toString (o));
 
                         sendMessageToClient (replyType,
                                              choc::json::create ("code", output.generatedCode,

@@ -79,10 +79,10 @@ inline void enableWebViewPatchWorker (Patch& p)
                 return {};
             });
 
-            webview->bind ("cmaj_reportError", [reportError = std::move (reportError)] (const choc::value::ValueView& args) -> choc::value::Value
+            webview->bind ("cmaj_reportError", [reportErrorFn = std::move (reportError)] (const choc::value::ValueView& args) -> choc::value::Value
             {
                 if (args.isArray() && args.size() != 0)
-                    reportError (args[0].toString());
+                    reportErrorFn (args[0].toString());
 
                 return {};
             });
@@ -127,10 +127,10 @@ inline void enableWebViewPatchWorker (Patch& p)
         void sendMessage (const std::string& msg, std::function<void(const std::string&)> reportError) override
         {
             webview->evaluateJavascript ("window.currentView?.deliverMessageFromServer (" + msg + ");",
-                                         [reportError = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
+                                         [reportErrorFn = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
             {
                 if (! error.empty())
-                    reportError (error);
+                    reportErrorFn (error);
             });
         }
 

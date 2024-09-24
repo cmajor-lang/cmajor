@@ -298,11 +298,11 @@ initialisePatch();
             CMAJ_ASSERT (e.details.dataTypes.size() == 1);
             auto temp = choc::value::Value (e.details.dataTypes.front());
 
-            return [this, command, temp = std::move (temp)] (const void* valueData, uint32_t numFramesToReachValue) mutable
+            return [this, command, t = std::move (temp)] (const void* valueData, uint32_t numFramesToReachValue) mutable
             {
                 ScopedDisableAllocationTracking disableTracking;
-                memcpy (temp.getRawData(), valueData, temp.getRawDataSize());
-                context.evaluate (command + choc::json::toString (temp) + ", " + std::to_string (numFramesToReachValue) + ")");
+                memcpy (t.getRawData(), valueData, t.getRawDataSize());
+                context.evaluate (command + choc::json::toString (t) + ", " + std::to_string (numFramesToReachValue) + ")");
             };
         }
 
@@ -312,11 +312,11 @@ initialisePatch();
             auto command = instanceName + "." + AST::getEventHandlerFunctionName (f, "sendInputEvent_") + "(";
             auto temp = choc::value::Value (eventType);
 
-            return [this, command, temp = std::move (temp)] (const void* eventData) mutable
+            return [this, command, t = std::move (temp)] (const void* eventData) mutable
             {
                 ScopedDisableAllocationTracking disableTracking;
-                memcpy (temp.getRawData(), eventData, temp.getRawDataSize());
-                context.evaluate (command + choc::json::toString (temp) + ")");
+                memcpy (t.getRawData(), eventData, t.getRawDataSize());
+                context.evaluate (command + choc::json::toString (t) + ")");
             };
         }
 

@@ -113,10 +113,10 @@ inline void enableQuickJSPatchWorker (Patch& p)
             {
                 context.runModule (getGlueCode (choc::json::toString (manifest->manifest), getWorkerSource (*manifest)),
                                    resolveModule,
-                                   [reportError = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
+                                   [reportErrorFn = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
                                    {
                                        if (! error.empty())
-                                           reportError (error);
+                                           reportErrorFn (error);
                                    });
             }
         }
@@ -131,10 +131,10 @@ inline void enableQuickJSPatchWorker (Patch& p)
         void sendMessage (const std::string& msg, std::function<void(const std::string&)> reportError) override
         {
             context.run ("currentView?.deliverMessageFromServer(" + msg + ");",
-                         [reportError = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
+                         [reportErrorFn = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
             {
                 if (! error.empty())
-                    reportError (error);
+                    reportErrorFn (error);
             });
         }
 

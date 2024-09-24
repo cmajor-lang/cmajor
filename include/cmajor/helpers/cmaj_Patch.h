@@ -1601,10 +1601,10 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         {
             choc::messageloop::postMessage ([handler = handleOutputEvent,
                                              frame,
-                                             endpointID = std::string (endpointID),
-                                             value = addTypeToValueAsProperty (value)]
+                                             e = std::string (endpointID),
+                                             v = addTypeToValueAsProperty (value)]
                                             {
-                                                handler (frame, endpointID, value);
+                                                handler (frame, e, v);
                                             });
         });
     }
