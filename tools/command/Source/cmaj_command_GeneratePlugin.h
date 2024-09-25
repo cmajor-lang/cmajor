@@ -203,13 +203,11 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     bool hasAudioOut = false;
 
     {
-        patch.unload();
-
         choc::messageloop::initialise();
 
         auto t = std::thread ([&]
         {
-            patch.preload (manifest);
+            patch.rebuild (true);
             choc::messageloop::stop();
         });
 
