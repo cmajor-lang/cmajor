@@ -800,6 +800,9 @@ function runScript (options)
     let inputEndpoints = engine.getInputEndpoints();
     let outputEndpoints = engine.getOutputEndpoints();
 
+    let skipMissingInputs = options.skipMissingInputs || options.skipMissing;
+    let skipMissingOutputs = options.skipMissingOutputs || options.skipMissing;
+
     for (let i = 0; i < inputEndpoints.length; i++)
     {
         inputEndpoints[i].handle = engine.getEndpointHandle (inputEndpoints[i].endpointID);
@@ -811,7 +814,7 @@ function runScript (options)
 
             if (isError (inputData))
             {
-                if (options.skipMissing == null)
+                if (! skipMissingInputs)
                 {
                     testSection.reportFail ("Failed to read input stream " + expectedStreamFilename);
                     return;
@@ -829,7 +832,7 @@ function runScript (options)
 
             if (isError (inputData))
             {
-                if (options.skipMissing == null)
+                if (! skipMissingInputs)
                 {
                     testSection.reportFail ("Failed to read input value data " + expectedStreamFilename);
                     return;
@@ -857,7 +860,7 @@ function runScript (options)
 
                 if (isError (inputData))
                 {
-                    if (options.skipMissing == null)
+                    if (! skipMissingInputs)
                     {
                         testSection.reportFail ("Failed to read input event data " + expectedStreamFilename);
                         return;
@@ -1064,7 +1067,7 @@ function runScript (options)
 
             if (isError (expectedData))
             {
-                if (options.skipMissing == null)
+                if (! skipMissingOutputs)
                 {
                     testSection.logMessage ("Can't find output file " + expectedStreamFilename + " - write it");
                     testSection.writeStreamData (expectedStreamFilename, outputEndpoints[i].frames);
@@ -1090,7 +1093,7 @@ function runScript (options)
 
             if (isError (expectedData))
             {
-                if (options.skipMissing == null)
+                if (! skipMissingOutputs)
                 {
                     testSection.logMessage ("Can't find output file " + expectedEventFilename + " - write it");
                     testSection.writeEventData (expectedEventFilename, (outputEndpoints[i].values));
@@ -1114,7 +1117,7 @@ function runScript (options)
 
             if (isError (expectedData))
             {
-                if (options.skipMissing == null)
+                if (! skipMissingOutputs)
                 {
                     testSection.logMessage ("Can't find output file " + expectedEventFilename + " - write it");
                     testSection.writeEventData (expectedEventFilename, (outputEndpoints[i].events));
