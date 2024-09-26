@@ -31,7 +31,7 @@ export default class ImageStripControl extends HTMLElement
         this.horizontalMode = this.getAttribute ("horizontalMode");
 
         this.addEventListener ('mousedown', this.startDrag);
-        this.addEventListener ('touchstart', this.handleTouch);
+        this.addEventListener ('touchstart', this.handleTouch, {passive: false});
         this.addEventListener ("dblclick", this.onReset);
     }
 

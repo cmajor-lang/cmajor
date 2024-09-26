@@ -78,7 +78,7 @@ export default class PianoKeyboard extends HTMLElement
 
         for (let child of this.root.children)
         {
-            child.addEventListener ("touchstart", (event) => this.touchStart (event) );
+            child.addEventListener ("touchstart", (event) => this.touchStart (event), {passive:false} );
             child.addEventListener ("touchend",   (event) => this.touchEnd (event) );
         }
     }

@@ -2337,7 +2337,7 @@ struct Files
         "        this.horizontalMode = this.getAttribute (\"horizontalMode\");\n"
         "\n"
         "        this.addEventListener ('mousedown', this.startDrag);\n"
-        "        this.addEventListener ('touchstart', this.handleTouch);\n"
+        "        this.addEventListener ('touchstart', this.handleTouch, {passive: false});\n"
         "        this.addEventListener (\"dblclick\", this.onReset);\n"
         "    }\n"
         "\n"
@@ -2873,7 +2873,7 @@ struct Files
         File { "panel_api/cmaj-graph.js", std::string_view (panel_api_cmajgraph_js, 2940) },
         File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 56412) },
         File { "panel_api/cmaj-cpu-meter.js", std::string_view (panel_api_cmajcpumeter_js, 3617) },
-        File { "panel_api/helpers/cmaj-image-strip-control.js", std::string_view (panel_api_helpers_cmajimagestripcontrol_js, 5648) },
+        File { "panel_api/helpers/cmaj-image-strip-control.js", std::string_view (panel_api_helpers_cmajimagestripcontrol_js, 5666) },
         File { "panel_api/helpers/cmaj-level-meter.js", std::string_view (panel_api_helpers_cmajlevelmeter_js, 6758) },
         File { "panel_api/helpers/cmaj-waveform-display.js", std::string_view (panel_api_helpers_cmajwaveformdisplay_js, 5020) }
     };

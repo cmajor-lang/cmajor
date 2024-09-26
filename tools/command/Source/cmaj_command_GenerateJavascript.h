@@ -414,8 +414,10 @@ export default class CmajModule extends WebAudioModule
   {
     const node = new CmajNode(this.audioContext);
 
-    this.patchConnection = await patch.createAudioWorkletNodePatchConnection (this.audioContext, "cmaj-processor");
-        const paramMgrNode = await ParamMgrFactory.create(this, {});
+    this.patchConnection = await patch.createAudioWorkletNodePatchConnection (this.audioContext, "CLEANED_NAME");
+
+    const parameterList = this.buildParameterList();
+    const paramMgrNode = await ParamMgrFactory.create(this, { internalParamsConfig: parameterList } );
 
     node.setup (this.patchConnection, paramMgrNode);
 
@@ -453,6 +455,26 @@ export default class CmajModule extends WebAudioModule
     return super.initialize(state);
   }
 
+  buildParameterList()
+  {
+    const paramList = {};
+
+    const inputParameters  = this.patchConnection.inputEndpoints.filter (({ purpose }) => purpose === "parameter");
+
+    inputParameters.forEach ((endpoint) =>
+    {
+      paramList[endpoint.endpointID] =
+      {
+        defaultValue: endpoint.annotation.init,
+        minValue: endpoint.annotation.min,
+        maxValue: endpoint.annotation.max,
+        onChange: (value) => { this.patchConnection.sendEventOrValue (endpoint.endpointID, value); }
+      };
+    });
+
+    return paramList;
+  }
+
   createGui()
   {
     return createPatchViewHolder (this.patchConnection);
@@ -466,7 +488,8 @@ export default class CmajModule extends WebAudioModule
     "PATCH_MODULE_FILE", patchModuleFile,
     "PATCH_NAME", manifest.name,
     "PATCH_DESC", patchDesc,
-    "PATCH_LINK", patchLink));
+    "PATCH_LINK", patchLink,
+    "CLEANED_NAME", cleanedName));
 
 auto index_html = choc::text::trimStart (choc::text::replace (R"(
 <html>
@@ -492,7 +515,8 @@ auto index_html = choc::text::trimStart (choc::text::replace (R"(
     "PATCH_MODULE_FILE", patchModuleFile,
     "PATCH_NAME", manifest.name,
     "PATCH_DESC", patchDesc,
-    "PATCH_LINK", patchLink));
+    "PATCH_LINK", patchLink,
+    "PATCH_ID", manifest.ID));
 
 
     GeneratedFiles generatedFiles;

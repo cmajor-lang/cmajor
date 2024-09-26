@@ -69,7 +69,7 @@ class Pro54Button extends HTMLElement
     connectedCallback()
     {
         this.addEventListener ('mousedown', this.buttonPress);
-        this.addEventListener ('touchstart', this.buttonPress);
+        this.addEventListener ('touchstart', this.buttonPress, {passive:false});
     }
 
     setPatchConnection (patchConnection)
@@ -593,7 +593,7 @@ class Pro54PatchView extends HTMLElement
         });
 
         this.shadowRoot.addEventListener ("contextmenu", (event) => event.preventDefault());
-        this.shadowRoot.addEventListener ('touchstart',  (event) => event.preventDefault());
+        this.shadowRoot.addEventListener ('touchstart',  (event) => event.preventDefault(), {passive:false});
 
         this.keyboardElement  = this.shadowRoot.getElementById ("Keyboard");
         this.modWheelElement  = this.shadowRoot.getElementById ("ModWheel");
