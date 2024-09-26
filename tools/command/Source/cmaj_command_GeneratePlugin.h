@@ -205,16 +205,21 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     patch.unload();
 
     {
+        bool preloadPatch;
+
         choc::messageloop::initialise();
 
         auto t = std::thread ([&]
         {
-            patch.preload (manifest);
+            preloadPatch = patch.preload (manifest);
             choc::messageloop::stop();
         });
 
         choc::messageloop::run();
         t.join();
+
+        if (! preloadPatch)
+            throw std::runtime_error("");
     }
 
     for (auto& e : patch.getInputEndpoints())

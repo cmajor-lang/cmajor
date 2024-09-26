@@ -1966,7 +1966,7 @@ inline bool Patch::preload (const PatchManifest& m)
     LoadParams params;
     params.manifest = m;
 
-    auto build = std::make_unique<Build> (*this, params, false, false);
+    auto build = std::make_unique<Build> (*this, params, true, false);
     build->build ([] {});
     setNewRenderer (build->takeRenderer());
     return renderer != nullptr && ! renderer->errors.hasErrors();
