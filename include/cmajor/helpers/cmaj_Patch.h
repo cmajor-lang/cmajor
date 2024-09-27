@@ -781,9 +781,10 @@ struct Patch::PatchWorker  : public PatchView
         {
             std::unique_lock<std::mutex> l (m);
 
-            for (auto f : queuedSendMessageRequests)
-                f();
+            for (size_t i = 0; i < queuedSendMessageRequests.size(); i++)
+                queuedSendMessageRequests[i]();
 
+            queuedSendMessageRequests.clear();
             patchWorkerInitialised = true;
         }
     }
@@ -814,6 +815,9 @@ private:
     choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> sendMessageCallback, setErrorCallback;
 };
 
+//==============================================================================
+/// This class manages a javascript source transformer, which support transpilation
+/// of source files into Cmajor from other languages
 struct Patch::SourceTransformer
 {
     SourceTransformer (Patch& p, double t) : patch (p), timeout (t)
@@ -869,11 +873,12 @@ struct Patch::SourceTransformer
         int requestId = nextRequestId++;
 
         std::unique_lock<std::mutex> lock (m);
+
         sendMessage (choc::value::createObject ("transformRequest",
                                                 "type",     "transformRequest",
                                                 "message",  choc::value::createObject ("file",
                                                                                        "requestId", requestId,
-                                                                                       "filename", filename,
+                                                                                       "filename", choc::text::replace (filename, "\\", "/"),
                                                                                        "contents", contents )));
 
         auto startTime = std::chrono::steady_clock::now();
@@ -893,9 +898,7 @@ struct Patch::SourceTransformer
                     }
 
                     if (responseMessage["type"].toString() == "transformResponse")
-                    {
                         return responseMessage["message"]["contents"].toString();
-                    }
 
                     if (responseMessage["type"].toString() == "transformError")
                     {
