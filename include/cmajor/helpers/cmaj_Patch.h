@@ -765,8 +765,8 @@ struct Patch::PatchWorker  : public PatchView
 
     void sendMessage (const choc::value::ValueView& msg) override
     {
-        choc::messageloop::postMessage ([f = sendMessageCallback,
-                                         json = choc::json::toString (msg, true)] { f (json); });
+        postMessage ([f = sendMessageCallback,
+                      json = choc::json::toString (msg, true)] { f (json); });
     }
 
     void initialiseWorker()
@@ -777,9 +777,38 @@ struct Patch::PatchWorker  : public PatchView
         if (context)
             context->initialise ([this] (const choc::value::ValueView& msg) { patch.handleClientMessage (*this, msg); },
                                  [f = setErrorCallback] (const std::string& error) { f (error); });
+
+        {
+            std::unique_lock<std::mutex> l (m);
+
+            for (auto f : queuedSendMessageRequests)
+                f();
+
+            patchWorkerInitialised = true;
+        }
     }
 
 private:
+    std::atomic<bool> patchWorkerInitialised = false;
+    std::mutex m;
+    std::vector<std::function<void()>> queuedSendMessageRequests;
+
+    void postMessage (std::function<void()>&& f)
+    {
+        if (! patchWorkerInitialised)
+        {
+            std::unique_lock<std::mutex> l (m);
+
+            if (! patchWorkerInitialised)
+            {
+                queuedSendMessageRequests.push_back (f);
+                return;
+            }
+        }
+
+        choc::messageloop::postMessage (std::move (f));
+    }
+
     std::unique_ptr<WorkerContext> context;
     choc::threading::ThreadSafeFunctor<std::function<void()>> initCallback;
     choc::threading::ThreadSafeFunctor<std::function<void(const std::string&)>> sendMessageCallback, setErrorCallback;
