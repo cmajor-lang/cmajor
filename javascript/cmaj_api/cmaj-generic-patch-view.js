@@ -179,7 +179,7 @@ class GenericPatchView extends HTMLElement
     }
 }
 
-window.customElements.define ("cmaj-generic-patch-view", GenericPatchView);
+if (! window.customElements.get ("cmaj-generic-patch-view")) window.customElements.define ("cmaj-generic-patch-view", GenericPatchView);
 
 //==============================================================================
 /** Creates a generic view element which can be used to control any patch.

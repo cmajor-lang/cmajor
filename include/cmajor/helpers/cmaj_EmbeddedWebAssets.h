@@ -1093,10 +1093,11 @@ struct EmbeddedWebAssets
         "    }\n"
         "}\n"
         "\n"
-        "window.customElements.define (\"cmaj-knob-control\", Knob);\n"
-        "window.customElements.define (\"cmaj-switch-control\", Switch);\n"
-        "window.customElements.define (\"cmaj-options-control\", Options);\n"
-        "window.customElements.define (\"cmaj-labelled-control-holder\", LabelledControlHolder);\n"
+        "if (! window.customElements.get (\"cmaj-knob-control\"))             window.customElements.define (\"cmaj-knob-control\", Knob);\n"
+        "if (! window.customElements.get (\"cmaj-switch-control\"))           window.customElements.define (\"cmaj-switch-control\", Switch);\n"
+        "if (! window.customElements.get (\"cmaj-options-control\"))          window.customElements.define (\"cmaj-options-control\", Options);\n"
+        "if (! window.customElements.get (\"cmaj-labelled-control-holder\"))  window.customElements.define (\"cmaj-labelled-control-holder\", LabelledControlHolder);\n"
+        "\n"
         "\n"
         "//==============================================================================\n"
         "/** Fetches all the CSS for the controls defined in this module */\n"
@@ -2560,7 +2561,7 @@ struct EmbeddedWebAssets
         "    }\n"
         "}\n"
         "\n"
-        "window.customElements.define (\"cmaj-generic-patch-view\", GenericPatchView);\n"
+        "if (! window.customElements.get (\"cmaj-generic-patch-view\")) window.customElements.define (\"cmaj-generic-patch-view\", GenericPatchView);\n"
         "\n"
         "//==============================================================================\n"
         "/** Creates a generic view element which can be used to control any patch.\n"
@@ -2724,7 +2725,7 @@ struct EmbeddedWebAssets
         "    }\n"
         "}\n"
         "\n"
-        "window.customElements.define (\"cmaj-patch-view-holder\", PatchViewHolder);\n"
+        "if (! window.customElements.get (\"cmaj-patch-view-holder\")) window.customElements.define (\"cmaj-patch-view-holder\", PatchViewHolder);\n"
         "\n"
         "//==============================================================================\n"
         "/** Creates and returns a HTMLElement view which can be shown to control this patch.\n"
@@ -3526,13 +3527,13 @@ struct EmbeddedWebAssets
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12712) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30314) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30583) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
         File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 15557) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6334) },
-        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 7221) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6395) },
+        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 7281) },
         File { "cmaj-audio-worklet-helper.js", std::string_view (cmajaudioworklethelper_js, 28203) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
     };
