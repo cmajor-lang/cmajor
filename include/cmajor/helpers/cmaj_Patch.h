@@ -2097,6 +2097,7 @@ inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, cons
         return result;
     }
 
+    setNewRenderer (build->takeRenderer());
     return engine.generateCode (target, options);
 }
 

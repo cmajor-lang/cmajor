@@ -342,8 +342,7 @@ loadPatch();
 //==============================================================================
 inline GeneratedFiles generateWebAudioModule (cmaj::Patch& patch, const cmaj::Patch::LoadParams& loadParams, const choc::value::Value& engineOptions)
 {
-    (void) patch;
-    (void) engineOptions;
+    GeneratedFiles generatedFiles;
 
     auto& manifest = loadParams.manifest;
 
@@ -351,15 +350,30 @@ inline GeneratedFiles generateWebAudioModule (cmaj::Patch& patch, const cmaj::Pa
     auto cleanedName = choc::javascript::makeSafeIdentifier (loadParams.manifest.name);
     auto patchModuleFile = "cmaj_" + std::string (choc::text::trimCharacterAtStart (cleanedName, '_')) + ".js";
 
-    std::string patchLink, patchDesc;
+    std::string patchLink, patchURL, patchDesc, patchThumbnail;
 
     if (auto url = manifest.manifest["URL"]; url.isString() && ! url.toString().empty())
+    {
+        patchURL = url.toString();
         patchLink = choc::text::replace (R"(<a href="URL" class=cmaj-small-text>URL</a>)", "URL", url.toString());
+    }
 
     if (! manifest.description.empty() && manifest.description != manifest.name)
         patchDesc = "<span class=cmaj-small-text>" + manifest.description + "</span>";
 
+    if (auto plugin = manifest.manifest["plugin"]; plugin.isObject())
+    {
+        if (auto thumbnail = plugin["thumbnail"]; thumbnail.isString() && ! thumbnail.toString().empty())
+        {
+            patchThumbnail = "\n    \"thumbnail\": \"" + thumbnail.toString() + "\",";
+            generatedFiles.addFile (thumbnail.toString(), *manifest.readFileContent (thumbnail.toString()));
+        }
+    }
 
+    auto toString = [](bool b) { return b ? "true" : "false"; };
+
+    auto jsWorklet = generateJavascriptWorklet (patch, loadParams, engineOptions);
+    
     auto index_js = choc::text::trimStart (choc::text::replace (R"(
 import { WebAudioModule } from './sdk/index.js';
 import { CompositeAudioNode, ParamMgrFactory } from './sdk/parammgr.js';
@@ -491,7 +505,7 @@ export default class CmajModule extends WebAudioModule
     "PATCH_LINK", patchLink,
     "CLEANED_NAME", cleanedName));
 
-auto index_html = choc::text::trimStart (choc::text::replace (R"(
+    auto index_html = choc::text::trimStart (choc::text::replace (R"(
 <html>
 <head>
   <script type="module" src="https://mainline.i3s.unice.fr/wam_wc/wam-host/wamHost.js"> </script>
@@ -518,12 +532,41 @@ auto index_html = choc::text::trimStart (choc::text::replace (R"(
     "PATCH_LINK", patchLink,
     "PATCH_ID", manifest.ID));
 
+    auto descriptor_json = choc::text::trimStart (choc::text::replace (R"(
+{
+    "name": "PATCH_NAME",
+    "vendor": "PATCH_MANUFACTURER",
+    "description": "PATCH_DESC",
+    "version": "PATCH_VERSION",
+    "apiVersion": "2.0.0", THUMBNAIL
+    "keywords": [ "Cmajor" ],
+    "isInstrument": IS_INSTRUMENT,
+    "hasMidiInput": HAS_MIDI_INPUT,
+    "hasMidiOutput": HAS_MIDI_OUTPUT,
+    "hasAudioInput": HAS_AUDIO_INPUT,
+    "hasAudioOutput": HAS_AUDIO_OUTPUT,
+    "website": "PATCH_URL"
+}
+)",
+    "PATCH_MODULE_FILE", patchModuleFile,
+    "PATCH_MANUFACTURER",  manifest.manufacturer,
+    "PATCH_VERSION", manifest.version,
+    "PATCH_NAME", manifest.name,
+    "PATCH_DESC", manifest.description,
+    "PATCH_ID", manifest.ID,
+    "THUMBNAIL", patchThumbnail,
+    "IS_INSTRUMENT", toString (patch.isInstrument()),
+    "HAS_MIDI_INPUT", toString (patch.hasMIDIInput()),
+    "HAS_MIDI_OUTPUT", toString (patch.hasMIDIOutput()),
+    "HAS_AUDIO_INPUT", toString (patch.hasAudioInput()),
+    "HAS_AUDIO_OUTPUT", toString (patch.hasAudioOutput()),
+    "PATCH_URL", patchURL
+));
 
-    GeneratedFiles generatedFiles;
-
-    generatedFiles.addFile (patchModuleFile, generateJavascriptWorklet (patch, loadParams, engineOptions));
+    generatedFiles.addFile (patchModuleFile, jsWorklet);
     generatedFiles.addFile ("index.html", index_html);
     generatedFiles.addFile ("index.js", index_js);
+    generatedFiles.addFile ("descriptor.json", descriptor_json);
 
     generatedFiles.addPatchResources (manifest);
     generatedFiles.addWamResources();
