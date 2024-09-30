@@ -5427,3 +5427,56 @@ graph Test [[ main ]]
     }
 }
 
+## testCompile()
+
+graph Test [[ main ]]
+{
+    output stream float<2> out;
+
+    node m1 = N (4, 4)::G1;
+    node m2 = N (1, 1)::G1;
+}
+
+namespace N (int32 i1, int32 i2)
+{
+    graph G1
+    {
+        output stream float<2> out;
+        node g2 = G2;
+
+        connection float32<2>(sum(g2.out[0]), sum(g2.out[0])) -> out;
+    }
+
+    graph G2
+    {
+        output stream float32<4> out[2];
+    }
+}
+
+## testCompile()
+
+graph Test [[ main ]]
+{
+    output stream float out;
+
+    node m1 = N(4)::G1;
+    node m2 = N(1)::G1;
+
+    connection m1.out -> out;
+}
+
+namespace N (int32 e)
+{
+    graph G1
+    {
+        output stream float out;
+        node g2 = G2;
+
+        connection sum (g2.out[0]) -> out;
+    }
+
+    graph G2
+    {
+        output stream float32<e> out[2];
+    }
+}

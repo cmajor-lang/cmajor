@@ -108,8 +108,9 @@ struct DuplicateNameCheckPass  : public AST::Visitor
             search.findEndpoints                = false;
             search.onlyFindLocalVariables       = false;
 
-            auto& processorBase = *findTopVisitedItemOfType<AST::ProcessorBase>();
-            search.performSearch (processorBase, {});
+            auto& parent = n.getParentProcessor();
+
+            search.performSearch (parent, {});
 
             for (auto& found : search.itemsFound)
                 if (found != n)

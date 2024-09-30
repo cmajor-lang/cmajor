@@ -112,7 +112,7 @@ static inline void removeUnusedEndpoints (AST::Program& program,
                 visitConnectionEnd (dest->getObjectRef(), false);
         }
 
-        void visitConnectionEnd (const AST::Object& endpoint, bool isSource)
+        void visitConnectionEnd (AST::Object& endpoint, bool isSource)
         {
             if (auto e = AST::castToSkippingReferences<AST::EndpointDeclaration> (endpoint))
             {

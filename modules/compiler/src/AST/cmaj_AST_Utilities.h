@@ -89,7 +89,7 @@ template <typename ObjectOrContext>
 
     for (auto p = context->parentScope; p != nullptr && genericFunctionCallChain.size() < 10; p = p->getParentScope())
         if (auto f = p->getAsFunction())
-            if (auto originalCall = castTo<Expression> (f->originalCallLeadingToSpecialisation))
+            if (auto originalCall = castToSkippingReferences<Expression> (f->originalCallLeadingToSpecialisation))
                 genericFunctionCallChain.push_back (*originalCall);
 
     DiagnosticMessageList messages;

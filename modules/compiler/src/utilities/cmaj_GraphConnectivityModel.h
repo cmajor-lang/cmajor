@@ -39,28 +39,19 @@ struct GraphConnectivityModel
                 n.setIndirectConnectionFlag();
     }
 
-    static AST::ObjectRefVector<const AST::EndpointInstance> getUsedEndpointInstances (const AST::ValueBase& source)
+    static AST::ObjectRefVector<const AST::EndpointInstance> getUsedEndpointInstances (AST::ValueBase& source)
     {
-        struct FindEndpointInstances  : public AST::NonParameterisedObjectVisitor
+        AST::ObjectRefVector<const AST::EndpointInstance> endpointInstances;
+
+        source.visitObjectsInScope ([&] (const AST::Object& o)
         {
-            using super = AST::NonParameterisedObjectVisitor;
-            using super::visit;
-
-            FindEndpointInstances (AST::Allocator& a) : super (a) {}
-
-            void visit (AST::ReadFromEndpoint& r) override
+            if (auto r = o.getAsReadFromEndpoint())
             {
-                endpointInstances.push_back (*AST::castToSkippingReferences<AST::EndpointInstance> (r.endpointInstance));
+                endpointInstances.push_back (*AST::castToSkippingReferences<AST::EndpointInstance> (r->endpointInstance));
             }
+        });
 
-            CMAJ_DO_NOT_VISIT_CONSTANTS
-
-            AST::ObjectRefVector<const AST::EndpointInstance> endpointInstances;
-        };
-
-        auto visitor = FindEndpointInstances (source.context.allocator);
-        visitor.visitObject (const_cast<AST::ValueBase&> (source));
-        return visitor.endpointInstances;
+        return endpointInstances;
     }
 
     //==============================================================================

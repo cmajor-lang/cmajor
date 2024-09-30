@@ -312,9 +312,9 @@ struct FlattenGraph
             AST::ObjectRefVector<const AST::GraphNode> delayDependencies;
             bool hasBeenRun = false;
 
-            void addDependencies (const AST::Expression& source)
+            void addDependencies (AST::Expression& source)
             {
-                if (auto expr = AST::castToSkippingReferences<const AST::ValueBase> (source))
+                if (auto expr = AST::castToSkippingReferences<AST::ValueBase> (source))
                 {
                     auto instances = GraphConnectivityModel::getUsedEndpointInstances (*expr);
 
