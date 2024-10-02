@@ -5480,3 +5480,30 @@ namespace N (int32 e)
         output stream float32<e> out[2];
     }
 }
+
+
+## testProcessor()
+
+graph Test [[ main ]]
+{
+    output intermediate.source.out;
+
+    node intermediate = Intermediate;
+}
+
+graph Intermediate
+{
+    node source = Source;
+}
+
+processor Source
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 1;
+        out <- -1;
+        advance();
+    }
+}
