@@ -1596,6 +1596,8 @@ struct LLVMCodeGenerator
                 args.push_back (dereference (arg.valueReader));
         }
 
+        bool isWebAssemblyVector = webAssemblyMode && returnType.isVector();
+
         switch (intrinsic)
         {
             case AST::Intrinsic::Type::abs:           return createIntrinsicCall (::llvm::Intrinsic::fabs,   args, returnType);
@@ -1608,7 +1610,7 @@ struct LLVMCodeGenerator
             case AST::Intrinsic::Type::log:           return webAssemblyMode ? ValueReader() : createIntrinsicCall (::llvm::Intrinsic::log,    args, returnType);
             case AST::Intrinsic::Type::log10:         return webAssemblyMode ? ValueReader() : createIntrinsicCall (::llvm::Intrinsic::log10,  args, returnType);
             case AST::Intrinsic::Type::exp:           return webAssemblyMode ? ValueReader() : createIntrinsicCall (::llvm::Intrinsic::exp,    args, returnType);
-            case AST::Intrinsic::Type::pow:           return createIntrinsicCall (::llvm::Intrinsic::pow,    args, returnType);
+            case AST::Intrinsic::Type::pow:           return isWebAssemblyVector ? ValueReader() : createIntrinsicCall (::llvm::Intrinsic::pow,    args, returnType);
             case AST::Intrinsic::Type::sin:           return webAssemblyMode ? ValueReader() : createIntrinsicCall (::llvm::Intrinsic::sin,    args, returnType);
             case AST::Intrinsic::Type::cos:           return webAssemblyMode ? ValueReader() : createIntrinsicCall (::llvm::Intrinsic::cos,    args, returnType);
             case AST::Intrinsic::Type::isnan:         return createIntrinsic_isNanOrInf (args.front(), true);

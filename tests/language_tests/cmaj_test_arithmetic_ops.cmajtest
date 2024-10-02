@@ -1364,3 +1364,23 @@ bool testFloatModulo()
 
     return m == 4.0f && m3[0] == 5.0f && m3[1] == 6.0f && m3[2] == 0.0f;
 }
+
+## testFunction ( { optimisationLevel: 0 })
+
+bool testPowerVector()
+{
+    var v = float<2> (1.0f, 2.0f);
+    let p = pow (v, v);
+
+    return p[0] == 1.0f && p[1] == 4.0f;
+}
+
+bool testSqrtVector()
+{
+    var v = float<2> (1.0f, 1.0f);
+    v[1] = 2.0f;
+
+    let p = sqrt (v);
+
+    return p[0] > 0 && p[1] > 0;
+}
