@@ -29,17 +29,40 @@ namespace cmaj::validation
         using super = AST::NonParameterisedObjectVisitor;
         using super::visit;
 
-        PostLoad (AST::Allocator& a) : super (a) {}
+        PostLoad (AST::Allocator& a, AST::ProcessorBase& p) : super (a), mainProcessor(p) {}
 
         static bool check (AST::Program& program)
         {
-            PostLoad v (program.allocator);
+            PostLoad v (program.allocator, program.getMainProcessor());
             v.visitObject (program.rootNamespace);
+
+            if (! v.visitedMainProcessor)
+                throwError (program.getMainProcessor(), Errors::mainProcessorCannotBeUnparameterised());
+
             return ! v.needToRunFullTests;
         }
 
+        bool visitedMainProcessor = false;
+
     private:
+        AST::ProcessorBase& mainProcessor;
         bool needToRunFullTests = false;
+
+        void visit (AST::Processor& p) override
+        {
+            super::visit (p);
+
+            if (std::addressof (p) == std::addressof (mainProcessor))
+                visitedMainProcessor = true;
+        }
+
+        void visit (AST::Graph& g) override
+        {
+            super::visit (g);
+
+            if (std::addressof (g) == std::addressof (mainProcessor))
+                visitedMainProcessor = true;
+        }
 
         void visit (AST::GetArraySlice& s) override
         {

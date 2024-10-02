@@ -2536,3 +2536,13 @@ processor Test [[ main ]]
         let a =  S3(mt.unknown);
     }
 }
+
+## expectError ("4:11: error: The main processor cannot be within an unparameterised namespace")
+
+namespace ns (int x = 4)
+{
+    graph test [[ main ]]
+    {
+        output stream float32<2> out;
+    }
+}

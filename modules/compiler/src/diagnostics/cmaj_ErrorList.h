@@ -283,6 +283,7 @@ DECL_COMPILE_ERROR (multipleProcessorsMarkedAsMain,         "Multiple processors
 DECL_COMPILE_ERROR (cannotFindProcessor,                    "Cannot find processor: {0}")
 DECL_COMPILE_ERROR (multipleSuitableMainCandidates,         "Cannot choose between multiple candidates as the main processor")
 DECL_COMPILE_ERROR (onlyValueSpecialisationsSupported,      "Only value main processor specialisations are supported")
+DECL_COMPILE_ERROR (mainProcessorCannotBeUnparameterised,   "The main processor cannot be within an unparameterised namespace")
 
 DECL_COMPILE_ERROR (endpointHasMultipleTypes,               "This endpoint has more than one type")
 DECL_COMPILE_ERROR (noMatchForWildcardInput,                "No inputs were found that matched the wildcard '{0}'")
