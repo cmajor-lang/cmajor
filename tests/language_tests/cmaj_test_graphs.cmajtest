@@ -4238,6 +4238,36 @@ processor P { output stream int x; void main() { advance(); } }
 
 graph test [[main]]
 {
+    output p.* *1;
+    output p.* *2;
+    node p = P;
+}
+
+processor P
+{
+    output event int out;
+    void main() { out <- 1 <- 1 <- -1; advance(); }
+}
+
+## expectError ("4:12: error: The name 'renamed' is already in use //// 4:12: note: See previous declaration")
+
+graph test [[main]]
+{
+    output p.* renamed;     // out and out2 will both be renamed to 'renamed' causing a duplicate endpoint name
+    node p = P;
+}
+
+processor P
+{
+    output event int out;
+    output event int out2;
+    void main() { out <- 1 <- 1 <- -1; advance(); }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
     output i.renamed_out;
     node i = intermediate;
 }
