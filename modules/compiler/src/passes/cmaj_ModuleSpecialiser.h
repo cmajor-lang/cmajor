@@ -36,6 +36,14 @@ struct ModuleSpecialiser  : public Pass
     ptr<AST::GraphNode> graphNode;
 
     //==============================================================================
+    void visit (AST::IfStatement& o) override
+    {
+        if (! o.isConst)
+        {
+            super::visit (o);
+        }
+    }
+
     void visit (AST::CallOrCast& cc) override
     {
         super::visit (cc);
