@@ -1025,6 +1025,7 @@ private:
             auto& hoistedEndpointPath = create<AST::HoistedEndpointPath>();
             endpointDeclaration.childPath.setChildObject (hoistedEndpointPath);
             bool isFirstIdentifier = true;
+            bool isWildcard = false;
 
             for (;;)
             {
@@ -1053,7 +1054,6 @@ private:
                     auto startOfName = getLexerPosition();
                     std::string nameOrWildcard;
                     auto pos = location.text;
-                    bool isWildcard = false;
 
                     for (;;)
                     {
@@ -1082,10 +1082,36 @@ private:
                     continue;
                 }
 
+                break;
+            }
+
+            if (isWildcard && (matches (LexerToken::identifier) || matches (LexerToken::operator_times)))
+            {
+                std::string name;
+                auto pos = location.text;
+
+                for (;;)
+                {
+                    auto c = *pos;
+
+                    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+                        || c == '_' || c == '*')
+                    {
+                        choc::text::appendUTF8 (name, c);
+                        ++pos;
+                        continue;
+                    }
+
+                    setLexerPosition (pos);
+                    break;
+                }
+
+                endpointDeclaration.nameTemplate = getStringPool().get (name);
+            }
+            else
+            {
                 if (matches (LexerToken::identifier))
                     endpointDeclaration.name = readPooledIdentifier();
-
-                break;
             }
 
             parseOptionalAnnotation (endpointDeclaration.annotation);

@@ -325,7 +325,8 @@ struct ProcessorResolver  : public PassAvoidingGenericFunctionsAndModules
                     if (e.isInput == isInput && wildcard.matches (std::string (e.name.toString())))
                     {
                         auto& newEndpoint = hoistedEndpoint.context.allocate<AST::EndpointDeclaration>();
-                        newEndpoint.name = e.name;
+
+                        newEndpoint.name = makeEndpointName (hoistedEndpoint, e);
                         newEndpoint.isInput = isInput;
 
                         if (hoistedEndpoint.annotation != nullptr)
@@ -354,7 +355,16 @@ struct ProcessorResolver  : public PassAvoidingGenericFunctionsAndModules
 
         registerFailure();
     }
-};
 
+    static AST::PooledString makeEndpointName (AST::EndpointDeclaration& hoistedEndpoint, const AST::EndpointDeclaration& matchingEndpoint)
+    {
+        if (hoistedEndpoint.nameTemplate.toString().empty())
+            return matchingEndpoint.name.toString();
+
+        // Substitute all * in the nameTemplate with the endpoint name
+        auto newName = choc::text::replace (hoistedEndpoint.nameTemplate.toString().get(), "*", matchingEndpoint.name.toString().get());
+
+        return hoistedEndpoint.getStringPool().get (newName);
+    }};
 
 }

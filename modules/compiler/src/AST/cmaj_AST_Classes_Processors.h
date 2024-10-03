@@ -774,6 +774,7 @@ struct EndpointDeclaration  : public Object
     ListProperty        dataTypes { *this };
     ChildObject         arraySize { *this };
     ChildObject         childPath { *this };
+    StringProperty      nameTemplate { *this };
 
     #define CMAJ_PROPERTIES(X) \
         X (1, StringProperty, name) \
@@ -784,6 +785,7 @@ struct EndpointDeclaration  : public Object
         X (6, ChildObject, arraySize) \
         X (7, ChildObject, childPath) \
         X (8, ChildObject, comment) \
+        X (9, StringProperty, nameTemplate) \
 
     CMAJ_DECLARE_PROPERTY_ACCESSORS(CMAJ_PROPERTIES)
     #undef CMAJ_PROPERTIES

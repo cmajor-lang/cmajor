@@ -4234,15 +4234,46 @@ graph test [[main]]
 
 processor P { output stream int x; void main() { advance(); } }
 
-## expectError ("4:16: error: Found identifier when expecting \";\"")
+## testProcessor()
 
 graph test [[main]]
 {
-    output p.* xyz;
+    output i.renamed_out;
+    node i = intermediate;
+}
+
+graph intermediate
+{
+    output p.* renamed_*;
     node p = P;
 }
 
-processor P { output stream int x; void main() { advance(); } }
+processor P
+{
+    output event int out;
+    void main() { out <- 1 <- 1 <- -1; advance(); }
+}
+
+## testProcessor()
+
+graph test [[main]]
+{
+    output i.outHoisted;
+    node i = intermediate;
+}
+
+graph intermediate
+{
+    output p.* *Hoisted;
+    node p = P;
+}
+
+processor P
+{
+    output event int out;
+    void main() { out <- 1 <- 1 <- -1; advance(); }
+}
+
 
 ## testProcessor()
 
