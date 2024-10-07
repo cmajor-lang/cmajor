@@ -17,6 +17,7 @@
 //  DISCLAIMED.
 
 #include "../../../include/cmajor/API/cmaj_Engine.h"
+#include "../../../include/cmajor/helpers/cmaj_PatchWorker_WebView.h"
 #include "../../../include/cmajor/helpers/cmaj_EndpointTypeCoercion.h"
 #include "../../../modules/playback/include/cmaj_AllocationChecker.h"
 #include "../../../modules/compiler/src/transformations/cmaj_Transformations.h"
@@ -107,6 +108,10 @@ struct PerformerLibrary
         CMAJ_JAVASCRIPT_BINDING_METHOD (performerAddInputEvent)
         CMAJ_JAVASCRIPT_BINDING_METHOD (performerGetXRuns)
         CMAJ_JAVASCRIPT_BINDING_METHOD (performerCalculateRenderPerformance)
+
+        CMAJ_JAVASCRIPT_BINDING_METHOD (sourceTransformerNew)
+        CMAJ_JAVASCRIPT_BINDING_METHOD (sourceTransformerRelease)
+        CMAJ_JAVASCRIPT_BINDING_METHOD (sourceTransformerTransform)
     }
 
     void reset()
@@ -571,6 +576,39 @@ private:
         }
     };
 
+    struct SourceTransformer
+    {
+        SourceTransformer (std::filesystem::path source)
+        {
+            enableWebViewPatchWorker (patch);
+
+            patch.lastLoadParams.manifest.createFileReaderFunctions (source);
+            patch.lastLoadParams.manifest.sourceTransformer = source.filename().string();
+
+            sourceTransformer = std::make_unique<cmaj::Patch::SourceTransformer> (patch, 5.0);
+        }
+
+        ~SourceTransformer() = default;
+
+        choc::value::Value transform (choc::javascript::ArgumentList args)
+        {
+            auto filename  = args.get<std::string> (1);
+            auto contents  = args.get<std::string> (2);
+
+            DiagnosticMessageList errors;
+
+            auto result = sourceTransformer->transform (errors, filename, contents);
+
+            if (! errors.empty())
+                return createErrorObject (errors);
+
+            return choc::value::createString (result);
+        }
+
+        cmaj::Patch patch;
+        std::unique_ptr<cmaj::Patch::SourceTransformer> sourceTransformer;
+    };
+
     //==============================================================================
     std::string engineTypeName, actualEngineName;
     cmaj::BuildSettings buildSettings;
@@ -578,9 +616,11 @@ private:
     ObjectHandleList<Performer, std::unique_ptr<Performer>> performers;
     ObjectHandleList<Engine, std::unique_ptr<Engine>> engines;
     ObjectHandleList<cmaj::Program, std::unique_ptr<cmaj::Program>> programs;
+    ObjectHandleList<SourceTransformer, std::unique_ptr<SourceTransformer>> sourceTransformers;
 
-    Engine* getEngine       (choc::javascript::ArgumentList args) { return engines.getObject (args, 0); }
-    Performer* getPerformer (choc::javascript::ArgumentList args) { return performers.getObject (args, 0); }
+    Engine* getEngine                       (choc::javascript::ArgumentList args) { return engines.getObject (args, 0); }
+    Performer* getPerformer                 (choc::javascript::ArgumentList args) { return performers.getObject (args, 0); }
+    SourceTransformer* getSourceTransformer (choc::javascript::ArgumentList args) { return sourceTransformers.getObject (args, 0); }
 
     //==============================================================================
     choc::value::Value programNew (choc::javascript::ArgumentList)
@@ -920,6 +960,27 @@ private:
     }
 
     //==============================================================================
+    choc::value::Value sourceTransformerNew (choc::javascript::ArgumentList args)
+    {
+        return sourceTransformers.createNewObject (std::make_unique<SourceTransformer> (args.get<std::string> (0)));
+    }
+
+    choc::value::Value sourceTransformerRelease (choc::javascript::ArgumentList args)
+    {
+        sourceTransformers.deleteObject (args, 0);
+        return {};
+    }
+
+    choc::value::Value sourceTransformerTransform (choc::javascript::ArgumentList args)
+    {
+        if (auto sourceTransformer = getSourceTransformer (args))
+            return sourceTransformer->transform (args);
+
+        return createErrorObject ("Cannot find source transformer");
+    }
+
+
+    //==============================================================================
     static std::string getWrapperScript()
     {
         return R"WRAPPER_SCRIPT(
@@ -1032,6 +1093,14 @@ class Performer
     addInputEvent (h, d)                { return _performerAddInputEvent (this.id, h, d); }
     getXRuns()                          { return _performerGetXRuns (this.id); }
     calculateRenderPerformance (bs, f)  { return _performerCalculateRenderPerformance (this.id, bs, f); }
+}
+
+class SourceTransformer
+{
+    constructor (engineArgs)            { this.id = _sourceTransformerNew (engineArgs); }
+    release()                           { _sourceTransformerRelease (this.id); }
+
+    transform (filename, contents)      { return _sourceTransformerTransform (this.id, filename, contents); }
 }
 
 class Program

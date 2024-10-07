@@ -49,6 +49,8 @@ struct Patch
         std::unordered_map<std::string, float> parameterValues;
     };
 
+    struct SourceTransformer;
+
     /// This will do a quick, synchronous load of a patch manifest, to allow a
     /// caller to get vital statistics such as the name, description, channels,
     /// parameters etc., before calling loadPatch() to do a full build on a
@@ -321,18 +323,18 @@ struct Patch
     /// because if no callback is supplied, no checking will be done.
     std::function<void()> handleInfiniteLoop;
 
+    LoadParams lastLoadParams;
+    
 private:
     //==============================================================================
     struct PatchRenderer;
     struct PatchWorker;
-    struct SourceTransformer;
     struct Build;
     struct BuildThread;
     friend struct PatchView;
     friend struct PatchParameter;
 
     bool scanFilesForChanges = false;
-    LoadParams lastLoadParams;
     std::shared_ptr<PatchRenderer> renderer;
     PlaybackParams currentPlaybackParams;
     std::string hostDescription;
@@ -985,7 +987,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         handleOutputEvent.reset();
     }
 
-    bool isPlayable() const     { return performer != nullptr; }
+    bool isPlayable() const     { return performer != nullptr && ! errors.hasErrors(); }
 
     cmaj::AudioMIDIPerformer& getPerformer()
     {

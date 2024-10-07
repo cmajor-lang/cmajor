@@ -38,8 +38,9 @@
 /// source files, and to resolve its externals.
 class PatchManifest
 {
-    constructor (file)
+    constructor (testSection, file)
     {
+        this.testSection = testSection;
         this.manifestFile = file;
         this.manifest = JSON.parse (this.manifestFile.read());
 
@@ -51,9 +52,28 @@ class PatchManifest
     {
         const program = new Program();
 
-        for (const sourceFile of this.getSourceFiles())
+        let transformer;
+
+        if (this.manifest.sourceTransformer != null)
+            transformer = new SourceTransformer (this.manifestFile.getSibling (this.manifest.sourceTransformer).path);
+
+        for (const source of this.getSourceFiles())
         {
-            const error = program.parse (sourceFile);
+            let sourceToParse = source;
+
+            if (transformer)
+            {
+                // this.testSection.logMessage (sourceToParse);
+
+                let response = transformer.transform (source.path, source.read());
+
+                if (isError (response))
+                    return response;
+
+                sourceToParse = response;
+            }
+
+            const error = program.parse (sourceToParse);
 
             if (isError (error))
             {
@@ -152,30 +172,20 @@ function testProcessor (expectedResult, options)
 {
     let sampleCount = 100;
     let testSection = getCurrentTestSection();
-    let sourceToCompile = testSection.source + testSection.globalSource;
-    let program = new Program();
-    let error = program.parse (sourceToCompile);
 
-    if (isError (error))
+    let timingInfo = {};
+    let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
+
+    if (isError (engine))
     {
-        testSection.reportFail (error);
-        return;
-    }
-
-    let engine = createEngine (options);
-    updateBuildSettings (engine, 44100, sampleCount, true, options);
-    error = engine.load (program);
-
-    if (isError (error))
-    {
-        testSection.reportFail (error);
+        testSection.reportFail (engine);
         return;
     }
 
     let outputs = engine.getOutputEndpoints();
     let resultHandle = engine.getEndpointHandle (outputs[0].endpointID);
 
-    error = engine.link();
+    let error = engine.link();
 
     if (isError (error))
     {
@@ -517,23 +527,12 @@ function testCompile (testLink, options)
 function testConsole (expectedConsoleMsg, options)
 {
     let testSection = getCurrentTestSection();
-    let sourceToCompile = testSection.source + testSection.globalSource;
-    let program = new Program();
-    let error = program.parse (sourceToCompile);
+    let timingInfo = {};
+    let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
 
-    if (isError (error))
+    if (isError (engine, options))
     {
-        testSection.reportFail (error);
-        return;
-    }
-
-    let engine = createEngine (options);
-    updateBuildSettings (engine, 44100, 1024, true, options);
-    error = engine.load (program);
-
-    if (isError (error))
-    {
-        testSection.reportFail (error);
+        testSection.reportFail (engine);
         return;
     }
 
@@ -556,7 +555,7 @@ function testConsole (expectedConsoleMsg, options)
         return;
     }
 
-    error = engine.link();
+    let error = engine.link();
 
     if (isError (error))
     {
@@ -1170,13 +1169,13 @@ function buildEngineWithLoadedProgram (testSection, options, timingInfo, engine)
     if (engine == undefined)
         engine = createEngine (options);
 
-    updateBuildSettings (engine, options.frequency, options.blockSize, false, options);
+    updateBuildSettings (engine, 44100, 1024, false, options);
 
     let program;
 
     if (options.patch != null)
     {
-        let patch = new PatchManifest (new File (testSection.getAbsolutePath (options.patch)));
+        let patch = new PatchManifest (testSection, new File (testSection.getAbsolutePath (options.patch)));
 
         if (isError (patch.error))
             return patch.error;
@@ -1194,7 +1193,21 @@ function buildEngineWithLoadedProgram (testSection, options, timingInfo, engine)
     else
     {
         program = new Program();
-        let parseResult = program.parse (testSection.source + testSection.globalSource);
+
+        let sourceToParse = testSection.source + testSection.globalSource;
+
+        if (options.sourceTransformer != null)
+        {
+            let transformer = new SourceTransformer (testSection.getAbsolutePath (options.sourceTransformer));
+            let response = transformer.transform ("test.cmajor", sourceToParse);
+
+            if (isError (response))
+                return response;
+
+            sourceToParse = response;
+        }
+
+        let parseResult = program.parse (sourceToParse);
 
         if (isError (parseResult, options))
             return parseResult;

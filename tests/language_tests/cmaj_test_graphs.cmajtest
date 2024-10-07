@@ -430,7 +430,7 @@ processor Merge (int channels)
 
     event in (int index, int value)
     {
-        out[index] <- value;
+        out[wrap<channels> (index)] <- value;
     }
 }
 
@@ -1869,10 +1869,10 @@ processor filter
     input event int in_one_to_one[3];
     output event int out;
 
-    event in_many_to_many (int index, int v)   { v1[index] += v; }
-    event in_one_to_many (int index, int v)    { v2[index] += v; }
-    event in_many_to_one (int index, int v)    { v3[index] += v; }
-    event in_one_to_one (int index, int v)     { v4[index] += v; }
+    event in_many_to_many (int index, int v)   { v1.at (index) += v; }
+    event in_one_to_many (int index, int v)    { v2.at (index) += v; }
+    event in_many_to_one (int index, int v)    { v3.at (index) += v; }
+    event in_one_to_one (int index, int v)     { v4.at (index) += v; }
 
 
     int[3] v1, v2, v3, v4;
@@ -1931,10 +1931,10 @@ processor filter
 
     output event int[3] out_v1, out_v2, out_v3, out_v4;
 
-    event in_many_to_many (int index, int v)   { v1[index] += v; }
-    event in_one_to_many (int index, int v)    { v2[index] += v; }
-    event in_many_to_one (int index, int v)    { v3[index] += v; }
-    event in_one_to_one (int index, int v)     { v4[index] += v; }
+    event in_many_to_many (int index, int v)   { v1.at (index) += v; }
+    event in_one_to_many (int index, int v)    { v2.at (index) += v; }
+    event in_many_to_one (int index, int v)    { v3.at (index) += v; }
+    event in_one_to_one (int index, int v)     { v4.at (index) += v; }
 
     int[3] v1, v2, v3, v4;
 
@@ -2021,10 +2021,10 @@ processor filter
     input event int in_one_to_one[3];
     output event int out;
 
-    event in_many_to_many (int index, int v)   { v1[index] += v; }
-    event in_one_to_many (int index, int v)    { v2[index] += v; }
-    event in_many_to_one (int index, int v)    { v3[index] += v; }
-    event in_one_to_one (int index, int v)     { v4[index] += v; }
+    event in_many_to_many (int index, int v)   { v1.at (index) += v; }
+    event in_one_to_many (int index, int v)    { v2.at (index) += v; }
+    event in_many_to_one (int index, int v)    { v3.at (index) += v; }
+    event in_one_to_one (int index, int v)     { v4.at (index) += v; }
 
     int[3] v1, v2, v3, v4;
 

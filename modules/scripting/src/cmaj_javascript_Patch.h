@@ -72,8 +72,11 @@ struct PatchLibrary
                 lastError = createErrorObject ("No file parameter");
             }
 
+            auto returnValue = lastError;
+
             patch.unload();
-            return lastError;
+
+            return returnValue;
         });
     }
 
