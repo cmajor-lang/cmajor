@@ -852,10 +852,8 @@ setInputStreamFrames_ENDPOINT (sourceChannelArrays, numFramesToWrite, sourceChan
 
     void emitStringHandleLookup()
     {
-        const auto& strings = hasSIMD ? moduleSIMD.module.stringDictionary.strings
-                                      : moduleNonSIMD.module.stringDictionary.strings;
-
-        CMAJ_ASSERT (! (hasSIMD && hasNonSIMD) || strings == moduleNonSIMD.module.stringDictionary.strings);
+        const auto& strings = hasSIMD ? moduleSIMD.module.stringDictionary
+                                      : moduleNonSIMD.module.stringDictionary;
 
         if (strings.empty())
             return;
@@ -869,8 +867,8 @@ setInputStreamFrames_ENDPOINT (sourceChannelArrays, numFramesToWrite, sourceChan
             {
                 auto indent2 = out.createIndentWithBraces();
 
-                auto stringData = strings.data();
-                auto totalLength = strings.size();
+                auto stringData = strings.getRawData();
+                auto totalLength = strings.getRawDataSize();
                 size_t offset = 0;
 
                 for (;;)

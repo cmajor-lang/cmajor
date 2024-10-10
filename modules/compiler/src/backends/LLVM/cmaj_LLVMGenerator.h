@@ -130,8 +130,7 @@ struct LLVMCodeGenerator
             if (bitcode.size() < totalDictionarySize)
                 return false;
 
-            stringDictionary.strings.resize (dictionaryDataSize);
-            memcpy (stringDictionary.strings.data(), bitcode.data() + sizeof (uint32_t), dictionaryDataSize);
+            stringDictionary.setRawData (bitcode.data() + sizeof (uint32_t), dictionaryDataSize);
         }
 
         bitcode = { bitcode.begin() + totalDictionarySize, bitcode.end() };
@@ -146,9 +145,9 @@ struct LLVMCodeGenerator
             ::llvm::raw_svector_ostream s (bitcode);
 
             char dictionarySize[sizeof (uint32_t)];
-            choc::memory::writeLittleEndian (dictionarySize, static_cast<uint32_t> (stringDictionary.strings.size()));
+            choc::memory::writeLittleEndian (dictionarySize, static_cast<uint32_t> (stringDictionary.getRawDataSize()));
             s.write (dictionarySize, sizeof (dictionarySize));
-            s.write (stringDictionary.strings.data(), stringDictionary.strings.size());
+            s.write (stringDictionary.getRawData(), stringDictionary.getRawDataSize());
 
             ::llvm::WriteBitcodeToFile (*targetModule, s);
         }
