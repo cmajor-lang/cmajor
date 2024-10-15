@@ -523,3 +523,18 @@ graph g [[main]]
     input value int y;
     int z = y * 2;
 }
+
+## testCompile()
+
+processor P
+{
+    input event int in;
+    output event int out;
+
+    event in (int i)
+    {
+        out <- lookup.at (i);
+    }
+
+    let lookup = wrap<10>[5] (1, 2, 3, 4, 5);
+}
