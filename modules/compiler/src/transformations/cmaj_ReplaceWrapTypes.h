@@ -342,8 +342,6 @@ static inline void replaceWrapTypesAndLoopCounters (AST::Program& program)
 
         ReplaceWrapTypes (AST::Allocator& a) : super (a) {}
 
-        CMAJ_DO_NOT_VISIT_CONSTANTS
-
         void visit (AST::BoundedType& b) override
         {
             super::visit (b);
