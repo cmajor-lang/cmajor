@@ -1384,3 +1384,27 @@ bool testSqrtVector()
 
     return p[0] > 0 && p[1] > 0;
 }
+
+## testProcessor()
+
+processor P [[ main ]]
+{
+    output event float32 out;
+
+    float<3> r = 2.0f;
+
+    void main()
+    {
+        r++;
+
+        r %= 2.0f;
+
+        if (r[0] == 1.0f)
+        {
+            out <- 1;
+            out <- -1;
+        }
+
+        advance();
+    }
+}
