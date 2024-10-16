@@ -869,20 +869,13 @@ webassembly::WebAssemblyModule generateWebAssembly (const ProgramInterface& p, c
             return t.toChocType();
         };
 
-        auto getStackSize = [&]
-        {
-            AST::FunctionInfoGenerator functionInfo;
-            functionInfo.generate (program);
-            return roundUp (functionInfo.maximumStackSize * 2, 65536);
-        };
-
         auto stateStructSize = roundUp (m.nativeTypeLayouts.get (*m.stateStructType)->getNativeSize(), 16);
         auto ioStructSize    = roundUp (m.nativeTypeLayouts.get (*m.ioStructType)->getNativeSize(), 16);
         auto scratchSpace    = 65536u;
 
         // Seem to need to leave plenty of space at the bottom of the address range for
         // the wasm to use for its static data
-        m.stackTop = roundUp (m.binaryWASMData.size(), 16) + getStackSize();
+        m.stackTop = roundUp (m.binaryWASMData.size(), 16) + roundUp (buildSettings.getMaxStackSize(), 65536);
         m.stateStructAddress = m.stackTop;
         m.ioStructAddress = m.stateStructAddress + stateStructSize;
         m.scratchSpaceAddress = m.ioStructAddress + ioStructSize;
