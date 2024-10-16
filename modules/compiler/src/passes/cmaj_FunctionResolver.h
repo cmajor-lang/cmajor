@@ -193,6 +193,40 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
         }
     }
 
+    void visit (AST::InPlaceOperator& op) override
+    {
+        super::visit (op);
+
+        bool isModulo = op.op == AST::BinaryOpTypeEnum::Enum::modulo;
+
+        if (isModulo || op.op == AST::BinaryOpTypeEnum::Enum::exponent)
+        {
+            if (auto lhs = AST::castToValue (op.target))
+            {
+                if (auto type = lhs->getResultType())
+                {
+                    if (type->isFloatOrVectorOfFloat() && intrinsicsNamespace != nullptr)
+                    {
+                        if (auto rhs = AST::castToValue (op.source))
+                        {
+                            auto& assignment = replaceWithNewObject<AST::Assignment> (op);
+
+                            assignment.target.referTo (op.target);
+
+                            auto& call = assignment.context.allocate<AST::FunctionCall>();
+                            auto path = std::vector<std::string_view> { "std", "intrinsics", isModulo ? "fmod" : "pow" };
+                            call.targetFunction.referTo (AST::createIdentifierPath (call.context, path));
+                            call.arguments.addChildObject (*lhs);
+                            call.arguments.addChildObject (AST::createCastIfNeeded (*type, *rhs));
+
+                            assignment.source.referTo (call);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     //==============================================================================
     struct MatchingFunctionList
     {
