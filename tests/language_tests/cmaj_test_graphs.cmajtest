@@ -5568,3 +5568,29 @@ processor Source
         advance();
     }
 }
+
+## testCompile()
+
+graph Main [[ main ]]
+{
+	output stream float32 out;
+	input q.unused.in;
+	node q = Q;
+}
+
+graph Q {
+	output stream float32 out;
+
+	node unused = P;
+}
+
+processor P
+{
+    input event int in;
+    output event int out;
+
+    void main()
+    {
+        advance();
+    }
+}

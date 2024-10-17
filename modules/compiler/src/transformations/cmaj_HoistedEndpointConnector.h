@@ -73,7 +73,7 @@ static void createHoistedEndpointConnections (AST::Program& program)
             {
                 auto& childNode = AST::castToRefSkippingReferences<AST::GraphNode> (childPath[1]);
                 auto& intermediateParentGraph = childNode.getParentGraph();
-                auto& intermediate = intermediateParentGraph.context.allocate<AST::EndpointDeclaration>();
+                auto& intermediate = intermediateParentGraph.allocateChild<AST::EndpointDeclaration>();
                 intermediate.setName (intermediate.getStringPool().get (AST::createUniqueName ("_hoisted", intermediateParentGraph.endpoints)));
                 intermediate.isInput.set (outerEndpoint.isInput);
                 intermediateParentGraph.endpoints.addReference (intermediate);
