@@ -152,8 +152,6 @@ class PatchViewHolder extends HTMLElement
     }
 }
 
-if (! window.customElements.get ("cmaj-patch-view-holder")) window.customElements.define ("cmaj-patch-view-holder", PatchViewHolder);
-
 //==============================================================================
 /** Creates and returns a HTMLElement view which can be shown to control this patch.
  *
@@ -175,5 +173,11 @@ export async function createPatchViewHolder (patchConnection, preferredType)
     const view = await createPatchView (patchConnection, preferredType);
 
     if (view)
-        return new PatchViewHolder (view);
+    {
+        const patchViewHolderName = "cmaj-patch-view-holder";
+
+        if (! window.customElements.get (patchViewHolderName)) window.customElements.define (patchViewHolderName, PatchViewHolder);
+
+        return new (window.customElements.get (patchViewHolderName)) (view);
+    }
 }

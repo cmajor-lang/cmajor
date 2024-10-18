@@ -179,13 +179,16 @@ class GenericPatchView extends HTMLElement
     }
 }
 
-if (! window.customElements.get ("cmaj-generic-patch-view")) window.customElements.define ("cmaj-generic-patch-view", GenericPatchView);
-
 //==============================================================================
 /** Creates a generic view element which can be used to control any patch.
  *  @param {PatchConnection} patchConnection - the connection to the target patch
  */
 export default function createPatchView (patchConnection)
 {
-    return new GenericPatchView (patchConnection);
+    const genericPatchViewName = "cmaj-generic-patch-view";
+
+    if (! window.customElements.get (genericPatchViewName))
+        window.customElements.define (genericPatchViewName, GenericPatchView);
+
+    return new (window.customElements.get (genericPatchViewName)) (patchConnection);
 }

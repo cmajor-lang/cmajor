@@ -2561,15 +2561,18 @@ struct EmbeddedWebAssets
         "    }\n"
         "}\n"
         "\n"
-        "if (! window.customElements.get (\"cmaj-generic-patch-view\")) window.customElements.define (\"cmaj-generic-patch-view\", GenericPatchView);\n"
-        "\n"
         "//==============================================================================\n"
         "/** Creates a generic view element which can be used to control any patch.\n"
         " *  @param {PatchConnection} patchConnection - the connection to the target patch\n"
         " */\n"
         "export default function createPatchView (patchConnection)\n"
         "{\n"
-        "    return new GenericPatchView (patchConnection);\n"
+        "    const genericPatchViewName = \"cmaj-generic-patch-view\";\n"
+        "\n"
+        "    if (! window.customElements.get (genericPatchViewName))\n"
+        "        window.customElements.define (genericPatchViewName, GenericPatchView);\n"
+        "\n"
+        "    return new (window.customElements.get (genericPatchViewName)) (patchConnection);\n"
         "}\n";
     static constexpr const char* cmajpatchview_js = "//\n"
         "//     ,ad888ba,                              88\n"
@@ -2725,8 +2728,6 @@ struct EmbeddedWebAssets
         "    }\n"
         "}\n"
         "\n"
-        "if (! window.customElements.get (\"cmaj-patch-view-holder\")) window.customElements.define (\"cmaj-patch-view-holder\", PatchViewHolder);\n"
-        "\n"
         "//==============================================================================\n"
         "/** Creates and returns a HTMLElement view which can be shown to control this patch.\n"
         " *\n"
@@ -2748,7 +2749,13 @@ struct EmbeddedWebAssets
         "    const view = await createPatchView (patchConnection, preferredType);\n"
         "\n"
         "    if (view)\n"
-        "        return new PatchViewHolder (view);\n"
+        "    {\n"
+        "        const patchViewHolderName = \"cmaj-patch-view-holder\";\n"
+        "\n"
+        "        if (! window.customElements.get (patchViewHolderName)) window.customElements.define (patchViewHolderName, PatchViewHolder);\n"
+        "\n"
+        "        return new (window.customElements.get (patchViewHolderName)) (view);\n"
+        "    }\n"
         "}\n";
     static constexpr const char* cmajaudioworklethelper_js = "//\n"
         "//     ,ad888ba,                              88\n"
@@ -3532,8 +3539,8 @@ struct EmbeddedWebAssets
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
         File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 15557) },
-        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6395) },
-        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 7281) },
+        File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6492) },
+        File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 7388) },
         File { "cmaj-audio-worklet-helper.js", std::string_view (cmajaudioworklethelper_js, 28203) },
         File { "assets/cmajor-logo.svg", std::string_view (assets_cmajorlogo_svg, 2913) }
     };
