@@ -54,7 +54,7 @@ export function createView (parameters, options)
     if (! window.customElements.get (customElementName))
         window.customElements.define (customElementName, PatchView);
 
-    return new PatchView (parameters, options);
+    return new (window.customElements.get (customElementName)) (parameters, options);
 }
 
 //==============================================================================

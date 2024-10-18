@@ -1120,13 +1120,13 @@ struct EmbeddedWebAssets
         "export function createControl (patchConnection, endpointInfo)\n"
         "{\n"
         "    if (Switch.canBeUsedFor (endpointInfo))\n"
-        "        return new Switch (patchConnection, endpointInfo);\n"
+        "        return new (window.customElements.get (\"cmaj-switch-control\")) (patchConnection, endpointInfo);\n"
         "\n"
         "    if (Options.canBeUsedFor (endpointInfo))\n"
-        "        return new Options (patchConnection, endpointInfo);\n"
+        "        return new (window.customElements.get (\"cmaj-options-control\")) (patchConnection, endpointInfo);\n"
         "\n"
         "    if (Knob.canBeUsedFor (endpointInfo))\n"
-        "        return new Knob (patchConnection, endpointInfo);\n"
+        "        return new (window.customElements.get (\"cmaj-knob-control\")) (patchConnection, endpointInfo);\n"
         "\n"
         "    return undefined;\n"
         "}\n"
@@ -1143,7 +1143,7 @@ struct EmbeddedWebAssets
         "    const control = createControl (patchConnection, endpointInfo);\n"
         "\n"
         "    if (control)\n"
-        "        return new LabelledControlHolder (patchConnection, endpointInfo, control);\n"
+        "        return new (window.customElements.get (\"cmaj-labelled-control-holder\")) (patchConnection, endpointInfo, control);\n"
         "\n"
         "    return undefined;\n"
         "}\n"
@@ -3527,7 +3527,7 @@ struct EmbeddedWebAssets
     static constexpr std::array files =
     {
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12712) },
-        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30583) },
+        File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30757) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },

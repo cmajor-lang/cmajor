@@ -75,7 +75,6 @@ class DemoView extends HTMLElement
     }
 }
 
-window.customElements.define ("demo-patch-view", DemoView);
 
 /* This is the function that a host (the command line patch player, or a Cmajor plugin
    loader, or our VScode extension, etc) will call in order to create a view for your patch.
@@ -89,5 +88,10 @@ window.customElements.define ("demo-patch-view", DemoView);
 */
 export default function createPatchView (patchConnection)
 {
-    return new DemoView (patchConnection);
+    const customElementName = "demo-patch-view";
+
+    if (! window.customElements.get (customElementName))
+        window.customElements.define (customElementName, DemoView);
+
+    return new (window.customElements.get (customElementName)) (patchConnection);
 }

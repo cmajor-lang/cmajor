@@ -87,9 +87,12 @@ Bar start quarter-note:  ${this.barQuarterNote}`;
     }
 }
 
-window.customElements.define ("timeline-patch-view", TimelineView);
-
 export default function createPatchView (patchConnection)
 {
-    return new TimelineView (patchConnection);
+    const customElementName = "timeline-patch-view";
+
+    if (! window.customElements.get (customElementName))
+        window.customElements.define (customElementName, TimelineView);
+
+    return new (window.customElements.get (customElementName)) (patchConnection);
 }

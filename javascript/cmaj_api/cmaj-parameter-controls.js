@@ -830,13 +830,13 @@ export function getAllCSS()
 export function createControl (patchConnection, endpointInfo)
 {
     if (Switch.canBeUsedFor (endpointInfo))
-        return new Switch (patchConnection, endpointInfo);
+        return new (window.customElements.get ("cmaj-switch-control")) (patchConnection, endpointInfo);
 
     if (Options.canBeUsedFor (endpointInfo))
-        return new Options (patchConnection, endpointInfo);
+        return new (window.customElements.get ("cmaj-options-control")) (patchConnection, endpointInfo);
 
     if (Knob.canBeUsedFor (endpointInfo))
-        return new Knob (patchConnection, endpointInfo);
+        return new (window.customElements.get ("cmaj-knob-control")) (patchConnection, endpointInfo);
 
     return undefined;
 }
@@ -853,7 +853,7 @@ export function createLabelledControl (patchConnection, endpointInfo)
     const control = createControl (patchConnection, endpointInfo);
 
     if (control)
-        return new LabelledControlHolder (patchConnection, endpointInfo, control);
+        return new (window.customElements.get ("cmaj-labelled-control-holder")) (patchConnection, endpointInfo, control);
 
     return undefined;
 }

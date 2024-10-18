@@ -22,7 +22,14 @@ import * as presets from "./presets/presetBank.js"
 export default function createPatchView (patchConnection)
 {
     defineKeyboardElement (patchConnection);
-    return new Pro54PatchView (patchConnection);
+
+    return new (window.customElements.get ("pro54-patch-view")) (patchConnection);
+}
+
+function registerCustomElement (name, element)
+{
+    if (! window.customElements.get (name))
+        window.customElements.define (name, element);
 }
 
 //==============================================================================
@@ -48,7 +55,7 @@ function defineKeyboardElement (patchConnection)
             getNoteLabel (note)     { return ""; }
         }
 
-        window.customElements.define ("pro54-keyboard", Pro54Keyboard);
+        registerCustomElement ("pro54-keyboard", Pro54Keyboard);
     }
 }
 
@@ -985,17 +992,17 @@ class Pro54PatchView extends HTMLElement
     }
 }
 
-window.customElements.define ("pro54-black-knob", Pro54BlackKnob);
-window.customElements.define ("pro54-metal-knob", Pro54MetalKnob);
-window.customElements.define ("pro54-black-button", Pro54BlackButton);
-window.customElements.define ("pro54-grey-button", Pro54GreyButton);
-window.customElements.define ("pro54-orange-button", Pro54OrangeButton);
-window.customElements.define ("pro54-voices", Pro54VoicesElement);
-window.customElements.define ("pro54-wheel", Pro54WheelElement);
-window.customElements.define ("pro54-filter", Pro54FilterElement);
-window.customElements.define ("pro54-midi-light", Pro54MIDIActivityLight);
-window.customElements.define ("pro54-program-digit", Pro54ProgramDigitElement);
-window.customElements.define ("pro54-program-bank", Pro54ProgramBank);
-window.customElements.define ("pro54-program-name", Pro54ProgramName);
-window.customElements.define ("pro54-patch-view", Pro54PatchView);
-window.customElements.define ("pro54-bpf", Pro54BPF);
+registerCustomElement ("pro54-black-knob", Pro54BlackKnob);
+registerCustomElement ("pro54-metal-knob", Pro54MetalKnob);
+registerCustomElement ("pro54-black-button", Pro54BlackButton);
+registerCustomElement ("pro54-grey-button", Pro54GreyButton);
+registerCustomElement ("pro54-orange-button", Pro54OrangeButton);
+registerCustomElement ("pro54-voices", Pro54VoicesElement);
+registerCustomElement ("pro54-wheel", Pro54WheelElement);
+registerCustomElement ("pro54-filter", Pro54FilterElement);
+registerCustomElement ("pro54-midi-light", Pro54MIDIActivityLight);
+registerCustomElement ("pro54-program-digit", Pro54ProgramDigitElement);
+registerCustomElement ("pro54-program-bank", Pro54ProgramBank);
+registerCustomElement ("pro54-program-name", Pro54ProgramName);
+registerCustomElement ("pro54-patch-view", Pro54PatchView);
+registerCustomElement ("pro54-bpf", Pro54BPF);

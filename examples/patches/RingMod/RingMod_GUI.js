@@ -86,7 +86,6 @@ class DalekView extends HTMLElement
     }
 }
 
-window.customElements.define ("dalek-view", DalekView);
 
 /* This is the function that a host (the command line patch player, or a Cmajor plugin
    loader, or our VScode extension, etc) will call in order to create a view for your patch.
@@ -100,5 +99,10 @@ window.customElements.define ("dalek-view", DalekView);
 */
 export default function createPatchView (patchConnection)
 {
-    return new DalekView (patchConnection);
+    const customElementName = "dalek-view";
+
+    if (! window.customElements.get (customElementName))
+        window.customElements.define (customElementName, DalekView);
+
+    return new (window.customElements.get (customElementName)) (patchConnection);
 }
