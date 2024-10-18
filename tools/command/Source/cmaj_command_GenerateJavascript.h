@@ -373,7 +373,7 @@ inline GeneratedFiles generateWebAudioModule (cmaj::Patch& patch, const cmaj::Pa
     auto toString = [](bool b) { return b ? "true" : "false"; };
 
     auto jsWorklet = generateJavascriptWorklet (patch, loadParams, engineOptions);
-    
+
     auto index_js = choc::text::trimStart (choc::text::replace (R"(
 import { WebAudioModule } from './sdk/index.js';
 import { CompositeAudioNode, ParamMgrFactory } from './sdk/parammgr.js';
@@ -415,7 +415,6 @@ class CmajNode extends CompositeAudioNode
     {
       this._wamNode.addEventListener('wam-midi', ({ detail }) =>
       {
-//        console.log(detail);
         this.patchConnection.sendMIDIInputEvent (midiEndpointID, detail.data.bytes[2] | (detail.data.bytes[1] << 8) | (detail.data.bytes[0] << 16));
       });
     }
