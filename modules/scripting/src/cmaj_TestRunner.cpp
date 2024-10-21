@@ -1043,16 +1043,20 @@ function getEngineName()                             { return _getEngineName(); 
             {
                 for (auto& suite : testSuites)
                 {
-                    futures.emplace_back (std::async (std::launch::async,
-                                                      [&] () -> std::string
-                                                      {
-                                                          ThreadAllocator allocateThread (pool);
-                                                          std::ostringstream testOutput;
-                                                          suite->runTests (testOutput, buildSettings, {}, runDisabled, engineOptions, testScriptPath);
-                                                          return testOutput.str();
-                                                      }));
+                    for (int testIndex = 0; testIndex < (int) suite->tests.size(); ++testIndex)
+                    {
+                        futures.emplace_back (std::async (std::launch::async,
+                                                          [&suite, testIndex, &pool, &buildSettings,
+                                                           runDisabled, &engineOptions, testScriptPath] () -> std::string
+                                                          {
+                                                              ThreadAllocator allocateThread (pool);
+                                                              std::ostringstream testOutput;
+                                                              suite->runTests (testOutput, buildSettings, testIndex + 1, runDisabled, engineOptions, testScriptPath);
+                                                              return testOutput.str();
+                                                          }));
 
-                    totalNumTests += suite->tests.size();
+                        ++totalNumTests;
+                    }
                 }
             }
 
