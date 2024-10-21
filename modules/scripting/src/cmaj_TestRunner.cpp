@@ -185,7 +185,7 @@ namespace cmaj::test
             TestSuite& suite;
             TestSection section;
             std::vector<std::string> log, passed, failed, disabled, unsupported, errorReports;
-            std::chrono::duration<double> time;
+            std::chrono::duration<double> time = {};
 
         private:
             std::ostream* console = nullptr;
@@ -237,7 +237,7 @@ namespace cmaj::test
         //==============================================================================
         std::string filename, userScript, globalSource;
         std::atomic<int> passed { 0 }, failed { 0 }, disabled { 0 }, unsupported { 0 };
-        std::chrono::duration<double> time;
+        std::chrono::duration<double> time = {};
         std::vector<TestCase> tests;
 
     private:
@@ -366,7 +366,7 @@ namespace cmaj::test
         int unsupported = 0;
         int files = 0;
         size_t total = 0;
-        std::chrono::duration<double> time;
+        std::chrono::duration<double> time = {};
 
         bool noFailures() const
         {
