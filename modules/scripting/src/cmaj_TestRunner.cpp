@@ -986,9 +986,12 @@ function getEngineName()                             { return _getEngineName(); 
                                      bool runDisabled, const choc::value::Value& engineOptions,
                                      std::string testScriptPath)
     {
-        console << thickDivider << std::endl
-                << "Running: " << std::filesystem::path (filename).filename().string() << "   (" << filename << ")" << std::endl
-                << std::endl;
+        if (!testToRun || testToRun.value() == 1)
+        {
+            console << thickDivider << std::endl
+                    << "Running: " << std::filesystem::path (filename).filename().string() << "   (" << filename << ")" << std::endl
+                    << std::endl;
+        }
 
         TestJavascriptEngine testEngine (buildSettings, *this, console, engineOptions, testScriptPath);
 
