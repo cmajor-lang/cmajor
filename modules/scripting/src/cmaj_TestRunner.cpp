@@ -1054,7 +1054,7 @@ function getEngineName()                             { return _getEngineName(); 
 
         for (auto& suite : testSuites)
         {
-            for (int testIndex = 0; testIndex < (int) suite->tests.size(); ++testIndex)
+            for (int testIndex = 1; testIndex <= (int) suite->tests.size(); ++testIndex)
             {
                 if (testToRun && testIndex != testToRun)
                     continue;
@@ -1064,7 +1064,7 @@ function getEngineName()                             { return _getEngineName(); 
                                                runDisabled, &engineOptions, testScriptPath] ()
                                               {
                                                   std::ostringstream testOutput;
-                                                  suite->runTests (testOutput, buildSettings, testIndex + 1, runDisabled, engineOptions, testScriptPath);
+                                                  suite->runTests (testOutput, buildSettings, testIndex, runDisabled, engineOptions, testScriptPath);
 
                                                   if (! printOnlyErrors)
                                                       output << testOutput.str();

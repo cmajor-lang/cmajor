@@ -5594,3 +5594,70 @@ processor P
         advance();
     }
 }
+
+
+## testCompile()
+
+graph A [[ main ]]
+{
+    output event float32<2> out;
+    node b = B, c = C;
+    connection b.test_out[0] -> c.test_in[0];
+}
+graph B {
+    output event float32<4> test_out[256];
+}
+graph C {
+    input event float32<4> test_in[4];
+    output event float32<2> out;
+}
+
+
+## testProcessor()
+
+graph Test [[ main ]]
+{
+    output event int out;
+
+    connection
+    {
+        Source.out[5] -> Target.in;
+        Target.out -> out;
+    }
+}
+
+processor Source
+{
+    output event int out[10];
+
+    void main()
+    {
+        out[5] <- 2;
+        advance();
+    }
+}
+
+processor Target
+{
+    input event int in[20];
+    output event int out;
+
+    event in (int index, int i)
+    {
+        total += i;
+    }
+
+    int total;
+
+    void main()
+    {
+        loop (10)
+            advance();
+
+        if (total == 40)
+            out <- total;
+
+        out <- -1;
+        advance();
+    }
+}

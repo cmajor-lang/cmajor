@@ -1065,7 +1065,9 @@ namespace cmaj::validation
 
         void checkConnection (const AST::Connection& connection,
                               const AST::EndpointInstance& source,
-                              const AST::EndpointInstance& dest)
+                              ptr<AST::Expression> sourceIndex,
+                              const AST::EndpointInstance& dest,
+                              ptr<AST::Expression> destIndex)
         {
             if (source.isChained())
                 if (source.getProcessor().getOutputEndpoints (false).size() != 1)
@@ -1103,9 +1105,10 @@ namespace cmaj::validation
             auto sourceArrayCount = getEndpointAndProcessorArrayCount (source, sourceEndpoint);
             auto destArrayCount   = getEndpointAndProcessorArrayCount (dest, destEndpoint);
 
-            if (sourceArrayCount != destArrayCount)
-                if (sourceArrayCount != 1 && destArrayCount != 1)
-                    throwError (connection, Errors::cannotConnectEndpointArrays());
+            if (sourceIndex == nullptr && destIndex == nullptr)
+                if (sourceArrayCount != destArrayCount)
+                    if (sourceArrayCount != 1 && destArrayCount != 1)
+                        throwError (connection, Errors::cannotConnectEndpointArrays());
 
             auto sourceTypes = sourceEndpoint.getDataTypes();
             auto destTypes = destEndpoint.getDataTypes();
@@ -1294,6 +1297,18 @@ namespace cmaj::validation
             return false;
         }
 
+        ptr<AST::Expression> getOptionalGetElementIndex (AST::Object& instance)
+        {
+            if (auto getElement = AST::castToSkippingReferences<AST::GetElement> (instance))
+            {
+                CMAJ_ASSERT (getElement->indexes.size() == 1);
+
+                return AST::castToSkippingReferences<AST::Expression> (getElement->indexes[0]);
+            }
+
+            return {};
+        }
+
         const AST::EndpointInstance& getAndCheckEndpointInstance (AST::Object& instance)
         {
             if (auto e = AST::castToSkippingReferences<AST::EndpointInstance> (instance))
@@ -1359,8 +1374,11 @@ namespace cmaj::validation
             }
 
             auto& sourceInstance = getAndCheckEndpointInstance (source);
-            auto& destInstance = getAndCheckEndpointInstance (dest);
-            checkConnection (connection, sourceInstance, destInstance);
+            auto  sourceIndex    = getOptionalGetElementIndex (source);
+            auto& destInstance   = getAndCheckEndpointInstance (dest);
+            auto  destIndex      = getOptionalGetElementIndex (dest);
+
+            checkConnection (connection, sourceInstance, sourceIndex, destInstance, destIndex);
         }
 
         void visit (AST::Connection& c) override
