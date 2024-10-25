@@ -303,37 +303,71 @@ namespace cmaj::test
     };
 
     //==============================================================================
-    struct ThreadPool
+    struct JobPool
     {
-        ThreadPool (uint32_t threads) : availableThreads (threads)
-        {}
-
-        void acquire()
+        void addJob (std::future<void> job)
         {
-            std::unique_lock<std::mutex> lock (mutex);
-            cv.wait (lock, [this] { return availableThreads != 0; });
-            availableThreads--;
+            jobs.push_back (std::move (job));
         }
 
-        void release()
+        void run (size_t threadCount, std::function<void (size_t, size_t)> reportProgress)
         {
-            std::unique_lock<std::mutex> lock (mutex);
-            availableThreads++;
-            cv.notify_one();
+            std::vector<std::thread> threads;
+
+            for (size_t i = 0; i < threadCount; i++)
+                threads.emplace_back ([&] { dispatchJobs(); });
+
+            if (reportProgress)
+            {
+                size_t reportedCompletedJobs = 0;
+
+                while (completedJobs < jobs.size())
+                {
+                    if (reportedCompletedJobs < completedJobs)
+                    {
+                        reportProgress (completedJobs, jobs.size());
+                        reportedCompletedJobs = completedJobs;
+                    }
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds (100));
+                }
+
+                reportProgress (completedJobs, jobs.size());
+            }
+
+            for (auto& thread : threads)
+                thread.join();
+
+            jobs.clear();
         }
 
     private:
+        void dispatchJobs()
+        {
+            while (auto item = getJobToRun())
+            {
+                jobs[item.value()].wait();
+                completedJobs++;
+            }
+        }
+
+        std::optional<size_t> getJobToRun()
+        {
+            std::unique_lock<std::mutex> lock (mutex);
+
+            if (nextItem < jobs.size())
+            {
+                auto item = nextItem++;
+                return item;
+            }
+
+            return {};
+        }
+
         std::mutex mutex;
-        std::condition_variable cv;
-        uint32_t availableThreads;
-    };
-
-    struct ThreadAllocator
-    {
-        ThreadAllocator (ThreadPool& p) : pool (p)    { pool.acquire(); }
-        ~ThreadAllocator()                            { pool.release(); }
-
-        ThreadPool& pool;
+        std::atomic<size_t> completedJobs = 0;
+        std::atomic<size_t> nextItem = 0;
+        std::vector<std::future<void>> jobs;
     };
 
     //==============================================================================
@@ -1016,118 +1050,51 @@ function getEngineName()                             { return _getEngineName(); 
                            const choc::value::Value& engineOptions,
                            std::string testScriptPath)
     {
-        if (threadLimit > 1 && ! testToRun.has_value())
+        JobPool jobPool;
+
+        for (auto& suite : testSuites)
         {
-            ThreadPool pool (threadLimit);
-
-            std::vector<std::future<std::string>> futures;
-            size_t totalNumTests = 0;
-
-            if (testSuites.size() == 1)
+            for (int testIndex = 0; testIndex < (int) suite->tests.size(); ++testIndex)
             {
-                auto& suite = *testSuites.front();
+                if (testToRun && testIndex != testToRun)
+                    continue;
 
-                for (int testIndex = 0; testIndex < (int) suite.tests.size(); ++testIndex)
-                {
-                    futures.emplace_back (std::async (std::launch::async,
-                                                      [&suite, testIndex, &pool, &buildSettings,
-                                                       runDisabled, &engineOptions, testScriptPath] () -> std::string
-                                                      {
-                                                          ThreadAllocator allocateThread (pool);
-                                                          std::ostringstream testOutput;
-                                                          suite.runTests (testOutput, buildSettings, testIndex + 1, runDisabled, engineOptions, testScriptPath);
-                                                          return testOutput.str();
-                                                      }));
+                jobPool.addJob (std::async (std::launch::deferred,
+                                              [&suite, testIndex, &buildSettings, printOnlyErrors, &output,
+                                               runDisabled, &engineOptions, testScriptPath] ()
+                                              {
+                                                  std::ostringstream testOutput;
+                                                  suite->runTests (testOutput, buildSettings, testIndex + 1, runDisabled, engineOptions, testScriptPath);
 
-                    ++totalNumTests;
-                }
+                                                  if (! printOnlyErrors)
+                                                      output << testOutput.str();
+                                              }));
             }
-            else
+        }
+
+        if (showProgressBar)
+        {
+            jobPool.run (threadLimit, [&] (size_t completedTests, size_t totalTests)
             {
-                for (auto& suite : testSuites)
-                {
-                    for (int testIndex = 0; testIndex < (int) suite->tests.size(); ++testIndex)
-                    {
-                        futures.emplace_back (std::async (std::launch::async,
-                                                          [&suite, testIndex, &pool, &buildSettings,
-                                                           runDisabled, &engineOptions, testScriptPath] () -> std::string
-                                                          {
-                                                              ThreadAllocator allocateThread (pool);
-                                                              std::ostringstream testOutput;
-                                                              suite->runTests (testOutput, buildSettings, testIndex + 1, runDisabled, engineOptions, testScriptPath);
-                                                              return testOutput.str();
-                                                          }));
+                size_t barLength = 60;
+                auto barSize = (completedTests * barLength) / totalTests;
+                auto percentage = (100 * completedTests) / totalTests;
+                auto totalResults = TestResult::getTotal (testSuites);
 
-                        ++totalNumTests;
-                    }
-                }
-            }
+                std::cout << "\x1b[1000DRunning tests:  "
+                            << std::string (barSize, '#') << std::string (barLength - barSize, '.')
+                            << "  " << percentage << "%  "
+                            << "  pass: " << totalResults.passed
+                            << "  fail: " << totalResults.failed
+                            << "  "
+                            << std::flush;
+            });
 
-            if (showProgressBar)
-            {
-                size_t lastPercentage = 0;
-
-                auto printBar = [&]
-                {
-                    auto totalResults = TestResult::getTotal (testSuites);
-                    auto percentage = (totalResults.getNumComplete() * 100) / totalNumTests;
-
-                    if (lastPercentage != percentage)
-                    {
-                        lastPercentage = percentage;
-
-                        size_t barLength = 60;
-                        auto barSize = (percentage * barLength) / 100;
-
-                        std::cout << "\x1b[1000DRunning tests:  "
-                                    << std::string (barSize, '#') << std::string (barLength - barSize, '.')
-                                    << "  " << percentage << "%  "
-                                    << "  pass: " << totalResults.passed
-                                    << "  fail: " << totalResults.failed
-                                    << "  "
-                                    << std::flush;
-                    }
-                };
-
-                for (auto& f : futures)
-                {
-                    for (;;)
-                    {
-                        if (f.wait_for (std::chrono::milliseconds (100)) == std::future_status::ready)
-                            break;
-
-                        printBar();
-                    }
-                }
-
-                printBar();
-                std::cout << std::endl;
-            }
-            else
-            {
-                for (auto& f : futures)
-                {
-                    f.wait();
-
-                    if (! printOnlyErrors)
-                        output << f.get();
-                }
-            }
+            std::cout << "\n";
         }
         else
         {
-            for (auto& suite : testSuites)
-            {
-                if (printOnlyErrors)
-                {
-                    std::ostringstream testOutput;
-                    suite->runTests (testOutput, buildSettings, testToRun, runDisabled, engineOptions, testScriptPath);
-                }
-                else
-                {
-                    suite->runTests (output, buildSettings, testToRun, runDisabled, engineOptions, testScriptPath);
-                }
-            }
+            jobPool.run (threadLimit, {});
         }
     }
 
