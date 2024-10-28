@@ -419,6 +419,19 @@ class CmajNode extends CompositeAudioNode
       });
     }
   }
+
+  getState()
+  {
+    return new Promise ((data) =>
+    {
+      this.patchConnection.requestFullStoredState (msg => { data (msg); });
+    });
+  }
+
+  setState(...args)
+  {
+    this.patchConnection.sendFullStoredState (...args);
+  }
 }
 
 export default class CmajModule extends WebAudioModule
