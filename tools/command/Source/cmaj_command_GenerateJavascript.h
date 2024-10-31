@@ -546,6 +546,7 @@ export default class CmajModule extends WebAudioModule
 
     auto descriptor_json = choc::text::trimStart (choc::text::replace (R"(
 {
+    "identifier": "PATCH_ID",
     "name": "PATCH_NAME",
     "vendor": "PATCH_MANUFACTURER",
     "description": "PATCH_DESC",
