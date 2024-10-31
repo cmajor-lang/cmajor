@@ -1,0 +1,18 @@
+
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.ConvolutionReverb",
+    "version":          "1.0",
+    "name":             "reverb",
+    "description":      "reverb",
+    "category":         "generator",
+    "manufacturer":     "Cmajor Software Ltd",
+    "isInstrument":     false,
+
+    "source":           ["convolution.cmajor", "reverb.cmajor" ],
+
+    "externals":
+    {
+        "ImpulseSource::reverb": "impulse.wav"
+    }
+}

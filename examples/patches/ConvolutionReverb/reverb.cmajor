@@ -1,0 +1,99 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+/// This is an implementation of a simple frequency domain convolution algorithm. The FFT runs at
+/// a fixed size, and no attempt is made to avoid latency, so this algorithm runs with half the
+/// FFT size as a fixed latency.
+///
+/// Increasing the fftSize will increase the latency, but reduce the computational cost
+graph Convolver [[ main ]]
+{
+    input event float32 dryLevel [[ name: "Dry Level", min: -96, max: 6, init: 0, unit: "db" ]];
+    input event float32 wetLevel [[ name: "Wet Level", min: -96, max: 6, init: -24, unit: "db" ]];
+
+    input stream float in;
+    output stream float out;
+
+    let fftSize = 256;
+    let maxImpulseLength = 100000;
+
+    node fft = Convolution::FFT (fftSize);
+    node conv = Convolution::Convolve (fftSize, maxImpulseLength);
+    node ifft = Convolution::iFFT (fftSize);
+    node dryGain = LevelSmoother;
+    node wetGain = LevelSmoother;
+
+    connection
+    {
+        dryLevel -> dryGain;
+        wetLevel -> wetGain;
+
+        ImpulseSource -> conv.impulseData;
+
+        in -> fft -> conv.in;
+        conv.out -> ifft;
+
+        in * dryGain.out -> out;
+        ifft.out * wetGain.out -> out;
+    }
+}
+
+processor ImpulseSource
+{
+    output event float[] impulseData;
+
+    external float[] reverb;
+
+    void main()
+    {
+        impulseData <- reverb;
+
+        advance();
+    }
+}
+
+processor LevelSmoother
+{
+    input event float db;
+    output stream float out;
+
+    event db (float f)
+    {
+        target = std::levels::dBtoGain (f);
+    }
+
+    let smoothingFrames = int (processor.frequency / 100);
+    float target;
+
+    void main()
+    {
+        float v;
+
+        loop
+        {
+            float step = ((target - v) / 2.0f) / smoothingFrames;
+
+            loop (smoothingFrames)
+            {
+                out <- v;
+                v += step;
+                advance();
+            }
+        }
+    }
+}
