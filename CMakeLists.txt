@@ -20,7 +20,7 @@ cmake_minimum_required(VERSION 3.16..3.22)
 
 project (cmaj)
 
-OPTION (BUILD_CMAJ      "Whether to build the comnand line tool" ON)
+OPTION (BUILD_CMAJ      "Whether to build the command line tool" ON)
 OPTION (BUILD_CMAJ_LIB  "Whether to build the Cmajor shared library" ON)
 OPTION (BUILD_PLUGIN    "Whether to build the plugin" OFF)
 OPTION (BUILD_EXAMPLES  "Whether to build the examples" ON)
