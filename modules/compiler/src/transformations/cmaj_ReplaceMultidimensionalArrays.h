@@ -111,7 +111,7 @@ static inline void replaceMultidimensionalArrays (AST::Program& program)
 
                             auto& end = AST::foldToConstantIfPossible (AST::createAdd (context, flattenedOffset, *size));
 
-                            auto& slice = g.context.allocate<AST::GetArraySlice>();
+                            auto& slice = g.context.allocate<AST::GetArrayOrVectorSlice>();
                             slice.parent.referTo (g.parent.getObjectRef());
                             slice.start.setChildObject (flattenedOffset);
                             slice.end.setChildObject (end);

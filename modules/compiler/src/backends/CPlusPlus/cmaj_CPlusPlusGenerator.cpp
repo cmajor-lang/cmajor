@@ -1599,6 +1599,15 @@ struct EndpointInfo
         return createReaderNoParensNeeded (typeName + " { " + sourceExpression + " }");
     }
 
+    ValueReader createSliceOfSlice (const AST::TypeBase& elementType, ValueReader sourceSlice, ValueReader start, ValueReader end)
+    {
+        (void) elementType;
+
+        return createReaderNoParensNeeded (sourceSlice.getWithoutParens() + ".slice ("
+                                           + start.getWithoutParens() + ", "
+                                           + end.getWithoutParens() + ")");
+    }
+
     ValueReader createSliceFromArray (const AST::TypeBase& elementType, ValueReader sourceArray,
                                       uint32_t offset, uint32_t numElements)
     {
@@ -2010,9 +2019,13 @@ struct Slice
     ElementType operator[] (IndexType index) const noexcept             { return numElements == 0 ? ElementType() : elements[index]; }
     ElementType& operator[] (IndexType index) noexcept                  { return numElements == 0 ? emptyValue : elements[index]; }
 
-    Slice slice (IndexType start, IndexType end) noexcept               { if (numElements == 0) return {}; return { elements + start, end }; }
-    Slice sliceFrom (IndexType start) noexcept                          { if (numElements == 0) return {}; return { elements + start, numElements - start }; }
-    Slice sliceUpTo (IndexType end) noexcept                            { if (numElements == 0) return {}; return { elements, end }; }
+    Slice slice (IndexType start, IndexType end) noexcept               
+    {
+        if (numElements == 0) return {};
+        if (start >= numElements) return {};
+
+        return { elements + start, std::min (static_cast<SizeType> (end - start), numElements - start) };
+    }
 
     ElementType* elements = nullptr;
     SizeType numElements = 0;

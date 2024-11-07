@@ -123,6 +123,8 @@ struct Strings
                        out                           { stringPool.get ("out") },
                        value                         { stringPool.get ("value") },
                        index                         { stringPool.get ("index") },
+                       start                         { stringPool.get ("start") },
+                       end                           { stringPool.get ("end") },
                        array                         { stringPool.get ("array") },
                        run                           { stringPool.get ("run") },
                        increment                     { stringPool.get ("increment") },

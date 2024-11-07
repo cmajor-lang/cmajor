@@ -355,7 +355,7 @@ private:
 
     void emitAssignment (const AST::Object& target, const AST::Property& newValue)
     {
-        if (auto s = target.getAsGetArraySlice())
+        if (auto s = target.getAsGetArrayOrVectorSlice())
             return emitWriteToSlice (*s, AST::castToValueRef (newValue));
 
         auto targetType = target.getAsValueBase()->getResultType();
@@ -372,7 +372,7 @@ private:
         if (auto v = target.getAsVariableDeclaration())  return emitWriteToVariable (*v, std::move (newValue));
         if (auto v = target.getAsNamedReference())       return emitAssignment (v->target, std::move (newValue), canSourceBeReadMultipleTimes);
         if (auto e = target.getAsGetElement())           return emitWriteToElement (*e, std::move (newValue));
-        if (auto s = target.getAsGetArraySlice())        return emitWriteToSlice (*s, std::move (newValue), false, canSourceBeReadMultipleTimes);
+        if (auto s = target.getAsGetArrayOrVectorSlice())        return emitWriteToSlice (*s, std::move (newValue), false, canSourceBeReadMultipleTimes);
         if (auto m = target.getAsGetStructMember())      return emitWriteToStructMember (*m, std::move (newValue));
     }
 
@@ -439,7 +439,7 @@ private:
         return v.isCompileTimeConstant() || v.isVariableReference();
     }
 
-    void emitWriteToSlice (const AST::GetArraySlice& slice, ValueReader newValue,
+    void emitWriteToSlice (const AST::GetArrayOrVectorSlice& slice, ValueReader newValue,
                            bool valueIsElement, bool canSourceBeReadMultipleTimes)
     {
         auto parentSize = slice.getParentSize();
@@ -467,7 +467,7 @@ private:
         });
     }
 
-    void emitWriteToSlice (const AST::GetArraySlice& slice, const AST::ValueBase& newValue)
+    void emitWriteToSlice (const AST::GetArrayOrVectorSlice& slice, const AST::ValueBase& newValue)
     {
         if (auto v = newValue.getAsConstantAggregate())
         {
@@ -696,7 +696,7 @@ private:
         if (auto v = value.getAsVariableDeclaration())  return builder.createVariableReader (*v);
         if (auto v = value.getAsNamedReference())       return createValueReader (v->target);
         if (auto e = value.getAsGetElement())           return createElementReader (*e);
-        if (auto s = value.getAsGetArraySlice())        return createSliceReader (*s);
+        if (auto s = value.getAsGetArrayOrVectorSlice())        return createSliceReader (*s);
         if (auto m = value.getAsGetStructMember())      return createStructMemberReader (*m);
         if (auto m = value.getAsValueMetaFunction())    return createValueMetaFunction (*m);
         if (auto p = value.getAsPreOrPostIncOrDec())    return createPreOrPostIncOrDec (AST::castToValueRef (p->target), p->isIncrement, p->isPost);
@@ -753,7 +753,7 @@ private:
         }
         else
         {
-            CMAJ_ASSERT (isConst || value.getAsGetArraySlice() != nullptr);
+            CMAJ_ASSERT (isConst || value.getAsGetArrayOrVectorSlice() != nullptr);
         }
 
         auto& v = AST::castToValueRef (value);
@@ -1171,7 +1171,7 @@ private:
 
     ValueReader createSliceFromValue (const AST::TypeBase& elementType, const AST::ArrayType& sourceType, const AST::ValueBase& value)
     {
-        if (auto slice = value.getAsGetArraySlice())
+        if (auto slice = value.getAsGetArrayOrVectorSlice())
         {
             auto& parentArray = AST::castToValueRef (slice->parent);
             auto& parentArrayType = *parentArray.getResultType();
@@ -1362,9 +1362,23 @@ private:
                                                     m.member.get(), structType.indexOfMember (m.member.get()));
     }
 
-    ValueReader createSliceReader (const AST::GetArraySlice& slice)
+    ValueReader createSliceReader (const AST::GetArrayOrVectorSlice& slice)
     {
         auto parentSize = slice.getParentSize();
+
+        if (! parentSize.has_value())
+        {
+            auto& parentArray = AST::castToValueRef (slice.parent);
+            auto& parentArrayType = *parentArray.getResultType();
+            auto elementType = parentArrayType.getArrayOrVectorElementType();
+
+            // Slice of Slice
+            return builder.createSliceOfSlice (*elementType,
+                                               createValueReader (parentArray),
+                                               createValueReader (slice.start),
+                                               createValueReader (slice.end));
+        }
+
         CMAJ_ASSERT (parentSize.has_value());
         auto sliceSize = slice.getSliceSize();
         CMAJ_ASSERT (sliceSize.has_value());

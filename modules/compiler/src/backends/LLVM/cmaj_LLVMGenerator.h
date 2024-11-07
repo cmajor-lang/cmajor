@@ -1849,6 +1849,32 @@ struct LLVMCodeGenerator
         return makeReader (fatPointer, AST::createSliceOfType (elementType.context, elementType));
     }
 
+    ValueReader createSliceOfSlice (const AST::TypeBase& elementType, ValueReader sourceSlice, ValueReader start, ValueReader end)
+    {
+        auto sourcePtr = getPointer (sourceSlice);
+
+        auto fatPointerType = getFatPointerType (elementType);
+        auto fatPointer = functionEntryBlockBuilder->CreateAlloca (fatPointerType);
+
+        auto& b = getBlockBuilder();
+
+        auto dataField = b.CreateConstInBoundsGEP2_32 (fatPointerType, sourcePtr, 0, 0);
+        auto startIndex = b.CreateLoad (getInt32Type(), getPointer (start));
+
+        auto sliceLength = createBinaryOp (AST::BinaryOpTypeEnum::Enum::subtract,
+                                           AST::TypeRules::getBinaryOperatorTypes (AST::BinaryOpTypeEnum::Enum::subtract, allocator.int32Type, allocator.int32Type),
+                                           end,
+                                           start);
+
+        auto ptr = b.CreateLoad (getLLVMType (elementType)->getPointerTo(), dataField);
+        auto sliceDataField = b.CreateInBoundsGEP (getLLVMType (elementType), ptr, { startIndex });
+
+        b.CreateStore (sliceDataField,    b.CreateConstInBoundsGEP2_32 (fatPointerType, fatPointer, 0, 0));
+        b.CreateStore (sliceLength.value, b.CreateConstInBoundsGEP2_32 (fatPointerType, fatPointer, 0, 1));
+
+        return makeReader (fatPointer, AST::createSliceOfType (elementType.context, elementType));
+    }
+
     ValueReader createGetSliceSize (ValueReader slice)
     {
         auto& b = getBlockBuilder();

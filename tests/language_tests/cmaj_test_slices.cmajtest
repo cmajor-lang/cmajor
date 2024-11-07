@@ -1,0 +1,87 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     (C)2024 Cmajor Software Ltd
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     https://cmajor.dev
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88
+//                                           ,88
+//                                        888P"
+//
+//  This code may be used under either a GPLv3 or commercial
+//  license: see LICENSE.md for more details.
+
+
+## testFunction()
+
+bool sliceOfSlice()
+{
+    int[10] f = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+
+    return getElement2 (f[2:7], 2) == 6 &&
+           getElement3 (f[2:7], 2) == 4;
+}
+
+int getElement3 (int[] i, int n)
+{
+    return getElement (i[2:4], n);
+}
+
+int getElement2 (int[] i, int n)
+{
+    return getElement (i[2:], n);
+}
+
+int getElement (int[] i, int n)
+{
+    return i[n];
+}
+
+
+## testConsole ("3:2,3,4,2    2:3,4,3,4    2:2,3,2,3")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void printElement (int[] i)
+    {
+        console <- i.size <- ":" <- i[0] <- "," <- i[1] <- "," <- i[2] <- "," <- i[3];
+    }
+
+    void printElement2 (int[] i)
+    {
+        printElement (i[1:]);
+    }
+
+    void printElement3 (int[] i)
+    {
+        printElement (i[:2]);
+    }
+
+    int[10] f = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+
+    void main()
+    {
+        printElement (f[2:5]);
+        console <- "    ";
+        printElement2 (f[2:5]);
+        console <- "    ";
+        printElement3 (f[2:5]);
+
+        advance();
+    }
+}
+
+
+## testFunction()
+
+const int[10] data = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+int[] getSlice()         { return data; }
+int[] getSliceOfSlice()  { return getSlice()[2:]; }
+
+bool testSliceOfSlice()
+{
+    var s = getSliceOfSlice();
+    return s[2] == 5 && s[3] == 6;
+}

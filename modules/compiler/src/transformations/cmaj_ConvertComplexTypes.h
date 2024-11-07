@@ -353,7 +353,7 @@ inline void convertComplexTypes (AST::Program& program)
             }
         }
 
-        void visit (AST::GetArraySlice& s) override
+        void visit (AST::GetArrayOrVectorSlice& s) override
         {
             super::visit (s);
 
@@ -422,7 +422,7 @@ inline void convertComplexTypes (AST::Program& program)
 
                         size_t indexOffset = 0;
 
-                        if (auto arraySlice = AST::castTo<AST::GetArraySlice> (firstArg))
+                        if (auto arraySlice = AST::castTo<AST::GetArrayOrVectorSlice> (firstArg))
                         {
                             if (auto startPos = AST::castTo<AST::ConstantValueBase> (arraySlice->start))
                             {

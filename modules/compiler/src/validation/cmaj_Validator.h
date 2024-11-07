@@ -64,7 +64,7 @@ namespace cmaj::validation
                 visitedMainProcessor = true;
         }
 
-        void visit (AST::GetArraySlice& s) override
+        void visit (AST::GetArrayOrVectorSlice& s) override
         {
             super::visit (s);
 
@@ -73,12 +73,6 @@ namespace cmaj::validation
 
             if (auto graphNode = AST::castToSkippingReferences<AST::GraphNode> (s.parent))
                 throwError (graphNode, Errors::unimplementedFeature ("Slices of graph nodes"));
-
-            auto& object     = getAsValueOrThrowError (s.parent);
-            auto& objectType = getResultTypeOfValueOrThrowError (object).skipConstAndRefModifiers();
-
-            if (objectType.isSlice())
-                throwError (s, Errors::unimplementedFeature ("Slices of slices"));
 
             if (auto startValue = AST::castToValue (s.start))
                 if (! startValue->isCompileTimeConstant())
@@ -796,7 +790,7 @@ namespace cmaj::validation
             }
         }
 
-        void visit (AST::GetArraySlice& s) override
+        void visit (AST::GetArrayOrVectorSlice& s) override
         {
             super::visit (s);
 
@@ -831,9 +825,6 @@ namespace cmaj::validation
 
                 end = endConst->getAsInt64();
             }
-
-            if (objectType.isSlice())
-                throwError (s, Errors::unimplementedFeature ("Slices of slices"));
 
             auto& elementType = *objectType.getArrayOrVectorElementType();
 

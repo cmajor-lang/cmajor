@@ -100,7 +100,7 @@ using ref = choc::ObjectReference<Type>;
   X(ForwardBranch) \
   X(Function) \
   X(FunctionCall) \
-  X(GetArraySlice) \
+  X(GetArrayOrVectorSlice) \
   X(GetElement) \
   X(GetStructMember) \
   X(Graph) \

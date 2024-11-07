@@ -29,7 +29,7 @@ struct StrengthReduction  : public PassAvoidingGenericFunctionsAndModules
 
     CMAJ_DO_NOT_VISIT_CONSTANTS
 
-    void visit (AST::GetArraySlice& o) override
+    void visit (AST::GetArrayOrVectorSlice& o) override
     {
         super::visit (o);
 

@@ -1139,7 +1139,7 @@ private:
             return addSource (value);
         }
 
-        if (auto gs = value.getAsGetArraySlice())
+        if (auto gs = value.getAsGetArrayOrVectorSlice())
             return addSources (AST::castToValueRef (gs->parent));
 
         if (auto gm = value.getAsGetStructMember())

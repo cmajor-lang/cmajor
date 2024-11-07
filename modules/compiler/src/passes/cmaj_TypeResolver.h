@@ -48,7 +48,7 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
 
                         if (term.isRange)
                         {
-                            auto& getSlice = replaceWithNewObject<AST::GetArraySlice> (b);
+                            auto& getSlice = replaceWithNewObject<AST::GetArrayOrVectorSlice> (b);
                             getSlice.parent.referTo (*v);
 
                             if (term.startIndex != nullptr)  getSlice.start.referTo (term.startIndex);
@@ -129,7 +129,7 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
 
         if (term.isRange)
         {
-            auto& getSlice = replaceWithNewObject<AST::GetArraySlice> (b);
+            auto& getSlice = replaceWithNewObject<AST::GetArrayOrVectorSlice> (b);
             getSlice.parent.referTo (parent);
 
             if (term.startIndex != nullptr)  getSlice.start.referTo (term.startIndex);

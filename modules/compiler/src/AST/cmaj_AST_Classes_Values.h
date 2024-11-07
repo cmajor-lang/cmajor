@@ -1370,11 +1370,11 @@ struct GetElement  : public ValueBase
 };
 
 //==============================================================================
-struct GetArraySlice  : public ValueBase
+struct GetArrayOrVectorSlice  : public ValueBase
 {
-    GetArraySlice (const ObjectContext& c) : ValueBase (c) {}
+    GetArrayOrVectorSlice (const ObjectContext& c) : ValueBase (c) {}
 
-    CMAJ_AST_DECLARE_STANDARD_METHODS(GetArraySlice, 34)
+    CMAJ_AST_DECLARE_STANDARD_METHODS(GetArrayOrVectorSlice, 34)
 
     ptr<VariableDeclaration> getSourceVariable() const override
     {
@@ -1403,6 +1403,11 @@ struct GetArraySlice  : public ValueBase
                         result.numElements.setChildObject (context.allocator.createConstantInt32 (static_cast<int32_t> (*resultSize)));
                         return result;
                     }
+                }
+                else
+                {
+                    if (auto arrayType = parentType->getAsArrayType())
+                        return createSliceOfType (context, arrayType->getInnermostElementTypeRef());
                 }
             }
         }

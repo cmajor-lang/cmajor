@@ -1082,7 +1082,7 @@ private:
                      .addPunctuation ("]");
         }
 
-        if (auto slice = e.getAsGetArraySlice())
+        if (auto slice = e.getAsGetArrayOrVectorSlice())
             return formatExpression (slice->parent).addParensIfNeeded()
                      .add (formatRangePair (slice->start, slice->end));
 

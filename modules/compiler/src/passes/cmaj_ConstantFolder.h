@@ -110,7 +110,7 @@ struct ConstantFolder  : public PassAvoidingGenericFunctionsAndModules
     void visit (AST::BinaryOperator& o) override     { super::visit (o); fold (o); }
     void visit (AST::TernaryOperator& o) override    { super::visit (o); fold (o); }
     void visit (AST::GetElement& o) override         { super::visit (o); fold (o.indexes); fold (o); }
-    void visit (AST::GetArraySlice& o) override      { super::visit (o); fold (o.start); fold (o.end); fold (o); }
+    void visit (AST::GetArrayOrVectorSlice& o) override      { super::visit (o); fold (o.start); fold (o.end); fold (o); }
     void visit (AST::GetStructMember& o) override    { super::visit (o); fold (o); }
     void visit (AST::FunctionCall& o) override       { super::visit (o); fold (o); }
     void visit (AST::VectorType& o) override         { super::visit (o); fold (o.numElements); }

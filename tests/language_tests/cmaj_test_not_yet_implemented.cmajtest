@@ -98,38 +98,6 @@ void f (int i)
     let b = array[i:];
 }
 
-## expectError ("4:46: error: Language feature not yet implemented: Slices of slices!")
-
-const int[10] data = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-int[] getSlice()         { return data; }
-int[] getSliceOfSlice()  { return getSlice()[2:]; }
-
-bool testSliceOfSlice()
-{
-    var s = getSliceOfSlice();
-    s[3] = 10;
-    return s[2] == 5 && s[3] == 10;
-}
-
-## expectError ("16:21: error: Language feature not yet implemented: Slices of slices!")
-
-processor test [[ main ]]
-{
-    output event int results;
-    external float[] data [[ squarewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
-
-    void main()
-    {
-        results <- (test() ? 1 : 0);
-        advance();
-        loop { results <- -1; advance(); }
-    }
-
-    bool test()
-    {
-        return data[1:3] == float[3] (1.0f, 1.0f, 1.0f);
-    }
-}
 
 ## expectError ("2:22: error: Language feature not yet implemented: Writing to the console from a free function!")
 

@@ -57,6 +57,7 @@
 #include "cmaj_AddFallbackIntrinsics.h"
 #include "cmaj_ReplaceMultidimensionalArrays.h"
 #include "cmaj_ConvertLargeConstants.h"
+#include "cmaj_TransformSlices.h"
 
 namespace cmaj::transformations
 {
@@ -142,6 +143,7 @@ void prepareForCodeGen (AST::Program& program,
     convertComplexTypes (program);
     addFallbackIntrinsics (program, engineSupportsIntrinsic);
     canonicaliseLoopsAndBlocks (program);
+    transformSlices (program);
     replaceWrapTypesAndLoopCounters (program);
     replaceMultidimensionalArrays (program);
     convertUnwrittenVariablesToConst (program);
