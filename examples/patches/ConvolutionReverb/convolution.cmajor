@@ -16,8 +16,99 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
+/// This namespace contains handy implementations of both time domain and frequency domain convolutions
 namespace Convolution
 {
+    /// This is an implementation of a convolution reverb with zero latency.
+    /// The impulse response is chopped into three parts, an initial part which is calculated using
+    /// a time domain algorithm (and hence introduces no latency), a short FFT based algorithm, which
+    /// fills in from the end of the time domain convolution, and a long FFT based algorithm that
+    /// applies the majority of the convolution.
+    ///
+    /// By using three separate algorithms, and by dividing the impulse between them, we can trade off
+    /// computational cost against latency, and the result is no introduced latency with good overall
+    /// convolution performance. Modifying the FFT sizes will alter the performance characteristics
+    graph ZeroLatencyProcessor (int shortBlockSize, int longBlockSize, int maxImpulseFrames)
+    {
+        input stream float in;
+        output stream float out;
+        input event float[] impulseData;
+
+        event impulseData (float[] impulse)
+        {
+            convolution1.impulseData     <- impulse[:shortBlockSize/2];
+            convolutionShort.impulseData <- impulse[shortBlockSize/2:longBlockSize/2];
+            convolutionLong.impulseData  <- impulse[longBlockSize/2:];
+        }
+
+        node convolution1      = TimeDomainProcessor (shortBlockSize/2);
+        node convolutionShort  = BlockProcessor (shortBlockSize, (longBlockSize - shortBlockSize));
+        node convolutionLong   = BlockProcessor (longBlockSize, maxImpulseFrames);
+
+        connection
+        {
+            in -> convolution1.in, convolutionShort.in, convolutionLong.in;
+
+            convolution1.out -> out;
+            convolutionShort.out -> out;
+            convolutionLong.out -> out;
+        }
+    }
+
+    /// This convolution algorithm uses a frequency domain implementation, with the blockSize altering
+    /// the overall runtime and latency of the algorithm. Latecy is blockSize/2 frames. Larger block sizes
+    /// will offer lower CPU use
+    graph BlockProcessor (int blockSize, int maxImpulseFrames)
+    {
+        input stream float in;
+        output stream float out;
+
+        input conv.impulseData;
+
+        node fft  = FFT (blockSize);
+        node conv = Convolve (blockSize, maxImpulseFrames);
+        node ifft = iFFT (blockSize);
+
+        connection
+        {
+            in -> fft -> conv.in;
+            conv.out -> ifft -> out;
+        }
+    }
+
+    /// A simple time domain convolution algorithm. This will be costly to execute for longer impulses
+    processor TimeDomainProcessor (int maxImpulseFrames)
+    {
+        input stream float in;
+        output stream float out;
+        input event float[] impulseData;
+
+        event impulseData (float[] v)
+        {
+            impulse = 0.0f;
+
+            for (wrap<maxImpulseFrames> i)
+                if (i < v.size)
+                    impulse[i] = v[i];
+        }
+
+        float<maxImpulseFrames> impulse;
+
+        void main()
+        {
+            float<maxImpulseFrames> x;
+
+            loop
+            {
+                x[1:] = x[0:maxImpulseFrames-1];
+                x[0] = in;
+
+                out <- sum (x * impulse);
+                advance();
+            }
+        }
+    }
+
     processor FFT (int blockSize)
     {
         input stream float in;

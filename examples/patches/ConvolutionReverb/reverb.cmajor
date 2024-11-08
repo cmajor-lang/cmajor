@@ -16,43 +16,39 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
-/// This is an implementation of a simple frequency domain convolution algorithm. The FFT runs at
-/// a fixed size, and no attempt is made to avoid latency, so this algorithm runs with half the
-/// FFT size as a fixed latency.
-///
-/// Increasing the fftSize will increase the latency, but reduce the computational cost
-graph Convolver [[ main ]]
+
+/// This is a simple algorithm presenting the use of the convolution namespace to implement
+/// a convolution reverb. The impulse response is fixed, this is just a demonstrator
+graph ConvolutionReverb [[ main ]]
 {
-    input event float32 dryLevel [[ name: "Dry Level", min: -96, max: 6, init: 0, unit: "db" ]];
-    input event float32 wetLevel [[ name: "Wet Level", min: -96, max: 6, init: -24, unit: "db" ]];
+    input event float32 dryLevel [[ name: "Dry Level", min: -48, max: 6, init: 0, unit: "db" ]];
+    input event float32 wetLevel [[ name: "Wet Level", min: -48, max: 6, init: -24, unit: "db" ]];
 
     input stream float in;
     output stream float out;
 
-    let fftSize = 256;
     let maxImpulseLength = 100000;
+    let shortFFTSize     = 32;
+    let longFFTSize      = 1024;
 
-    node fft = Convolution::FFT (fftSize);
-    node conv = Convolution::Convolve (fftSize, maxImpulseLength);
-    node ifft = Convolution::iFFT (fftSize);
     node dryGain = LevelSmoother;
     node wetGain = LevelSmoother;
 
+    node convolution = Convolution::ZeroLatencyProcessor (shortFFTSize, longFFTSize, maxImpulseLength);
+
     connection
     {
+        ImpulseSource.impulseData -> convolution.impulseData;
         dryLevel -> dryGain;
         wetLevel -> wetGain;
 
-        ImpulseSource -> conv.impulseData;
-
-        in -> fft -> conv.in;
-        conv.out -> ifft;
-
+        in -> convolution.in;
         in * dryGain.out -> out;
-        ifft.out * wetGain.out -> out;
+        convolution.out * wetGain.out -> out;
     }
 }
 
+/// Processor used to pass the initial impulse data to the convolution algorithm
 processor ImpulseSource
 {
     output event float[] impulseData;
@@ -62,11 +58,12 @@ processor ImpulseSource
     void main()
     {
         impulseData <- reverb;
-
         advance();
     }
 }
 
+
+/// Smoother for gain parameters
 processor LevelSmoother
 {
     input event float db;
