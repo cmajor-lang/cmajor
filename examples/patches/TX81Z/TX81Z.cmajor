@@ -1,0 +1,696 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+//==============================================================================
+// An implementation of the TX81Z 4 operator synthesiser
+//==============================================================================
+
+graph Instrument  [[ main ]]
+{
+    input event float volumeIn              [[ name: "Volume", min:-48, max: 0, step: 1, init: -6 ]];
+    input event float pitchOffsetIn         [[ name: "Pitch Offset", min: -24, max: 24, step: 1, init: -12 ]];
+    input event int algorithmIn             [[ name: "Algorithm", min: 1, max: 8, step: 1, init: 2 ]];
+
+    input event int osc1WaveshapeIn         [[ name: "Osc 1 Waveshape", min: 1, max: 8, step: 1, init: 1 ]];
+    input event int osc2WaveshapeIn         [[ name: "Osc 2 Waveshape", min: 1, max: 8, step: 1, init: 1 ]];
+    input event int osc3WaveshapeIn         [[ name: "Osc 3 Waveshape", min: 1, max: 8, step: 1, init: 5 ]];
+    input event int osc4WaveshapeIn         [[ name: "Osc 4 Waveshape", min: 1, max: 8, step: 1, init: 1 ]];
+
+    input event float osc1LevelIn           [[ name: "Osc 1 Level", min: 0, max: 99, step: 1, init: 99 ]];
+    input event float osc2LevelIn           [[ name: "Osc 2 Level", min: 0, max: 99, step: 1, init: 74 ]];
+    input event float osc3LevelIn           [[ name: "Osc 3 Level", min: 0, max: 99, step: 1, init: 71 ]];
+    input event float osc4LevelIn           [[ name: "Osc 4 Level", min: 0, max: 99, step: 1, init: 79 ]];
+
+    input event float osc1FixedIn           [[ name: "Osc 1 Fixed Freq", min: 0, max: 1000, init: 0 ]];
+    input event float osc2FixedIn           [[ name: "Osc 2 Fixed Freq", min: 0, max: 1000, init: 0 ]];
+    input event float osc3FixedIn           [[ name: "Osc 3 Fixed Freq", min: 0, max: 1000, init: 0 ]];
+    input event float osc4FixedIn           [[ name: "Osc 4 Fixed Freq", min: 0, max: 1000, init: 0 ]];
+
+    input event float osc1FreqMultiplierIn  [[ name: "Osc 1 Freq Multiplier", min: 0, max: 16, init: 0.5 ]];
+    input event float osc2FreqMultiplierIn  [[ name: "Osc 2 Freq Multiplier", min: 0, max: 16, init: 0.5 ]];
+    input event float osc3FreqMultiplierIn  [[ name: "Osc 3 Freq Multiplier", min: 0, max: 16, init: 1.0 ]];
+    input event float osc4FreqMultiplierIn  [[ name: "Osc 4 Freq Multiplier", min: 0, max: 16, init: 1.0 ]];
+
+    input event int osc1FeedbackIn          [[ name: "Osc 1 Feedback", min: 0, max: 7, step: 1, init: 0 ]];
+    input event int osc2FeedbackIn          [[ name: "Osc 2 Feedback", min: 0, max: 7, step: 1, init: 0 ]];
+    input event int osc3FeedbackIn          [[ name: "Osc 3 Feedback", min: 0, max: 7, step: 1, init: 0 ]];
+    input event int osc4FeedbackIn          [[ name: "Osc 4 Feedback", min: 0, max: 7, step: 1, init: 7 ]];
+
+    input event int osc1AttackRateIn        [[ name: "Osc 1 Attack Rate", min:0, max: 31, step: 1, init: 31 ]];
+    input event int osc2AttackRateIn        [[ name: "Osc 2 Attack Rate", min:0, max: 31, step: 1, init: 31 ]];
+    input event int osc3AttackRateIn        [[ name: "Osc 3 Attack Rate", min:0, max: 31, step: 1, init: 31 ]];
+    input event int osc4AttackRateIn        [[ name: "Osc 4 Attack Rate", min:0, max: 31, step: 1, init: 31 ]];
+
+    input event int osc1DecayRate1In        [[ name: "Osc 1 Decay Rate 1", min:0, max: 31, step: 1, init: 9 ]];
+    input event int osc2DecayRate1In        [[ name: "Osc 2 Decay Rate 1", min:0, max: 31, step: 1, init: 9 ]];
+    input event int osc3DecayRate1In        [[ name: "Osc 3 Decay Rate 1", min:0, max: 31, step: 1, init: 17 ]];
+    input event int osc4DecayRate1In        [[ name: "Osc 4 Decay Rate 1", min:0, max: 31, step: 1, init: 16 ]];
+
+    input event int osc1DecayLevelIn        [[ name: "Osc 1 Decay Level", min:0, max: 15, step: 1, init: 0 ]];
+    input event int osc2DecayLevelIn        [[ name: "Osc 2 Decay Level", min:0, max: 15, step: 1, init: 0 ]];
+    input event int osc3DecayLevelIn        [[ name: "Osc 3 Decay Level", min:0, max: 15, step: 1, init: 0 ]];
+    input event int osc4DecayLevelIn        [[ name: "Osc 4 Decay Level", min:0, max: 15, step: 1, init: 3 ]];
+
+    input event int osc1DecayRate2In        [[ name: "Osc 1 Decay Rate 2", min:0, max: 31, step: 1, init: 0 ]];
+    input event int osc2DecayRate2In        [[ name: "Osc 2 Decay Rate 2", min:0, max: 31, step: 1, init: 0 ]];
+    input event int osc3DecayRate2In        [[ name: "Osc 3 Decay Rate 2", min:0, max: 31, step: 1, init: 0 ]];
+    input event int osc4DecayRate2In        [[ name: "Osc 4 Decay Rate 2", min:0, max: 31, step: 1, init: 7 ]];
+
+    input event int osc1ReleaseRateIn       [[ name: "Osc 1 Release Rate", min:1, max: 15, step: 1, init: 8 ]];
+    input event int osc2ReleaseRateIn       [[ name: "Osc 2 Release Rate", min:1, max: 15, step: 1, init: 8 ]];
+    input event int osc3ReleaseRateIn       [[ name: "Osc 3 Release Rate", min:1, max: 15, step: 1, init: 8 ]];
+    input event int osc4ReleaseRateIn       [[ name: "Osc 4 Release Rate", min:1, max: 15, step: 1, init: 8 ]];
+
+    input event int osc1KVSIn               [[ name: "Osc 1 KVS", min:0, max: 7, step: 1, init: 0 ]];
+    input event int osc2KVSIn               [[ name: "Osc 2 KVS", min:0, max: 7, step: 1, init: 1 ]];
+    input event int osc3KVSIn               [[ name: "Osc 3 KVS", min:0, max: 7, step: 1, init: 1 ]];
+    input event int osc4KVSIn               [[ name: "Osc 4 KVS", min:0, max: 7, step: 1, init: 3 ]];
+
+    input event int osc1RateScalingIn       [[ name: "Osc 1 Rate Scaling", min:0, max: 3, step: 1, init: 1 ]];
+    input event int osc2RateScalingIn       [[ name: "Osc 2 Rate Scaling", min:0, max: 3, step: 1, init: 1 ]];
+    input event int osc3RateScalingIn       [[ name: "Osc 3 Rate Scaling", min:0, max: 3, step: 1, init: 1 ]];
+    input event int osc4RateScalingIn       [[ name: "Osc 4 Rate Scaling", min:0, max: 3, step: 1, init: 0 ]];
+
+    input event std::midi::Message midiIn   [[ name: "MIDI input" ]];
+
+    output stream float out;
+
+    let voiceCount = 8;
+
+    node
+    {
+        voices         = Voice[voiceCount];
+        filter         = TX81Z::OutputFilter;
+        voiceAllocator = std::voices::VoiceAllocator (voiceCount);
+    }
+
+    connection
+    {
+        volumeIn -> filter.volumeIn;
+        pitchOffsetIn -> voices.pitchOffsetIn;
+        algorithmIn -> voices.algorithmIn;
+
+        osc1WaveshapeIn -> voices.waveshapeIn[0];
+        osc2WaveshapeIn -> voices.waveshapeIn[1];
+        osc3WaveshapeIn -> voices.waveshapeIn[2];
+        osc4WaveshapeIn -> voices.waveshapeIn[3];
+
+        osc1LevelIn -> voices.levelIn[0];
+        osc2LevelIn -> voices.levelIn[1];
+        osc3LevelIn -> voices.levelIn[2];
+        osc4LevelIn -> voices.levelIn[3];
+
+        osc1FixedIn -> voices.fixedIn[0];
+        osc2FixedIn -> voices.fixedIn[1];
+        osc3FixedIn -> voices.fixedIn[2];
+        osc4FixedIn -> voices.fixedIn[3];
+
+        osc1FreqMultiplierIn -> voices.freqMultiplierIn[0];
+        osc2FreqMultiplierIn -> voices.freqMultiplierIn[1];
+        osc3FreqMultiplierIn -> voices.freqMultiplierIn[2];
+        osc4FreqMultiplierIn -> voices.freqMultiplierIn[3];
+
+        osc1FeedbackIn -> voices.feedbackIn[0];
+        osc2FeedbackIn -> voices.feedbackIn[1];
+        osc3FeedbackIn -> voices.feedbackIn[2];
+        osc4FeedbackIn -> voices.feedbackIn[3];
+
+        osc1AttackRateIn -> voices.attackRateIn[0];
+        osc2AttackRateIn -> voices.attackRateIn[1];
+        osc3AttackRateIn -> voices.attackRateIn[2];
+        osc4AttackRateIn -> voices.attackRateIn[3];
+
+        osc1DecayRate1In -> voices.decayRate1In[0];
+        osc2DecayRate1In -> voices.decayRate1In[1];
+        osc3DecayRate1In -> voices.decayRate1In[2];
+        osc4DecayRate1In -> voices.decayRate1In[3];
+
+        osc1DecayLevelIn -> voices.decayLevelIn[0];
+        osc2DecayLevelIn -> voices.decayLevelIn[1];
+        osc3DecayLevelIn -> voices.decayLevelIn[2];
+        osc4DecayLevelIn -> voices.decayLevelIn[3];
+
+        osc1DecayRate2In -> voices.decayRate2In[0];
+        osc2DecayRate2In -> voices.decayRate2In[1];
+        osc3DecayRate2In -> voices.decayRate2In[2];
+        osc4DecayRate2In -> voices.decayRate2In[3];
+
+        osc1ReleaseRateIn -> voices.releaseRateIn[0];
+        osc2ReleaseRateIn -> voices.releaseRateIn[1];
+        osc3ReleaseRateIn -> voices.releaseRateIn[2];
+        osc4ReleaseRateIn -> voices.releaseRateIn[3];
+
+        osc1KVSIn -> voices.keyVelocitySensitivityIn[0];
+        osc2KVSIn -> voices.keyVelocitySensitivityIn[1];
+        osc3KVSIn -> voices.keyVelocitySensitivityIn[2];
+        osc4KVSIn -> voices.keyVelocitySensitivityIn[3];
+
+        osc1RateScalingIn -> voices.keyRateScalingIn[0];
+        osc2RateScalingIn -> voices.keyRateScalingIn[1];
+        osc3RateScalingIn -> voices.keyRateScalingIn[2];
+        osc4RateScalingIn -> voices.keyRateScalingIn[3];
+
+        midiIn -> std::midi::MPEConverter -> voiceAllocator -> voices.eventIn;
+        voices.out -> filter.in;
+        filter.out -> out;
+    }
+}
+
+//==============================================================================
+graph Voice
+{
+    input event float pitchOffsetIn;
+    input event int algorithmIn;
+
+    input stream float lfoIn;
+
+    input osc.waveshapeIn;
+    input osc.levelIn;
+    input osc.fixedIn;
+    input osc.freqMultiplierIn;
+    input osc.feedbackIn;
+    input amplitudeEnvelope.attackRateIn;
+    input amplitudeEnvelope.decayRate1In;
+    input amplitudeEnvelope.decayLevelIn;
+    input amplitudeEnvelope.decayRate2In;
+    input amplitudeEnvelope.releaseRateIn;
+    input amplitudeEnvelope.keyVelocitySensitivityIn;
+    input amplitudeEnvelope.keyRateScalingIn;
+
+    input event (std::notes::NoteOn,
+                 std::notes::NoteOff,
+                 std::notes::PitchBend) eventIn;
+
+    output stream float out;
+
+    node
+    {
+        osc                 = TX81Z::Oscillator[4];
+        amplitudeEnvelope   = TX81Z::Envelope[4];
+        algorithmMatrix     = TX81Z::AlgorithmMatrix;
+    }
+
+    connection
+    {
+        pitchOffsetIn       -> osc.pitchOffsetIn;
+        algorithmIn         -> algorithmMatrix.algorithmIn;
+
+        eventIn  -> osc.eventIn,
+                    amplitudeEnvelope.eventIn;
+
+        amplitudeEnvelope.out -> osc.amplitudeIn;
+        osc.out -> algorithmMatrix.osc;
+
+        // We introduce a single frame delay to break cyclic dependencies. This means
+        // that modulation is applied a frame late compared to the original instrument which
+        // will cause some difference in sound
+        algorithmMatrix.mod[0] -> [1] -> osc[0].modulatorIn;
+        algorithmMatrix.mod[1] -> [1] -> osc[1].modulatorIn;
+        algorithmMatrix.mod[2] -> [1] -> osc[2].modulatorIn;
+        algorithmMatrix.mod[3] -> [1] -> osc[3].modulatorIn;
+
+        algorithmMatrix.out -> out;
+    }
+}
+
+
+//==============================================================================
+/// Various helper functions to map instrument parameters to things we can use in our instrument
+namespace TX81Z
+{
+    // Tuning for how much operator modulation occurs
+    let operatorFactor = 4.0f;
+
+    const float[] feedbackValues = (0.0f, 0.008f, 0.015f, 0.024f, 0.07f, 0.12f, 0.19f, 0.26f);
+
+    const float<5>[] kvmFactors =
+    (
+        (0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
+        (-34.2f, 83.9f, -76.2f, 36.7f, -15.5f),
+        (-59.6f, 146.5f, -135.9f, 69.2f, -24.8f),
+        (-110.5f, 266.3f, -236.0f, 110.7f, -34.2f),
+        (-145.5f, 351.8f, -313.0f, 147.4f, -43.7f),
+        (-184.7f, 447.4f, -399.4f, 188.2f, -53.8f),
+        (-147.4f, 366.2f, -346.2f, 185.8f, -59.7f),
+        (-98.8f, 259.8f, -274.3f, 178.0f, -64.9f)
+    );
+
+    float feedbackAmount (int level)
+    {
+        return feedbackValues.at (level);
+    }
+
+    float keyVelocityMapping (int level, float velocity)
+    {
+        let velocity2 = velocity * velocity;
+
+        let factors = kvmFactors.at (level);
+
+        let db = factors[0] * (velocity2 * velocity2) +
+                 factors[1] * (velocity2 * velocity) +
+                 factors[2] * (velocity2) +
+                 factors[3] * (velocity) +
+                 factors[4];
+
+        return std::levels::dBtoGain (db);
+    }
+
+    float levelToGain (float level)
+    {
+        return std::levels::dBtoGain (0.74f * (level + 1.0f) - 73.26f);
+    }
+
+    float envelopeDecayLevel (int level)
+    {
+        return (level == 0) ? 0.0f
+                            : std::levels::dBtoGain (-3.0f * float(15 - level));
+    }
+
+    float enveloperAttackRate (float frequency, float rate, float adjustment)
+    {
+        let attackSeconds = pow (2.0f, (3.5f - ((rate + adjustment) * 0.5f)));
+
+        // Modelled as a linear attack
+        return clamp (1.0f / (frequency * attackSeconds), 0.0f, 1.0f);
+    }
+
+    // At setting 11, decay time is 1 sec for -24db of attenuation
+    // Reducing the rate by 2 doubles the decay time
+    float enveloperDecayRateFactor (float frequency, int rate, float adjustment)
+    {
+        if (rate == 0)
+            return 1.0;
+
+        let attenuationTime =  pow (2.0f, (5.5f - ((rate + adjustment) * 0.5f)));
+        let samplesPer24db = frequency * attenuationTime;
+
+        return 1.0f / exp (log(16.0f) / samplesPer24db);
+    }
+
+    // Release rate 1 = decay rate 3, with each change in release rate
+    // being two steps of decay rate
+    float envelopeReleaseRateFactor (float frequency, int rate, float adjustment)
+    {
+        return enveloperDecayRateFactor (frequency, 1 + (rate * 2), adjustment);
+    }
+
+    // Rate scaling affects the envelope rate based on the note being played
+    // Modelled as linear between a lower and upper note
+    float rateScalingFactor (int rateScaling, float note)
+    {
+        float[4] lowerAttenuationFactors = (-0.5f, -0.5f, 0.0f, 0.5f);
+        float[4] upperAttenuationFactors = (1.0f, 3.0f, 7.0f, 15.0f);
+
+        let lowerNote = 28.0f;
+        let upperNote = 110.0f;
+        let lowerAttenuation = lowerAttenuationFactors.at (rateScaling);
+        let upperAttenuation = upperAttenuationFactors.at (rateScaling);
+
+        if (note < lowerNote)
+            return lowerAttenuation;
+
+        if (note > upperNote)
+            return upperAttenuation;
+
+        let notePosition = ((note - lowerNote) / (upperNote - lowerNote));
+        return lowerAttenuation + (upperAttenuation - lowerAttenuation) * notePosition;
+    }
+
+    float sinOfPhase  (float phase)  { return sin (phase * float(twoPi)); }
+    float sinOf2Phase (float phase)  { return sin (phase * float(twoPi * 2)); }
+
+    // 8 waveshapes defined within the instrument, all variations on the sin function
+    float getWaveshape (int waveshape, float phase)
+    {
+        phase = fmod (phase, 1.0f);
+
+        if (waveshape == 1)         return sinOfPhase (phase);
+
+        if (waveshape == 2)
+        {
+            if (phase < 0.25f)      return sinOfPhase (phase - 0.25f) + 1.0f;
+            if (phase < 0.5f)       return sinOfPhase (phase + 0.25f) + 1.0f;
+            if (phase < 0.75f)      return sinOfPhase (phase - 0.25f) - 1.0f;
+                                    return sinOfPhase (phase + 0.25f) - 1.0f;
+        }
+
+        if (waveshape == 3)         return phase < 0.5 ? sinOfPhase (phase) : 0.0f;
+
+        if (waveshape == 4)
+        {
+            if (phase < 0.25f)      return sinOfPhase (phase - 0.25f) + 1.0f;
+            if (phase < 0.5f)       return sinOfPhase (phase + 0.25f) + 1.0f;
+                                    return 0.0f;
+        }
+
+        if (waveshape == 5)         return phase < 0.5 ? sinOfPhase (2.0f * phase) : 0.0f;
+
+        if (waveshape == 6)
+        {
+            if (phase < 0.125f)     return sinOf2Phase (phase - 0.125f) + 1.0f;
+            if (phase < 0.25f)      return sinOf2Phase (phase + 0.125f) + 1.0f;
+            if (phase < 0.375f)     return sinOf2Phase (phase - 0.125f) - 1.0f;
+            if (phase < 0.5f)       return sinOf2Phase (phase + 0.125f) - 1.0f;
+                                    return 0.0f;
+        }
+
+        if (waveshape == 7)
+        {
+            if (phase < 0.25f)      return  sinOf2Phase (phase);
+            if (phase < 0.5f)       return -sinOf2Phase (phase);
+                                    return 0.0f;
+        }
+
+        if (waveshape == 8)
+        {
+            if (phase < 0.125f)     return 1.0f + sinOf2Phase (phase - 0.125f);
+            if (phase < 0.25f)      return 1.0f + sinOf2Phase (phase + 0.125f);
+            if (phase < 0.375f)     return 1.0f - sinOf2Phase (phase - 0.125f);
+            if (phase < 0.5f)       return 1.0f - sinOf2Phase (phase + 0.125f);
+                                    return 0.0f;
+        }
+
+        return 0.0f;
+    }
+
+    //==============================================================================
+    processor Oscillator
+    {
+        input event (std::notes::NoteOn,
+                     std::notes::NoteOff,
+                     std::notes::PitchBend) eventIn;
+
+        input event float pitchOffsetIn;
+        input event int waveshapeIn;
+        input event float levelIn;
+        input event float fixedIn;
+        input event float freqMultiplierIn;
+        input event int feedbackIn;
+
+        input stream float amplitudeIn, modulatorIn;
+
+        output stream float out;
+
+        event eventIn (std::notes::NoteOn e)
+        {
+            notePitch = e.pitch + pitchOffset;
+            bendSemitones = 0.0f;
+            calculatePhaseIncrement();
+
+            if (! noteActive)
+                phase = 0.0f;
+
+            noteActive = true;
+        }
+
+        event eventIn (std::notes::NoteOff e)
+        {
+            noteActive = false;
+        }
+
+        event eventIn (std::notes::PitchBend e)
+        {
+            bendSemitones = e.bendSemitones;
+            calculatePhaseIncrement();
+        }
+
+        event pitchOffsetIn (float f)           { pitchOffset = f; }
+        event waveshapeIn (int i)               { waveshape = i; }
+        event levelIn (float f)                 { gain = levelToGain (f); }
+        event fixedIn (float f)                 { fixedPitch = f; calculatePhaseIncrement(); }
+        event freqMultiplierIn (float f)        { multiplier = f; calculatePhaseIncrement(); }
+        event feedbackIn (int i)                { feedback = feedbackAmount (i); }
+
+        float bendSemitones, notePitch, phase, phaseIncrement;
+        float pitchOffset, gain, fixedPitch, multiplier, feedback;
+        int waveshape;
+
+        void calculatePhaseIncrement()
+        {
+            let noteFrequency = fixedPitch + multiplier * std::notes::noteToFrequency (notePitch + bendSemitones);
+            phaseIncrement = noteFrequency / float (processor.frequency);
+        }
+
+        bool noteActive = false;
+
+        void main()
+        {
+            calculatePhaseIncrement();
+
+            var oscillatorValue = 0.0f;
+
+            loop
+            {
+                if (amplitudeIn > 0)
+                {
+                    phase = fmod (phase + phaseIncrement, 1.0f);
+                    oscillatorValue = amplitudeIn * getWaveshape (waveshape, phase + (operatorFactor * modulatorIn) + (oscillatorValue * feedback));
+                    out <- gain * oscillatorValue;
+                }
+
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    processor Envelope
+    {
+        input event int attackRateIn, decayRate1In, decayLevelIn, decayRate2In, releaseRateIn, keyVelocitySensitivityIn, keyRateScalingIn;
+
+        input event (std::notes::NoteOn,
+                     std::notes::NoteOff) eventIn;
+
+        output stream float out;
+
+        event attackRateIn (int i)              {  attackRate = float (i); calculateEnvelope(); }
+        event decayRate1In (int i)              {  decay1Rate = i; calculateEnvelope(); }
+        event decayLevelIn (int i)              {  decay1Level = i; calculateEnvelope(); }
+        event decayRate2In (int i)              {  decay2Rate = i; calculateEnvelope(); }
+        event releaseRateIn (int i)             {  releaseRate = i; calculateEnvelope(); }
+        event keyVelocitySensitivityIn (int i)  { keyVelocitySensitivity = i; }
+        event keyRateScalingIn (int i)          { keyRateScaling = i; }
+
+        bool active = false;
+        float keyScaling, attackFactor, decay1Target, decay1Factor, decay2Factor, releaseFactor, attackRate, rateScalingFactor;
+        int decay1Rate, decay1Level, decay2Rate, releaseRate, keyVelocitySensitivity, keyRateScaling;
+
+        void calculateEnvelope()
+        {
+            let frequency = float (processor.frequency);
+            attackFactor  = TX81Z::enveloperAttackRate (frequency, attackRate, rateScalingFactor);
+            decay1Target  = TX81Z::envelopeDecayLevel (decay1Level);
+            decay1Factor  = TX81Z::enveloperDecayRateFactor (frequency, decay1Rate, rateScalingFactor);
+            decay2Factor  = TX81Z::enveloperDecayRateFactor (frequency, decay2Rate, rateScalingFactor);
+            releaseFactor = TX81Z::envelopeReleaseRateFactor (frequency, releaseRate, rateScalingFactor);
+        }
+
+        event eventIn (std::notes::NoteOn e)
+        {
+            active = true;
+            keyScaling = TX81Z::keyVelocityMapping (keyVelocitySensitivity, e.velocity);
+            rateScalingFactor = TX81Z::rateScalingFactor (keyRateScaling, e.pitch);
+
+            calculateEnvelope();
+        }
+
+        event eventIn (std::notes::NoteOff e)
+        {
+            active = false;
+        }
+
+        void main()
+        {
+            let envelopeLimit = 0.0001f;
+
+            loop
+            {
+                while (! active)
+                    advance();
+
+                float value;
+
+                // Attack
+                while (active && value < 1.0f)
+                {
+                    value += attackFactor;
+                    out <- keyScaling * value;
+                    advance();
+                }
+
+                if (active)
+                {
+                    value = 1.0f;
+
+                    // Decay1
+                    while (active && value > decay1Target)
+                    {
+                        value *= decay1Factor;
+                        out <- keyScaling * value;
+                        advance();
+                    }
+
+                    // Decay2
+                    while (active)
+                    {
+                        value *= decay2Factor;
+                        out <- keyScaling * value;
+                        advance();
+
+                        if (value < envelopeLimit)
+                            active = false;
+                    }
+                }
+
+                // Release
+                while (! active && value > envelopeLimit)
+                {
+                    value *= releaseFactor;
+                    out <- keyScaling * value;
+                    advance();
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    // The output requires DC blocking and attenuation
+    processor OutputFilter
+    {
+        input event float volumeIn;
+        input stream float  in;
+        output stream float out;
+
+        event volumeIn (float f)
+        {
+            gain = std::levels::dBtoGain (f);
+        }
+
+        float gain;
+
+        var filter = std::filters::dcblocker::create();
+
+        void main()
+        {
+            loop
+            {
+                out <- filter.process (in) * gain;
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    // Modulation matrix for the oscillator algorithms
+    processor AlgorithmMatrix
+    {
+        input event int algorithmIn;
+
+        input stream float osc[4];
+        output stream float mod[4];
+        output stream float out;
+
+        event algorithmIn (int i)
+        {
+            algorithm = i;
+        }
+
+        int algorithm = 1;
+
+        void main()
+        {
+            loop
+            {
+                while (algorithm == 1)
+                {
+                    mod[2] <- osc[3];
+                    mod[1] <- osc[2];
+                    mod[0] <- osc[1];
+                    out <- osc[0];
+                    advance();
+                }
+
+                while (algorithm == 2)
+                {
+                    mod[1] <- osc[3];
+                    mod[1] <- osc[2];
+                    mod[0] <- osc[1];
+                    out <- osc[0];
+                    advance();
+                }
+
+                while (algorithm == 3)
+                {
+                    mod[0] <- osc[3];
+                    mod[1] <- osc[2];
+                    mod[0] <- osc[1];
+                    out <- osc[0];
+                    advance();
+                }
+
+                while (algorithm == 4)
+                {
+                    mod[2] <- osc[3];
+                    mod[0] <- osc[2];
+                    mod[0] <- osc[1];
+                    out <- osc[0];
+                    advance();
+                }
+
+                while (algorithm == 5)
+                {
+                    mod[2] <- osc[3];
+                    out <- osc[2];
+                    mod[0] <- osc[1];
+                    out <- osc[0];
+                    advance();
+                }
+
+                while (algorithm == 6)
+                {
+                    mod[0] <- osc[3];
+                    mod[1] <- osc[3];
+                    mod[2] <- osc[3];
+
+                    out <- osc[2];
+                    out <- osc[1];
+                    out <- osc[0];
+                    advance();
+                }
+
+                while (algorithm == 7)
+                {
+                    mod[2] <- osc[3];
+                    out <- osc[2];
+                    out <- osc[1];
+                    out <- osc[0];
+                    advance();
+                }
+
+                while (algorithm == 8)
+                {
+                    out <- osc[3];
+                    out <- osc[2];
+                    out <- osc[1];
+                    out <- osc[0];
+                    advance();
+                }
+            }
+        }
+    }
+}

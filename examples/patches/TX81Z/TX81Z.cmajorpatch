@@ -1,0 +1,13 @@
+
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.TX81Z",
+    "version":          "1.0",
+    "name":             "TX81Z",
+    "description":      "TX81Z",
+    "category":         "generator",
+    "manufacturer":     "Cmajor Software Ltd",
+    "isInstrument":     true,
+
+    "source":           "TX81Z.cmajor"
+}
