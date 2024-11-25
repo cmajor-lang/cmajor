@@ -381,7 +381,10 @@ inline bool Engine::link (DiagnosticMessageList& messages, CacheDatabaseInterfac
    }
 
     if (auto result = choc::com::StringPtr (engine->link (cache)))
-        return messages.addFromJSONString (result);
+    {
+        messages.addFromJSONString (result);
+        return false;
+    }
 
     return true;
 }

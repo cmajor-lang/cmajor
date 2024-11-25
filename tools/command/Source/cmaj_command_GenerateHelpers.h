@@ -169,6 +169,9 @@ static inline cmaj::Engine::CodeGenOutput generateCodeAndCheckResult (cmaj::Patc
     choc::messageloop::run();
     t.join();
 
+    if (! result.messages.empty())
+        throw std::runtime_error (result.messages.toString());
+
     return result;
 }
 
