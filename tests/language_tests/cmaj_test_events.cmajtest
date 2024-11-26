@@ -680,3 +680,44 @@ processor Test [[ main ]]
         advance();
     }
 }
+
+## testProcessor()
+
+graph Test [[ main ]]
+{
+    output event int out;
+
+    connection
+    {
+        Source.sourceOut -> Target.in;
+        Target.targetOut -> out;
+    }
+}
+
+processor Source
+{
+    output event float sourceOut;
+
+    void main()
+    {
+        sourceOut <- 1.0f;
+        advance();
+    }
+}
+
+processor Target
+{
+    input event float<1> in;
+    output event int targetOut;
+
+    event in (float<1> f)
+    {
+        targetOut <- 1;
+    }
+
+    void main()
+    {
+        targetOut <- -1;
+        advance();
+    }
+}

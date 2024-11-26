@@ -60,7 +60,9 @@ struct EventHandlerUtilities
 
                 auto eventValue = fn.parameters.back().getAsObjectType<AST::VariableDeclaration>();
 
-                if (eventValue->getType()->isSameType (type, AST::TypeBase::ComparisonFlags::ignoreReferences + AST::TypeBase::ComparisonFlags::ignoreConst))
+                if (eventValue->getType()->isSameType (type, AST::TypeBase::ComparisonFlags::ignoreReferences +
+                                                             AST::TypeBase::ComparisonFlags::ignoreConst +
+                                                             AST::TypeBase::ComparisonFlags::ignoreVectorSize1))
                     return true;
             }
 
