@@ -1027,7 +1027,8 @@ private:
 
     ValueReader createCastIfNeeded (const AST::TypeBase& targetType, const AST::TypeBase& sourceType, const AST::ValueBase& value)
     {
-        if (targetType.isSameType (sourceType, AST::TypeBase::ComparisonFlags::duckTypeStructures))
+        if (targetType.isSameType (sourceType, AST::TypeBase::ComparisonFlags::duckTypeStructures
+                                                | AST::TypeBase::ComparisonFlags::ignoreVectorSize1))
             return createValueReader (value);
 
         if (targetType.isSlice())
@@ -1048,7 +1049,8 @@ private:
 
             CMAJ_ASSERT (targetType.isSameType (sourceType, AST::TypeBase::ComparisonFlags::ignoreConst
                                                              | AST::TypeBase::ComparisonFlags::ignoreReferences
-                                                             | AST::TypeBase::ComparisonFlags::duckTypeStructures));
+                                                             | AST::TypeBase::ComparisonFlags::duckTypeStructures
+                                                             | AST::TypeBase::ComparisonFlags::ignoreVectorSize1));
             return createValueReader (value);
         }
 

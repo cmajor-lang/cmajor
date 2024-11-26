@@ -263,7 +263,8 @@ struct LLVMCodeGenerator
     {
         for (auto& p : fatPointerTypes)
             if (p.elementType.isSameType (elementType, AST::TypeBase::ComparisonFlags::ignoreConst
-                                                        | AST::TypeBase::ComparisonFlags::duckTypeStructures))
+                                                        | AST::TypeBase::ComparisonFlags::duckTypeStructures
+                                                        | AST::TypeBase::ComparisonFlags::ignoreVectorSize1 ))
                 return p.fatPointerType;
 
         ::llvm::SmallVector<::llvm::Type*, 32> memberTypes;
