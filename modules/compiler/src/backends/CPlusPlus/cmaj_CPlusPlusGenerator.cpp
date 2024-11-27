@@ -256,7 +256,14 @@ struct CPlusPlusCodeGenerator
         }
 
         if (auto v = type.getAsVectorType())
+        {
+            auto numElements = static_cast<unsigned> (v->resolveSize());
+
+            if (numElements == 1)
+                return getTypeName (v->getElementType(), ignoreConst);
+
             return "Vector<" + getTypeName (v->getElementType(), true) + ", " + std::to_string (v->resolveSize()) + ">";
+        }
 
         if (type.getAsEnumType())
             return "int32_t";
@@ -1167,6 +1174,7 @@ struct EndpointInfo
     struct ValueBase
     {
         ExpressionString* expression = nullptr;
+        ptr<const AST::TypeBase> type;
 
         operator bool() const                       { return expression != nullptr; }
         std::string getWithoutParens() const        { CMAJ_ASSERT (expression != nullptr); return expression->getWithoutParens(); }
@@ -1183,26 +1191,26 @@ struct EndpointInfo
 
     ValueReader createReaderForReference (ValueReference ref)
     {
-        return { { ref.expression } };
+        return { { ref.expression, ref.type } };
     }
 
     //==============================================================================
     template <typename ValueType, typename StringType>
-    ValueType createExpression (StringType s, ParenStatus parens)  { return ValueType {{ std::addressof (pool.allocate<ExpressionString> (std::move (s), parens)) }}; }
+    ValueType createExpression (StringType s, ptr<const AST::TypeBase> type, ParenStatus parens)  { return ValueType {{ std::addressof (pool.allocate<ExpressionString> (std::move (s), parens)), type }}; }
 
     template <typename StringType>
-    ValueReader createReaderNoParensNeeded   (StringType s)   { return createExpression<ValueReader> (std::move (s), ParenStatus::notNeeded); }
+    ValueReader createReaderNoParensNeeded   (StringType s, ptr<const AST::TypeBase> type)   { return createExpression<ValueReader> (std::move (s), type, ParenStatus::notNeeded); }
     template <typename StringType>
-    ValueReader createReaderParensNeeded     (StringType s)   { return createExpression<ValueReader> (std::move (s), ParenStatus::needed); }
+    ValueReader createReaderParensNeeded     (StringType s, ptr<const AST::TypeBase> type)   { return createExpression<ValueReader> (std::move (s), type, ParenStatus::needed); }
     template <typename StringType>
-    ValueReader createReaderAlreadyHasParens (StringType s)   { return createExpression<ValueReader> (std::move (s), ParenStatus::present); }
+    ValueReader createReaderAlreadyHasParens (StringType s, ptr<const AST::TypeBase> type)   { return createExpression<ValueReader> (std::move (s), type, ParenStatus::present); }
 
     template <typename StringType>
-    ValueReference createReferenceNoParensNeeded   (StringType s)   { return createExpression<ValueReference> (std::move (s), ParenStatus::notNeeded); }
+    ValueReference createReferenceNoParensNeeded   (StringType s, ptr<const AST::TypeBase> type)   { return createExpression<ValueReference> (std::move (s), type, ParenStatus::notNeeded); }
     template <typename StringType>
-    ValueReference createReferenceParensNeeded     (StringType s)   { return createExpression<ValueReference> (std::move (s), ParenStatus::needed); }
+    ValueReference createReferenceParensNeeded     (StringType s, ptr<const AST::TypeBase> type)   { return createExpression<ValueReference> (std::move (s), type, ParenStatus::needed); }
     template <typename StringType>
-    ValueReference createReferenceAlreadyHasParens (StringType s)   { return createExpression<ValueReference> (std::move (s), ParenStatus::present); }
+    ValueReference createReferenceAlreadyHasParens (StringType s, ptr<const AST::TypeBase> type)   { return createExpression<ValueReference> (std::move (s), type, ParenStatus::present); }
 
     //==============================================================================
     void addStruct (const AST::StructType& s)
@@ -1495,11 +1503,11 @@ struct EndpointInfo
     }
 
     //==============================================================================
-    ValueReader createConstantInt32   (int32_t v)           { return createReaderNoParensNeeded (std::string ("int32_t {") + ProgramPrinter::formatInt32 (v) + "}"); }
-    ValueReader createConstantInt64   (int64_t v)           { return createReaderNoParensNeeded (std::string ("int64_t {") + ProgramPrinter::formatInt64 (v, "L}")); }
-    ValueReader createConstantFloat32 (float v)             { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v)); }
-    ValueReader createConstantFloat64 (double v)            { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v)); }
-    ValueReader createConstantBool    (bool b)              { return createReaderNoParensNeeded (b ? std::string_view ("true") : std::string_view ("false")); }
+    ValueReader createConstantInt32   (int32_t v)           { return createReaderNoParensNeeded (std::string ("int32_t {") + ProgramPrinter::formatInt32 (v) + "}", program.allocator.int32Type); }
+    ValueReader createConstantInt64   (int64_t v)           { return createReaderNoParensNeeded (std::string ("int64_t {") + ProgramPrinter::formatInt64 (v, "L}"), program.allocator.int64Type); }
+    ValueReader createConstantFloat32 (float v)             { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v), program.allocator.float32Type); }
+    ValueReader createConstantFloat64 (double v)            { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v), program.allocator.float64Type); }
+    ValueReader createConstantBool    (bool b)              { return createReaderNoParensNeeded (b ? std::string_view ("true") : std::string_view ("false"), program.allocator.boolType); }
 
     ValueReader createConstantString (std::string_view s)
     {
@@ -1524,14 +1532,14 @@ struct EndpointInfo
         auto typeName = getTypeName (type, true);
 
         if (elements.empty())
-            return createReaderParensNeeded (typeName + " {}");
+            return createReaderParensNeeded (typeName + " {}", type);
 
         if (type.isSlice())
         {
             auto& fixedSizeVersion = agg.context.allocator.createDeepClone (agg);
             AST::applySizeIfSlice (fixedSizeVersion.type, agg.getNumElements());
             auto sourceArray = createConstantAggregate (fixedSizeVersion, true);
-            return createReaderNoParensNeeded (typeName + " { " + sourceArray.getWithParensIfNeeded() + " }");
+            return createReaderNoParensNeeded (typeName + " { " + sourceArray.getWithParensIfNeeded() + " }", type);
         }
 
         std::string elementDecl;
@@ -1568,10 +1576,10 @@ struct EndpointInfo
             auto name = getNextConstantName();
             auto decl = "const " + typeName + " " + name + " = { " + elementDecl + " };";
             globalConstants.push_back (decl);
-            return createReaderNoParensNeeded (name);
+            return createReaderNoParensNeeded (name, type);
         }
 
-        return createReaderNoParensNeeded (typeName + " { " + elementDecl + " }");
+        return createReaderNoParensNeeded (typeName + " { " + elementDecl + " }", type);
     }
 
     void printGlobalConstants()
@@ -1583,9 +1591,9 @@ struct EndpointInfo
     ValueReader createNullConstant (const AST::TypeBase& t)
     {
         if (t.isVectorType())
-            return createReaderNoParensNeeded (getTypeName (t, true) + "()");
+            return createReaderNoParensNeeded (getTypeName (t, true) + "()", t);
 
-        return createReaderNoParensNeeded (std::string ("Null()"));
+        return createReaderNoParensNeeded (std::string ("Null()"), t);
     }
 
     ValueReader createValueCast (const AST::TypeBase& targetType, const AST::TypeBase&, ValueReader source)
@@ -1594,18 +1602,16 @@ struct EndpointInfo
         auto sourceExpression = source.getWithoutParens();
 
         if (targetType.isPrimitive())
-            return createReaderNoParensNeeded ("static_cast<" + typeName + "> (" + sourceExpression + ")");
+            return createReaderNoParensNeeded ("static_cast<" + typeName + "> (" + sourceExpression + ")", targetType);
 
-        return createReaderNoParensNeeded (typeName + " { " + sourceExpression + " }");
+        return createReaderNoParensNeeded (typeName + " { " + sourceExpression + " }", targetType);
     }
 
     ValueReader createSliceOfSlice (const AST::TypeBase& elementType, ValueReader sourceSlice, ValueReader start, ValueReader end)
     {
-        (void) elementType;
-
         return createReaderNoParensNeeded (sourceSlice.getWithoutParens() + ".slice ("
                                            + start.getWithoutParens() + ", "
-                                           + end.getWithoutParens() + ")");
+                                           + end.getWithoutParens() + ")", elementType);
     }
 
     ValueReader createSliceFromArray (const AST::TypeBase& elementType, ValueReader sourceArray,
@@ -1614,17 +1620,18 @@ struct EndpointInfo
         return createReaderNoParensNeeded ("Slice<" + getTypeName (elementType, true)
                                             + "> (" + sourceArray.getWithoutParens() + ", "
                                             + std::to_string (offset) + ", "
-                                            + std::to_string (numElements) + ")");
+                                            + std::to_string (numElements) + ")", elementType);
     }
 
     ValueReference createStateUpcast (const AST::StructType& parentType, const AST::StructType& childType, ValueReference value)
     {
         auto name = createUpcastFunction (parentType, childType);
-        return createReferenceNoParensNeeded (name + value.getWithParensAlways());
+        return createReferenceNoParensNeeded (name + value.getWithParensAlways(), childType);
     }
 
     ValueReader createCall (std::string functionName,
-                            const std::vector<Builder::FunctionCallArgValue>& argValues)
+                            const std::vector<Builder::FunctionCallArgValue>& argValues,
+                            const AST::TypeBase& returnType)
     {
         choc::SmallVector<std::string, 8> args;
 
@@ -1691,16 +1698,16 @@ struct EndpointInfo
             }
         }
 
-        return createReaderNoParensNeeded (functionName + ProgramPrinter::createParenthesisedList (args));
+        return createReaderNoParensNeeded (functionName + ProgramPrinter::createParenthesisedList (args), returnType);
     }
 
     template <typename ArgValueList>
-    ValueReader createIntrinsicCall (AST::Intrinsic::Type intrinsic, const ArgValueList& argValues, const AST::TypeBase&)
+    ValueReader createIntrinsicCall (AST::Intrinsic::Type intrinsic, const ArgValueList& argValues, const AST::TypeBase& returnType)
     {
         if (intrinsic == AST::Intrinsic::Type::exp && ! argValues.front().paramType.isPrimitiveFloat())
             return {};
 
-        bool isVectorOp = ! argValues.empty() && argValues.front().paramType.isVector();
+        bool isVectorOp = ! argValues.empty() && argValues.front().paramType.isVector() && ! argValues.front().paramType.isVectorSize1();
 
         if (isVectorOp
              && intrinsic != AST::Intrinsic::Type::abs    && intrinsic != AST::Intrinsic::Type::min
@@ -1718,19 +1725,19 @@ struct EndpointInfo
 
         return createCall ((isVectorOp ? "intrinsics::VectorOps::"
                                        : "intrinsics::")
-                            + std::string (AST::Intrinsic::getIntrinsicName (intrinsic)), argValues);
+                            + std::string (AST::Intrinsic::getIntrinsicName (intrinsic)), argValues, returnType);
     }
 
     template <typename ArgValueList>
-    ValueReader createFunctionCall (const AST::Function&, std::string_view functionName, const ArgValueList& argValues)
+    ValueReader createFunctionCall (const AST::Function& fn, std::string_view functionName, const ArgValueList& argValues)
     {
-        return createCall (std::string (functionName), argValues);
+        return createCall (std::string (functionName), argValues, AST::castToTypeBaseRef (fn.returnType));
     }
 
-    ValueReader createUnaryOp (AST::UnaryOpTypeEnum::Enum opType, const AST::TypeBase&, ValueReader input)
+    ValueReader createUnaryOp (AST::UnaryOpTypeEnum::Enum opType, const AST::TypeBase& type, ValueReader input)
     {
         return createReaderParensNeeded (std::string (AST::UnaryOperator::getSymbolForOperator (opType))
-                                            + " " + input.getWithParensIfNeeded());
+                                            + " " + input.getWithParensIfNeeded(), type);
     }
 
     static bool canPerformVectorUnaryOp()   { return true; }
@@ -1738,7 +1745,7 @@ struct EndpointInfo
 
     ValueReader createAddInt32 (ValueReader lhs, int32_t rhs)
     {
-        return createReaderParensNeeded (lhs.getWithParensIfNeeded() + " + " + std::to_string (rhs));
+        return createReaderParensNeeded (lhs.getWithParensIfNeeded() + " + " + std::to_string (rhs), lhs.type);
     }
 
     ValueReader createBinaryOp (AST::BinaryOpTypeEnum::Enum opType,
@@ -1747,57 +1754,69 @@ struct EndpointInfo
     {
         if (opType == AST::BinaryOpTypeEnum::Enum::rightShiftUnsigned)
             return createReaderNoParensNeeded ("intrinsics::rightShiftUnsigned (" + lhs.getWithoutParens()
-                                                 + ", " + rhs.getWithoutParens() + ")");
+                                                 + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
 
         if (opType == AST::BinaryOpTypeEnum::Enum::modulo && ! opTypes.operandType.isVector())
             return createReaderNoParensNeeded ("intrinsics::modulo (" + lhs.getWithoutParens()
-                                                 + ", " + rhs.getWithoutParens() + ")");
+                                                 + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
 
         return createReaderParensNeeded (lhs.getWithParensIfNeeded()
                                          + " " + std::string (AST::BinaryOperator::getSymbolForOperator (opType))
-                                         + " " + rhs.getWithParensIfNeeded());
+                                         + " " + rhs.getWithParensIfNeeded(), opTypes.resultType);
     }
 
     ValueReader createTernaryOp (ValueReader condition, ValueReader trueValue, ValueReader falseValue)
     {
         return createReaderParensNeeded (condition.getWithParensIfNeeded()
                                          + " ? " + trueValue.getWithParensIfNeeded()
-                                         + " : " + falseValue.getWithParensIfNeeded());
+                                         + " : " + falseValue.getWithParensIfNeeded(), trueValue.type);
     }
 
     ValueReader createVariableReader (const AST::VariableDeclaration& v)
     {
-        return createReaderNoParensNeeded (codeGenerator->getVariableName (v));
+        return createReaderNoParensNeeded (codeGenerator->getVariableName (v), *v.getType());
     }
 
     ValueReference createVariableReference (const AST::VariableDeclaration& v)
     {
-        return createReferenceNoParensNeeded (codeGenerator->getVariableName (v));
+        return createReferenceNoParensNeeded (codeGenerator->getVariableName (v), *v.getType());
     }
 
     ValueReader createElementReader (ValueReader parent, ValueReader index)
     {
-        return createReaderNoParensNeeded (parent.getWithParensIfNeeded() + "[" + index.getWithoutParens() + "]");
+        auto& resultType = *parent.type->getArrayOrVectorElementType();
+
+        if (parent.type->skipConstAndRefModifiers().isVectorSize1())
+            return createReaderNoParensNeeded (parent.getWithParensIfNeeded(), resultType);
+
+        return createReaderNoParensNeeded (parent.getWithParensIfNeeded() + "[" + index.getWithoutParens() + "]", resultType);
     }
 
     ValueReference createElementReference (ValueReference parent, ValueReader index)
     {
-        return createReferenceNoParensNeeded (parent.getWithParensIfNeeded() + "[" + index.getWithoutParens() + "]");
+        auto& resultType = *parent.type->getArrayOrVectorElementType();
+
+        if (parent.type->skipConstAndRefModifiers().isVectorSize1())
+            return createReferenceNoParensNeeded (parent.getWithParensIfNeeded(), resultType);
+
+        return createReferenceNoParensNeeded (parent.getWithParensIfNeeded() + "[" + index.getWithoutParens() + "]", resultType);
     }
 
-    ValueReader createStructMemberReader (const AST::StructType&, ValueReader object, std::string_view memberName, int64_t)
+    ValueReader createStructMemberReader (const AST::StructType& type, ValueReader object, std::string_view memberName, int64_t memberIndex)
     {
-        return createReaderNoParensNeeded (object.getWithParensIfNeeded() + "." + makeSafeIdentifier (memberName));
+        return createReaderNoParensNeeded (object.getWithParensIfNeeded() + "." + makeSafeIdentifier (memberName),
+                                           type.getMemberType (static_cast<size_t> (memberIndex)));
     }
 
-    ValueReference createStructMemberReference (const AST::StructType&, ValueReference object, std::string_view memberName, int64_t)
+    ValueReference createStructMemberReference (const AST::StructType& type, ValueReference object, std::string_view memberName, int64_t memberIndex)
     {
-        return createReferenceNoParensNeeded (object.getWithParensIfNeeded() + "." + makeSafeIdentifier (memberName));
+        return createReferenceNoParensNeeded (object.getWithParensIfNeeded() + "." + makeSafeIdentifier (memberName),
+                                              type.getMemberType (static_cast<size_t> (memberIndex)));
     }
 
     ValueReader createGetSliceSize (ValueReader slice)
     {
-        return createReaderNoParensNeeded (slice.getWithParensIfNeeded() + ".size()");
+        return createReaderNoParensNeeded (slice.getWithParensIfNeeded() + ".size()", slice.type);
     }
 
     //==============================================================================
@@ -2125,6 +2144,7 @@ struct intrinsics
     template <typename T> static T atan2         (T a, T b)         { return std::atan2 (a, b); }
     template <typename T> static T isnan         (T a)              { return std::isnan (a) ? 1 : 0; }
     template <typename T> static T isinf         (T a)              { return std::isinf (a) ? 1 : 0; }
+    template <typename T> static T select        (bool c, T a, T b) { return c ? a : b; }
 
     static int32_t reinterpretFloatToInt (float   a)                { int32_t i; memcpy (std::addressof(i), std::addressof(a), sizeof(i)); return i; }
     static int64_t reinterpretFloatToInt (double  a)                { int64_t i; memcpy (std::addressof(i), std::addressof(a), sizeof(i)); return i; }
