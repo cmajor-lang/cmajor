@@ -34,7 +34,7 @@ graph ConvolutionReverb [[ main ]]
     node dryGain = LevelSmoother;
     node wetGain = LevelSmoother;
 
-    node convolution = Convolution::ZeroLatencyProcessor (shortFFTSize, longFFTSize, maxImpulseLength);
+    node convolution = std::convolution::ZeroLatencyProcessor (maxImpulseLength, shortFFTSize, longFFTSize);
 
     connection
     {

@@ -1,0 +1,268 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Standard Library
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor standard library may be used under the terms of the ISC license:
+//
+//  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//  without fee is hereby granted, provided that the above copyright notice and this permission
+//  notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+/// std.convolution
+
+/**
+    This module contains convolution algorithms - applying an impulse response to a signal.
+    Both time domain and frequency domain implementations are supported, along with a zero
+    latency algorithm.
+*/
+
+/**
+    The `std::convolution` namespace is parameterised, with the `ImpulseChannelCount` specifying
+    how many channels the impulse contains.
+*/
+namespace std::convolution (int ImpulseChannelCount = 1)
+{
+    using ImpulseType = float<ImpulseChannelCount>;
+
+    /// The `ZeroLatencyProcessor` uses a combination of time domain and frequency domain
+    /// convolutions, using partitioning to produce a zero latency output. The `maxImpulseFrames`
+    /// parameter must be specified, and sets the largest impulse that can be convolved with this
+    /// instance. The `shortBlockSize` and `longBlockSize` specify the frequency domain convolution
+    /// block sizes
+    graph ZeroLatencyProcessor (int maxImpulseFrames, int shortBlockSize = 32, int longBlockSize = 512 )
+    {
+        input stream float in;
+        output stream ImpulseType out;
+        input event ImpulseType[] impulseData;
+
+        event impulseData (ImpulseType[] impulse)
+        {
+            convolution1.impulseData     <- impulse[:shortBlockSize/2];
+            convolutionShort.impulseData <- impulse[shortBlockSize/2:longBlockSize/2];
+            convolutionLong.impulseData  <- impulse[longBlockSize/2:];
+        }
+
+        node convolution1      = TimeDomainProcessor (shortBlockSize/2);
+        node convolutionShort  = BlockProcessor ((longBlockSize - shortBlockSize), shortBlockSize);
+        node convolutionLong   = BlockProcessor (maxImpulseFrames, longBlockSize);
+
+        connection
+        {
+            in -> convolution1.in, convolutionShort.in, convolutionLong.in;
+
+            convolution1.out -> out;
+            convolutionShort.out -> out;
+            convolutionLong.out -> out;
+        }
+    }
+
+    struct ImpulseChannel
+    {
+        ImpulseType[] data;
+        wrap<ImpulseChannelCount> channel;
+
+        float get (int index)
+        {
+            return this.data.at (index)[this.channel];
+        }
+    }
+
+    /// This convolution algorithm uses a frequency domain implementation, with the blockSize altering
+    /// the overall runtime and latency of the algorithm. Latecy is blockSize/2 frames. Larger block sizes
+    /// will offer lower CPU use
+    graph BlockProcessor (int maxImpulseFrames, int blockSize)
+    {
+        input stream float in;
+        output stream ImpulseType out;
+
+        input event ImpulseType[] impulseData;
+
+        event impulseData (ImpulseType[] impulse)
+        {
+            for (wrap<ImpulseChannelCount> channel)
+                conv[channel].impulseData <- ImpulseChannel (impulse, channel);
+        }
+
+        node fft  = FFT (blockSize);
+        node conv = Convolve (maxImpulseFrames, blockSize)[ImpulseChannelCount];
+        node ifft = iFFT (blockSize)[ImpulseChannelCount];
+
+        float<N> arrayToVector<N> (float[N] a)
+        {
+            float<N> v;
+
+            for (wrap<N> i)
+                v[i] = a[i];
+
+            return v;
+        }
+
+        connection
+        {
+            in -> fft -> conv.in;
+            conv.out -> ifft;
+            arrayToVector (ifft.out) -> out;
+        }
+    }
+
+    /// A simple time domain convolution algorithm. This will be costly to execute for longer impulses
+    processor TimeDomainProcessor (int maxImpulseFrames)
+    {
+        input stream float in;
+        output stream ImpulseType out;
+        input event ImpulseType[] impulseData;
+
+        event impulseData (ImpulseType[] v)
+        {
+            impulse = 0.0f;
+
+            for (wrap<ImpulseChannelCount> channel)
+                for (wrap<maxImpulseFrames> i)
+                    if (i < v.size)
+                        impulse[channel][i] = v[i][channel];
+        }
+
+        float<maxImpulseFrames>[ImpulseChannelCount] impulse;
+
+        void main()
+        {
+            float<maxImpulseFrames> x;
+
+            loop
+            {
+                x[1:] = x[0:maxImpulseFrames-1];
+                x[0] = in;
+
+                ImpulseType result;
+
+                for (wrap<ImpulseChannelCount> i)
+                    result[i] = sum (x * impulse[i]);
+
+                out <- result;
+                advance();
+            }
+        }
+    }
+
+    processor FFT (int blockSize)
+    {
+        input stream float in;
+        output event complex[blockSize] out;
+
+        complex[blockSize] buffer;
+
+        void main()
+        {
+            loop
+            {
+                complex[blockSize] fft = buffer;
+
+                std::frequency::complexFFT (fft);
+                out <- fft;
+
+                buffer[blockSize/2:] = buffer[:blockSize/2];
+
+                for (wrap<blockSize/2> i)
+                {
+                    buffer[i] = in;
+                    advance();
+                }
+            }
+
+            advance();
+        }
+    }
+
+    processor iFFT (int blockSize)
+    {
+        input event complex[blockSize] in;
+        output stream float out;
+
+        event in (const complex[blockSize]& data)
+        {
+            buffer = data;
+            std::frequency::complexIFFT (buffer);
+        }
+
+        complex[blockSize] buffer;
+
+        void main()
+        {
+            wrap<blockSize/2> i;
+
+            loop
+            {
+                out <- buffer[i++].real;
+                advance();
+            }
+        }
+    }
+
+    processor Convolve (int maxImpulseFrames, int blockSize)
+    {
+        input event complex[blockSize] in;
+        output event complex[blockSize] out;
+        input event ImpulseChannel impulseData;
+
+        event in (const complex[blockSize]& newBlock)
+        {
+            blockData[currentBlock] = newBlock;
+
+            complex[blockSize] result;
+
+            for (int block = 0; block < activeBlocks; block++)
+            {
+                let impulseBlock = wrap<numBlocks> (block);
+                let dataBlock = wrap<numBlocks> (block + currentBlock);
+
+                for (wrap<blockSize> i = 0; i <= blockSize/2; i++)
+                    result[i] += blockData[dataBlock, i] * impulseFFT[impulseBlock, i];
+            }
+
+            for (wrap<blockSize/2> i = 1)
+                result.at (blockSize - i) = complex32 (result[i].real, -result[i].imag);
+
+            currentBlock--;
+
+            out <- result;
+        }
+
+        event impulseData (ImpulseChannel impulse)
+        {
+            activeBlocks = min (impulse.data.size / (blockSize / 2), numBlocks);
+
+            for (int block = 0; block < activeBlocks; block++)
+            {
+                complex[blockSize] impulseSlice;
+
+                int startFrame = block * (blockSize / 2);
+
+                for (wrap<blockSize/2> i)
+                    if ((startFrame + i) < impulse.data.size)
+                        impulseSlice[i] = impulse.get (startFrame + i);
+
+                impulseFFT.at (block) = impulseSlice;
+                std::frequency::complexFFT (impulseFFT.at (block));
+            }
+        }
+
+        int activeBlocks = 0;
+        let numBlocks = 2 * maxImpulseFrames / blockSize;
+
+        complex[numBlocks, blockSize] impulseFFT;
+        complex[numBlocks, blockSize] blockData;
+
+        wrap<numBlocks> currentBlock;
+    }
+}

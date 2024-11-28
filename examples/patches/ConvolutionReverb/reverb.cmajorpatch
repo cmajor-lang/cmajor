@@ -9,7 +9,7 @@
     "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
-    "source":           ["convolution.cmajor", "reverb.cmajor" ],
+    "source":           "reverb.cmajor",
 
     "externals":
     {
