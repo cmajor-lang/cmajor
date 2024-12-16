@@ -24,9 +24,10 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
     using super = AST::NonParameterisedObjectVisitor;
     using super::visit;
 
-    AddWrapFunctions (AST::Namespace& root)
+    AddWrapFunctions (AST::Namespace& root, bool onlyApplyForModifiers_)
       : super (root.context.allocator), rootNamespace (root),
-        intrinsicsNamespace (*findIntrinsicsNamespace (root))
+        intrinsicsNamespace (*findIntrinsicsNamespace (root)),
+        onlyApplyForModifiers (onlyApplyForModifiers_)
     {}
 
     CMAJ_DO_NOT_VISIT_CONSTANTS
@@ -34,12 +35,19 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
     void visit (AST::BinaryOperator& b) override
     {
         super::visit (b);
+
+        if (onlyApplyForModifiers)
+            return;
+
         insertWrapFunctionIfNeeded (b, b);
     }
 
     void visit (AST::Cast& c) override
     {
         super::visit (c);
+
+        if (onlyApplyForModifiers)
+            return;
 
         if (c.arguments.size() == 1)
             insertWrapFunctionIfNeeded (c, AST::castToValueRef (c.arguments.front()));
@@ -81,6 +89,9 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
     {
         super::visit (g);
 
+        if (onlyApplyForModifiers)
+            return;
+
         bool anyWrapsAdded = false;
 
         for (uint32_t i = 0; i < g.indexes.size(); ++i)
@@ -120,6 +131,9 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
     void visit (AST::WriteToEndpoint& w) override
     {
         super::visit (w);
+
+        if (onlyApplyForModifiers)
+            return;
 
         if (w.targetIndex != nullptr)
         {
@@ -330,12 +344,14 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
 
     AST::Namespace& rootNamespace;
     AST::Namespace& intrinsicsNamespace;
+    bool onlyApplyForModifiers;
 };
 
+
 //==============================================================================
-static inline void addWrapFunctions (AST::Program& program, AST::Object& o)
+static inline void ensureWrapModifiersAreInRange (AST::Program& program, AST::Object& o)
 {
-    AddWrapFunctions (program.rootNamespace).visitObject (o);
+    AddWrapFunctions (program.rootNamespace, true).visitObject (o);
 }
 
 //==============================================================================
@@ -355,7 +371,7 @@ static inline void replaceWrapTypes (AST::Program& program)
         }
     };
 
-    AddWrapFunctions (program.rootNamespace).visitObject (program.rootNamespace);
+    AddWrapFunctions (program.rootNamespace, false).visitObject (program.rootNamespace);
     ReplaceWrapTypes (program.allocator).visitObject (program.rootNamespace);
 }
 

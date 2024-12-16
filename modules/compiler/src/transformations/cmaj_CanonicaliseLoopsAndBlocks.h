@@ -119,7 +119,7 @@ inline void canonicaliseLoopsAndBlocks (AST::Program& program)
             auto numIterations = countVariable.getType()->getAsBoundedType()->getBoundedIntLimit();
             auto& numIterationsConst = outerBlock.context.allocator.createConstantInt32 (static_cast<int32_t> (numIterations));
 
-            addWrapFunctions (program, loop);
+            ensureWrapModifiersAreInRange (program, loop);
             countVariable.declaredType.referTo (loop.context.allocator.createInt32Type());
             countVariable.knownRange = { 0, numIterations };
 
