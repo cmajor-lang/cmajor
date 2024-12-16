@@ -1175,7 +1175,7 @@ namespace
                                       return std::make_unique<StubAudioMidiPlayer> (callHistory, options);
                                   }, {});
 
-        
+
         auto t = std::thread ([&]
         {
             try

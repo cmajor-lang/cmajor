@@ -3,13 +3,13 @@ graph Synth [[ main ]]
     input event std::midi::Message midiIn [[ name: "MIDI input" ]];
 
     // Input events for "FM voice"
-  	input event float32 amp_modulation [[ name: "amp modulation", group: "/v:voice/amp_modulation", min: 0.0f, max: 1.0f, init: 0.0f, step: 0.01f ]];
-	input event float32 freq_modulation [[ name: "freq modulation", group: "/v:voice/freq_modulation", min: 1e+01f, max: 1e+03f, init: 2e+02f, step: 1.0f ]];
+      input event float32 amp_modulation [[ name: "amp modulation", group: "/v:voice/amp_modulation", min: 0.0f, max: 1.0f, init: 0.0f, step: 0.01f ]];
+    input event float32 freq_modulation [[ name: "freq modulation", group: "/v:voice/freq_modulation", min: 1e+01f, max: 1e+03f, init: 2e+02f, step: 1.0f ]];
 
     // Input events for "reverb"
     input event float32 damp [[ name: "damp", group: "/v:freeverb/damp", min: 0.0f, max: 1.0f, init: 0.5f, step: 0.025f, meta_knob0: "1" ]];
-	input event float32 roomsize [[ name: "roomsize", group: "/v:freeverb/roomsize", min: 0.0f, max: 1.0f, init: 0.9f, step: 0.025f, meta_knob1: "2" ]];
-	input event float32 wet [[ name: "wet", group: "/v:freeverb/wet", min: 0.0f, max: 1.0f, init: 0.9f, step: 0.025f, meta_knob2: "3" ]];
+    input event float32 roomsize [[ name: "roomsize", group: "/v:freeverb/roomsize", min: 0.0f, max: 1.0f, init: 0.9f, step: 0.025f, meta_knob1: "2" ]];
+    input event float32 wet [[ name: "wet", group: "/v:freeverb/wet", min: 0.0f, max: 1.0f, init: 0.9f, step: 0.025f, meta_knob2: "3" ]];
 
     input dbScaler.gainDb [[ name: "volume", min: -36, max: 0, init: -12 ]];
 

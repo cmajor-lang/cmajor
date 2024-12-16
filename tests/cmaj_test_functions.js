@@ -458,10 +458,17 @@ function testFunction (options)
 
     ## testCompile()
 */
-function testCompile (testLink, options)
+function testCompile (options)
 {
-    if (testLink == null)
-        testLink = true;
+    let testLink = true;
+    let testWithoutEndpoints = true;
+
+    if (options == undefined)
+        options = {};
+
+    if (options.testLink !== undefined)             testLink             = options.testLink;
+    if (options.testWithoutEndpoints !== undefined) testWithoutEndpoints = options.testWithoutEndpoints;
+
 
     let testSection = getCurrentTestSection();
     let timingInfo = {};
@@ -495,22 +502,26 @@ function testCompile (testLink, options)
     }
 
     engine.unload();
-    error = buildEngineWithLoadedProgram (testSection, options, timingInfo, engine);
 
-    if (isError (error, options))
+    if (testWithoutEndpoints)
     {
-        testSection.reportFail (error);
-        return;
-    }
-
-    if (testLink)
-    {
-        error = engine.link();
+        error = buildEngineWithLoadedProgram (testSection, options, timingInfo, engine);
 
         if (isError (error, options))
         {
             testSection.reportFail (error);
             return;
+        }
+
+        if (testLink)
+        {
+            error = engine.link();
+
+            if (isError (error, options))
+            {
+                testSection.reportFail (error);
+                return;
+            }
         }
     }
 

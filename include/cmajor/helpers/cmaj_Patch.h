@@ -324,7 +324,7 @@ struct Patch
     std::function<void()> handleInfiniteLoop;
 
     LoadParams lastLoadParams;
-    
+
 private:
     //==============================================================================
     struct PatchRenderer;
@@ -2261,7 +2261,7 @@ inline std::string Patch::getName() const
             : "Cmajor Patch Loader";
 }
 
-inline const PatchManifest* Patch::getManifest() const      
+inline const PatchManifest* Patch::getManifest() const
 {
     if (renderer != nullptr)
         return std::addressof (renderer->manifest);

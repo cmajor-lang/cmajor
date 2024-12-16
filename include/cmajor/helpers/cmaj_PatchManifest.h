@@ -167,7 +167,7 @@ struct PatchManifest
 
     /// Parses and adds all the source files from this patch to the given Program,
     /// returning true if no errors were encountered.
-    bool addSourceFilesToProgram (Program&, 
+    bool addSourceFilesToProgram (Program&,
                                   DiagnosticMessageList&,
                                   const std::function<std::string(DiagnosticMessageList&, const std::string&, const std::string&)>& transformSource,
                                   const std::function<void()>& checkForStopSignal);
