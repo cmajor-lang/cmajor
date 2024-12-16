@@ -143,8 +143,8 @@ void prepareForCodeGen (AST::Program& program,
     convertComplexTypes (program);
     addFallbackIntrinsics (program, engineSupportsIntrinsic);
     canonicaliseLoopsAndBlocks (program);
+    replaceWrapTypes (program);
     transformSlices (program);
-    replaceWrapTypesAndLoopCounters (program);
     replaceMultidimensionalArrays (program);
     convertUnwrittenVariablesToConst (program);
     inlineAllCallsWhichAdvance (program);

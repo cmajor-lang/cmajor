@@ -61,7 +61,7 @@ inline void convertComplexTypes (AST::Program& program)
     struct ComplexSupportLibrary
     {
         ComplexSupportLibrary (AST::Namespace& rootNamespace)
-           : intrinsicsNamespace (*findIntrinsicsNamespaceFromRoot (rootNamespace))
+           : intrinsicsNamespace (*findIntrinsicsNamespace (rootNamespace))
         {
         }
 

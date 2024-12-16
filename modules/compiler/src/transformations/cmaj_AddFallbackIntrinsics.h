@@ -52,7 +52,7 @@ inline void addFallbackIntrinsics (AST::Program& program,
                         auto replaceFn = [&] (std::string_view name, uint32_t numArgs)
                         {
                             fc.intrinsicType.reset();
-                            auto intrinsicsNamespace = findIntrinsicsNamespaceFromRoot (fc.getRootNamespace());
+                            auto intrinsicsNamespace = findIntrinsicsNamespace (fc.getRootNamespace());
                             auto ns = intrinsicsNamespace
                                          ->findChildModule (intrinsicsNamespace->getStringPool().get ("internal"))
                                          ->findChildModule (intrinsicsNamespace->getStringPool().get ("math_implementations"));

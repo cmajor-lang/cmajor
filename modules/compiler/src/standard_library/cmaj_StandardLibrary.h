@@ -24,15 +24,17 @@ inline constexpr std::string_view getStdLibraryNamespaceName()      { return "st
 inline constexpr std::string_view getIntrinsicsNamespaceName()      { return "intrinsics"; }
 inline constexpr std::string_view getIntrinsicsNamespaceFullName()  { return "std::intrinsics"; }
 
-static inline ptr<AST::Namespace> findIntrinsicsNamespaceFromRoot (AST::Namespace& root)
+static inline ptr<AST::Namespace> findIntrinsicsNamespace (AST::Namespace& ns)
 {
-    if (root.intrinsicsNamespace == nullptr)
+    auto& rootNamespace = ns.getRootNamespace();
+
+    if (rootNamespace.intrinsicsNamespace == nullptr)
     {
-        if (auto stdNamespace = root.findSystemChildNamespace (root.getStrings().stdLibraryNamespaceName))
-            root.intrinsicsNamespace = stdNamespace->findSystemChildNamespace (root.getStrings().intrinsicsNamespaceName);
+        if (auto stdNamespace = rootNamespace.findSystemChildNamespace (rootNamespace.getStrings().stdLibraryNamespaceName))
+            rootNamespace.intrinsicsNamespace = stdNamespace->findSystemChildNamespace (rootNamespace.getStrings().intrinsicsNamespaceName);
     }
 
-    return root.intrinsicsNamespace;
+    return rootNamespace.intrinsicsNamespace;
 }
 
 }

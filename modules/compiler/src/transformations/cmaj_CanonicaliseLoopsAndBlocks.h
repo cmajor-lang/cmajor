@@ -35,7 +35,7 @@ inline void canonicaliseLoopsAndBlocks (AST::Program& program)
         using super = AST::NonParameterisedObjectVisitor;
         using super::visit;
 
-        Canonicalise (AST::Allocator& a) : super (a) {}
+        Canonicalise (AST::Program& p) : super (p.allocator), program (p) {}
 
         void visit (AST::LoopStatement& loop) override
         {
@@ -111,7 +111,7 @@ inline void canonicaliseLoopsAndBlocks (AST::Program& program)
             body.addStatement (breakIf, 0);
         }
 
-        static void convertCountVariable (AST::ScopeBlock& outerBlock, AST::ScopeBlock& body, AST::LoopStatement& loop, AST::VariableDeclaration& countVariable)
+        void convertCountVariable (AST::ScopeBlock& outerBlock, AST::ScopeBlock& body, AST::LoopStatement& loop, AST::VariableDeclaration& countVariable)
         {
             outerBlock.addStatement (countVariable, 0);
             auto& countRef = AST::createVariableReference (outerBlock.context, countVariable);
@@ -119,6 +119,7 @@ inline void canonicaliseLoopsAndBlocks (AST::Program& program)
             auto numIterations = countVariable.getType()->getAsBoundedType()->getBoundedIntLimit();
             auto& numIterationsConst = outerBlock.context.allocator.createConstantInt32 (static_cast<int32_t> (numIterations));
 
+            addWrapFunctions (program, loop);
             countVariable.declaredType.referTo (loop.context.allocator.createInt32Type());
             countVariable.knownRange = { 0, numIterations };
 
@@ -138,9 +139,11 @@ inline void canonicaliseLoopsAndBlocks (AST::Program& program)
                                                              preDecrementedCount, allocator.createConstantInt32 (0));
             insertLoopBreakIfStatement (loop, body, countIsLessThanZero);
         }
+
+        AST::Program& program;
     };
 
-    Canonicalise (program.allocator).visitObject (program.rootNamespace);
+    Canonicalise (program).visitObject (program.rootNamespace);
 }
 
 }

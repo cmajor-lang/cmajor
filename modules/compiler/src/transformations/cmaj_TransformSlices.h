@@ -29,7 +29,7 @@ static inline void transformSlices (AST::Program& program)
 
         TransformSlices (AST::Namespace& root)
           : super (root.context.allocator), rootNamespace (root),
-            intrinsicsNamespace (*findIntrinsicsNamespaceFromRoot (root))
+            intrinsicsNamespace (*findIntrinsicsNamespace (root))
         {}
 
         CMAJ_DO_NOT_VISIT_CONSTANTS

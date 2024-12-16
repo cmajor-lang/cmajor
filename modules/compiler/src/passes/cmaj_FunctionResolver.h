@@ -31,7 +31,7 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
     using super::visit;
 
     FunctionResolver (AST::Program& p)
-      : super (p), intrinsicsNamespace (findIntrinsicsNamespaceFromRoot (p.rootNamespace))
+      : super (p), intrinsicsNamespace (findIntrinsicsNamespace (p.rootNamespace))
     {
     }
 
