@@ -78,7 +78,7 @@ processor P [[ main ]]
     void main() { advance(); }
 }
 
-## testCompile (false)
+## testCompile ({ testLink: false })
 
 processor P
 {
