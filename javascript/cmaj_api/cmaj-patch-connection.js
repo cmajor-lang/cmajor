@@ -103,7 +103,7 @@ export class PatchConnection  extends EventListenerList
 
     /** Modifies a key-value pair in the patch's stored state.
      *  @param {string} key
-     *  @param {Object} newValue
+     *  @param {Object | null | undefined} newValue
      */
     sendStoredStateValue (key, newValue)              { this.sendMessageToServer ({ type: "send_state_value", key: key, value: newValue }); }
 
