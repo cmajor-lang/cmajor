@@ -395,7 +395,12 @@ struct LLVMCodeGenerator
         ::llvm::ModuleAnalysisManager           moduleAnalysisManager;
         ::llvm::PipelineTuningOptions pto;
 
+#if defined (__linux__) && defined (__arm__)
+        // Do not use the full optimisation passes on arm32 due to compilation issues (for now)
+        std::unique_ptr<::llvm::TargetMachine> targetMachine;
+#else
         auto targetMachine = getNativeTargetMachine();
+#endif
 
         ::llvm::PassBuilder passBuilder (targetMachine.get(), pto);
 
