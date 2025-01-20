@@ -1014,3 +1014,18 @@ void f()  { float c = 1.0f; let p = pow (c, 2); }
 
 void f()  { const float c = 1.0f; let p = pow (c, 2); }
 
+## expectError ("2:20: error: floor() requires floating point arguments")
+
+void f() { let a = floor (float<2> (1.1f, 2.2f)); }
+
+## expectError ("2:20: error: ceil() requires floating point arguments")
+
+void f() { let a = ceil (float<2> (1.1f, 2.2f)); }
+
+## expectError ("2:20: error: rint() requires floating point arguments")
+
+void f() { let a = rint (float<2> (1.1f, 2.2f)); }
+
+## expectError ("2:20: error: remainder() requires floating point arguments")
+
+void f() { let a = remainder (float<2> (1.1f, 2.2f), float<2> (1.1f, 2.2f)); }
