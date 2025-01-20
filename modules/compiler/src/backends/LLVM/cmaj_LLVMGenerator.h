@@ -312,6 +312,23 @@ struct LLVMCodeGenerator
         }
     }
 
+    std::unique_ptr<::llvm::TargetMachine> getNativeTargetMachine() const
+    {
+        if (auto machineBuilder = ::llvm::orc::JITTargetMachineBuilder::detectHost())
+        {
+            auto& opts = machineBuilder->getOptions();
+            opts.ExceptionModel = ::llvm::ExceptionHandling::None;
+            opts.setFPDenormalMode (::llvm::DenormalMode::getPositiveZero());
+
+            machineBuilder->setCodeGenOptLevel (getCodeGenOptLevel (buildSettings.getOptimisationLevel()));
+
+            if (auto tm = machineBuilder->createTargetMachine())
+                return std::move (tm.get());
+        }
+
+        return {};
+    }
+
     std::string printAssembly (::llvm::TargetMachine& targetMachine, bool generateObjectCode)
     {
         // llc still uses the legacy passes for printing assembly - is there not a better way yet?
@@ -356,17 +373,7 @@ struct LLVMCodeGenerator
         }
         else
         {
-            if (auto machineBuilder = ::llvm::orc::JITTargetMachineBuilder::detectHost())
-            {
-                auto& opts = machineBuilder->getOptions();
-                opts.ExceptionModel = ::llvm::ExceptionHandling::None;
-                opts.setFPDenormalMode (::llvm::DenormalMode::getPositiveZero());
-
-                machineBuilder->setCodeGenOptLevel (getCodeGenOptLevel (buildSettings.getOptimisationLevel()));
-
-                if (auto tm = machineBuilder->createTargetMachine())
-                    targetMachine = std::move (tm.get());
-            }
+            targetMachine = getNativeTargetMachine();
         }
 
         ::llvm::legacy::PassManager passManager;
@@ -386,8 +393,11 @@ struct LLVMCodeGenerator
         ::llvm::FunctionAnalysisManager         functionAnalysisManager;
         ::llvm::CGSCCAnalysisManager            cGSCCAnalysisManager;
         ::llvm::ModuleAnalysisManager           moduleAnalysisManager;
+        ::llvm::PipelineTuningOptions pto;
 
-        ::llvm::PassBuilder passBuilder;
+        auto targetMachine = getNativeTargetMachine();
+
+        ::llvm::PassBuilder passBuilder (targetMachine.get(), pto);
 
         passBuilder.registerModuleAnalyses          (moduleAnalysisManager);
         passBuilder.registerCGSCCAnalyses           (cGSCCAnalysisManager);
