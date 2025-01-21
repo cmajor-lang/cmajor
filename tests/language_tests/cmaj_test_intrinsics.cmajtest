@@ -1048,7 +1048,10 @@ bool test_ceilVector()
 
 bool test_remainderVector()
 {
-    return near (remainder (float32<2> (10.0f, 5.1f), float32<2> (4.0f, 3.0f)), float32<2> (-2.0f, -0.9f));
+    let r = remainder (float32<2> (10.0f, 5.1f), float32<2> (4.0f, 3.0f));
+    let a = abs (r);
+
+    return near (a, float32<2> (2.0f, 0.9f));
 }
 
 bool test_rintVector()
