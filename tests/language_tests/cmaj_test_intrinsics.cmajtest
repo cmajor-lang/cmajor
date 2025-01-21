@@ -520,12 +520,20 @@ bool test_clamp()
 
 bool test_lerp()
 {
-    return near (lerp (100.0f, 200.0f, 0.2f), 120.0f);
+    return near (lerp (100.0f, 200.0f, 0.2f), 120.0f) &&
+           near (lerp (100.0f, 200.0f, 0.2), 120.0f);
+}
+
+bool test_lerp64()
+{
+    return near (lerp (100.0, 200.0, 0.2f), 120.0) &&
+           near (lerp (100.0, 200.0, 0.2), 120.0);
 }
 
 bool test_lerpVector()
 {
-    return near (lerp (float64<2> (1.0, 2.0), float64<2> (2.0, 4.0), 0.5f), float64<2> (1.5, 3.0));
+    return near (lerp (float64<2> (1.0, 2.0), float64<2> (2.0, 4.0), 0.5f), float64<2> (1.5, 3.0)) &&
+           near (lerp (float64<2> (1.0, 2.0), float64<2> (2.0, 4.0), 0.5), float64<2> (1.5, 3.0));
 }
 
 
@@ -1013,6 +1021,10 @@ void f()  { float c = 1.0f; let p = pow (c, 2); }
 ## expectError ("2:43: error: Could not resolve argument types for function call pow(const float32, int32)")
 
 void f()  { const float c = 1.0f; let p = pow (c, 2); }
+
+## expectError ("2:13: error: lerp() requires floating point arguments")
+
+void f()  { lerp (1.0, 2.0, 4); }
 
 ## testFunction()
 
