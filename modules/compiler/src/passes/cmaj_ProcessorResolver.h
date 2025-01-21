@@ -328,6 +328,7 @@ struct ProcessorResolver  : public PassAvoidingGenericFunctionsAndModules
 
                         newEndpoint.name = makeEndpointName (hoistedEndpoint, e);
                         newEndpoint.isInput = isInput;
+                        newEndpoint.endpointType.set (e.endpointType);
 
                         if (hoistedEndpoint.annotation != nullptr)
                             newEndpoint.annotation.referTo (hoistedEndpoint.annotation.getObject());

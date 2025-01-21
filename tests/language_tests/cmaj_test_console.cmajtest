@@ -404,3 +404,26 @@ processor VoiceComponent
         advance();
     }
 }
+
+
+## testCompile()
+
+graph Main [[main]]
+{
+    output test.*;
+    node test = testing::Test;
+}
+
+namespace testing
+{
+    processor Test
+    {
+        output stream float<2> out;
+
+        void main()
+        {
+            console <- "Init";
+            advance();
+        }
+    }
+}
