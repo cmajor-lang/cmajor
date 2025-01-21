@@ -102,7 +102,7 @@ namespace intrinsics
     /// Returns the floating remainder of its arguments. This follows the same rules as the standard C/C++ std::remainder() function.
     T remainder<T> (T x, T y)                       { static_assert (x.isScalar && x.primitiveType.isFloat, "remainder() requires floating point arguments"); if const (x.isVector) return internal::vec_remainder (x, y); else { return x - (y * T(int64(x / y + 0.5f))); } }
     /// Performs a linear-interpolation between a pair of scalar values.
-    T lerp<T, P> (T value1, T value2, P proportion)    { static_assert (value1.isScalar && value1.primitiveType.isFloat && proportion.isFloat, "lerp() requires floating point arguments");   return value1 + (value2 - value1) * value1.primitiveType (proportion); }
+    T lerp<T, P> (T value1, T value2, P proportion) { static_assert (value1.isScalar && value1.primitiveType.isFloat && proportion.primitiveType.isFloat, "lerp() requires floating point arguments");   return value1 + (value2 - value1) * proportion; }
     /// Returns the nearest integer to a floating point value.
     int32 roundToInt (float32 value)                { return int32 (value + (value < 0 ? -0.5f : 0.5f)); }
     /// Returns the nearest integer to a floating point value.
