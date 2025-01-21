@@ -1014,18 +1014,32 @@ void f()  { float c = 1.0f; let p = pow (c, 2); }
 
 void f()  { const float c = 1.0f; let p = pow (c, 2); }
 
-## expectError ("2:20: error: floor() requires floating point arguments")
+## testFunction()
 
-void f() { let a = floor (float<2> (1.1f, 2.2f)); }
+bool near<T> (T n1, T n2)
+{
+    if const (T.isVector)
+        return allTrue (select (n1 > n2, (n1 - n2), (n2 - n1)) < 0.0001f);
+    else
+        return (n1 > n2 ? (n1 - n2) : (n2 - n1)) < 0.0001f;
+}
 
-## expectError ("2:20: error: ceil() requires floating point arguments")
+bool test_floorVector()
+{
+    return near (floor (float32<2> (1.1f, 2.2f)), float32<2> (1.0f, 2.0f));
+}
 
-void f() { let a = ceil (float<2> (1.1f, 2.2f)); }
+bool test_ceilVector()
+{
+    return near (ceil (float32<2> (1.1f, 2.2f)), float32<2> (2.0f, 3.0f));
+}
 
-## expectError ("2:20: error: rint() requires floating point arguments")
+bool test_remainderVector()
+{
+    return near (remainder (float32<2> (10.0f, 5.1f), float32<2> (4.0f, 3.0f)), float32<2> (-2.0f, -0.9f));
+}
 
-void f() { let a = rint (float<2> (1.1f, 2.2f)); }
-
-## expectError ("2:20: error: remainder() requires floating point arguments")
-
-void f() { let a = remainder (float<2> (1.1f, 2.2f), float<2> (1.1f, 2.2f)); }
+bool test_rintVector()
+{
+    return near (rint (float32<2> (1.1f, 2.7f)), float32<2> (1.0f, 3.0f));
+}

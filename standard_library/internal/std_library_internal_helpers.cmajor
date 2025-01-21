@@ -28,21 +28,25 @@
 namespace std::intrinsics::internal
 {
 
-T vec_min<T>   (T v1, T v2)  { return select (v1 < v2, v1, v2); }
-T vec_max<T>   (T v1, T v2)  { return select (v1 > v2, v1, v2); }
+T vec_min<T>         (T v1, T v2) { return select (v1 < v2, v1, v2); }
+T vec_max<T>         (T v1, T v2) { return select (v1 > v2, v1, v2); }
 
-T vec_abs<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = abs   (n[i]);  return r; }
-T vec_sqrt<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = sqrt  (n[i]);  return r; }
-T vec_exp<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = exp   (n[i]);  return r; }
-T vec_log<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = log   (n[i]);  return r; }
-T vec_log10<T> (T n)  { T r;  for (wrap<T.size> i) r[i] = log10 (n[i]);  return r; }
-T vec_sin<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = sin   (n[i]);  return r; }
-T vec_cos<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = cos   (n[i]);  return r; }
-T vec_tan<T>   (T n)  { T r;  for (wrap<T.size> i) r[i] = tan   (n[i]);  return r; }
-T vec_atan<T>  (T n)  { T r;  for (wrap<T.size> i) r[i] = atan  (n[i]);  return r; }
+T vec_fmod<T>        (T v1, T v2) { T r; for (wrap<T.size> i) r[i] = fmod      (v1[i], v2[i]); return r; }
+T vec_pow<T>         (T v1, T v2) { T r; for (wrap<T.size> i) r[i] = pow       (v1[i], v2[i]); return r; }
+T vec_remainder<T>   (T v1, T v2) { T r; for (wrap<T.size> i) r[i] = remainder (v1[i], v2[i]); return r; }
 
-T vec_fmod<T>  (T v1, T v2) { T r; for (wrap<T.size> i) r[i] = fmod (v1[i], v2[i]);  return r; }
-T vec_pow<T>   (T v1, T v2) { T r; for (wrap<T.size> i) r[i] = pow (v1[i], v2[i]); return r; }
+T vec_abs<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = abs        (n[i]);  return r; }
+T vec_sqrt<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = sqrt       (n[i]);  return r; }
+T vec_exp<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = exp        (n[i]);  return r; }
+T vec_log<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = log        (n[i]);  return r; }
+T vec_log10<T>       (T n) { T r;  for (wrap<T.size> i) r[i] = log10      (n[i]);  return r; }
+T vec_sin<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = sin        (n[i]);  return r; }
+T vec_cos<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = cos        (n[i]);  return r; }
+T vec_tan<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = tan        (n[i]);  return r; }
+T vec_atan<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = atan       (n[i]);  return r; }
+T vec_floor<T>       (T n) { T r;  for (wrap<T.size> i) r[i] = floor      (n[i]);  return r; }
+T vec_ceil<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = ceil       (n[i]);  return r; }
+T vec_rint<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = rint       (n[i]);  return r; }
 
 //==============================================================================
 T atan_pos<T> (T n)
