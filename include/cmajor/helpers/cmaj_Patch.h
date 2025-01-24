@@ -2168,7 +2168,8 @@ inline void Patch::setErrorStatus (const std::string& error, const std::string& 
 
 inline void Patch::handleFileChange (PatchFileChangeChecker::ChangeType change)
 {
-    rebuild (false);
+    if (change.cmajorFilesChanged || change.manifestChanged)
+        rebuild (false);
 
     if (patchFilesChanged)
         patchFilesChanged (change);
