@@ -151,7 +151,7 @@ struct EmbeddedWebAssets
         "\n"
         "    /** Modifies a key-value pair in the patch's stored state.\n"
         "     *  @param {string} key\n"
-        "     *  @param {Object} newValue\n"
+        "     *  @param {Object | null | undefined} newValue\n"
         "     */\n"
         "    sendStoredStateValue (key, newValue)              { this.sendMessageToServer ({ type: \"send_state_value\", key: key, value: newValue }); }\n"
         "\n"
@@ -3533,7 +3533,7 @@ struct EmbeddedWebAssets
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12712) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12731) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30757) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },

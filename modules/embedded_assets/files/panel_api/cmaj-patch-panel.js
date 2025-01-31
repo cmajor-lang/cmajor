@@ -36,6 +36,12 @@ function showErrorAlert (message)
         alert (message);
 }
 
+function removeAllChildElements (parent)
+{
+    while (parent.firstChild)
+        parent.removeChild (parent.lastChild);
+}
+
 window.openSourceFile = (file) =>
 {
     if (window.sendMessageToVSCode)
@@ -98,6 +104,9 @@ function getMessageListAsString (messages)
 }
 
 //==============================================================================
+/**
+ * Base class for endpoint controls in the patch panel.
+ */
 class EndpointControlBase  extends HTMLElement
 {
     constructor (patchConnection, endpointInfo)
@@ -130,60 +139,6 @@ class EndpointControlBase  extends HTMLElement
             <div class="cmaj-io-label"><p>${name}</p></div>
             </div>
           </div>`;
-    }
-
-    static getCSS()
-    {
-        return `
-        .cmaj-io-control {
-            display: flex;
-            padding: 0.2rem;
-            margin: 0.6rem;
-            background: #22222288;
-            box-shadow: 0 0.3rem 0.4rem 0 #00000030;
-            flex-flow: column nowrap;
-            justify-content: flex-start;
-            align-items: center;
-        }
-
-        .cmaj-io-control-content {
-            flex-basis: 6.5rem;
-        }
-
-        .cmaj-io-label-holder {
-            padding: 0 0.8rem;
-        }
-
-        .cmaj-io-label {
-            display: inline-block;
-            padding: 0.2rem 1.2rem;
-        }
-
-        .cmaj-io-label p {
-            margin: 0;
-            font-size: 0.8rem;
-            color: #eee;
-        }
-
-        cmaj-level-meter {
-            display: inline-block;
-            width: 3.5rem;
-            height: 6.5rem;
-            min-width: 3.5rem;
-            margin: 0.1rem;
-            flex-basis: 6.5rem;
-            flex-grow: 0;
-        }
-
-        cmaj-waveform-display {
-            display: inline-block;
-            width: 12rem;
-            height: 6.5rem;
-            min-width: 12rem;
-            margin: 0.1rem;
-            flex-basis: 24rem;
-            flex-grow: 0;
-        }`;
     }
 }
 
@@ -274,20 +229,6 @@ class ConsoleEventControl  extends EndpointControlBase
 
         return JSON.stringify (m);
     }
-
-    static getCSS()
-    {
-        return `
-        .cmaj-console {
-            display: inline-block;
-            width: 100%;
-            height: 8rem;
-            min-height: 5rem;
-            resize: vertical;
-            background: #222;
-            color: #5e5;
-        }`;
-    }
 }
 
 //==============================================================================
@@ -362,10 +303,10 @@ class AudioInputControl  extends EndpointControlBase
 
         this.initialise (`<cmaj-level-meter></cmaj-level-meter>
                           <cmaj-waveform-display></cmaj-waveform-display>`,
-                          `<button class="cmaj-live-button">Live</button>
-                           <button class="cmaj-file-button">File</button>
-                           <button class="cmaj-mute-button">Mute</button>
-                           <input type="file" hidden>`);
+                         `<button class="cmaj-live-button">Live</button>
+                          <button class="cmaj-file-button">File</button>
+                          <button class="cmaj-mute-button">Mute</button>
+                          <input type="file" hidden>`);
 
         this.meter = this.querySelector ("cmaj-level-meter");
         this.waveform = this.querySelector ("cmaj-waveform-display");
@@ -566,29 +507,6 @@ class AudioDevicePropertiesPanel  extends HTMLElement
         this.currentProperties.blockSize = newSize;
         this.session.setAudioDeviceProperties (this.currentProperties);
     }
-
-    static getCSS()
-    {
-        return `
-        .cmaj-audio-device-panel {
-            color: var(--foreground);
-            display: block;
-            margin-top: 0.8rem;
-            margin-bottom: 0.8rem;
-        }
-
-        .cmaj-audio-device-panel label {
-            display: inline-block;
-            width: 8rem;
-            text-align: right;
-        }
-
-        .cmaj-device-io-item {
-            display: block;
-            margin-bottom: 0.4rem;
-        }
-    `;
-    }
 }
 
 //==============================================================================
@@ -600,12 +518,12 @@ class CodeGenPanel  extends HTMLElement
 
         this.codeGenTabs = [];
 
-        this.innerHTML = `<div class="cmaj-codegen-tabs"></div>
-                          <div class="cmaj-codegen-listing"></div>
+        this.innerHTML = `<cmaj-codegen-tabs></cmaj-codegen-tabs>
+                          <cmaj-codegen-listing></cmaj-codegen-listing>
                           <button class="cmaj-open-codegen-button">Open with editor</button>`;
 
-        this.codeGenTabsHolder   = this.querySelector (".cmaj-codegen-tabs");
-        this.codeGenListing      = this.querySelector (".cmaj-codegen-listing");
+        this.codeGenTabsHolder   = this.querySelector ("cmaj-codegen-tabs");
+        this.codeGenListing      = this.querySelector ("cmaj-codegen-listing");
         this.showCodeButton      = this.querySelector (".cmaj-open-codegen-button");
 
         this.showCodeButton.onclick = () => this.openCodeEditor();
@@ -644,11 +562,8 @@ class CodeGenPanel  extends HTMLElement
         let targetList = status.codeGenTargets;
         this.style.display = targetList?.length > 0 ? "flex" : "none";
 
-        while (this.codeGenTabsHolder.firstChild)
-            this.codeGenTabsHolder.removeChild (this.codeGenTabsHolder.lastChild);
-
-        while (this.codeGenListing.firstChild)
-            this.codeGenListing.removeChild (this.codeGenListing.lastChild);
+        removeAllChildElements (this.codeGenTabsHolder);
+        removeAllChildElements (this.codeGenListing);
 
         this.codeGenTabs = [];
 
@@ -749,83 +664,6 @@ class CodeGenPanel  extends HTMLElement
         if (text?.length > 0)
             openTextDocument (text, this.getVScodeLanguageName (this.activeCodeGenName));
     }
-
-    static getCSS()
-    {
-        return `
-        cmaj-codegen-panel {
-            position: relative;
-            display: flex;
-            flex-flow: row nowrap;
-            align-items: stretch;
-            min-height: 30rem;
-            margin-bottom: 6rem;
-            padding-top: 0.5rem;
-            overflow: hidden;
-            resize: vertical;
-        }
-
-        .cmaj-codegen-tabs {
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            display: flex;
-            flex-flow: column nowrap;
-            align-items: stretch;
-            align-self: flex-start;
-            min-width: 8rem;
-            min-height: 30rem;
-        }
-
-        .cmaj-codegen-tab {
-            background-color: #00000030;
-            color: var(--foreground);
-            cursor: pointer;
-            padding: 0 1rem;
-            text-align: left;
-            display: inline-block;
-            font-size: 0.8rem;
-            height: 3rem;
-        }
-
-        .cmaj-active-tab {
-            background: #222;
-        }
-
-        .cmaj-codegen-listing {
-            flex-grow: 2;
-            border: none;
-            display: block;
-            width: 100%;
-            background: none;
-            color: #5e5;
-            background: #222;
-        }
-
-        .cmaj-codegen-listing textarea {
-            font-family: Monaco, Consolas, monospace;
-            position: relative;
-            border: none;
-            outline: none;
-            display: block;
-            background: #222;
-            color: #5e5;
-            min-width: 100%;
-            height: 100%;
-            resize: none;
-            padding-left: 1rem;
-        }
-
-        .cmaj-open-codegen-button {
-            display: block;
-            position: absolute;
-            right: 3%;
-            height: 2rem;
-            top: 1.5rem;
-            z-index: 3;
-        }`;
-    }
 }
 
 //==============================================================================
@@ -835,13 +673,17 @@ export default class PatchPanel  extends HTMLElement
     {
         super();
 
-        this.root = this.attachShadow ({ mode: "open" });
-
         this.session = cmajor.createServerSession (this.getSessionID());
         this.patchConnection = null;
         this.isSessionConnected = false;
 
-        this.root.innerHTML = this.getHTML();
+        this.initialise();
+    }
+
+    async initialise()
+    {
+        const html = await fetch ("/panel_api/cmaj-patch-panel.html");
+        this.innerHTML = await html.text();
 
         this.statusListener = status => this.updateStatus (status);
         this.session.addStatusListener (this.statusListener);
@@ -851,25 +693,27 @@ export default class PatchPanel  extends HTMLElement
 
         this.session.addInfiniteLoopListener (handleInfiniteLoopAlert);
 
-        this.controlsContainer   = this.shadowRoot.getElementById ("cmaj-control-container");
-        this.logoElement         = this.shadowRoot.getElementById ("cmaj-logo")
-        this.viewHolderElement   = this.shadowRoot.getElementById ("cmaj-patch-view-holder");
-        this.viewSelectorElement = this.shadowRoot.getElementById ("cmaj-view-selector");
-        this.toggleAudioButton   = this.shadowRoot.getElementById ("cmaj-toggle-audio-button");
-        this.unloadButton        = this.shadowRoot.getElementById ("cmaj-unload-button");
-        this.resetButton         = this.shadowRoot.getElementById ("cmaj-reset-button");
-        this.copyStateButton     = this.shadowRoot.getElementById ("cmaj-copy-state");
-        this.restoreStateButton  = this.shadowRoot.getElementById ("cmaj-restore-state");
-        this.statusElement       = this.shadowRoot.getElementById ("cmaj-patch-status");
-        this.inputsPanel         = this.shadowRoot.getElementById ("cmaj-inputs-panel");
-        this.outputsPanel        = this.shadowRoot.getElementById ("cmaj-outputs-panel");
-        this.cpuElement          = this.shadowRoot.getElementById ("cmaj-cpu");
-        this.graphElement        = this.shadowRoot.getElementById ("cmaj-graph");
-        this.errorListElement    = this.shadowRoot.getElementById ("cmaj-error-list");
-        this.audioDevicePanel    = this.shadowRoot.getElementById ("cmaj-audio-device-panel");
-        this.codeGenPanel        = this.shadowRoot.getElementById ("cmaj-codegen-panel");
-        this.availablePatchList  = this.shadowRoot.getElementById ("cmaj-available-patch-list-holder");
-        this.availablePatches    = this.shadowRoot.getElementById ("cmaj-available-patch-list");
+        this.querySelector (".cmaj-version-number").innerText = `version ${getCmajorVersion()}`;
+
+        this.controlsContainer   = this.querySelector ("cmaj-control-container");
+        this.logoElement         = this.querySelector ("cmaj-logo")
+        this.viewHolderElement   = this.querySelector ("cmaj-patch-view-parent");
+        this.viewSelectorElement = this.querySelector ("#cmaj-view-selector");
+        this.toggleAudioButton   = this.querySelector ("#cmaj-toggle-audio-button");
+        this.unloadButton        = this.querySelector ("#cmaj-unload-button");
+        this.resetButton         = this.querySelector ("#cmaj-reset-button");
+        this.copyStateButton     = this.querySelector ("#cmaj-copy-state");
+        this.restoreStateButton  = this.querySelector ("#cmaj-restore-state");
+        this.statusElement       = this.querySelector ("#cmaj-patch-status");
+        this.inputsPanel         = this.querySelector ("cmaj-inputs-panel");
+        this.outputsPanel        = this.querySelector ("cmaj-outputs-panel");
+        this.cpuElement          = this.querySelector ("cmaj-cpu-meter");
+        this.graphElement        = this.querySelector ("cmaj-patch-graph");
+        this.errorListElement    = this.querySelector ("#cmaj-error-list");
+        this.audioDevicePanel    = this.querySelector ("cmaj-audio-device-panel-parent");
+        this.codeGenPanel        = this.querySelector ("#cmaj-codegen-panel");
+        this.availablePatchList  = this.querySelector ("cmaj-available-patch-list-holder");
+        this.availablePatches    = this.querySelector ("#cmaj-available-patch-list");
 
         this.logoElement.onclick = () => openURLInNewWindow ("https://cmajor.dev");
         this.toggleAudioButton.onclick = () => this.toggleAudio();
@@ -880,7 +724,7 @@ export default class PatchPanel  extends HTMLElement
 
         if (! this.isShowingFixedPatch())
         {
-            const main = this.shadowRoot.querySelector (".cmaj-main");
+            const main = this.querySelector ("cmaj-main");
             main.ondragover = e => this.handleDragOver (e);
             main.ondrop = e => this.handleDragAndDrop (e);
         }
@@ -954,7 +798,7 @@ export default class PatchPanel  extends HTMLElement
     updateAvailablePatches (availablePatches)
     {
         this.availablePatches.innerHTML = "";
-        this.availablePatchList.style.display = availablePatches?.length > 0 ? "inline-block" : "none";
+        this.availablePatchList.style.display = availablePatches?.length > 0 ? null : "none";
 
         for (const manifest of availablePatches)
         {
@@ -1032,21 +876,20 @@ export default class PatchPanel  extends HTMLElement
         this.audioActive = status.playing;
         this.toggleAudioButton.innerText = (status.playing ? "Stop Audio" : "Start Audio");
 
-        this.toggleAudioButton.style.display = status.loaded ? "inline" : "none";
-        this.unloadButton.style.display = (! this.isShowingFixedPatch() && status.loaded) ? "inline" : "none";
-        this.copyStateButton.style.display = status.loaded ? "inline" : "none";
-        this.restoreStateButton.style.display = status.loaded ? "inline" : "none";
+        this.toggleAudioButton.style.display = status.loaded ? null : "none";
+        this.unloadButton.style.display = (! this.isShowingFixedPatch() && status.loaded) ? null : "none";
+        this.copyStateButton.style.display = status.loaded ? null : "none";
+        this.restoreStateButton.style.display = status.loaded ? null : "none";
 
-        this.controlsContainer.style.display = status.loaded ? "block" : "none";
-        this.cpuElement.style.display = (status.playing && status.loaded) ? "inline-block" : "none";
+        this.controlsContainer.style.display = status.loaded ? null : "none";
+        this.cpuElement.style.display = (status.playing && status.loaded) ? null : "none";
 
         window.sendMessageToVSCode?.({ newServerStatus: status });
     }
 
     populateInputsPanel (status)
     {
-        while (this.inputsPanel.firstChild)
-            this.inputsPanel.removeChild (this.inputsPanel.lastChild);
+        removeAllChildElements (this.inputsPanel);
 
         const inputs = status.details?.inputs;
         let anyAdded = false;
@@ -1071,8 +914,7 @@ export default class PatchPanel  extends HTMLElement
 
     populateOutputsPanel (status)
     {
-        while (this.outputsPanel.firstChild)
-            this.outputsPanel.removeChild (this.outputsPanel.lastChild);
+        removeAllChildElements (this.outputsPanel);
 
         const outputs = status.details?.outputs;
 
@@ -1504,8 +1346,7 @@ export default class PatchPanel  extends HTMLElement
         }
         else
         {
-            while (viewSelector.firstChild)
-                viewSelector.removeChild (viewSelector.lastChild);
+            removeAllChildElements (viewSelector);
 
             viewSelector.style.display = "none"
             viewSelector.onchange = undefined;
@@ -1515,7 +1356,7 @@ export default class PatchPanel  extends HTMLElement
     //==============================================================================
     initAccordionButtons()
     {
-        for (let button of this.shadowRoot.querySelectorAll (".cmaj-accordion-button"))
+        for (let button of this.querySelectorAll ("cmaj-accordion-button"))
         {
             function updatePanelSize (button)
             {
@@ -1544,343 +1385,6 @@ export default class PatchPanel  extends HTMLElement
                 }
             };
         }
-    }
-
-    //==============================================================================
-    getHTML()
-    {
-        return `
-<style>
-    * {
-        box-sizing: border-box;
-        font-family: Monaco, Consolas, monospace;
-        font-size: 95%;
-    }
-
-    :host {
-        --background: #445550;
-        --foreground: #dddddd;
-        --header-height: 6rem;
-
-        background: var(--background);
-        display: block;
-    }
-
-    .cmaj-main {
-        min-height: 100vh;
-    }
-
-    .cmaj-header {
-        width: 100%;
-        min-height: 6rem;
-        font-size: 0.9rem;
-        padding: 0.5rem;
-        padding-top: 0.6rem;
-        margin-bottom: 0.6rem;
-
-        display: flex;
-        flex-flow: row nowrap;
-        justify-content: left;
-        align-items: stretch;
-        overflow: hidden;
-    }
-
-    .cmaj-header p {
-        margin-block-start: 0;
-        margin-block-end: 0;
-    }
-
-    a {
-        color: var(--foreground);
-    }
-
-    .cmaj-logo-and-version-holder {
-        display: flex;
-        flex-flow: column nowrap;
-        align-items: center;
-        margin-right: 1.2rem;
-    }
-
-    .cmajor-logo {
-        user-select: none;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        min-width: 8rem;
-        min-height: 4rem;
-        align-self: flex-center;
-        background-color: var(--foreground);
-        mask: url(/cmaj_api/assets/cmajor-logo.svg);
-        mask-repeat: no-repeat;
-        mask-position: center;
-        -webkit-mask: url(/cmaj_api/assets/cmajor-logo.svg);
-        -webkit-mask-repeat: no-repeat;
-        -webkit-mask-position: center;
-        cursor: pointer;
-    }
-
-    .cmaj-version-number {
-        color: #999;
-        font-size: 0.7rem;
-        padding: 0 0 1rem 0;
-        margin: 0;
-    }
-
-    button {
-        border: none;
-        padding: 0.2rem 0.6rem;
-        background-color: #ccccff30;
-        color: #ddd;
-        border-radius: 0.3rem;
-    }
-
-    button:hover {
-        background-color: #ddddff70;
-    }
-
-    .cmaj-selected-button {
-        background-color: #44ee4450;
-    }
-
-    .cmaj-selected-button:hover {
-        background-color: #44ee4480;
-    }
-
-    select {
-        background-color: #ccccff30;
-        color: #ddd;
-        padding: 0.3rem;
-        margin: 0;
-        border-radius: 0.3rem;
-    }
-
-    select:hover {
-        background-color: #ddddff60;
-    }
-
-    #cmaj-patch-status {
-        color: var(--foreground);
-        flex: 2;
-        height: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        padding-left: 0.5rem;
-        margin-block-start: 0;
-        margin-block-end: 0;
-    }
-
-    .cmaj-top-panel-buttons {
-        display: flex;
-        flex-flow: column nowrap;
-        justify-content: space-between;
-        align-items: flex-end;
-    }
-
-    .cmaj-top-panel-buttons button {
-        margin-left: 1rem;
-    }
-
-    cmaj-cpu-meter {
-        width: 6rem;
-        height: 1.5rem;
-        align-self: flex-center;
-    }
-
-    .cmaj-divider {
-        width: 100%;
-        height: 0.05rem;
-        border-top: 0.05rem solid var(--foreground);
-        margin: 0;
-        padding: 0;
-    }
-
-    .cmaj-control-container {
-        padding: 0.5rem 0.2rem;
-        margin: 0 0.6rem;
-    }
-
-    #cmaj-available-patch-list-holder {
-        background: solid;
-        background-color: #00000044;
-        padding-top: 0.5rem;
-        margin: 0;
-    }
-
-    #cmaj-available-patch-list button {
-        background: none;
-        cursor: pointer;
-        margin: 0 0 0.3rem 0.3rem;
-    }
-
-    #cmaj-available-patch-list button:hover {
-        background-color: #ddddff40;
-        cursor: pointer;
-    }
-
-    .cmaj-io-panel {
-        display: flex;
-        padding: 0.5rem 0;
-        flex-flow: row wrap;
-        justify-content: center;
-        align-items: center;
-    }
-
-    cmaj-panel-piano-keyboard {
-        display: inline-block;
-        height: 6rem;
-        min-width: 10rem;
-        flex-basis: 20rem;
-        flex-grow: 1;
-    }
-
-    #cmaj-patch-view-holder {
-        position: relative;
-        display: block;
-        overflow: auto;
-        padding-top: 0.3rem;
-        padding-bottom: 0.5rem;
-        resize: vertical;
-        height: 400px;
-    }
-
-    #cmaj-graph {
-        max-height: 50rem;
-    }
-
-    #cmaj-error-list {
-        display: block;
-        white-space: pre-wrap;
-        font-size: 0.9rem;
-        min-height: 18rem;
-        background: #222222;
-        color: #bbbbbb;
-        padding: 0.8rem;
-        margin: 0.8rem;
-        overflow: auto;
-        resize: vertical;
-    }
-
-    #cmaj-error-list p {
-        margin: 0;
-    }
-
-    #cmaj-error-list a {
-        color: #aaa;
-    }
-
-    .cmaj-action-button-holder {
-        padding: 0.6rem 0;
-    }
-
-    .cmaj-action-button-holder button {
-        margin-bottom: 0.6rem;
-    }
-
-    .cmaj-accordion-button {
-        background-color: #ffffff40;
-        color: var(--foreground);
-        cursor: pointer;
-        padding: 0 1rem;
-        height: 2.5rem;
-        width: 100%;
-        border: none;
-        outline: none;
-        text-align: left;
-        font-size: 1rem;
-        transition: 0.2s;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 0.1rem solid #00000033;
-        border-radius: 0.1rem;
-    }
-
-    .cmaj-accordion-button:hover {
-        background-color: #ffffff60;
-    }
-
-    .cmaj-accordion-panel {
-        padding: 0 0.8rem;
-        background-color: #ffffff20;
-        overflow: hidden;
-        transition: max-height 0.25s ease-out;
-    }
-
-    #cmaj-view-selector {
-        font-size: 0.8rem;
-    }
-
-    ${AudioDevicePropertiesPanel.getCSS()}
-    ${ConsoleEventControl.getCSS()}
-    ${EndpointControlBase.getCSS()}
-    ${CodeGenPanel.getCSS()}
-
-</style>
-
-<div class="cmaj-main">
-  <div id="cmaj-available-patch-list-holder" hidden>
-    <div id="cmaj-available-patch-list"></div>
-    <div class="cmaj-divider"></div>
-  </div>
-
-  <div class="cmaj-header">
-    <div class="cmaj-logo-and-version-holder">
-      <span id="cmaj-logo" class="cmajor-logo"></span>
-      <p class="cmaj-version-number">version ${getCmajorVersion()}</p>
-    </div>
-    <p id="cmaj-patch-status"></p>
-    <cmaj-cpu-meter id="cmaj-cpu"></cmaj-cpu-meter>
-    <div class="cmaj-top-panel-buttons">
-      <button id="cmaj-toggle-audio-button">Stop Audio</button>
-      <button id="cmaj-unload-button">Unload Patch</button>
-    </div>
-  </div>
-
-  <div class="cmaj-divider"></div>
-
-  <div class="cmaj-control-container" id="cmaj-control-container">
-    <div class="cmaj-action-button-holder">
-      <button id="cmaj-reset-button">Reset patch</button>
-      <button id="cmaj-copy-state">Copy state to clipboard</button>
-      <button id="cmaj-restore-state">Paste state from clipboard</button>
-    </div>
-
-    <button class="cmaj-accordion-button cmaj-accordian-open">GUI
-      <select id="cmaj-view-selector"></select>
-    </button>
-    <div class="cmaj-accordion-panel">
-      <div id="cmaj-patch-view-holder"></div>
-    </div>
-
-    <button class="cmaj-accordion-button cmaj-accordian-open">Inputs</button>
-    <div class="cmaj-accordion-panel">
-      <div id="cmaj-inputs-panel" class="cmaj-io-panel"></div>
-    </div>
-
-    <button class="cmaj-accordion-button cmaj-accordian-open">Outputs</button>
-    <div class="cmaj-accordion-panel">
-      <div id="cmaj-outputs-panel" class="cmaj-io-panel"></div>
-    </div>
-
-    <button class="cmaj-accordion-button">Graph</button>
-    <div class="cmaj-accordion-panel">
-      <cmaj-patch-graph id="cmaj-graph"></cmaj-patch-graph>
-    </div>
-
-    <button class="cmaj-accordion-button">Audio Device Settings</button>
-    <div class="cmaj-accordion-panel">
-      <div id="cmaj-audio-device-panel" class="cmaj-audio-device-panel"></div>
-    </div>
-
-    <button class="cmaj-accordion-button">Generated Code</button>
-    <div class="cmaj-accordion-panel">
-      <cmaj-codegen-panel id="cmaj-codegen-panel"></cmaj-codegen-panel>
-    </div>
-
-  </div>
-  <pre id="cmaj-error-list"></pre>
-</div>
-</html>`;
     }
 };
 

@@ -1,0 +1,65 @@
+
+<link rel="stylesheet" href="/panel_api/cmaj-patch-panel.css">
+
+<cmaj-main>
+  <cmaj-available-patch-list-holder>
+    <div id="cmaj-available-patch-list"></div>
+    <cmaj-divider></cmaj-divider>
+  </cmaj-available-patch-list-holder>
+
+  <cmaj-header>
+    <cmaj-logo-and-version-holder>
+      <cmaj-logo></cmaj-logo>
+      <p class="cmaj-version-number"></p>
+    </cmaj-logo-and-version-holder>
+    <p id="cmaj-patch-status"></p>
+    <cmaj-cpu-meter></cmaj-cpu-meter>
+    <cmaj-top-panel-buttons>
+      <button id="cmaj-toggle-audio-button">Stop Audio</button>
+      <button id="cmaj-unload-button">Unload Patch</button>
+    </cmaj-top-panel-buttons>
+  </cmaj-header>
+
+  <cmaj-divider></cmaj-divider>
+
+  <cmaj-control-container>
+    <div class="cmaj-action-button-holder">
+      <button id="cmaj-reset-button">Reset patch</button>
+      <button id="cmaj-copy-state">Copy state to clipboard</button>
+      <button id="cmaj-restore-state">Paste state from clipboard</button>
+    </div>
+
+    <cmaj-accordion-button class="cmaj-accordian-open">GUI<select id="cmaj-view-selector"></select></cmaj-accordion-button>
+    <cmaj-accordion-panel>
+      <cmaj-patch-view-parent></cmaj-patch-view-parent>
+    </cmaj-accordion-panel>
+
+    <cmaj-accordion-button class="cmaj-accordian-open">Inputs</cmaj-accordion-button>
+    <cmaj-accordion-panel>
+      <cmaj-inputs-panel class="cmaj-io-panel"></cmaj-inputs-panel>
+    </cmaj-accordion-panel>
+
+    <cmaj-accordion-button class="cmaj-accordian-open">Outputs</cmaj-accordion-button>
+    <cmaj-accordion-panel>
+      <cmaj-outputs-panel class="cmaj-io-panel"></cmaj-outputs-panel>
+    </cmaj-accordion-panel>
+
+    <cmaj-accordion-button>Graph</cmaj-accordion-button>
+    <cmaj-accordion-panel>
+      <cmaj-patch-graph></cmaj-patch-graph>
+    </cmaj-accordion-panel>
+
+    <cmaj-accordion-button>Audio Device Settings</cmaj-accordion-button>
+    <cmaj-accordion-panel>
+      <cmaj-audio-device-panel-parent></cmaj-audio-device-panel-parent>
+    </cmaj-accordion-panel>
+
+    <cmaj-accordion-button>Generated Code</cmaj-accordion-button>
+    <cmaj-accordion-panel>
+      <cmaj-codegen-panel id="cmaj-codegen-panel"></cmaj-codegen-panel>
+    </cmaj-accordion-panel>
+
+  </cmaj-control-container>
+  <pre id="cmaj-error-list"></pre>
+</cmaj-main>
+</html>

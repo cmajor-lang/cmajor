@@ -1,0 +1,418 @@
+
+* {
+    box-sizing: border-box;
+    font-family: Monaco, Consolas, monospace;
+    font-size: 95%;
+}
+
+body {
+    --background: #445550;
+    --foreground: #dddddd;
+    --header-height: 6rem;
+
+    background: var(--background);
+    display: block;
+}
+
+cmaj-main {
+    min-height: 100vh;
+}
+
+cmaj-header {
+    width: 100%;
+    min-height: 6rem;
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    padding-top: 0.6rem;
+    margin-bottom: 0.6rem;
+
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: left;
+    align-items: stretch;
+    overflow: hidden;
+}
+
+cmaj-header p {
+    margin-block-start: 0;
+    margin-block-end: 0;
+}
+
+a {
+    color: var(--foreground);
+}
+
+cmaj-logo-and-version-holder {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    margin-right: 1.2rem;
+}
+
+cmaj-logo {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    min-width: 8rem;
+    min-height: 4rem;
+    align-self: flex-center;
+    background-color: var(--foreground);
+    mask: url(/cmaj_api/assets/cmajor-logo.svg);
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask: url(/cmaj_api/assets/cmajor-logo.svg);
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    cursor: pointer;
+}
+
+.cmaj-version-number {
+    color: #999;
+    font-size: 0.7rem;
+    padding: 0 0 1rem 0;
+    margin: 0;
+}
+
+button {
+    border: none;
+    padding: 0.2rem 0.6rem;
+    background-color: #ccccff30;
+    color: #ddd;
+    border-radius: 0.3rem;
+}
+
+button:hover {
+    background-color: #ddddff70;
+}
+
+.cmaj-selected-button {
+    background-color: #44ee4450;
+}
+
+.cmaj-selected-button:hover {
+    background-color: #44ee4480;
+}
+
+select {
+    background-color: #ccccff30;
+    color: #ddd;
+    padding: 0.3rem;
+    margin: 0;
+    border-radius: 0.3rem;
+}
+
+select:hover {
+    background-color: #ddddff60;
+}
+
+#cmaj-patch-status {
+    color: var(--foreground);
+    flex: 2;
+    height: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-left: 0.5rem;
+    margin-block-start: 0;
+    margin-block-end: 0;
+}
+
+cmaj-top-panel-buttons {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+cmaj-top-panel-buttons button {
+    margin-left: 1rem;
+}
+
+cmaj-cpu-meter {
+    width: 6rem;
+    height: 1.5rem;
+    align-self: flex-center;
+}
+
+cmaj-divider {
+    display: block;
+    width: 100%;
+    height: 0.05rem;
+    border-top: 0.05rem solid var(--foreground);
+    margin: 0;
+    padding: 0;
+}
+
+cmaj-control-container {
+    display: block;
+    padding: 0.5rem 0.2rem;
+    margin: 0 0.6rem;
+}
+
+cmaj-available-patch-list-holder {
+    background: solid;
+    background-color: #00000044;
+    padding-top: 0.5rem;
+    margin: 0;
+}
+
+#cmaj-available-patch-list button {
+    background: none;
+    cursor: pointer;
+    margin: 0 0 0.3rem 0.3rem;
+}
+
+#cmaj-available-patch-list button:hover {
+    background-color: #ddddff40;
+    cursor: pointer;
+}
+
+.cmaj-io-panel {
+    display: flex;
+    padding: 0.5rem 0;
+    flex-flow: row wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+cmaj-panel-piano-keyboard {
+    display: inline-block;
+    height: 6rem;
+    min-width: 10rem;
+    flex-basis: 20rem;
+    flex-grow: 1;
+}
+
+cmaj-patch-view-parent {
+    position: relative;
+    display: block;
+    overflow: auto;
+    padding-top: 0.3rem;
+    padding-bottom: 0.5rem;
+    resize: vertical;
+    height: 400px;
+}
+
+cmaj-patch-graph {
+    max-height: 50rem;
+}
+
+#cmaj-error-list {
+    display: block;
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+    min-height: 18rem;
+    background: #222222;
+    color: #bbbbbb;
+    padding: 0.8rem;
+    margin: 0.8rem;
+    overflow: auto;
+    resize: vertical;
+}
+
+#cmaj-error-list p {
+    margin: 0;
+}
+
+#cmaj-error-list a {
+    color: #aaa;
+}
+
+.cmaj-action-button-holder {
+    padding: 0.6rem 0;
+}
+
+.cmaj-action-button-holder button {
+    margin-bottom: 0.6rem;
+}
+
+cmaj-accordion-button {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    background-color: #ffffff40;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 0 1rem;
+    height: 2.5rem;
+    width: 100%;
+    border: none;
+    outline: none;
+    text-align: left;
+    font-size: 1rem;
+    transition: 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 0.1rem solid #00000033;
+    border-radius: 0.1rem;
+}
+
+cmaj-accordion-button:hover {
+    background-color: #ffffff60;
+}
+
+cmaj-accordion-panel {
+    display: block;
+    background-color: #ffffff20;
+    overflow: hidden;
+    transition: max-height 0.25s ease-out;
+}
+
+#cmaj-view-selector {
+    font-size: 0.8rem;
+}
+
+
+
+.cmaj-io-control {
+    display: flex;
+    padding: 0.2rem;
+    margin: 0.6rem;
+    background: #22222288;
+    box-shadow: 0 0.3rem 0.4rem 0 #00000030;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.cmaj-io-control-content {
+    flex-basis: 6.5rem;
+}
+
+.cmaj-io-label-holder {
+    padding: 0 0.8rem;
+}
+
+.cmaj-io-label {
+    display: inline-block;
+    padding: 0.2rem 1.2rem;
+}
+
+.cmaj-io-label p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #eee;
+}
+
+cmaj-level-meter {
+    display: inline-block;
+    width: 3.5rem;
+    height: 6.5rem;
+    min-width: 3.5rem;
+    margin: 0.1rem;
+    flex-basis: 6.5rem;
+    flex-grow: 0;
+}
+
+cmaj-waveform-display {
+    display: inline-block;
+    width: 12rem;
+    height: 6.5rem;
+    min-width: 12rem;
+    margin: 0.1rem;
+    flex-basis: 24rem;
+    flex-grow: 0;
+}
+
+.cmaj-console {
+    display: inline-block;
+    width: 100%;
+    height: 8rem;
+    min-height: 5rem;
+    resize: vertical;
+    background: #222;
+    color: #5e5;
+}
+
+cmaj-audio-device-panel {
+    color: var(--foreground);
+    display: block;
+    margin-top: 0.8rem;
+    margin-bottom: 0.8rem;
+}
+
+cmaj-audio-device-panel label {
+    display: inline-block;
+    width: 8rem;
+    text-align: right;
+}
+
+.cmaj-device-io-item {
+    display: block;
+    margin-bottom: 0.4rem;
+}
+
+cmaj-codegen-panel {
+    position: relative;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: stretch;
+    min-height: 30rem;
+    margin-bottom: 6rem;
+    padding-top: 0.5rem;
+    overflow: hidden;
+    resize: vertical;
+}
+
+cmaj-codegen-tabs {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: stretch;
+    align-self: flex-start;
+    min-width: 8rem;
+    min-height: 30rem;
+}
+
+.cmaj-codegen-tab {
+    background-color: #00000030;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 0 1rem;
+    text-align: left;
+    display: inline-block;
+    font-size: 0.8rem;
+    height: 3rem;
+}
+
+.cmaj-active-tab {
+    background: #222;
+}
+
+cmaj-codegen-listing {
+    flex-grow: 2;
+    border: none;
+    display: block;
+    width: 100%;
+    background: none;
+    color: #5e5;
+    background: #222;
+}
+
+cmaj-codegen-listing textarea {
+    font-family: Monaco, Consolas, monospace;
+    position: relative;
+    border: none;
+    outline: none;
+    display: block;
+    background: #222;
+    color: #5e5;
+    min-width: 100%;
+    height: 100%;
+    resize: none;
+    padding-left: 1rem;
+}
+
+.cmaj-open-codegen-button {
+    display: block;
+    position: absolute;
+    right: 3%;
+    height: 2rem;
+    top: 1.5rem;
+    z-index: 3;
+}
