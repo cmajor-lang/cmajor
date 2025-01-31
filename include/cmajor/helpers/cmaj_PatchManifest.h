@@ -333,9 +333,9 @@ inline bool PatchManifest::reload()
 
 inline std::optional<std::string> PatchManifest::readFileContent (const std::string& file) const
 {
-    if (auto stream = createFileReader (file))
+    try
     {
-        try
+        if (auto stream = createFileReader (file))
         {
             stream->seekg (0, std::ios_base::end);
             auto fileSize = stream->tellg();
@@ -350,8 +350,8 @@ inline std::optional<std::string> PatchManifest::readFileContent (const std::str
                     return result;
             }
         }
-        catch (...) {}
     }
+    catch (...) {}
 
     return {};
 }
