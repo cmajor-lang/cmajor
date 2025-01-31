@@ -464,10 +464,10 @@ export class Switch  extends ParameterControlBase
         .switch-outline {
             position: relative;
             display: inline-block;
-            height: 1.25rem;
+            height: 1.5rem;
             width: 2.5rem;
-            border-radius: 10rem;
-            box-shadow: 0 0 0 0.15rem var(--switch-outline-color);
+            border-radius: 1rem;
+            border: var(--switch-outline-color) solid 0.15rem;
             transition: background-color 0.1s cubic-bezier(0.5, 0, 0.2, 1);
         }
 
@@ -476,8 +476,8 @@ export class Switch  extends ParameterControlBase
             top: 50%;
             left: 50%;
             transform: translate(-50%,-50%);
-            height: 1rem;
-            width: 1rem;
+            height: 0.9rem;
+            width:  0.9rem;
             background-color: var(--switch-thumb-color);
             border-radius: 100%;
             transition: left 0.1s cubic-bezier(0.5, 0, 0.2, 1);

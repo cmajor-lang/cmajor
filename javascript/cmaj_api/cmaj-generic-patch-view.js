@@ -43,8 +43,8 @@ class GenericPatchView extends HTMLElement
         this.attachShadow ({ mode: "open" });
         this.shadowRoot.innerHTML = this.getHTML();
 
-        this.titleElement      = this.shadowRoot.getElementById ("patch-title");
-        this.parametersElement = this.shadowRoot.getElementById ("patch-parameters");
+        this.titleElement      = this.shadowRoot.querySelector ("cmaj-generic-patch-title");
+        this.parametersElement = this.shadowRoot.querySelector ("cmaj-generic-patch-parameters");
     }
 
     /** This is picked up by some of our wrapper code to know whether it makes
@@ -117,12 +117,12 @@ class GenericPatchView extends HTMLElement
                 background-color: var(--background);
             }
 
-            .main {
+            cmaj-generic-patch-main {
                 background: var(--background);
                 height: 100%;
             }
 
-            .header {
+            cmaj-generic-patch-header {
                 width: 100%;
                 height: var(--header-height);
                 border-bottom: 0.1rem solid var(--foreground);
@@ -131,16 +131,17 @@ class GenericPatchView extends HTMLElement
                 align-items: center;
             }
 
-            #patch-title {
+            cmaj-generic-patch-title {
                 color: var(--foreground);
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 overflow: hidden;
                 cursor: default;
                 font-size: 140%;
+                font-weight: bold;
             }
 
-            .logo {
+            cmaj-generic-patch-logo {
                 flex: 1;
                 height: 80%;
                 margin-left: 0.3rem;
@@ -153,11 +154,14 @@ class GenericPatchView extends HTMLElement
                 min-width: 6.25rem;
             }
 
-            .header-filler {
+            cmaj-generic-patch-padding {
                 flex: 1;
             }
 
-            #patch-parameters {
+            cmaj-generic-patch-parameters {
+                display: flex;
+                flex-flow: row wrap;
+                justify-content: center;
                 height: calc(100% - var(--header-height));
                 overflow: auto;
                 padding: 1rem;
@@ -168,14 +172,14 @@ class GenericPatchView extends HTMLElement
 
             </style>
 
-            <div class="main">
-              <div class="header">
-                <span class="logo"></span>
-                <h2 id="patch-title"></h2>
-                <div class="header-filler"></div>
-              </div>
-              <div id="patch-parameters"></div>
-            </div>`;
+            <cmaj-generic-patch-main>
+              <cmaj-generic-patch-header>
+                <cmaj-generic-patch-logo></cmaj-generic-patch-logo>
+                <cmaj-generic-patch-title></cmaj-generic-patch-title>
+                <cmaj-generic-patch-padding></cmaj-generic-patch-padding>
+              </cmaj-generic-patch-header>
+              <cmaj-generic-patch-parameters></cmaj-generic-patch-parameters>
+            </cmaj-generic-patch-main>`;
     }
 }
 
