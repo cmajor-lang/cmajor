@@ -1430,3 +1430,27 @@ bool testVectorAnd()
 
     return k[0] == 2 && k[1] == 2 && k[2] == 2;
 }
+
+bool testVectorLeftShift()
+{
+        int<4> i = (1, 2, 3, 4);
+        i = i << 1;
+
+        return i[0] == 2 && i[1] == 4 && i[2] == 6 && i[3] == 8;
+}
+
+bool testVectorRightShift()
+{
+        int<4> i = (2, 1, -1, -2);
+        i = i >> 1;
+
+        return i[0] == 1 && i[1] == 0 && i[2] == -1 && i[3] == -1;
+}
+
+bool testVectorRightShiftUnsigned()
+{
+        int<4> i = (2, 1, -1, -2);
+        i = i >>> 1;
+
+        return i[0] == 1 && i[1] == 0 && i[2] == 0x7fffffff && i[3] == 0x7fffffff;
+}

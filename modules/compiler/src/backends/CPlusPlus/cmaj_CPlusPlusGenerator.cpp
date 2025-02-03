@@ -1753,8 +1753,12 @@ struct EndpointInfo
                                 ValueReader lhs, ValueReader rhs)
     {
         if (opType == AST::BinaryOpTypeEnum::Enum::rightShiftUnsigned)
-            return createReaderNoParensNeeded ("intrinsics::rightShiftUnsigned (" + lhs.getWithoutParens()
-                                                 + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
+        {
+            if (lhs.type->isVector())
+                return createReaderNoParensNeeded ("intrinsics::VectorOps::rightShiftUnsigned (" + lhs.getWithoutParens() + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
+            else
+                return createReaderNoParensNeeded ("intrinsics::rightShiftUnsigned (" + lhs.getWithoutParens() + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
+        }
 
         if (opType == AST::BinaryOpTypeEnum::Enum::modulo && ! opTypes.operandType.isVector())
             return createReaderNoParensNeeded ("intrinsics::modulo (" + lhs.getWithoutParens()
@@ -1982,6 +1986,8 @@ struct Vector  : public Array<ElementType, numElements>
     constexpr auto operator% (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return intrinsics::modulo (a, b); }); }
     constexpr auto operator& (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a & b; }); }
     constexpr auto operator| (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a | b; }); }
+    constexpr auto operator<< (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a << b; }); }
+    constexpr auto operator>> (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a >> b; }); }
 
     constexpr auto operator== (const Vector& rhs) const noexcept  { return performComparison (rhs, [] (ElementType a, ElementType b) { return a == b; }); }
     constexpr auto operator!= (const Vector& rhs) const noexcept  { return performComparison (rhs, [] (ElementType a, ElementType b) { return a != b; }); }
@@ -2179,6 +2185,8 @@ struct intrinsics
         template <typename Vec> static Vec atan2   (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::atan2 (x, y); }); }
         template <typename Vec> static Vec pow     (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::pow (x, y); }); }
         template <typename Vec> static Vec exp     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::exp (x); }); }
+
+        template <typename Vec> static Vec rightShiftUnsigned (Vec a, Vec b) { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::rightShiftUnsigned (x, y); }); }
     };
 };
 
