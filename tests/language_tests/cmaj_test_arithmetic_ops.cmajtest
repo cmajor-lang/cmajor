@@ -1408,3 +1408,25 @@ processor P [[ main ]]
         advance();
     }
 }
+
+## testFunction()
+
+bool testVectorOr()
+{
+    var i = int<4> (2);
+    i += 0;
+    let j = int<4> (3);
+    let k = i | j;
+
+    return k[0] == 3 && k[1] == 3 && k[2] == 3;
+}
+
+bool testVectorAnd()
+{
+    var i = int<4> (2);
+    i += 0;
+    let j = int<4> (3);
+    let k = i & j;
+
+    return k[0] == 2 && k[1] == 2 && k[2] == 2;
+}
