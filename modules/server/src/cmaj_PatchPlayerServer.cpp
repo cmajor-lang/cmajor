@@ -43,6 +43,8 @@ struct PatchPlayerServer
           patchLocations (std::move (patchLocationsToScan)),
           createAudioMIDIPlayer (std::move (createPlayer))
     {
+        checkForSinglePatchMode();
+
         if (httpServer.open (address, port, 0,
                              [this] { return std::make_unique<ClientRequestHandler> (*this); },
                              [this] (const std::string& error) { handleServerError (error); }))
@@ -243,7 +245,9 @@ struct PatchPlayerServer
 
         std::string createRedirectToNewSessionPage()
         {
-            auto sessionURL = "/session_" + createRandomSessionID() + "/cmaj-patch-chooser.html";
+            auto sessionURL = "/session_" + createRandomSessionID()
+                                  + (owner.isSinglePatch ? "/cmaj-patch-runner.html"
+                                                         : "/cmaj-patch-chooser.html");
 
             return choc::text::replace ("<!DOCTYPE html><html><head>"
                                         "<meta http-equiv=\"refresh\" content=\"0; URL='SESSION_URL'\" />"
@@ -866,7 +870,20 @@ struct PatchPlayerServer
     }
 
     //==============================================================================
-    choc::value::Value scanForPatches() const
+    void checkForSinglePatchMode()
+    {
+        isSinglePatch = false;
+
+        if (patchLocations.size() == 1)
+        {
+            auto f = patchLocations.front();
+
+            if (exists (f) && f.extension() == ".cmajorpatch")
+                isSinglePatch = true;
+        }
+    }
+
+    choc::value::Value scanForPatches()
     {
         auto list = choc::value::createEmptyArray();
         size_t total = 0;
@@ -946,6 +963,7 @@ private:
     choc::value::Value engineOptions;
     cmaj::BuildSettings buildSettings;
     std::vector<std::filesystem::path> patchLocations;
+    bool isSinglePatch = false;
     choc::value::Value codeGenTargets;
     CreateAudioMIDIPlayerFn createAudioMIDIPlayer;
 

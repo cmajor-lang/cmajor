@@ -630,23 +630,20 @@ class CodeGenPanel  extends HTMLElement
         }
     }
 
-    postCodeGenRequest (tab)
+    async postCodeGenRequest (tab)
     {
         if (! tab.isCodeGenPending)
         {
             tab.isCodeGenPending = true;
+            const message = await this.session.requestGeneratedCode (tab.name, {});
+            tab.isCodeGenPending = false;
 
-            this.session.requestGeneratedCode (tab.name, {},
-                message => {
-                    tab.isCodeGenPending = false;
+            if (message.code)
+                tab.listing.value = message.code;
+            else if (message.messages)
+                tab.listing.value = getMessageListAsString (message.messages);
 
-                    if (message.code)
-                        tab.listing.value = message.code;
-                    else if (message.messages)
-                        tab.listing.value = getMessageListAsString (message.messages);
-
-                    this.refreshButtonState();
-                });
+            this.refreshButtonState();
         }
     }
 
@@ -847,8 +844,16 @@ export default class PatchPanel  extends HTMLElement
         {
             this.isSessionConnected = !! status.connected;
 
-            if (this.isSessionConnected && ! this.isShowingFixedPatch())
-                this.session.requestAvailablePatchList (list => this.updateAvailablePatches (list));
+            if (this.isSessionConnected)
+            {
+                this.session.requestAvailablePatchList().then (list =>
+                {
+                    if (! this.isShowingFixedPatch())
+                        this.updateAvailablePatches (list);
+                    else if (list.length > 0)
+                        this.loadPatch (list[0]?.manifestFile);
+                });
+            }
         }
 
         if (status.loaded && ! this.patchConnection)

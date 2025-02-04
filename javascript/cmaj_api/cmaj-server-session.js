@@ -93,16 +93,12 @@ export class ServerSession   extends EventListenerList
         this.sendMessageToServer ({ type: "load_patch", file: patchFileToLoad });
     }
 
-    /** Tells the server to asynchronously generate a list of patches that it has access to.
-     *  The function provided will be called back with an array of manifest objects describing
-     *  each of the patches.
+    /** Asynchronously returns a list of patches that it has access to.
+     *  The return value is an array of manifest objects describing each of the patches.
      */
-    requestAvailablePatchList (callbackFunction)
+    async requestAvailablePatchList()
     {
-        const replyType = this.createReplyID ("patchlist_");
-        this.addSingleUseListener (replyType, callbackFunction);
-        this.sendMessageToServer ({ type: "req_patchlist",
-                                    replyType: replyType });
+        return await this.sendMessageToServerWithReply ({ type: "req_patchlist" });
     }
 
     /** Creates and returns a new PatchConnection object which can be used to control the
@@ -237,18 +233,13 @@ export class ServerSession   extends EventListenerList
      *                             status's `codeGenTargets` property. For example, "cpp"
      *                             would request a C++ version of the patch.
      *  @param {Object} [extraOptions] - this optionally provides target-specific properties.
-     *  @param callbackFunction - this function will be called with the result when it has
-     *                            been generated. Its argument will be an object containing the
-     *                            code, errors and other metadata about the patch.
+     *  @returns an object containing the code, errors and other metadata about the patch.
      */
-    requestGeneratedCode (codeType, extraOptions, callbackFunction)
+    async requestGeneratedCode (codeType, extraOptions)
     {
-        const replyType = this.createReplyID ("codegen_");
-        this.addSingleUseListener (replyType, callbackFunction);
-        this.sendMessageToServer ({ type: "req_codegen",
-                                    codeType: codeType,
-                                    options: extraOptions,
-                                    replyType: replyType });
+        return await this.sendMessageToServerWithReply ({ type: "req_codegen",
+                                                          codeType: codeType,
+                                                          options: extraOptions, });
     }
 
     //==============================================================================
@@ -439,9 +430,14 @@ export class ServerSession   extends EventListenerList
     }
 
     /** @private */
-    createReplyID (stem)
+    sendMessageToServerWithReply (message)
     {
-        return "reply_" + stem + this.createRandomID();
+        return new Promise ((resolve, reject) =>
+        {
+            const replyType = "reply_" + message.type + "_" + this.createRandomID();
+            this.addSingleUseListener (replyType, resolve);
+            this.sendMessageToServer ({ ...message, replyType });
+        });
     }
 
     /** @private */

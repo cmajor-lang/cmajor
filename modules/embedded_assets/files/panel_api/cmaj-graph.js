@@ -67,7 +67,7 @@ export default class PatchGraph extends HTMLElement
 
             this.pendingTimer = setTimeout (() =>
             {
-                this.session.requestGeneratedCode ("graph", {},
+                this.session.requestGeneratedCode ("graph", {}).then (
                     message => {
                         if (typeof message.code == "string")
                             this.holder.innerHTML = message.code;
