@@ -425,7 +425,7 @@ static void expectCastPossible (const AST::ObjectContext& errorLocation,
                                                                 printType (sourceType),
                                                                 printType (targetType)));
 
-        if (mustBeSilent && ! AST::TypeRules::canSilentlyCastTo (targetType, *constantValue))
+        if (! AST::TypeRules::canSilentlyCastTo (targetType, *constantValue))
             throwError (errorLocation, Errors::cannotImplicitlyCastValue (AST::print (*constantValue),
                                                                           printType (sourceType),
                                                                           printType (targetType)));

@@ -2132,14 +2132,6 @@ bool test()
     return true;
 }
 
-## expectError ("4:21: error: Cannot implicitly convert 1 ('int32') to 'bool'")
-
-bool test()
-{
-    for (int i = 0; 1; i++) {}
-    return true;
-}
-
 ## expectError ("4:11: error: Cannot implicitly convert 4.5 ('float64') to 'int64'")
 
 bool test()

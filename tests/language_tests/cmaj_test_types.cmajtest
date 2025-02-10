@@ -355,7 +355,7 @@ bool test_wrap2()
 bool testClampType()
 {
     clamp<10> clamp = clamp (2, 3, 4);
-    return clamp == 3 && takeClamp2 (2);
+    return clamp == 3 && takeClamp2 (1);
 }
 
 bool takeClamp2 (clamp<2> x) { return x != 0; }

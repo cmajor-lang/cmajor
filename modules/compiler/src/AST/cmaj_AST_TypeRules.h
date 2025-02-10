@@ -121,6 +121,10 @@ struct TypeRules
             if (auto f32 = value.getAsConstantFloat32())  return f32->value.get() == static_cast<float> (static_cast<int64_t> (f32->value.get()));
         }
 
+        if (dest.isPrimitiveBool())
+            if (value.getAsInt64())
+                return true;
+
         if (auto v = dest.getAsVectorType())
             if (v->isSize1())
                 return canTruncateValueWithoutLossOfAccuracy (v->getElementType(), value);

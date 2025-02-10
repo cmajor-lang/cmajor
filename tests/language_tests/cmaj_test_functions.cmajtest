@@ -902,6 +902,27 @@ processor Test2
     }
 }
 
+## expectError ("16:16: error: Cannot implicitly convert 2 ('int32') to 'wrap<2>'")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void write<T> (wrap<2> n, T x)
+    {
+        console <- n;
+    }
+
+    void main()
+    {
+        int x;
+        write (0, x);
+        write (1, x);
+        write (2, x);
+        advance();
+    }
+}
+
 ## testFunction()
 
 namespace T (int size)

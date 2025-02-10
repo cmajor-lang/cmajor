@@ -779,7 +779,7 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
 
             if (! shouldIgnoreErrors && registerFailure())
                 throwGenericFunctionResolutionError (call, nameToResolve, functionToUse,
-                                                        Errors::cannotResolveGenericParameter (wildcardName)
+                                                     Errors::cannotResolveGenericParameter (wildcardName)
                                                         .withLocation (wildcardIdentifier.context.getFullLocation()));
             return false;
         }
