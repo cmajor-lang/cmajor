@@ -133,7 +133,7 @@ inline void canonicaliseLoopsAndBlocks (AST::Program& program)
         static void createCounterForLoop (AST::ScopeBlock& outerBlock, AST::ScopeBlock& body, AST::LoopStatement& loop, AST::ValueBase& numIterations)
         {
             auto& allocator = outerBlock.context.allocator;
-            auto& loopCount = AST::createLocalVariableRef (outerBlock, "_count", numIterations, 0);
+            auto& loopCount = AST::createLocalVariableRef (outerBlock, "_count", body.context.allocator.createInt32Type(), numIterations, 0);
             auto& preDecrementedCount = AST::createPreDec (body.context, loopCount);
             auto& countIsLessThanZero = AST::createBinaryOp (body, AST::BinaryOpTypeEnum::Enum::lessThan,
                                                              preDecrementedCount, allocator.createConstantInt32 (0));

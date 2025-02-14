@@ -53,6 +53,14 @@ bool test_loop5()
     return c == 0;
 }
 
+bool test_loop6()
+{
+    wrap<32> x = 16;
+    int c = 0;
+    loop(x) ++c;
+    return x == 16 && c == 16;
+}
+
 bool test_while1()
 {
     int c = 0, num = 10;
