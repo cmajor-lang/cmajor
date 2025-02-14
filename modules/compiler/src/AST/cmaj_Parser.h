@@ -2048,36 +2048,41 @@ private:
         auto startPos = getLexerPosition();
         auto startContext = getContext();
 
-        if (! skipIf (LexerToken::operator_lessThan))
-            return parseArrayTypeSuffixes (typesCanBeFollowedByIdentifier, outerType);
-
-        AST::ObjectRefVector<AST::Expression> terms;
-
-        if (tryToParseChevronSuffixExpression (terms))
+        if (skipIf (LexerToken::operator_lessThan))
         {
-            if (skipIf (LexerToken::operator_greaterThan))
+            AST::ObjectRefVector<AST::Expression> terms;
+
+            if (tryToParseChevronSuffixExpression (terms))
             {
-                if (matches (LexerToken::operator_lessThan))
-                    throwError (Errors::illegalTypeForVectorElement());
+                if (skipIf (LexerToken::operator_greaterThan))
+                {
+                    if (matches (LexerToken::operator_lessThan))
+                        throwError (Errors::illegalTypeForVectorElement());
 
-                auto& suffix = allocate<AST::ChevronedSuffix> (startContext);
-                suffix.parent.setChildObject (outerType);
+                    auto& suffix = allocate<AST::ChevronedSuffix> (startContext);
+                    suffix.parent.setChildObject (outerType);
 
-                for (auto& term : terms)
-                    suffix.terms.addChildObject (term);
+                    for (auto& term : terms)
+                        suffix.terms.addChildObject (term);
 
-                return parseArrayTypeSuffixes (typesCanBeFollowedByIdentifier, suffix);
+                    return parseArrayTypeSuffixes (typesCanBeFollowedByIdentifier, suffix);
+                }
             }
+
+            setLexerPosition (startPos);
+            return outerType;
         }
 
-        setLexerPosition (startPos);
-        return outerType;
+        return parseArrayTypeSuffixes (typesCanBeFollowedByIdentifier, outerType);
     }
 
     AST::Expression& parseArrayTypeSuffixes (bool typesCanBeFollowedByIdentifier, AST::Expression& outerType)
     {
         if (skipIf (LexerToken::operator_openBracket))
             return parseArrayTypeSuffixes (typesCanBeFollowedByIdentifier, parseSubscriptWithBrackets (outerType));
+
+        if (matches (LexerToken::operator_openParen))
+            return parseArrayTypeSuffixes (typesCanBeFollowedByIdentifier, parseExpressionSuffixes (outerType));
 
         if (matches (LexerToken::operator_bitwiseAnd))
         {
