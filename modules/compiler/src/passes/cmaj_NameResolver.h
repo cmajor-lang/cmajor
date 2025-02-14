@@ -260,10 +260,10 @@ struct NameResolver  : public PassAvoidingGenericFunctionsAndModules
     {
         if (shouldVisitObject (cc))
         {
+            visitProperty (cc.arguments);
             ++couldBeFunctionName;
             visitProperty (cc.functionOrType);
             --couldBeFunctionName;
-            visitProperty (cc.arguments);
         }
     }
 

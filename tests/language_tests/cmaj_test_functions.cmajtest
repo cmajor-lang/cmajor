@@ -1090,6 +1090,17 @@ processor Test [[ main ]]
     }
 }
 
+## expectError ("8:25: error: Cannot find symbol 'xxx'")
+
+bool ff<T, size> (T[size] a, T[size] b) { return true; }
+bool ff<T1, T2> (T1& a, T1& b, T2& c, T2& d) { return ff(a, b); }
+
+bool test()
+{
+    int[2] x, y, a;
+    return ff (x, y, a, xxx);
+}
+
 ## testCompile()
 
 namespace N (using Type = int32)
