@@ -1096,11 +1096,10 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
                  || AST::castToSkippingReferences<AST::EndpointDeclaration> (target) != nullptr
                  || AST::castToSkippingReferences<AST::EndpointInstance> (target) != nullptr)
             {
-                auto& b = replaceWithNewObject<AST::BracketedSuffix> (call);
+                auto& b = replaceWithNewObject<AST::GetElement> (call);
                 b.parent.referTo (args[0].get());
-                auto& term = b.allocateChild<AST::BracketedSuffixTerm>();
-                term.startIndex.referTo (args[1].get());
-                b.terms.addChildObject (term);
+                b.indexes.addReference (args[1].get());
+                b.isAtFunction = true;
                 return true;
             }
         }

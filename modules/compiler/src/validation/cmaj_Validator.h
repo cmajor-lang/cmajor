@@ -716,8 +716,6 @@ namespace cmaj::validation
 
         void checkGraphOrEndpointIndex (AST::GetElement& e, AST::ArraySize arraySize)
         {
-            CMAJ_ASSERT (! e.isAtFunction);
-
             if (e.indexes.size() > 1)
                 throwError (e.indexes[1], Errors::wrongNumberOfArrayIndexes ("1", std::to_string (e.indexes.size())));
 
@@ -730,7 +728,8 @@ namespace cmaj::validation
             if (auto constIndex = index.constantFold())
                 AST::TypeRules::checkConstantArrayIndex (e.context, *constIndex->getAsInt64(), arraySize, false);
             else if (! indexType.isBoundedType() || indexType.getAsBoundedType()->getBoundedIntLimit() > arraySize)
-                emitMessage (Errors::indexHasRuntimeOverhead().withLocation (AST::getContext (e.getSingleIndexProperty()).getFullLocation()));
+                if (! e.isAtFunction)
+                    emitMessage (Errors::indexHasRuntimeOverhead().withLocation (AST::getContext (e.getSingleIndexProperty()).getFullLocation()));
         }
 
         void visit (AST::GetElement& e) override

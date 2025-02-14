@@ -612,8 +612,8 @@ struct FlattenGraph
         }
 
         AST::ValueBase& getStructMember (ptr<AST::ScopeBlock> block,
-                                          AST::EndpointInstance& endpointInstance,
-                                          AST::ValueBase& index, bool isSource)
+                                         AST::EndpointInstance& endpointInstance,
+                                         AST::ValueBase& index, bool isSource)
         {
             auto endpoint = endpointInstance.getEndpoint (isSource);
             auto nodeIndex = getNodeIndex (endpointInstance);
