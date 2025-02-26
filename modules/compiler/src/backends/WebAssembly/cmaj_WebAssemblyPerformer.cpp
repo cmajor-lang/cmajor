@@ -480,7 +480,7 @@ initialisePatch();
                     choc::ui::WebView::Options opts;
                     opts.enableDebugMode = true;
 
-                    opts.webviewIsReady = [&] (choc::ui::WebView& w)
+                    opts.webviewIsReady = [this, done] (choc::ui::WebView& w)
                     {
                         w.bind ("initFinished", [this] (const choc::value::ValueView& args)
                         {
@@ -497,7 +497,6 @@ initialisePatch();
                     CMAJ_ASSERT (webview->loadedOK());
                 });
             }
-
 
             template <typename F>
             static void performOnMessageThread (F&& f)
