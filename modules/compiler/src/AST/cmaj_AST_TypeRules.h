@@ -88,7 +88,7 @@ struct TypeRules
             return true;
 
         if (constValue != nullptr)
-            return canTruncateValueWithoutLossOfAccuracy (destType, *constValue);
+            return canTruncateValueWithoutLossOfAccuracy (destType.skipConstAndRefModifiers(), *constValue);
 
         return false;
     }

@@ -334,6 +334,13 @@ int getByRef1 (const int& b2) { return b2; }
 int getByRef2 (int b1) { return getByRef1 (b1); }
 bool testByRef() { return getByRef2 (123) == 123; }
 
+bool testCastToConstWrap()
+{
+    const wrap<3> y = 1;
+
+    return y == 1;
+}
+
 bool test_wrap1()
 {
     wrap<16> i;
