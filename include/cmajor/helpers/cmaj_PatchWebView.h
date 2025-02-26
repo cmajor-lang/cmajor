@@ -50,11 +50,9 @@ struct PatchWebView  : public PatchView
     std::function<std::string(std::string_view extension)> getMIMETypeForExtension;
 
 private:
-    void createBindings();
-    choc::ui::WebView::Options getWebviewOptions();
+    std::unique_ptr<choc::ui::WebView> webview;
     std::optional<choc::ui::WebView::Options::Resource> onRequest (const std::string&);
-
-    choc::ui::WebView webview { getWebviewOptions() };
+    void createBindings();
 };
 
 
@@ -74,39 +72,6 @@ private:
 inline PatchWebView::PatchWebView (Patch& p, const PatchManifest::View& view)
     : PatchView (p, view)
 {
-    createBindings();
-}
-
-inline PatchWebView::~PatchWebView() = default;
-
-inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
-{
-    webview.evaluateJavascript ("window.cmaj_deliverMessageFromServer?.(" + choc::json::toString (msg, true) + ");");
-}
-
-inline void PatchWebView::createBindings()
-{
-    bool boundOK = webview.bind ("cmaj_sendMessageToServer", [this] (const choc::value::ValueView& args) -> choc::value::Value
-    {
-        try
-        {
-            if (args.isArray() && args.size() != 0)
-                patch.handleClientMessage (*this, args[0]);
-        }
-        catch (const std::exception& e)
-        {
-            std::cout << "Error processing message from client: " << e.what() << std::endl;
-        }
-
-        return {};
-    });
-
-    (void) boundOK;
-    CMAJ_ASSERT (boundOK);
-}
-
-inline choc::ui::WebView::Options PatchWebView::getWebviewOptions()
-{
     choc::ui::WebView::Options options;
 
    #if CMAJ_ENABLE_WEBVIEW_DEV_TOOLS
@@ -117,22 +82,52 @@ inline choc::ui::WebView::Options PatchWebView::getWebviewOptions()
 
     options.acceptsFirstMouseClick = true;
     options.fetchResource = [this] (const auto& path) { return onRequest (path); };
-    return options;
+
+    options.webviewIsReady = [this] (choc::ui::WebView& w)
+    {
+        bool boundOK = w.bind ("cmaj_sendMessageToServer", [this] (const choc::value::ValueView& args) -> choc::value::Value
+        {
+            try
+            {
+                if (args.isArray() && args.size() != 0)
+                    patch.handleClientMessage (*this, args[0]);
+            }
+            catch (const std::exception& e)
+            {
+                std::cout << "Error processing message from client: " << e.what() << std::endl;
+            }
+
+            return {};
+        });
+
+        (void) boundOK;
+        CMAJ_ASSERT (boundOK);
+    };
+
+    webview = std::make_unique<choc::ui::WebView> (options);
+}
+
+inline PatchWebView::~PatchWebView() = default;
+
+inline void PatchWebView::sendMessage (const choc::value::ValueView& msg)
+{
+    getWebView().evaluateJavascript ("window.cmaj_deliverMessageFromServer?.(" + choc::json::toString (msg, true) + ");");
 }
 
 inline choc::ui::WebView& PatchWebView::getWebView()
 {
-    return webview;
+    CMAJ_ASSERT (webview != nullptr);
+    return *webview;
 }
 
 inline void PatchWebView::setStatusMessage (const std::string& newMessage)
 {
-    webview.evaluateJavascript ("window.setStatusMessage (" + choc::json::getEscapedQuotedString (newMessage) + ")");
+    getWebView().evaluateJavascript ("window.setStatusMessage (" + choc::json::getEscapedQuotedString (newMessage) + ")");
 }
 
 inline void PatchWebView::reload()
 {
-    webview.evaluateJavascript ("document.location.reload()");
+    getWebView().evaluateJavascript ("document.location.reload()");
 }
 
 static constexpr auto cmajor_patch_gui_html = R"(

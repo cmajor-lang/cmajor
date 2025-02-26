@@ -37,7 +37,11 @@ inline void enableWebViewPatchWorker (Patch& p)
     struct Worker : Patch::WorkerContext
     {
         Worker (Patch& p, const std::string& wt) : patch (p), workerType (wt) {}
-        ~Worker() override {}
+
+        ~Worker() override
+        {
+            choc::messageloop::postMessage ([w = std::shared_ptr (std::move (webview))] () mutable { w.reset(); });
+        }
 
         void initialise (std::function<void(const choc::value::ValueView&)> sendMessageToPatch,
                          std::function<void(const std::string&)> reportError) override
@@ -45,73 +49,79 @@ inline void enableWebViewPatchWorker (Patch& p)
             choc::ui::WebView::Options opts;
             opts.enableDebugMode = true;
             opts.fetchResource = [this] (const std::string& path) { return fetchResource (path); };
-            webview = std::make_unique<choc::ui::WebView> (opts);
 
-            webview->bind ("_cmaj_console_log", [] (const choc::value::ValueView& args) mutable -> choc::value::Value
+            opts.webviewIsReady = [&p = patch,
+                                   send2 = std::move (sendMessageToPatch),
+                                   reportError2 = std::move (reportError)] (choc::ui::WebView& w)
             {
-                if (args.isArray() && args.size() != 0)
-                {
-                    auto level = choc::javascript::LoggingLevel::log;
-
-                    if (args.size() > 1)
-                    {
-                        switch (args[1].getWithDefault<int> (1))
-                        {
-                            case 0: level = choc::javascript::LoggingLevel::log; break;
-                            case 1: level = choc::javascript::LoggingLevel::info; break;
-                            case 2: level = choc::javascript::LoggingLevel::warn; break;
-                            case 3: level = choc::javascript::LoggingLevel::error; break;
-                            case 4: level = choc::javascript::LoggingLevel::debug; break;
-                        }
-                    }
-
-                    consoleLog (args[0], level);
-                }
-
-                return {};
-            });
-
-            webview->bind ("cmaj_sendMessageToServer", [send = std::move (sendMessageToPatch)] (const choc::value::ValueView& args) -> choc::value::Value
-            {
-                if (args.isArray() && args.size() != 0)
-                    send (args[0]);
-
-                return {};
-            });
-
-            webview->bind ("cmaj_reportError", [reportErrorFn = std::move (reportError)] (const choc::value::ValueView& args) -> choc::value::Value
-            {
-                if (args.isArray() && args.size() != 0)
-                    reportErrorFn (args[0].toString());
-
-                return {};
-            });
-
-            webview->bind ("_internalReadResourceAsAudioData", [&p = patch] (const choc::value::ValueView& args) -> choc::value::Value
-            {
-                try
+                w.bind ("_cmaj_console_log", [] (const choc::value::ValueView& args) mutable -> choc::value::Value
                 {
                     if (args.isArray() && args.size() != 0)
                     {
-                        if (auto path = args[0].toString(); ! path.empty())
+                        auto level = choc::javascript::LoggingLevel::log;
+
+                        if (args.size() > 1)
                         {
-                            choc::value::Value annotation;
+                            switch (args[1].getWithDefault<int> (1))
+                            {
+                                case 0: level = choc::javascript::LoggingLevel::log; break;
+                                case 1: level = choc::javascript::LoggingLevel::info; break;
+                                case 2: level = choc::javascript::LoggingLevel::warn; break;
+                                case 3: level = choc::javascript::LoggingLevel::error; break;
+                                case 4: level = choc::javascript::LoggingLevel::debug; break;
+                            }
+                        }
 
-                            if (args.size() > 1)
-                                annotation = args[1];
+                        consoleLog (args[0], level);
+                    }
 
-                            if (auto manifest = p.getManifest())
-                                return readManifestResourceAsAudioData (*manifest, path, annotation);
+                    return {};
+                });
+
+                w.bind ("cmaj_sendMessageToServer", [send = std::move (send2)] (const choc::value::ValueView& args) -> choc::value::Value
+                {
+                    if (args.isArray() && args.size() != 0)
+                        send (args[0]);
+
+                    return {};
+                });
+
+                w.bind ("cmaj_reportError", [reportErrorFn = std::move (reportError2)] (const choc::value::ValueView& args) -> choc::value::Value
+                {
+                    if (args.isArray() && args.size() != 0)
+                        reportErrorFn (args[0].toString());
+
+                    return {};
+                });
+
+                w.bind ("_internalReadResourceAsAudioData", [&p] (const choc::value::ValueView& args) -> choc::value::Value
+                {
+                    try
+                    {
+                        if (args.isArray() && args.size() != 0)
+                        {
+                            if (auto path = args[0].toString(); ! path.empty())
+                            {
+                                choc::value::Value annotation;
+
+                                if (args.size() > 1)
+                                    annotation = args[1];
+
+                                if (auto manifest = p.getManifest())
+                                    return readManifestResourceAsAudioData (*manifest, path, annotation);
+                            }
                         }
                     }
-                }
-                catch (...)
-                {}
+                    catch (...)
+                    {}
 
-                return {};
-            });
+                    return {};
+                });
 
-            webview->navigate ({});
+                w.navigate ({});
+            };
+
+            webview = std::make_unique<choc::ui::WebView> (opts);
         }
 
         static void consoleLog (const choc::value::ValueView& content, choc::javascript::LoggingLevel level)

@@ -406,7 +406,7 @@ initialisePatch();
 
                 void loadMainModuleScript (const std::string& script)
                 {
-                    performOnMessageThread ([this, script]
+                    performOnMessageThread ([this, script] (const std::function<void()>& done)
                     {
                         instance.webview->setHTML (choc::text::replace (R"(
                         <!DOCTYPE html>
@@ -419,14 +419,17 @@ initialisePatch();
                         </html>
                         <script type="module">SCRIPT</script>)",
                                         "SCRIPT", script));
+
+                        done();
                     });
                 }
 
                 void evaluate (const std::string& script)
                 {
-                    performOnMessageThread ([this, script]
+                    performOnMessageThread ([this, script] (const std::function<void()>& done)
                     {
                         instance.webview->evaluateJavascript (script);
+                        done();
                     });
                 }
 
@@ -472,23 +475,29 @@ initialisePatch();
         private:
             WebViewInstance()
             {
-                performOnMessageThread ([this]
+                performOnMessageThread ([this] (const std::function<void()>& done)
                 {
                     choc::ui::WebView::Options opts;
                     opts.enableDebugMode = true;
-                    webview = std::make_unique<choc::ui::WebView> (opts);
 
-                    CMAJ_ASSERT (webview->loadedOK());
-
-                    webview->bind ("initFinished", [this] (const choc::value::ValueView& args)
+                    opts.webviewIsReady = [&] (choc::ui::WebView& w)
                     {
-                        if (currentContext && currentContext->initFinished)
-                            currentContext->initFinished (args);
+                        w.bind ("initFinished", [this] (const choc::value::ValueView& args)
+                        {
+                            if (currentContext && currentContext->initFinished)
+                                currentContext->initFinished (args);
 
-                        return choc::value::Value();
-                    });
+                            return choc::value::Value();
+                        });
+
+                        done();
+                    };
+
+                    webview = std::make_unique<choc::ui::WebView> (opts);
+                    CMAJ_ASSERT (webview->loadedOK());
                 });
             }
+
 
             template <typename F>
             static void performOnMessageThread (F&& f)
@@ -500,9 +509,13 @@ initialisePatch();
 
                 choc::messageloop::postMessage ([&]
                 {
-                    f();
-                    std::unique_lock<std::mutex> l (m);
-                    cv.notify_all();
+                    auto done = [&]
+                    {
+                        std::unique_lock<std::mutex> l (m);
+                        cv.notify_all();
+                    };
+
+                    f (done);
                 });
 
                 cv.wait (lock);
