@@ -204,6 +204,9 @@ struct Patch
     /// Iterates any persistent state values that have been stored
     const std::unordered_map<std::string, choc::value::Value>& getStoredStateValues() const;
 
+    /// Removes all stored state values in the patch
+    void clearAllStoredStateValues();
+
     /// Returns an object containing the full state representing this patch,
     /// which includes both parameter values and custom stored values
     choc::value::Value getFullStoredState() const;
@@ -2471,6 +2474,12 @@ inline void Patch::setStoredStateValue (const std::string& key, const choc::valu
     }
 }
 
+inline void Patch::clearAllStoredStateValues()
+{
+    for (auto &state : storedState)
+        setStoredStateValue (state.first, {});
+}
+
 inline choc::value::Value Patch::getFullStoredState() const
 {
     auto values = choc::value::createObject ({});
@@ -2822,6 +2831,12 @@ inline bool Patch::handleClientMessage (PatchView& sourceView, const choc::value
             if (auto value = msg["value"]; value.isObject())
                 setFullStoredState (value);
 
+            return true;
+        }
+
+        if (type == "clear_all_state_values")
+        {
+            clearAllStoredStateValues();
             return true;
         }
 

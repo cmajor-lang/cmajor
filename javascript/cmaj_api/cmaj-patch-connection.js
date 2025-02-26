@@ -107,6 +107,10 @@ export class PatchConnection  extends EventListenerList
      */
     sendStoredStateValue (key, newValue)              { this.sendMessageToServer ({ type: "send_state_value", key: key, value: newValue }); }
 
+    /** Removes all stored state values in the patch.
+     */
+    clearAllStoredStateValues()                       { this.sendMessageToServer ({ type: "clear_all_state_values" }); }
+
     /** Attaches a listener function that will be called when any key-value pair in the stored state is changed.
      *  The listener function will receive a message parameter with properties 'key' and 'value'.
      */
