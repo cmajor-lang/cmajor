@@ -20,6 +20,7 @@ namespace cmaj
 {
 
 //==============================================================================
+inline constexpr std::string_view getRootNamespaceName()            { return "_root"; }
 inline constexpr std::string_view getStdLibraryNamespaceName()      { return "std"; }
 inline constexpr std::string_view getIntrinsicsNamespaceName()      { return "intrinsics"; }
 inline constexpr std::string_view getIntrinsicsNamespaceFullName()  { return "std::intrinsics"; }

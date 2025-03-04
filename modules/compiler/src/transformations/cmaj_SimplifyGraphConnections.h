@@ -143,11 +143,11 @@ inline void simplifyGraphConnections (AST::Program& program)
             auto& processor = graph.allocateChild<AST::CallOrCast>();
 
             if (sourceEndpointDeclaration.isStream())
-                processor.functionOrType.referTo (AST::createIdentifierPath (graph.context, { getStdLibraryNamespaceName(), "intrinsics", "delay", "StreamDelay" }));
+                processor.functionOrType.referTo (AST::createIdentifierPath (graph.context, { getRootNamespaceName(), getStdLibraryNamespaceName(), "intrinsics", "delay", "StreamDelay" }));
             else if (sourceEndpointDeclaration.isEvent())
                 processor.functionOrType.referTo (getEventDelayProcessor (graph, connectionDataTypes));
             else
-                processor.functionOrType.referTo (AST::createIdentifierPath (graph.context, { getStdLibraryNamespaceName(), "intrinsics", "delay", "ValueDelay" }));
+                processor.functionOrType.referTo (AST::createIdentifierPath (graph.context, { getRootNamespaceName(), getStdLibraryNamespaceName(), "intrinsics", "delay", "ValueDelay" }));
 
             processor.arguments.referTo (args);
 
@@ -172,7 +172,7 @@ inline void simplifyGraphConnections (AST::Program& program)
         AST::Expression& getEventDelayProcessor (AST::Graph& graph, AST::ObjectRefVector<const AST::TypeBase> types)
         {
             if (types.size() == 1 && ! types[0]->isVoid())
-                return AST::createIdentifierPath (graph.context, { getStdLibraryNamespaceName(), "intrinsics", "delay", "EventDelay" });
+                return AST::createIdentifierPath (graph.context, { getRootNamespaceName(), getStdLibraryNamespaceName(), "intrinsics", "delay", "EventDelay" });
 
             // Create a template processor supporting all of the data types
 

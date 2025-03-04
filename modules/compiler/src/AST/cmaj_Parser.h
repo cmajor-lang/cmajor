@@ -126,7 +126,7 @@ private:
 
     AST::Expression& parseQualifiedIdentifier()
     {
-        ref<AST::Expression> result = parseIdentifier();
+        ref<AST::Expression> result = parseIndentifierOrRootNamespace();
 
         while (matches (LexerToken::operator_doubleColon))
         {
@@ -138,6 +138,20 @@ private:
         }
 
         return result;
+    }
+
+    AST::Identifier& parseIndentifierOrRootNamespace()
+    {
+        if (matches (LexerToken::operator_doubleColon))
+        {
+            auto& identifier = create<AST::Identifier>();
+            identifier.name = allocator.strings.rootNamespaceName;
+            return identifier;
+        }
+        else
+        {
+            return parseIdentifier();
+        }
     }
 
     AST::Identifier& parseIdentifier()

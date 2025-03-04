@@ -182,7 +182,7 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
                         if (auto rhs = AST::castToValue (op.rhs))
                         {
                             auto& call = replaceWithNewObject<AST::FunctionCall> (op);
-                            auto path = std::vector<std::string_view> { "std", "intrinsics", isModulo ? "fmod" : "pow" };
+                            auto path = std::vector<std::string_view> { getRootNamespaceName(), getStdLibraryNamespaceName(), "intrinsics", isModulo ? "fmod" : "pow" };
                             call.targetFunction.referTo (AST::createIdentifierPath (call.context, path));
                             call.arguments.addChildObject (AST::createCastIfNeeded (types.operandType, *lhs));
                             call.arguments.addChildObject (AST::createCastIfNeeded (types.operandType, *rhs));
@@ -214,7 +214,7 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
                             assignment.target.referTo (op.target);
 
                             auto& call = assignment.context.allocate<AST::FunctionCall>();
-                            auto path = std::vector<std::string_view> { "std", "intrinsics", isModulo ? "fmod" : "pow" };
+                            auto path = std::vector<std::string_view> { getRootNamespaceName(), getStdLibraryNamespaceName(), "intrinsics", isModulo ? "fmod" : "pow" };
                             call.targetFunction.referTo (AST::createIdentifierPath (call.context, path));
                             call.arguments.addChildObject (*lhs);
                             call.arguments.addChildObject (AST::createCastIfNeeded (*type, *rhs));

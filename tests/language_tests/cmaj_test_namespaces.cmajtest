@@ -106,3 +106,42 @@ processor Processor [[ main ]]
         advance();
     }
 }
+
+## testFunction()
+
+bool test()
+{
+    float[3] a = (1.0f, 2.0f, 3.0f);
+
+    let r = ns::std::execute (a);
+    return r < 1.0f;
+}
+
+
+namespace ns::std
+{
+	float execute<N>(const float[N]& args)
+    {
+        return args[0] % 1.0f;
+	}
+}
+
+
+## testFunction()
+
+bool test()
+{
+    float[3] a = (1.0f, 2.0f, 3.0f);
+
+    let r = ns::std::execute (a);
+    return r < 1.0f;
+}
+
+
+namespace ns::std
+{
+	float execute<N>(const float[N]& args)
+    {
+        return ::std::intrinsics::fmod (args[0], 1.0f);
+	}
+}

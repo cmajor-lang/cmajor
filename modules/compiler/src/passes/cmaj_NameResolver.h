@@ -389,6 +389,12 @@ struct NameResolver  : public PassAvoidingGenericFunctionsAndModules
     void findAllMatches (AST::NameSearch& search, AST::Expression& nameObject,
                          AST::PooledString name, bool onlyFindNamespaces)
     {
+        if (name == allocator.strings.rootNamespaceName && onlyFindNamespaces)
+        {
+            search.addResult (nameObject.getRootNamespace());
+            return;
+        }
+        
         search.nameToFind = name;
 
         if (auto parentScope = nameObject.getParentScope())

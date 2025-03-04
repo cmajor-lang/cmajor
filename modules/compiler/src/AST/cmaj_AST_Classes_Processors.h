@@ -58,6 +58,9 @@ struct ModuleBase  : public Object
 
     PooledString getOriginalName() const override
     {
+        if (isRootNamespace())
+            return {};
+
         if (! originalName.hasDefaultValue())
             return originalName;
 
