@@ -583,7 +583,7 @@ void f1() { let a = f(2.0); }
 T.elementType f<T> (T a) { static_assert (T.isArray, "fail"); return (); }
 void f1() { let a = f(2.0); }
 
-## expectError ("3:13: error: Failed to resolve generic function call f(int32) //// 2:8: error: Could not resolve generic parameter 'T'")
+## expectError ("2:8: error: The generic wildcard 'T' must be used at least once in the parameter type declarations")
 
 void f<T> (int x) {}
 void f2() { f (1); }

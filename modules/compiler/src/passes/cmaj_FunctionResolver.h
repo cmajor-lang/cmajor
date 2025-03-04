@@ -711,13 +711,30 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
 
             wildcardNamesUsed.push_back (wildcardName);
 
-            AST::ObjectRefVector<const AST::Expression> matchesFound;
+            AST::ObjectRefVector<const AST::Expression> paramTypes, matchesFound;
 
-            for (size_t i = 0; i < genericFn.parameters.size(); ++i)
+            for (auto& param : genericFn.parameters)
             {
-                auto& paramVariable = AST::castToVariableDeclarationRef (genericFn.parameters[i]);
-                auto& paramType = AST::castToExpressionRef (paramVariable.declaredType);
-                findWildcardMatches (matchesFound, paramType, argInfo.argInfo[i].type, wildcardName);
+                auto& paramVariable = AST::castToVariableDeclarationRef (param);
+                paramTypes.push_back (AST::castToExpressionRef (paramVariable.declaredType));
+            }
+
+            for (size_t i = 0; i < paramTypes.size(); ++i)
+                findWildcardMatches (matchesFound, paramTypes[i], argInfo.argInfo[i].type, wildcardName);
+
+            if (matchesFound.empty())
+            {
+                auto isUsed = [&]
+                {
+                    for (auto& paramType : paramTypes)
+                        if (doesWildcardAppearInParamType (paramType, wildcardName))
+                            return true;
+
+                    return false;
+                };
+
+                if (! isUsed())
+                    throwError (wildcard, Errors::unusedWildcard (wildcardName));
             }
 
             ptr<const AST::Expression> resolvedWildcard;
@@ -873,10 +890,41 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
                             results.push_back (*argSize);
 
                     findWildcardMatches (results, AST::castToExpressionRef (chevrons->parent),
-                                        vectorArg->getElementType(), wildcardToFind);
+                                         vectorArg->getElementType(), wildcardToFind);
                 }
             }
         }
+    }
+
+    bool doesWildcardAppearInParamType (const AST::Expression& paramType, AST::PooledString wildcardToFind)
+    {
+        if (auto unresolvedIdentifier = paramType.getAsIdentifier())
+            return unresolvedIdentifier->hasName (wildcardToFind);
+
+        if (auto makeConstOrRef = paramType.getAsMakeConstOrRef())
+            return doesWildcardAppearInParamType (AST::castToExpressionRef (makeConstOrRef->source), wildcardToFind);
+
+        if (auto brackets = paramType.getAsBracketedSuffix())
+        {
+            for (auto& term : brackets->terms.iterateAs<AST::BracketedSuffixTerm>())
+                if (term.endIndex == nullptr && term.startIndex != nullptr)
+                    if (term.startIndex.hasName (wildcardToFind) && term.startIndex.getObjectRef().isIdentifier())
+                        return true;
+
+            return doesWildcardAppearInParamType (AST::castToExpressionRef (brackets->parent), wildcardToFind);
+        }
+
+        if (auto chevrons = paramType.getAsChevronedSuffix())
+        {
+            auto& term = chevrons->terms[0].getObjectRef();
+
+            if (term.hasName (wildcardToFind) && term.isIdentifier())
+                return true;
+
+            return doesWildcardAppearInParamType (AST::castToExpressionRef (chevrons->parent), wildcardToFind);
+        }
+
+        return false;
     }
 
     template <typename MetaFunction, typename MetaFunctionEnum, bool isType>

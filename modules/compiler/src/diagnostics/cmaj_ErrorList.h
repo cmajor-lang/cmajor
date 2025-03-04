@@ -222,6 +222,7 @@ DECL_COMPILE_ERROR (cannotResolveGenericArgs,               "Could not resolve a
 DECL_COMPILE_ERROR (cannotResolveGenericParameter,          "Could not resolve generic parameter '{0}'")
 DECL_COMPILE_ERROR (cannotResolveGenericFunction,           "Failed to resolve generic function call {0}")
 DECL_COMPILE_ERROR (cannotResolveGenericWildcard,           "Could not find a value for '{0}' that satisfies all argument types")
+DECL_COMPILE_ERROR (unusedWildcard,                         "The generic wildcard '{0}' must be used at least once in the parameter type declarations")
 DECL_COMPILE_ERROR (unresolvedAnnotation,                   "Cannot resolve annotation value as a compile-time constant")
 DECL_COMPILE_ERROR (functionHasNoImplementation,            "This function has no implementation")
 
