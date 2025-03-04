@@ -155,6 +155,10 @@ struct EmbeddedWebAssets
         "     */\n"
         "    sendStoredStateValue (key, newValue)              { this.sendMessageToServer ({ type: \"send_state_value\", key: key, value: newValue }); }\n"
         "\n"
+        "    /** Removes all stored state values in the patch.\n"
+        "     */\n"
+        "    clearAllStoredStateValues()                       { this.sendMessageToServer ({ type: \"clear_all_state_values\" }); }\n"
+        "\n"
         "    /** Attaches a listener function that will be called when any key-value pair in the stored state is changed.\n"
         "     *  The listener function will receive a message parameter with properties 'key' and 'value'.\n"
         "     */\n"
@@ -1552,16 +1556,12 @@ struct EmbeddedWebAssets
         "        this.sendMessageToServer ({ type: \"load_patch\", file: patchFileToLoad });\n"
         "    }\n"
         "\n"
-        "    /** Tells the server to asynchronously generate a list of patches that it has access to.\n"
-        "     *  The function provided will be called back with an array of manifest objects describing\n"
-        "     *  each of the patches.\n"
+        "    /** Asynchronously returns a list of patches that it has access to.\n"
+        "     *  The return value is an array of manifest objects describing each of the patches.\n"
         "     */\n"
-        "    requestAvailablePatchList (callbackFunction)\n"
+        "    async requestAvailablePatchList()\n"
         "    {\n"
-        "        const replyType = this.createReplyID (\"patchlist_\");\n"
-        "        this.addSingleUseListener (replyType, callbackFunction);\n"
-        "        this.sendMessageToServer ({ type: \"req_patchlist\",\n"
-        "                                    replyType: replyType });\n"
+        "        return await this.sendMessageToServerWithReply ({ type: \"req_patchlist\" });\n"
         "    }\n"
         "\n"
         "    /** Creates and returns a new PatchConnection object which can be used to control the\n"
@@ -1696,18 +1696,13 @@ struct EmbeddedWebAssets
         "     *                             status's `codeGenTargets` property. For example, \"cpp\"\n"
         "     *                             would request a C++ version of the patch.\n"
         "     *  @param {Object} [extraOptions] - this optionally provides target-specific properties.\n"
-        "     *  @param callbackFunction - this function will be called with the result when it has\n"
-        "     *                            been generated. Its argument will be an object containing the\n"
-        "     *                            code, errors and other metadata about the patch.\n"
+        "     *  @returns an object containing the code, errors and other metadata about the patch.\n"
         "     */\n"
-        "    requestGeneratedCode (codeType, extraOptions, callbackFunction)\n"
+        "    async requestGeneratedCode (codeType, extraOptions)\n"
         "    {\n"
-        "        const replyType = this.createReplyID (\"codegen_\");\n"
-        "        this.addSingleUseListener (replyType, callbackFunction);\n"
-        "        this.sendMessageToServer ({ type: \"req_codegen\",\n"
-        "                                    codeType: codeType,\n"
-        "                                    options: extraOptions,\n"
-        "                                    replyType: replyType });\n"
+        "        return await this.sendMessageToServerWithReply ({ type: \"req_codegen\",\n"
+        "                                                          codeType: codeType,\n"
+        "                                                          options: extraOptions, });\n"
         "    }\n"
         "\n"
         "    //==============================================================================\n"
@@ -1898,9 +1893,14 @@ struct EmbeddedWebAssets
         "    }\n"
         "\n"
         "    /** @private */\n"
-        "    createReplyID (stem)\n"
+        "    sendMessageToServerWithReply (message)\n"
         "    {\n"
-        "        return \"reply_\" + stem + this.createRandomID();\n"
+        "        return new Promise ((resolve, reject) =>\n"
+        "        {\n"
+        "            const replyType = \"reply_\" + message.type + \"_\" + this.createRandomID();\n"
+        "            this.addSingleUseListener (replyType, resolve);\n"
+        "            this.sendMessageToServer ({ ...message, replyType });\n"
+        "        });\n"
         "    }\n"
         "\n"
         "    /** @private */\n"
@@ -3537,11 +3537,11 @@ struct EmbeddedWebAssets
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12731) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12915) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30756) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
-        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18844) },
+        File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 18553) },
         File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 15557) },
         File { "cmaj-generic-patch-view.js", std::string_view (cmajgenericpatchview_js, 6912) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 7388) },

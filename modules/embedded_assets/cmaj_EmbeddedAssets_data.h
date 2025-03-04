@@ -703,7 +703,7 @@ struct Files
         "\n"
         "            this.pendingTimer = setTimeout (() =>\n"
         "            {\n"
-        "                this.session.requestGeneratedCode (\"graph\", {},\n"
+        "                this.session.requestGeneratedCode (\"graph\", {}).then (\n"
         "                    message => {\n"
         "                        if (typeof message.code == \"string\")\n"
         "                            this.holder.innerHTML = message.code;\n"
@@ -1382,23 +1382,20 @@ struct Files
         "        }\n"
         "    }\n"
         "\n"
-        "    postCodeGenRequest (tab)\n"
+        "    async postCodeGenRequest (tab)\n"
         "    {\n"
         "        if (! tab.isCodeGenPending)\n"
         "        {\n"
         "            tab.isCodeGenPending = true;\n"
+        "            const message = await this.session.requestGeneratedCode (tab.name, {});\n"
+        "            tab.isCodeGenPending = false;\n"
         "\n"
-        "            this.session.requestGeneratedCode (tab.name, {},\n"
-        "                message => {\n"
-        "                    tab.isCodeGenPending = false;\n"
+        "            if (message.code)\n"
+        "                tab.listing.value = message.code;\n"
+        "            else if (message.messages)\n"
+        "                tab.listing.value = getMessageListAsString (message.messages);\n"
         "\n"
-        "                    if (message.code)\n"
-        "                        tab.listing.value = message.code;\n"
-        "                    else if (message.messages)\n"
-        "                        tab.listing.value = getMessageListAsString (message.messages);\n"
-        "\n"
-        "                    this.refreshButtonState();\n"
-        "                });\n"
+        "            this.refreshButtonState();\n"
         "        }\n"
         "    }\n"
         "\n"
@@ -1599,8 +1596,16 @@ struct Files
         "        {\n"
         "            this.isSessionConnected = !! status.connected;\n"
         "\n"
-        "            if (this.isSessionConnected && ! this.isShowingFixedPatch())\n"
-        "                this.session.requestAvailablePatchList (list => this.updateAvailablePatches (list));\n"
+        "            if (this.isSessionConnected)\n"
+        "            {\n"
+        "                this.session.requestAvailablePatchList().then (list =>\n"
+        "                {\n"
+        "                    if (! this.isShowingFixedPatch())\n"
+        "                        this.updateAvailablePatches (list);\n"
+        "                    else if (list.length > 0)\n"
+        "                        this.loadPatch (list[0]?.manifestFile);\n"
+        "                });\n"
+        "            }\n"
         "        }\n"
         "\n"
         "        if (status.loaded && ! this.patchConnection)\n"
@@ -2859,8 +2864,8 @@ struct Files
         File { "embedded_patch_session_template.js", std::string_view (embedded_patch_session_template_js, 2052) },
         File { "panel_api/cmaj-patch-panel.css", std::string_view (panel_api_cmajpatchpanel_css, 7404) },
         File { "panel_api/cmaj-patch-panel.html", std::string_view (panel_api_cmajpatchpanel_html, 2278) },
-        File { "panel_api/cmaj-graph.js", std::string_view (panel_api_cmajgraph_js, 2940) },
-        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 44206) },
+        File { "panel_api/cmaj-graph.js", std::string_view (panel_api_cmajgraph_js, 2947) },
+        File { "panel_api/cmaj-patch-panel.js", std::string_view (panel_api_cmajpatchpanel_js, 44365) },
         File { "panel_api/cmaj-cpu-meter.js", std::string_view (panel_api_cmajcpumeter_js, 3617) },
         File { "panel_api/helpers/cmaj-image-strip-control.js", std::string_view (panel_api_helpers_cmajimagestripcontrol_js, 5666) },
         File { "panel_api/helpers/cmaj-level-meter.js", std::string_view (panel_api_helpers_cmajlevelmeter_js, 6758) },
