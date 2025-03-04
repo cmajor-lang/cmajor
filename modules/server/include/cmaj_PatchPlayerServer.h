@@ -29,13 +29,21 @@ namespace cmaj
 {
     using CreateAudioMIDIPlayerFn = std::function<std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer>(const cmaj::audio_utils::AudioDeviceOptions&)>;
 
-    void runPatchPlayerServer (std::string address,
-                               uint16_t port,
+    struct ServerOptions
+    {
+        std::string address         = "127.0.0.1";
+        uint16_t port               = 51000;
+        int32_t clientTimeoutMs     = 5000;
+        uint32_t maxNumSessions     = 16;
+        
+        std::vector<std::filesystem::path> patchLocations;
+    };
+
+    void runPatchPlayerServer (const ServerOptions& serverOptions,
                                const choc::value::Value& engineOptions,
                                cmaj::BuildSettings& buildSettings,
                                const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
-                               CreateAudioMIDIPlayerFn,
-                               std::vector<std::filesystem::path> patchLocationsToScan);
+                               CreateAudioMIDIPlayerFn);
 
     void runServerUnitTests (choc::test::TestProgress&);
 }

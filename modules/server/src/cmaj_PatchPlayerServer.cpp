@@ -31,21 +31,19 @@ namespace cmaj
 
 struct PatchPlayerServer
 {
-    PatchPlayerServer (std::string address,
-                       uint16_t port,
-                       const choc::value::Value& engineOptionsToUse,
-                       cmaj::BuildSettings& buildSettingsToUse,
+    PatchPlayerServer (const ServerOptions&                         serverOptionsToUse,
+                       const choc::value::Value&                    engineOptionsToUse,
+                       cmaj::BuildSettings&                         buildSettingsToUse,
                        const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
-                       CreateAudioMIDIPlayerFn createPlayer,
-                       std::vector<std::filesystem::path> patchLocationsToScan)
+                       CreateAudioMIDIPlayerFn                      createPlayer)
         : engineOptions (engineOptionsToUse),
           buildSettings (buildSettingsToUse),
-          patchLocations (std::move (patchLocationsToScan)),
+          serverOptions (serverOptionsToUse),
           createAudioMIDIPlayer (std::move (createPlayer))
     {
         checkForSinglePatchMode();
 
-        if (httpServer.open (address, port, 0,
+        if (httpServer.open (serverOptions.address, serverOptions.port, 0,
                              [this] { return std::make_unique<ClientRequestHandler> (*this); },
                              [this] (const std::string& error) { handleServerError (error); }))
         {
@@ -157,9 +155,6 @@ struct PatchPlayerServer
     {
         return choc::text::createHexString (createRandomUint64());
     }
-
-    static constexpr size_t maxNumSessions = 16;
-    static constexpr int clientTimeoutMilliseconds = 5000;
 
     struct Session;
 
@@ -577,11 +572,13 @@ struct PatchPlayerServer
         {
             sendMessageToClient (choc::json::create ("type", "ping"));
 
-            auto now = std::chrono::steady_clock::now();
+            auto now                  = std::chrono::steady_clock::now();
             auto timeSinceLastMessage = now - lastMessageTime;
-            auto timeInMillisecs = std::chrono::duration_cast<std::chrono::milliseconds> (timeSinceLastMessage).count();
+            auto timeInMillisecs      = std::chrono::duration_cast<std::chrono::milliseconds> (timeSinceLastMessage).count();
 
-            if (timeInMillisecs > clientTimeoutMilliseconds && patchPlayer != nullptr)
+            if (timeInMillisecs > owner.serverOptions.clientTimeoutMs &&
+                owner.serverOptions.clientTimeoutMs > 0 &&
+                patchPlayer != nullptr)
             {
                 if (patchPlayer->patch.isLoaded())
                 {
@@ -806,7 +803,7 @@ struct PatchPlayerServer
         if (s != activeSessions.end())
             return s->second;
 
-        if (activeSessions.size() >= maxNumSessions)
+        if (activeSessions.size() >= serverOptions.maxNumSessions)
             return {};
 
         auto newSession = std::make_shared<Session> (*this, sessionID);
@@ -874,9 +871,9 @@ struct PatchPlayerServer
     {
         isSinglePatch = false;
 
-        if (patchLocations.size() == 1)
+        if (serverOptions.patchLocations.size() == 1)
         {
-            auto f = patchLocations.front();
+            auto f = serverOptions.patchLocations.front();
 
             if (exists (f) && f.extension() == ".cmajorpatch")
                 isSinglePatch = true;
@@ -925,7 +922,7 @@ struct PatchPlayerServer
             return false;
         };
 
-        for (auto& f : patchLocations)
+        for (auto& f : serverOptions.patchLocations)
         {
             if (exists (f))
             {
@@ -960,9 +957,9 @@ struct PatchPlayerServer
 
 private:
     //==============================================================================
-    choc::value::Value engineOptions;
+    choc::value::Value  engineOptions;
     cmaj::BuildSettings buildSettings;
-    std::vector<std::filesystem::path> patchLocations;
+    cmaj::ServerOptions serverOptions;
     bool isSinglePatch = false;
     choc::value::Value codeGenTargets;
     CreateAudioMIDIPlayerFn createAudioMIDIPlayer;
@@ -976,16 +973,13 @@ private:
 };
 
 //==============================================================================
-void runPatchPlayerServer (std::string address,
-                           uint16_t port,
-                           const choc::value::Value& engineOptions,
-                           cmaj::BuildSettings& buildSettings,
+void runPatchPlayerServer (const ServerOptions&                         serverOptions,
+                           const choc::value::Value&                    engineOptions,
+                           cmaj::BuildSettings&                         buildSettings,
                            const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
-                           CreateAudioMIDIPlayerFn createPlayer,
-                           std::vector<std::filesystem::path> patchLocations)
+                           CreateAudioMIDIPlayerFn                      createPlayer)
 {
-    PatchPlayerServer server (address, port, engineOptions, buildSettings,
-                              audioOptions, std::move (createPlayer), patchLocations);
+    PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions, std::move (createPlayer));
 
     std::cout << std::endl
               << "------------------------------------------------" << std::endl
@@ -1184,22 +1178,20 @@ namespace
 
         CallHistory callHistory;
 
-        std::string hostname = "127.0.0.1";
-        uint16_t    port     = 8081;
-        std::string url      = "http://127.0.0.1:8081/";
+        cmaj::ServerOptions serverOptions { .address = "127.0.0.1", .port = 8081 };
+        std::string url = "http://127.0.0.1:8081/";
 
-        PatchPlayerServer server (hostname, port, engineOptions, buildSettings, audioOptions, [&] (const cmaj::audio_utils::AudioDeviceOptions& options)
+        PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions, [&] (const cmaj::audio_utils::AudioDeviceOptions& options)
                                   {
                                       return std::make_unique<StubAudioMidiPlayer> (callHistory, options);
-                                  }, {});
-
+                                  });
 
         auto t = std::thread ([&]
         {
             try
             {
-                TestClient client1 (hostname, port, "client1");
-                TestClient client2 (hostname, port, "client2");
+                TestClient client1 (serverOptions.address, serverOptions.port, "client1");
+                TestClient client2 (serverOptions.address, serverOptions.port, "client2");
 
                 choc::value::Value response;
 

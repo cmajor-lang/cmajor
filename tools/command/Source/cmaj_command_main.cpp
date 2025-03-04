@@ -99,6 +99,7 @@ cmaj server [opts] dir      Run cmaj as an http service, serving the patches wit
                             given
 
     --address=<addr>:<port> Serve from the specified address, defaults to 127.0.0.1:51000
+    --timeoutMs=<ms>        Alters the client timeout time, defaults to 5000ms
 
 cmaj test [opts] <files>    Runs one or more .cmajtest scripts, and print the aggregate results
                             for the tests. See the documentation for writing tests for more info.
@@ -211,6 +212,7 @@ static choc::value::Value parseEngineArgs (choc::ArgumentList& args)
 
     return engineOptions;
 }
+
 
 //==============================================================================
 static bool isCommand (choc::ArgumentList& args, std::string_view name)

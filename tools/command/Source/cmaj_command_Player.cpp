@@ -152,14 +152,15 @@ void runServerProcess (choc::ArgumentList& args,
                        cmaj::BuildSettings& buildSettings,
                        const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
 {
-    std::string address = "127.0.0.1";
+    cmaj::ServerOptions serverOptions;
+
     std::string port = "51000";
 
     if (auto addr = args.removeValueFor ("--address"))
     {
-        address = choc::text::trim (*addr);
+        serverOptions.address = choc::text::trim (*addr);
 
-        if (auto lastColon = address.rfind (':'); lastColon != std::string::npos)
+        if (auto lastColon = serverOptions.address.rfind (':'); lastColon != std::string::npos)
         {
             auto isNumber = [] (const std::string& s)
             {
@@ -173,9 +174,9 @@ void runServerProcess (choc::ArgumentList& args,
                 return true;
             };
 
-            if (auto possiblePort = choc::text::trim (address.substr (lastColon + 1)); isNumber (possiblePort))
+            if (auto possiblePort = choc::text::trim (serverOptions.address.substr (lastColon + 1)); isNumber (possiblePort))
             {
-                address = address.substr (0, lastColon);
+                serverOptions.address = serverOptions.address.substr (0, lastColon);
                 port = possiblePort;
             }
         }
@@ -184,12 +185,16 @@ void runServerProcess (choc::ArgumentList& args,
     if (auto p = args.removeValueFor ("--port"))
         port = choc::text::trim (*p);
 
+    if (auto t = args.removeIntValue<int32_t> ("--timeoutMs"))
+        serverOptions.clientTimeoutMs = *t;
+
     auto portNum = std::stoi (port);
 
     if (portNum <= 0 || portNum >= 65536)
         throw std::runtime_error ("Out of range port number");
 
-    auto patchFolders = args.getAllAsExistingFiles();
+    serverOptions.port           = static_cast<uint16_t> (portNum);
+    serverOptions.patchLocations = args.getAllAsExistingFiles();
 
     auto timeNow = std::chrono::system_clock::to_time_t (std::chrono::system_clock::now());
 
@@ -199,8 +204,6 @@ void runServerProcess (choc::ArgumentList& args,
     printCmajorVersion();
     std::cout << "OS: " << CHOC_OPERATING_SYSTEM_NAME << std::endl;
 
-    cmaj::runPatchPlayerServer (address, static_cast<uint16_t> (portNum),
-                                engineOptions, buildSettings, audioOptions,
-                                [] (const auto& options) { return createDefaultAudioDevice (options); },
-                                patchFolders);
+    cmaj::runPatchPlayerServer (serverOptions, engineOptions, buildSettings, audioOptions,
+                                [] (const auto& options) { return createDefaultAudioDevice (options); });
 }
