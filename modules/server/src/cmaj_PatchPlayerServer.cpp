@@ -1178,7 +1178,11 @@ namespace
 
         CallHistory callHistory;
 
-        cmaj::ServerOptions serverOptions { .address = "127.0.0.1", .port = 8081 };
+        cmaj::ServerOptions serverOptions;
+
+        serverOptions.address = "127.0.0.1";
+        serverOptions.port    = 8081;
+
         std::string url = "http://127.0.0.1:8081/";
 
         PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions, [&] (const cmaj::audio_utils::AudioDeviceOptions& options)
