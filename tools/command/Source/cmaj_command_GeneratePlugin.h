@@ -76,18 +76,7 @@ inline std::string createFileData (const GeneratedFiles& files)
         else
             fileList += ",\n";
 
-        if (f.content.length() < 32768
-             && f.content.find ('\0') == std::string_view::npos
-             && choc::text::findInvalidUTF8Data (f.content.data(), f.content.size()) == nullptr)
-        {
-            result += "    static constexpr const char* " + name + " =\n        "
-                       + cmaj::cpp_utils::createMultiLineStringLiteral (f.content, "        ") + ";\n";
-        }
-        else
-        {
-            result += "    static constexpr const char " + name + "[] = {\n        "
-                       + cmaj::cpp_utils::createDataLiteral (f.content) + " };\n";
-        }
+        result += "    static " + cmaj::cpp_utils::createConstantStringDeclaration (name, f.content) + "\n";
 
         name = "std::string_view (" + name + ", " + std::to_string (f.content.length()) + ")";
 

@@ -158,6 +158,8 @@ private:
     //==============================================================================
     struct VariableNameList  : public AST::UniqueNameList<AST::VariableDeclaration, VariableNameList>
     {
+        VariableNameList (std::string p) : AST::UniqueNameList<AST::VariableDeclaration, VariableNameList> (std::move (p)) {}
+
         std::string getRootName (const AST::VariableDeclaration& v)
         {
             return Builder::makeSafeIdentifier (v.name.get());
@@ -180,7 +182,7 @@ private:
     AST::Dependencies dependencies;
     AST::ProcessorBase& mainProcessor;
 
-    VariableNameList globalVariableNames, localVariableNames;
+    VariableNameList globalVariableNames { "g_" }, localVariableNames { {} };
     FunctionNameList functionNames;
 
     std::vector<std::function<void()>> postStatementOperationStack;

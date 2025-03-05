@@ -147,6 +147,16 @@ namespace cmaj::cpp_utils
         return result.str();
     }
 
+    inline std::string createConstantStringDeclaration (std::string_view name, std::string_view text)
+    {
+        if (text.length() < 32768
+              && text.find ('\0') == std::string_view::npos
+              && choc::text::findInvalidUTF8Data (text.data(), text.size()) == nullptr)
+            return "constexpr const char* " + std::string (name) + " =\n        " + createMultiLineStringLiteral (text, "        ") + ";";
+
+        return "constexpr const char " + std::string (name) + "[] = {\n        " + createDataLiteral (text) + " };\n";
+    }
+
     inline std::string makeSafeIdentifier (std::string_view name)
     {
         constexpr static std::string_view cppKeywords[] =

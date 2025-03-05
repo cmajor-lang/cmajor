@@ -289,8 +289,8 @@ struct CPlusPlusCodeGenerator
 // Rendering state values
 int32_t initSessionID;
 double initFrequency;
-STATE_STRUCT state = {};
-IO_STRUCT io = {};
+STATE_STRUCT cmajState = {};
+IO_STRUCT cmajIO = {};
 )CPPGEN";
 
         out << sectionBreak
@@ -338,9 +338,9 @@ IO_STRUCT io = {};
 
             if (auto f = mainProcessor.findSystemInitFunction())
             {
-                out << "std::memset (&state, 0, sizeof (state));" << newLine;
+                out << "std::memset (&cmajState, 0, sizeof (cmajState));" << newLine;
                 out << "int32_t processorID = 0;" << newLine;
-                out << codeGenerator->getFunctionName (*f) + " (state, processorID, initSessionID, initFrequency);" << newLine;
+                out << codeGenerator->getFunctionName (*f) + " (cmajState, processorID, initSessionID, initFrequency);" << newLine;
             }
         }
 
@@ -354,7 +354,7 @@ IO_STRUCT io = {};
         if (auto f = mainProcessor.findMainFunction())
         {
             isSingleFrame = true;
-            out << "void advanceOneFrame() { " << codeGenerator->getFunctionName (*f) << " (state, io); }" << blankLine;
+            out << "void advanceOneFrame() { " << codeGenerator->getFunctionName (*f) << " (cmajState, cmajIO); }" << blankLine;
         }
 
         out << "void advance (int32_t frames)" << newLine;
@@ -365,7 +365,7 @@ IO_STRUCT io = {};
             {
                 if (output->isStream())
                 {
-                    out << "io." << StreamUtilities::getEndpointStateMemberName (output);
+                    out << "cmajIO." << StreamUtilities::getEndpointStateMemberName (output);
 
                     if (isSingleFrame)
                         out << " = Null();" << newLine;
@@ -375,7 +375,7 @@ IO_STRUCT io = {};
             }
 
             if (auto f = mainProcessor.findSystemAdvanceFunction())
-                out << codeGenerator->getFunctionName (*f) << " (state, io, frames);" << newLine;
+                out << codeGenerator->getFunctionName (*f) << " (cmajState, cmajIO, frames);" << newLine;
             else
                 out << "assert (frames == 1); advanceOneFrame();" << newLine;
         }
@@ -396,7 +396,7 @@ IO_STRUCT io = {};
                 if (e->isOutput() && e->isValue())
                 {
                     anyDone = true;
-                    auto name = "state." + StreamUtilities::getEndpointStateMemberName (e);
+                    auto name = "cmajState." + StreamUtilities::getEndpointStateMemberName (e);
                     auto details = AST::createEndpointDetails (e);
                     auto size = std::to_string (details.dataTypes.front().getValueDataSize());
 
@@ -423,7 +423,7 @@ IO_STRUCT io = {};
                 if (e->isOutput() && e->isStream())
                 {
                     anyDone = true;
-                    auto name = "io." + StreamUtilities::getEndpointStateMemberName (e);
+                    auto name = "cmajIO." + StreamUtilities::getEndpointStateMemberName (e);
                     auto details = AST::createEndpointDetails (e);
                     auto size = std::to_string (details.dataTypes.front().getValueDataSize()) + " * numFramesToCopy";
 
@@ -458,7 +458,7 @@ IO_STRUCT io = {};
 
             for (auto& output : eventOutputs)
                 out << "if (endpointHandle == " << getEndpointHandle (output)
-                    << ") return state." << EventHandlerUtilities::getEventCountStateMemberName (output) << ";" << newLine;
+                    << ") return (uint32_t) cmajState." << EventHandlerUtilities::getEventCountStateMemberName (output) << ";" << newLine;
 
             if (eventOutputs.empty())
                 out << "(void) endpointHandle;" << blankLine;
@@ -474,7 +474,7 @@ IO_STRUCT io = {};
 
             for (auto& output : eventOutputs)
                 out << "if (endpointHandle == " << getEndpointHandle (output)
-                    << ") { state." << EventHandlerUtilities::getEventCountStateMemberName (output) << " = 0; return; }" << newLine;
+                    << ") { cmajState." << EventHandlerUtilities::getEventCountStateMemberName (output) << " = 0; return; }" << newLine;
 
             if (eventOutputs.empty())
                 out << "(void) endpointHandle;" << blankLine;
@@ -488,7 +488,7 @@ IO_STRUCT io = {};
 
             for (auto& output : eventOutputs)
                 out << "if (endpointHandle == " << getEndpointHandle (output)
-                    << ") return state." << output->getName().get() << "[index].type;" << newLine;
+                    << ") return (uint32_t) cmajState." << output->getName().get() << "[(IndexType) index].type;" << newLine;
 
             if (eventOutputs.empty())
                 out << "(void) endpointHandle; (void) index;" << blankLine;
@@ -531,7 +531,7 @@ IO_STRUCT io = {};
 
                 {
                     auto indent2 = out.createIndentWithBraces();
-                    out << "auto& event = state." << output->getName().get() << "[index];" << newLine;
+                    out << "auto& event = cmajState." << output->getName().get() << "[(IndexType) index];" << newLine;
 
                     for (size_t type = 0; type < dataTypes.size(); ++type)
                     {
@@ -543,7 +543,7 @@ IO_STRUCT io = {};
                             if (details.dataTypes[type].getValueDataSize() > 0)
                                 printPackValue ("dest", "event.value_" + std::to_string (type), details.dataTypes[type]);
 
-                            out << "return event.frame;" << newLine;
+                            out << "return (uint32_t) event.frame;" << newLine;
                         }
 
                         out << newLine;
@@ -578,8 +578,9 @@ IO_STRUCT io = {};
 
         if (type.isBool())
         {
-            out << "int32_t t = " << source << ";" << newLine;
+            out << "{ int32_t t = " << source << "; ";
             printPackValue (dest, "t", choc::value::Type::createInt32());
+            out << "}" << newLine;
             return;
         }
 
@@ -701,9 +702,9 @@ IO_STRUCT io = {};
                             auto indent = out.createIndentWithBraces();
 
                             if (dataType->isVoid())
-                                out << codeGenerator->getFunctionName (*handlerFn) << " (state);" << newLine;
+                                out << codeGenerator->getFunctionName (*handlerFn) << " (cmajState);" << newLine;
                             else
-                                out << codeGenerator->getFunctionName (*handlerFn) << " (state, event);" << newLine;
+                                out << codeGenerator->getFunctionName (*handlerFn) << " (cmajState, event);" << newLine;
                         }
 
                         out << blankLine;
@@ -781,7 +782,7 @@ IO_STRUCT io = {};
                 if (input->isValue())
                 {
                     out << "if (endpointHandle == " << getEndpointHandle (input)
-                        << ") return " << AST::getSetValueFunctionName (input) << " (state, *("
+                        << ") return " << AST::getSetValueFunctionName (input) << " (cmajState, *("
                         << getTypeName (AST::castToTypeBaseRef (input->dataTypes[0]), true)
                         << "*) value, frames);" << newLine;
 
@@ -813,7 +814,7 @@ IO_STRUCT io = {};
                 out << "void " << functionName << " (const void* data, uint32_t numFrames, uint32_t numTrailingFramesToClear)" << newLine;
                 {
                     auto indent = out.createIndentWithBraces();
-                    auto buffer = "io." + std::string (input->getName());
+                    auto buffer = "cmajIO." + std::string (input->getName());
 
                     if (maxNumFramesPerBlock == 1)
                     {
@@ -997,8 +998,7 @@ struct EndpointInfo
         programDetails.setMember ("inputs",  program.endpointList.inputEndpointDetails.toJSON (false));
         programDetails.setMember ("outputs", program.endpointList.outputEndpointDetails.toJSON (false));
 
-        out << "static constexpr const char programDetailsJSON[] = {\n    "
-            << cpp_utils::createDataLiteral (choc::json::toString (programDetails, true)) << "};" << blankLine;
+        out << "static " << cpp_utils::createConstantStringDeclaration ("programDetailsJSON", choc::json::toString (programDetails, true)) << blankLine;
     }
 
     template <typename Pred>
@@ -1753,12 +1753,8 @@ struct EndpointInfo
                                 ValueReader lhs, ValueReader rhs)
     {
         if (opType == AST::BinaryOpTypeEnum::Enum::rightShiftUnsigned)
-        {
-            if (lhs.type->isVector())
-                return createReaderNoParensNeeded ("intrinsics::VectorOps::rightShiftUnsigned (" + lhs.getWithoutParens() + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
-            else
-                return createReaderNoParensNeeded ("intrinsics::rightShiftUnsigned (" + lhs.getWithoutParens() + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
-        }
+            return createReaderNoParensNeeded ("intrinsics::" + std::string (lhs.type->isVector() && ! lhs.type->isVectorSize1() ? "VectorOps::" : "")
+                                                + "rightShiftUnsigned (" + lhs.getWithoutParens() + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
 
         if (opType == AST::BinaryOpTypeEnum::Enum::modulo && ! opTypes.operandType.isVector())
             return createReaderNoParensNeeded ("intrinsics::modulo (" + lhs.getWithoutParens()

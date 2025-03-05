@@ -264,7 +264,7 @@ int main (int argc, char** argv)
     try
     {
         choc::messageloop::initialise();
-        
+
         choc::ArgumentList args (argc, argv);
         performCommandLineTask (args);
         return 0;

@@ -198,7 +198,7 @@ struct IntegerRange
 template <typename ObjectType, typename ParentType>
 struct UniqueNameList
 {
-    UniqueNameList() = default;
+    UniqueNameList (std::string prefixToUse = {}) : prefix (std::move (prefixToUse)) {}
     UniqueNameList (const UniqueNameList&) = delete;
 
     std::string getName (const ObjectType& o)
@@ -211,6 +211,9 @@ struct UniqueNameList
 
             if (root.empty())
                 root = "_";
+
+            if (! prefix.empty())
+                root = std::string (prefix) + root;
 
             auto exists = [this] (const std::string& nameToCheck) -> bool
             {
@@ -244,6 +247,7 @@ struct UniqueNameList
 
     std::unordered_map<const ObjectType*, std::string> names;
     std::unordered_map<std::string, uint32_t> suffixes;
+    std::string prefix;
 };
 
 //==============================================================================
