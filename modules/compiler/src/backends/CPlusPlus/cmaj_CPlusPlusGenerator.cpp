@@ -997,8 +997,8 @@ struct EndpointInfo
         programDetails.setMember ("inputs",  program.endpointList.inputEndpointDetails.toJSON (false));
         programDetails.setMember ("outputs", program.endpointList.outputEndpointDetails.toJSON (false));
 
-        out << "static constexpr const char* programDetailsJSON = "
-            << cpp_utils::createMultiLineStringLiteral (choc::json::toString (programDetails, true), "    ") << ";" << blankLine;
+        out << "static constexpr const char programDetailsJSON[] = {\n    "
+            << cpp_utils::createDataLiteral (choc::json::toString (programDetails, true)) << "};" << blankLine;
     }
 
     template <typename Pred>
