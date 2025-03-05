@@ -584,6 +584,12 @@ IO_STRUCT cmajIO = {};
             return;
         }
 
+        if (type.isVectorSize1())
+        {
+            printPackValue (dest, source, type.getElementType());
+            return;
+        }
+
         if (type.isArray() || type.isVector())
         {
             std::string loopVar = "i" + std::to_string (out.getTotalIndent());
@@ -622,6 +628,12 @@ IO_STRUCT cmajIO = {};
         {
             out << dest << " = *(bool *) " << source << ";" << newLine;
             out << source << " += 4;" << newLine;
+            return;
+        }
+
+        if (type.isVectorSize1())
+        {
+            printUnpackValue (dest, source, type.getElementType());
             return;
         }
 
