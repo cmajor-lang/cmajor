@@ -338,7 +338,7 @@ IO_STRUCT cmajIO = {};
 
             if (auto f = mainProcessor.findSystemInitFunction())
             {
-                out << "std::memset (&cmajState, 0, sizeof (cmajState));" << newLine;
+                out << "std::memset (reinterpret_cast<char*> (&cmajState), 0, sizeof (cmajState));" << newLine;
                 out << "int32_t processorID = 0;" << newLine;
                 out << codeGenerator->getFunctionName (*f) + " (cmajState, processorID, initSessionID, initFrequency);" << newLine;
             }
@@ -401,7 +401,7 @@ IO_STRUCT cmajIO = {};
                     auto size = std::to_string (details.dataTypes.front().getValueDataSize());
 
                     out << "if (endpointHandle == " << std::to_string (getEndpointHandle (e))
-                        << ") { std::memcpy (dest, std::addressof (" << name << "), " << size << "); return; }" << newLine;
+                        << ") { std::memcpy (reinterpret_cast<char*> (dest), std::addressof (" << name << "), " << size << "); return; }" << newLine;
                 }
             }
 
@@ -428,8 +428,8 @@ IO_STRUCT cmajIO = {};
                     auto size = std::to_string (details.dataTypes.front().getValueDataSize()) + " * numFramesToCopy";
 
                     out << "if (endpointHandle == " << std::to_string (getEndpointHandle (e))
-                        << ") { std::memcpy (dest, std::addressof (" << name << "), " << size
-                        << "); std::memset (std::addressof (" << name << "), 0, " << size << "); return; }" << newLine;
+                        << ") { std::memcpy (reinterpret_cast<char*> (dest), std::addressof (" << name << "), " << size
+                        << "); std::memset (reinterpret_cast<char*> (std::addressof (" << name << ")), 0, " << size << "); return; }" << newLine;
                 }
             }
 
