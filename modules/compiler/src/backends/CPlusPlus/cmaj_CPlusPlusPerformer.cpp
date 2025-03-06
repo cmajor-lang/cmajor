@@ -82,7 +82,7 @@ struct TemporaryCompiledDLL
         build (getOptimisationFlag (buildSettings.getOptimisationLevel())
                + " -I" + cmajorFolder.string()
                + " -DMAX_BLOCK_SIZE=" + std::to_string (buildSettings.getMaxBlockSize()) +
-               + " -std=c++17 -fPIC -Wno-#pragma-messages -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare -Werror " + extraCompileArgs,
+               + " -std=c++17 -fPIC -Werror -Wall -Wextra -Wno-#pragma-messages -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare " + extraCompileArgs,
                extraLinkerArgs);
     }
 

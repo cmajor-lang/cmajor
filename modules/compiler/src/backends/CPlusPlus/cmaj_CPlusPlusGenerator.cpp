@@ -943,9 +943,16 @@ struct EndpointInfo
             out << "static constexpr uint32_t getEndpointHandleForName (std::string_view endpointName)" << newLine;
             {
                 auto indent = out.createIndentWithBraces();
+                bool anyDone = false;
 
                 for (auto& row : nameMatches.getRows ({}, "  ", {}))
+                {
+                    anyDone = true;
                     out << row << newLine;
+                }
+
+                if (! anyDone)
+                    out << "(void) endpointName;" << newLine;
 
                 out << "return 0;" << newLine;
             }
