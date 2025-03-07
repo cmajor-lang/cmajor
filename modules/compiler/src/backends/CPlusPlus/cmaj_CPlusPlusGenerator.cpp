@@ -836,7 +836,7 @@ IO_STRUCT cmajIO = {};
                     else
                     {
                         out << "memcpy (" << buffer << ".elements, data, numFrames * " << frameStride << ");" << newLine
-                            << "if (numTrailingFramesToClear != 0) memset (" << buffer << ".elements + numFrames, 0, numTrailingFramesToClear * " << frameStride << ");" << newLine;
+                            << "if (numTrailingFramesToClear != 0) memset (reinterpret_cast<char*> (" << buffer << ".elements + numFrames), 0, numTrailingFramesToClear * " << frameStride << ");" << newLine;
                     }
 
                     dispatchers.push_back ("if (endpointHandle == " + std::to_string (getEndpointHandle (input))
@@ -2085,6 +2085,7 @@ struct Slice
  #pragma clang diagnostic ignored "-Wunused-variable"
  #pragma clang diagnostic ignored "-Wunused-parameter"
  #pragma clang diagnostic ignored "-Wunused-label"
+ #pragma clang diagnostic ignored "-Wtautological-compare"
 
  #if __clang_major__ >= 14
   #pragma clang diagnostic ignored "-Wunused-but-set-variable"
