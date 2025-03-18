@@ -330,8 +330,15 @@ struct ProcessorResolver  : public PassAvoidingGenericFunctionsAndModules
                         newEndpoint.isInput = isInput;
                         newEndpoint.endpointType.set (e.endpointType);
 
-                        if (hoistedEndpoint.annotation != nullptr)
-                            newEndpoint.annotation.referTo (hoistedEndpoint.annotation.getObject());
+                        if (auto object = hoistedEndpoint.annotation.getObject())
+                        {
+                            if (auto annotation = object->Object::getAsAnnotation())
+                            {
+                                auto& newEndpointAnnotation = newEndpoint.context.allocate<AST::Annotation> ();
+                                newEndpointAnnotation.mergeFrom (*annotation, true);
+                                newEndpoint.annotation.referTo (newEndpointAnnotation);
+                            }
+                        }
 
                         auto& childPath = newEndpoint.allocateChild<AST::HoistedEndpointPath>();
                         newEndpoint.childPath.referTo (childPath);
