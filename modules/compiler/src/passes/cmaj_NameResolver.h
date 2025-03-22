@@ -394,7 +394,7 @@ struct NameResolver  : public PassAvoidingGenericFunctionsAndModules
             search.addResult (nameObject.getRootNamespace());
             return;
         }
-        
+
         search.nameToFind = name;
 
         if (auto parentScope = nameObject.getParentScope())

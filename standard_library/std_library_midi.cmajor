@@ -105,6 +105,12 @@ namespace std::midi
         return m;
     }
 
+    /// Clamps and converts a 0-1 float value to a MIDI byte 0-127
+    int clampFloatToByte (float value)
+    {
+        return int (clamp (value, 0.0f, 1.0f) * 127.0f);
+    }
+
     //==============================================================================
     /// Accepts an input stream of raw MIDI MPE events and converts them to a stream
     /// of note event objects which can be more easily used by synthesiser classes.
@@ -172,34 +178,34 @@ namespace std::midi
 
         event eventIn (std::notes::NoteOn e)
         {
-            midiOut <- createMessage (0x90 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
+            midiOut <- createMessage (0x90 + (e.channel & 0xf), int (e.pitch), clampFloatToByte (e.velocity));
         }
 
         event eventIn (std::notes::NoteOff e)
         {
-            midiOut <- createMessage (0x80 + (e.channel & 0xf), int (e.pitch), int (e.velocity * 127.0f));
+            midiOut <- createMessage (0x80 + (e.channel & 0xf), int (e.pitch), clampFloatToByte (e.velocity));
         }
 
         event eventIn (std::notes::PitchBend e)
         {
-            let value = int (8192.0f + (8192.0f * clamp (e.bendSemitones, -semitoneBendRange, semitoneBendRange)));
-            midiOut <- createMessage (0xe0 + (e.channel & 0xf), value >> 7, value & 0x7f);
-        }
-
-        event eventIn (std::notes::Slide e)
-        {
-            midiOut <- createMessage (0xb0 + (e.channel & 0xf), slideController, int (e.slide * 127.0f));
+            let clampedValue = clamp (e.bendSemitones, -semitoneBendRange, semitoneBendRange);
+            let value = int (8192.0f + (clampedValue * (8191.0f / semitoneBendRange)));
+            midiOut <- createMessage (0xe0 + (e.channel & 0xf), value, value >> 7);
         }
 
         event eventIn (std::notes::Pressure e)
         {
-            let value = int (128.0f * clamp (e.pressure, 0.0f, 128.0f));
-            midiOut <- createMessage (0xd0 + (e.channel & 0xf), value >> 7, value & 0x7f);
+            midiOut <- createMessage (0xd0 + (e.channel & 0xf), clampFloatToByte (e.pressure), 0);
+        }
+
+        event eventIn (std::notes::Slide e)
+        {
+            midiOut <- createMessage (0xb0 + (e.channel & 0xf), slideController, clampFloatToByte (e.slide));
         }
 
         event eventIn (std::notes::Control e)
         {
-            midiOut <- createMessage (0xb0 + (e.channel & 0xf), e.control, int (e.value * 127.0f));
+            midiOut <- createMessage (0xb0 + (e.channel & 0xf), e.control, clampFloatToByte (e.value));
         }
     }
 }

@@ -35,7 +35,7 @@ namespace cmaj
         uint16_t port               = 51000;
         int32_t clientTimeoutMs     = 5000;
         uint32_t maxNumSessions     = 16;
-        
+
         std::vector<std::filesystem::path> patchLocations;
     };
 
