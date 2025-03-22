@@ -1496,6 +1496,8 @@ private:
 
     bool tryToParseChevronSuffixExpression (AST::ObjectRefVector<AST::Expression>& terms)
     {
+        const bool supportMultipleTerms = false;
+
         try
         {
             DiagnosticMessageHandler handler;
@@ -1505,6 +1507,9 @@ private:
         {
             return false;
         }
+
+        if (! supportMultipleTerms)
+            return true;
 
         for (;;)
         {

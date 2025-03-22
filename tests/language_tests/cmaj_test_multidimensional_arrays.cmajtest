@@ -675,7 +675,7 @@ void f() { int[5, 5] a; ++a[2, 2]; let b = int[5][4] (a); }
 void setValue3<T> (T[5, 1, 8, 2]& n) { n[1, 0, 6, 1] = 5; }
 void f() { int[5, 1, 8, 3] n; setValue3 (n); }
 
-## expectError ("2:19: error: Language feature not yet implemented: Multi-dimensional vectors!")
+## disabled expectError ("2:19: error: Language feature not yet implemented: Multi-dimensional vectors!")
 
 void f() { int<2, 3> x; }
 
@@ -687,11 +687,11 @@ void f() { int<> x; }
 
 void f() { int<,> x; }
 
-## expectError ("2:20: error: Found \">\" when expecting identifier")
+## expectError ("2:17: error: Found \",\" when expecting \";\"")
 
 void f() { int<2,3,> x; }
 
-## expectError ("2:28: error: The size of a 'wrap' or 'clamp' type must be a single value")
+## disabled expectError ("2:28: error: The size of a 'wrap' or 'clamp' type must be a single value")
 
 void f() { let x = wrap<2, 3>(); }
 
