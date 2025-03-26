@@ -85,9 +85,9 @@ struct EmbeddedWebAssets
         "    }\n"
         "\n"
         "    /** Returns the current Cmajor version */\n"
-        "    getCmajorVersion()\n"
+        "    async getCmajorVersion()\n"
         "    {\n"
-        "        const version = import (\"./cmaj-version.js\");\n"
+        "        const version = await import (\"/cmaj_api/cmaj-version.js\");\n"
         "        return version.getCmajorVersion();\n"
         "    }\n"
         "\n"
@@ -3537,7 +3537,7 @@ struct EmbeddedWebAssets
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12915) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12935) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30756) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
