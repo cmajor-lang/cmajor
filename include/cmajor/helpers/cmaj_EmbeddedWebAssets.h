@@ -207,10 +207,11 @@ struct EmbeddedWebAssets
         "     */\n"
         "    addEndpointListener (endpointID, listener, granularity, sendFullAudioData)\n"
         "    {\n"
-        "        listener.eventID = \"event_\" + endpointID + \"_\" + (Math.floor (Math.random() * 100000000)).toString();\n"
-        "        this.addEventListener (listener.eventID, listener);\n"
-        "        this.sendMessageToServer ({ type: \"add_endpoint_listener\", endpoint: endpointID, replyType:\n"
-        "                                    listener.eventID, granularity: granularity, fullAudioData: sendFullAudioData });\n"
+        "        const listenerID = \"event_\" + endpointID + \"_\" + (Math.floor (Math.random() * 100000000)).toString();\n"
+        "        listener[\"cmaj_endpointListenerID_\" + endpointID] = listenerID;\n"
+        "        this.addEventListener (listenerID, listener);\n"
+        "        this.sendMessageToServer ({ type: \"add_endpoint_listener\", endpoint: endpointID, replyType: listenerID,\n"
+        "                                    granularity: granularity, fullAudioData: sendFullAudioData });\n"
         "    }\n"
         "\n"
         "    /** Removes a listener that was previously added with addEndpointListener()\n"
@@ -218,8 +219,10 @@ struct EmbeddedWebAssets
         "    */\n"
         "    removeEndpointListener (endpointID, listener)\n"
         "    {\n"
-        "        this.removeEventListener (listener.eventID, listener);\n"
-        "        this.sendMessageToServer ({ type: \"remove_endpoint_listener\", endpoint: endpointID, replyType: listener.eventID });\n"
+        "        const listenerID = listener[\"cmaj_endpointListenerID_\" + endpointID];\n"
+        "        listener[\"cmaj_endpointListenerID_\" + endpointID] = undefined;\n"
+        "        this.removeEventListener (listenerID, listener);\n"
+        "        this.sendMessageToServer ({ type: \"remove_endpoint_listener\", endpoint: endpointID, replyType: listenerID });\n"
         "    }\n"
         "\n"
         "    /** This will trigger an asynchronous callback to any parameter listeners that are\n"
@@ -3537,7 +3540,7 @@ struct EmbeddedWebAssets
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 12935) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 13132) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30756) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },
