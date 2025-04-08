@@ -1454,3 +1454,78 @@ bool testVectorRightShiftUnsigned()
 
         return i[0] == 1 && i[1] == 0 && i[2] == 0x7fffffff && i[3] == 0x7fffffff;
 }
+
+
+
+## testConsole ("[1,2,3,0,0,0,0,0,0,0]")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        int[10] v;
+        wrap<10> i;
+
+        v[i++] += 1;
+        v[i++] += 2;
+        v[i++] += 3;
+
+        console <- v;
+
+        advance();
+    }
+}
+
+
+## testConsole ("[1,2,3,0,0,0,0,0,0,0]")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    int i;
+
+    wrap<10> getNextIndex()
+    {
+        let r = wrap<10> (i);
+        i++;
+        return r;
+    }
+
+    void main()
+    {
+        int[10] v;
+        wrap<10> i;
+
+        v[getNextIndex()] += 1;
+        v[getNextIndex()] += 2;
+        v[getNextIndex()] += 3;
+
+        console <- v;
+
+        advance();
+    }
+}
+
+## testConsole ("[1,2,3,0,0,0,0,0,0,0]")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        int<10> v;
+        wrap<10> i;
+
+        v[i++] += 1;
+        v[i++] += 2;
+        v[i++] += 3;
+
+        console <- v;
+
+        advance();
+    }
+}

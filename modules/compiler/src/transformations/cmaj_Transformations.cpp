@@ -58,6 +58,7 @@
 #include "cmaj_ReplaceMultidimensionalArrays.h"
 #include "cmaj_ConvertLargeConstants.h"
 #include "cmaj_TransformSlices.h"
+#include "cmaj_TransformInPlaceOperators.h"
 
 namespace cmaj::transformations
 {
@@ -149,6 +150,7 @@ void prepareForCodeGen (AST::Program& program,
     convertUnwrittenVariablesToConst (program);
     inlineAllCallsWhichAdvance (program);
     createSystemInitFunctions (program, processorReplacementState.sessionIDVariable, processorReplacementState.frequencyVariable);
+    transformInPlaceOperators (program);
     convertLargeConstantsToGlobals (program);
     flattenGraph (program, buildSettings.getMaxBlockSize(), buildSettings.getEventBufferSize(), useForwardBranchesForAdvance);
 }
