@@ -255,7 +255,7 @@ struct EmbeddedWebAssets
         "    /** This takes a relative path to an asset within the patch bundle, and converts it to a\n"
         "     *  path relative to the root of the browser that is showing the view.\n"
         "     *\n"
-        "     *  You need you use this in your view code to translate your asset URLs to a form that\n"
+        "     *  You need to use this in your view code to translate your asset URLs to a form that\n"
         "     *  can be safely used in your view's HTML DOM (e.g. in its CSS). This is needed because the\n"
         "     *  host's HTTP server (which is delivering your view pages) may have a different '/' root\n"
         "     *  than the root of your patch (e.g. if a single server is serving multiple patch GUIs).\n"
@@ -3540,7 +3540,7 @@ struct EmbeddedWebAssets
 
     static constexpr std::array files =
     {
-        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 13132) },
+        File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 13131) },
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 30756) },
         File { "cmaj-midi-helpers.js", std::string_view (cmajmidihelpers_js, 13253) },
         File { "cmaj-event-listener-list.js", std::string_view (cmajeventlistenerlist_js, 3474) },

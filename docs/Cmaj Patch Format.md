@@ -348,7 +348,7 @@ Removes a listener that was previously added with `addAllParameterListener()`
 
 - **`getResourceAddress (path)`**
 This takes a relative path to an asset within the patch bundle, and converts it to a path relative to the root of the browser that is showing the view.
-You need you use this in your view code to translate your asset URLs to a form that can be safely used in your view's HTML DOM (e.g. in its CSS). This is needed because the host's HTTP server (which is delivering your view pages) may have a different '/' root than the root of your patch (e.g. if a single server is serving multiple patch GUIs).
+You need to use this in your view code to translate your asset URLs to a form that can be safely used in your view's HTML DOM (e.g. in its CSS). This is needed because the host's HTTP server (which is delivering your view pages) may have a different '/' root than the root of your patch (e.g. if a single server is serving multiple patch GUIs).
 
 ### Built-in javascript utility classes
 

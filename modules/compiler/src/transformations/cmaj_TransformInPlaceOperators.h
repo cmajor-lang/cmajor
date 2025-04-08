@@ -28,7 +28,7 @@ static void transformInPlaceOperators (AST::Program& program)
     {
         using super = AST::NonParameterisedObjectVisitor;
         using super::visit;
-    
+
         TransformInPlaceOperators (AST::Allocator& a) : super (a) {}
 
         CMAJ_DO_NOT_VISIT_CONSTANTS
