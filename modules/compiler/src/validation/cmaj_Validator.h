@@ -1550,7 +1550,6 @@ namespace cmaj::validation
                 auto& memberType = getAsTypeOrThrowError (s.memberTypes[i]);
 
                 if (memberType.isVoid())      throwError (s.memberTypes[i], Errors::memberCannotBeVoid());
-                if (memberType.isConst())     throwError (s.memberTypes[i], Errors::memberCannotBeConst());
                 if (memberType.isReference()) throwError (s.memberTypes[i], Errors::memberCannotBeReference());
             }
         }

@@ -380,7 +380,7 @@ bool test26()
         && getMultidimValue()[2, 1, 3] == 324;
 }
 
-int getWithSlice (int[] s, int n)   { return s.at (n); }
+int getWithSlice (const int[] s, int n)   { return s.at (n); }
 
 bool test27()
 {

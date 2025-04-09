@@ -2224,7 +2224,7 @@ processor test [[ main ]]
 {
     output stream float out;
 
-    void write (int[] values)
+    void write (const int[] values)
     {
         for (int i = 0; i < values.size; i++)
         {

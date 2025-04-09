@@ -12,10 +12,6 @@
 //  license: see LICENSE.md for more details.
 
 
-## expectError ("2:12: error: Struct members cannot be declared const")
-
-struct S { const int x; }
-
 ## expectError ("2:12: error: Struct members cannot be references")
 
 struct S { int& x; }
@@ -307,4 +303,61 @@ processor Untitled  [[ main ]]
         let s = NoteStruct();
         advance();
     }
+}
+
+## testFunction()
+
+struct S
+{
+    const int i;
+    int j;
+}
+
+bool constructWithConstMembersAssignToMutableMembers()
+{
+    S s = (1, 2);
+
+    s.j = 3;
+
+    return s.i == 1 && s.j == 3;
+}
+
+void incrementValue (int& i) { i++; }
+int getValue (const int& i) { return i; }
+
+bool incrementMutableMember()
+{
+    S s = (1, 2);
+    incrementValue (s.j);
+
+    return s.i == 1 && s.j == 3;
+}
+
+bool copyStruct()
+{
+    S s = (1, 2);
+    S s2;
+
+    s2 = s;
+
+    return s.i == 1 && s.j == 2 && s2.i == 1 && s2.j == 2;
+}
+
+## expectError ("4:35: error: Expected an assignable target on the left of the '=' operator")
+
+struct S { const int i; }
+
+void assignToConstMember() { S s; s.i = 4; }
+
+
+## expectError ("9:22: error: Cannot convert type 'const int32' to 'int32&'")
+
+struct S { const int i; int j;}
+
+void incrementValue (int& i) { i++; }
+
+void passConstToNonConstRef()
+{
+    S s = (1, 2);
+    incrementValue (s.i);
 }

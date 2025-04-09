@@ -1741,6 +1741,8 @@ struct LLVMCodeGenerator
 
     ValueReference createElementReference (ValueReference parent, ValueReader index)
     {
+        auto& b = getBlockBuilder();
+
         auto& resultType = *parent.type->getArrayOrVectorElementType();
         auto pointeeType = getLLVMType (parent.type->skipConstAndRefModifiers());
 
@@ -1751,11 +1753,20 @@ struct LLVMCodeGenerator
             return result;
         }
 
+        if (isFatPointer (pointeeType))
+        {
+            auto pointer = b.CreateConstInBoundsGEP2_32 (pointeeType, getPointer (parent), 0, 0);
+
+            ::llvm::Value* indexes[] = { dereference (index) };
+            return makeReference (b.CreateGEP (getLLVMType (resultType),
+                                               dereference (pointer, getLLVMType (resultType)->getPointerTo()), indexes), resultType);
+        }
+
         if (! pointeeType->isAggregateType()) // a vector size 1 might have been reduced to a primitive type
             return { parent.value, nullptr, resultType };
 
         ::llvm::Value* indexes[] = { createConstantInt32 (0).value, dereference (index) };
-        return makeReference (getBlockBuilder().CreateInBoundsGEP (pointeeType, getPointer (parent), indexes), resultType);
+        return makeReference (b.CreateInBoundsGEP (pointeeType, getPointer (parent), indexes), resultType);
     }
 
     ValueReader createStructMemberReader (const AST::StructType& type, ValueReader object, std::string_view, int64_t memberIndex)

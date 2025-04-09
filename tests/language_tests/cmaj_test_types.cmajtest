@@ -472,12 +472,12 @@ processor test
 
     struct X { float[] data; }
 
-    float getIndirect1 (float[] x, int i) { return x.at (i) ;}
+    float getIndirect1 (const float[] x, int i) { return x.at (i) ;}
     float getIndirect3 (const float[] x, int i) { return x.at (i) ;}
     float getIndirect4 (const float[]& x, int i) { return x.at (i) ;}
-    float getIndirect5 (float[] x, int i) { X[2] xx; xx[0].data = x; return xx[0].data.at (i); }
+    float getIndirect5 (const float[] x, int i) { X[2] xx; xx[0].data = x; return xx[0].data.at (i); }
 
-    bool test (float[] paramData)
+    bool test (const float[] paramData)
     {
         let localData = data;
 
@@ -541,7 +541,7 @@ processor test
         loop { results <- -1; advance(); }
     }
 
-    bool test (float[] paramData)
+    bool test (const float[] paramData)
     {
         let localData = data;
         float[] empty;
@@ -728,7 +728,7 @@ processor test
         loop { results <- -1; advance(); }
     }
 
-    float getSample (float[] s)     { index += 10; return s.read(index) + s.at (index); }
+    float getSample (const float[] s)     { index += 10; return s.read(index) + s.at (index); }
 }
 
 ## expectError ("5:18: error: Cannot apply value of type 'string' to external variable 'foo'")
@@ -876,7 +876,7 @@ void test2 (int[] x)  { test1 (x); }
 
 ## expectError ("3:40: error: Cannot convert type 'int32[]' to 'float64[]'")
 
-void test1 (float64[] x) {}
+void test1 (const float64[] x) {}
 void test2 (int[] x)  { test1 (float64[] (x)); }
 
 ## expectError ("4:50: error: Cannot convert type 'tests::S' to 'bool'")

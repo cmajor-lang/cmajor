@@ -37,14 +37,14 @@ namespace std::audio_data
     /// Represents a chunk of mono floating-point audio data.
     struct Mono
     {
-        float[] frames;
+        const float[] frames;
         float64 sampleRate;
     }
 
     /// Represents a chunk of stereo, interleaved floating-point audio data.
     struct Stereo
     {
-        float<2>[] frames;
+        const float<2>[] frames;
         float64 sampleRate;
     }
 

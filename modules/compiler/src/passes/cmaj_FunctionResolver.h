@@ -256,9 +256,7 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
                         continue;
                     }
 
-                    bool sourceIsReferenceable = arg.value.getSourceVariable() != nullptr;
-
-                    auto suitability = AST::TypeRules::getArgumentSuitability (*paramType, arg.type, sourceIsReferenceable);
+                    auto suitability = AST::TypeRules::getArgumentSuitability (*paramType, arg.type, arg.value.getSourceVariable());
 
                     if (suitability == AST::TypeRules::ArgumentSuitability::perfect)
                         continue;
@@ -987,6 +985,9 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
 
                     if (paramTypes[i]->isNonConstReference() && arg.value.getSourceVariable() == nullptr)
                         throwError (arg.object.context, Errors::cannotPassConstAsNonConstRef());
+
+                    if (paramTypes[i]->isSlice() && (arg.value.getSourceVariable() == nullptr || arg.value.isCompileTimeConstant()))
+                        throwError (arg.object.context, Errors::cannotPassConstToMutableSlice());
 
                     validation::expectCastPossible (arg.object.context, *paramTypes[i], arg.type, true);
                 }

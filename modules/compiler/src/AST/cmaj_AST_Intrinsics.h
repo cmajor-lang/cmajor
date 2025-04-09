@@ -114,7 +114,7 @@ private:
             {
                 if (t->isPrimitiveInt() || t->isPrimitiveFloat())
                 {
-                    if (TypeRules::getArgumentSuitability (*argType, *t, false) != TypeRules::ArgumentSuitability::impossible)
+                    if (TypeRules::getArgumentSuitability (*argType, *t, nullptr) != TypeRules::ArgumentSuitability::impossible)
                         argType = t;
 
                     continue;

@@ -77,8 +77,9 @@ struct TypeRules
 
         if (sourceType.isSlice())
             return destType.isSlice()
-                    && areTypesIdentical (*destType.getArrayOrVectorElementType(),
-                                          *sourceType.getArrayOrVectorElementType());
+                && (destType.isConst() || constValue == nullptr)
+                && areTypesIdentical (*destType.getArrayOrVectorElementType(),
+                                      *sourceType.getArrayOrVectorElementType());
 
         if (auto mcr = destType.getAsMakeConstOrRef())
             if (mcr->isNonConstReference() && value.isCompileTimeConstant())
@@ -140,13 +141,19 @@ struct TypeRules
         impossible,
     };
 
-    static ArgumentSuitability getArgumentSuitability (const TypeBase& dest, const TypeBase& source, bool isSourceReferenceable)
+    static ArgumentSuitability getArgumentSuitability (const TypeBase& dest, const TypeBase& source, ptr<VariableDeclaration> sourceVariable)
     {
+        auto isSourceReferenceable = sourceVariable != nullptr;
+        auto isSourceConstant = source.isConst() || (sourceVariable != nullptr && sourceVariable->isCompileTimeConstant());
+
         if (dest.isNonConstReference() && (! isSourceReferenceable || source.isConst()))
             return ArgumentSuitability::impossible;
 
         if (auto destArray = dest.getAsArrayType())
         {
+            if (destArray->isSlice() && (! isSourceReferenceable || isSourceConstant))
+                return ArgumentSuitability::impossible;
+
             if (auto sourceArray = source.getAsArrayType())
             {
                 if (destArray->isSlice())

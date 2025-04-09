@@ -112,20 +112,6 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
 
         if (anyWrapsAdded)
             return;
-
-        if (auto parentValue = AST::castToValue (g.parent))
-        {
-            auto& parentType = *parentValue->getResultType();
-
-            if (parentType.isSlice())
-            {
-                if (choc::text::startsWith (g.findParentFunction()->getName(), getReadSliceFunctionName()))
-                    return; // need to avoid modifying our generated functions
-
-                auto& readFn = getOrCreateReadSliceElementFunction (parentType);
-                g.replaceWith (AST::createFunctionCall (g, readFn, *parentValue, g.getSingleIndex()));
-            }
-        }
     }
 
     void visit (AST::WriteToEndpoint& w) override
@@ -301,46 +287,6 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
 
         return f;
     }
-
-    AST::Function& getOrCreateReadSliceElementFunction (const AST::TypeBase& sliceType)
-    {
-        CMAJ_ASSERT (sliceType.isSlice());
-        auto& elementType = *sliceType.getArrayOrVectorElementType();
-
-        AST::SignatureBuilder sig;
-        sig << getReadSliceFunctionName() << elementType;
-        auto name = intrinsicsNamespace.getStringPool().get (sig.toString (30));
-
-        if (auto f = intrinsicsNamespace.findFunction (name, 2))
-            return *f;
-
-        auto& f = AST::createFunctionInModule (intrinsicsNamespace, elementType, name);
-        auto arrayParam = AST::addFunctionParameter (f, sliceType, f.getStrings().array);
-        auto indexParam = AST::addFunctionParameter (f, allocator.int32Type, f.getStrings().index);
-
-        auto& mainBlock = *f.getMainBlock();
-
-        auto& sliceSize = mainBlock.allocateChild<AST::ValueMetaFunction>();
-        sliceSize.op = AST::ValueMetaFunctionTypeEnum::Enum::size;
-        sliceSize.arguments.addReference (arrayParam);
-
-        auto& zero = allocator.createConstantInt32 (0);
-        auto& sizeIsZero = AST::createBinaryOp (mainBlock, AST::BinaryOpTypeEnum::Enum::equals, sliceSize, zero);
-
-        auto& returnNull = mainBlock.allocateChild<AST::ReturnStatement>();
-        returnNull.value.referTo (elementType.allocateConstantValue (mainBlock.context));
-
-        mainBlock.addStatement (AST::createIfStatement (mainBlock.context, sizeIsZero, returnNull));
-
-        auto& wrapFn = *intrinsicsNamespace.findFunction ("wrap", 2);
-        auto& wrappedIndex = AST::createFunctionCall (mainBlock, wrapFn, indexParam, sliceSize);
-        AST::addReturnStatement (mainBlock, AST::createGetElement (mainBlock, arrayParam, wrappedIndex));
-
-        CMAJ_ASSERT (intrinsicsNamespace.findFunction (name, 2) == f);
-        return f;
-    }
-
-    static constexpr std::string_view getReadSliceFunctionName()  { return "_readSliceElement"; }
 
     AST::Namespace& rootNamespace;
     AST::Namespace& intrinsicsNamespace;

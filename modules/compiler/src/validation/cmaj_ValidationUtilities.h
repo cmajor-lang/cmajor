@@ -247,11 +247,17 @@ static inline const AST::ValueBase& getAssignableValueOrThrowError (const AST::P
     {
         if (auto getElement = AST::castTo<AST::GetElement> (*value))
         {
-            if (getResultTypeOfValueOrThrowError (getElement->parent).isSlice())
-                throwError (AST::getContextOfStartOfExpression (p), Errors::cannotAssignToSliceElement());
-
-            (void) getAssignableValueOrThrowError (getElement->parent, operatorSymbol, isAssignment);
+            auto& element = getAssignableValueOrThrowError (getElement->parent, operatorSymbol, isAssignment);
+            if (element.getResultType()->isConst())
+                throwError (AST::getContextOfStartOfExpression (p),
+                            isAssignment ? Errors::assignmentToNonAssignableTarget (operatorSymbol)
+                                         : Errors::operatorNeedsAssignableTarget (operatorSymbol));
         }
+
+        if (value->getResultType()->isConst())
+            throwError (AST::getContextOfStartOfExpression (p),
+                        isAssignment ? Errors::assignmentToNonAssignableTarget (operatorSymbol)
+                                     : Errors::operatorNeedsAssignableTarget (operatorSymbol));
 
         if (auto sourceVar = value->getSourceVariable())
             if (! sourceVar->isCompileTimeConstant())
@@ -426,9 +432,16 @@ static void expectCastPossible (const AST::ObjectContext& errorLocation,
                                                                 printType (targetType)));
 
         if (! AST::TypeRules::canSilentlyCastTo (targetType, *constantValue))
+        {
+            if (AST::TypeRules::canSilentlyCastTo (targetType, *constantValue))
+                throwError (errorLocation, Errors::cannotImplicitlyCastValue (AST::print (*constantValue),
+                                                                              printType (sourceType),
+                                                                              printType (targetType)));
+            
             throwError (errorLocation, Errors::cannotImplicitlyCastValue (AST::print (*constantValue),
                                                                           printType (sourceType),
                                                                           printType (targetType)));
+        }
     }
     else
     {

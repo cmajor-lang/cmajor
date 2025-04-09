@@ -116,6 +116,11 @@ private:
         variable.isExternal = false;
         variable.isConstant = true;
 
+        auto& makeConst = variable.context.allocate<AST::MakeConstOrRef>();
+        makeConst.source.referTo (variable.declaredType);
+        makeConst.makeConst = true;
+        variable.declaredType.referTo (makeConst);
+
         return true;
     }
 
