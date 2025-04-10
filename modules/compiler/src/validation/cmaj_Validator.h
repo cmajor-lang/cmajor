@@ -637,9 +637,23 @@ namespace cmaj::validation
         {
             auto isTypeSuitableForExternalFunctionParam = [] (const AST::TypeBase& type) -> bool
             {
-                return (type.isPrimitive() || type.isSlice())
-                    && ! (type.isConst() || type.isReference() || type.isPrimitiveString()
-                        || type.isPrimitiveComplex() || type.isVoid() || type.isEnum());
+                if (type.isSlice())
+                {
+                    auto elementType = type.getArrayOrVectorElementType();
+
+                    return ! (type.isReference() ||
+                              elementType->isPrimitiveString() ||
+                              elementType->isPrimitiveComplex() ||
+                              elementType->isVoid() ||
+                              elementType->isEnum());
+                }
+
+                return type.isPrimitive()
+                    && ! (type.isReference() ||
+                          type.isPrimitiveString() ||
+                          type.isPrimitiveComplex() ||
+                          type.isVoid() ||
+                          type.isEnum());
             };
 
             auto isTypeSuitableForExternalFunctionReturn = [] (const AST::TypeBase& type) -> bool

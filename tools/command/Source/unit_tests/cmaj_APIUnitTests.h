@@ -310,7 +310,7 @@ namespace cmaj::api_tests
                 external float32 add2 (float32 a, float32 b);
                 external float64 add2 (float64 a, float64 b);
                 external bool testBools (bool a, bool b);
-                external int32 sum (int32[] value, int num);
+                external int32 sum (const int32[] value, int num);
 
                 void main()
                 {
