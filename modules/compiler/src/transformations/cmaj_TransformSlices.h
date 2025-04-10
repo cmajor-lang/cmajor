@@ -149,13 +149,6 @@ static inline void transformSlices (AST::Program& program)
             setSizeToZero.addStatement (AST::createAssignment (mainBlock.context, startIndexParam, allocator.createConstantInt32 (0)));
             setSizeToZero.addStatement (AST::createAssignment (mainBlock.context, endIndexParam, allocator.createConstantInt32 (0)));
 
-            mainBlock.addStatement (AST::createIfStatement (mainBlock.context,
-                                                            AST::createBinaryOp (mainBlock,
-                                                                                 AST::BinaryOpTypeEnum::Enum::greaterThanOrEqual,
-                                                                                 startIndexParam,
-                                                                                 sliceSize),
-                                                            setSizeToZero));
-
             auto& setEndToSize = mainBlock.allocateChild<AST::ScopeBlock>();
             setEndToSize.addStatement (AST::createAssignment (mainBlock.context, endIndexParam, sliceSize));
 
@@ -171,6 +164,13 @@ static inline void transformSlices (AST::Program& program)
                                                                                                       endIndexParam,
                                                                                                       sliceSize)),
                                                             setEndToSize));
+
+            mainBlock.addStatement (AST::createIfStatement (mainBlock.context,
+                                                            AST::createBinaryOp (mainBlock,
+                                                                                 AST::BinaryOpTypeEnum::Enum::greaterThanOrEqual,
+                                                                                 startIndexParam,
+                                                                                 sliceSize),
+                                                            setSizeToZero));
 
             auto& resultSlice = mainBlock.allocateChild<AST::GetArrayOrVectorSlice>();
             resultSlice.parent.referTo (parentSliceParam);
