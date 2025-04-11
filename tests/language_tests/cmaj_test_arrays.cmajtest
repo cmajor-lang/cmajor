@@ -1497,3 +1497,25 @@ void updateConstSlice()
 
     updateSlice (s.s, 0, 10);
 }
+
+## testCompile()
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    float[100] v;
+
+    float get (const wrap<100> i)
+    {
+        return v[i];
+    }
+
+    void main()
+    {
+        wrap<10> i;
+        out <- get (i);
+
+        advance();
+    }
+}

@@ -318,7 +318,7 @@ static inline std::optional<AST::ArraySize> getConstantWrappingSizeToApplyToInde
             {
                 CMAJ_ASSERT (dimensionIndex < g.indexes.size());
                 auto& indexValue = AST::castToValueRef (g.indexes[dimensionIndex]);
-                auto& indexType = *indexValue.getResultType();
+                auto& indexType = indexValue.getResultType()->skipConstAndRefModifiers();
                 auto arraySize = parentType->getArrayOrVectorSize (dimensionIndex);
 
                 if (auto bounded = AST::castToSkippingReferences<AST::BoundedType> (indexType))
