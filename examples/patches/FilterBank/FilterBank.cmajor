@@ -134,7 +134,7 @@ namespace FilterBank
         let fftSize = DFT_BUFFER_SIZE / 2;
         let windowSize = DFT_BUFFER_SIZE / 4;
         let fftsPerSecond = 20;
-        let framesBetweenFtts = (processor.frequency / fftsPerSecond) - windowSize;
+        let framesBetweenFtts = int ((processor.frequency / fftsPerSecond) - windowSize);
 
         float[DFT_BUFFER_SIZE] buffer;
 
@@ -178,7 +178,7 @@ namespace FilterBank
 
                 dftOut <- result;
 
-                if const (framesBetweenFtts > 0)
+                if (framesBetweenFtts > 0)
                     loop (framesBetweenFtts)
                         advance();
             }
