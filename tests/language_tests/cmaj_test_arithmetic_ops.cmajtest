@@ -1529,3 +1529,25 @@ processor Test [[ main ]]
         advance();
     }
 }
+
+
+## testConsole ("15")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        const int bufferLength = 16;
+
+        wrap<bufferLength> writeIndex;
+        wrap<bufferLength> readIndex;
+        int32 offset = 1;
+
+        readIndex = writeIndex - wrap<bufferLength>(offset);
+
+        console <- readIndex;
+        advance();
+    }
+}

@@ -174,10 +174,10 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
         if (auto constIndex = createConstantWrappedIndex (index, isClamp, size))
             return *constIndex;
 
-        if (! isClamp && choc::math::isPowerOf2 (size))
-            return AST::createBinaryOp (index.context, AST::BinaryOpTypeEnum::Enum::bitwiseAnd,
-                                        AST::createCastIfNeeded (index.context.allocator.int32Type, AST::castToRef<AST::ValueBase> (index)),
-                                        index.context.allocator.createConstantInt32 (static_cast<int32_t> (size - 1)));
+//        if (! isClamp && choc::math::isPowerOf2 (size))
+//            return AST::createBinaryOp (index.context, AST::BinaryOpTypeEnum::Enum::bitwiseAnd,
+//                                        AST::createCastIfNeeded (index.context.allocator.int32Type, AST::castToRef<AST::ValueBase> (index)),
+//                                        index.context.allocator.createConstantInt32 (static_cast<int32_t> (size - 1)));
 
         auto& function = getOrCreateWrapOrClampFunction (isClamp, size);
         return AST::createFunctionCall (index.context, function, index);
@@ -218,6 +218,17 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
     void createWrapFunction (AST::ScopeBlock& block, AST::VariableReference& param, AST::ConstantValueBase& size)
     {
         auto& context = block.context;
+
+        if (choc::math::isPowerOf2 (*size.getAsInt32()))
+        {
+            auto& value = AST::createBinaryOp (context, AST::BinaryOpTypeEnum::Enum::bitwiseAnd,
+                                               param,
+                                               allocator.createConstantInt32 (*size.getAsInt32() - 1));
+
+            AST::addReturnStatement (block, value);
+            return;
+        }
+
         auto& nModSize = AST::createBinaryOp (context, AST::BinaryOpTypeEnum::Enum::modulo, param, size);
         auto& x = AST::createLocalVariableRef (block, "x", nModSize);
 
