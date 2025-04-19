@@ -46,9 +46,9 @@ class CmajorCompiler {
     compile(dsp_name, dsp_content, argv) {
         try {
             // Customize the compilation arguments
-            argv = argv + "-lang cmajor-hybrid -cn " + dsp_name + " -o foo.cmajor";
+            argv = argv + `-lang cmajor-hybrid -cn ${dsp_name} -o ${dsp_name}.cmajor`;
             const res = this.fCompiler.generateAuxFiles(dsp_name, dsp_content, argv);
-            return (res) ? this.fFS.readFile("foo.cmajor", { encoding: "utf8" }) : null;
+            return (res) ? this.fFS.readFile(`${dsp_name}.cmajor`, { encoding: "utf8" }) : null;
         }
         catch (e) {
             // Enhanced error handling to provide more detailed feedback
@@ -78,6 +78,7 @@ class SouceTransformer {
 
     transform(requestId, filepath, contents) {
         if (filepath.endsWith(".dsp")) {
+            console.log("getLibFaustVersion: " + this.cmajor.getLibFaustVersion());
             let filename = filepath.substring(filepath.lastIndexOf('/') + 1);
             let prefix = filename.substr(0, filename.length - 4);
             let code = this.cmajor.compile(prefix, contents, "");
