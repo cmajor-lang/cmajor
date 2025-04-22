@@ -174,11 +174,6 @@ struct AddWrapFunctions  : public AST::NonParameterisedObjectVisitor
         if (auto constIndex = createConstantWrappedIndex (index, isClamp, size))
             return *constIndex;
 
-//        if (! isClamp && choc::math::isPowerOf2 (size))
-//            return AST::createBinaryOp (index.context, AST::BinaryOpTypeEnum::Enum::bitwiseAnd,
-//                                        AST::createCastIfNeeded (index.context.allocator.int32Type, AST::castToRef<AST::ValueBase> (index)),
-//                                        index.context.allocator.createConstantInt32 (static_cast<int32_t> (size - 1)));
-
         auto& function = getOrCreateWrapOrClampFunction (isClamp, size);
         return AST::createFunctionCall (index.context, function, index);
     }
