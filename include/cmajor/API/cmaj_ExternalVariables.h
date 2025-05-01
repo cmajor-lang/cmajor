@@ -144,7 +144,7 @@ inline std::string readAudioFileAsValue (choc::value::Value& result,
             if (channelToExtract >= static_cast<int32_t> (data.frames.getNumChannels()))
                 return "sourceChannel index is out-of-range";
 
-            choc::buffer::ChannelArrayBuffer<float> extractedChannel (1u, data.frames.getNumFrames());
+            choc::buffer::ChannelArrayBuffer<float> extractedChannel (1u, data.frames.getNumFrames(), false);
             copy (extractedChannel, data.frames.getChannel (static_cast<choc::buffer::ChannelCount> (channelToExtract)));
             data.frames = std::move (extractedChannel);
         }

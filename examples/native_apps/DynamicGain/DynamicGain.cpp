@@ -151,7 +151,7 @@ int main ()
         performer.advance();
 
         // Fetch the rendered block of frames from our output endpoint
-        auto outputBlock = choc::buffer::InterleavedBuffer<float> (2, framesThisBlock);
+        auto outputBlock = choc::buffer::InterleavedBuffer<float> (2, framesThisBlock, false);
         performer.copyOutputFrames (outputHandle, outputBlock);
 
         // just print the samples to prove they exist...

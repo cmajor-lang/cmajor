@@ -112,8 +112,6 @@ inline void RenderingAudioMIDIPlayer::render()
 
     for (;;)
     {
-        audioInput.clear();
-        audioOutput.clear();
         midiMessages.clear();
         midiMessageTimes.clear();
 

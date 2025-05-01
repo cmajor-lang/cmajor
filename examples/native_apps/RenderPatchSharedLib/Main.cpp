@@ -128,9 +128,7 @@ int main (int argc, char** argv)
     blockDispatcher.reset (44100.0);
 
     auto inputData = choc::buffer::ChannelArrayBuffer<float> (inputChannels, totalFramesToRender);
-    auto outputData = choc::buffer::ChannelArrayBuffer<float> (outputChannels, totalFramesToRender);
-
-    inputData.clear();
+    auto outputData = choc::buffer::ChannelArrayBuffer<float> (outputChannels, totalFramesToRender, false);
 
     for (uint32_t i = 0; i < inputChannels; i++)
         inputData.getSample (i, 0) = 1.0f / float (1 + i);

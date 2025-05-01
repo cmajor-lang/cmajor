@@ -926,7 +926,7 @@ namespace cmaj::test
             if (value[0].isArray())         channelCount = value[0].size();
             else if (value[0].isObject())   channelCount = value[0]["real"].size() * 2;
 
-            choc::buffer::ChannelArrayBuffer<float> arrayBuffer (channelCount, bufferSize);
+            choc::buffer::ChannelArrayBuffer<float> arrayBuffer (channelCount, bufferSize, false);
 
             for (uint32_t i = 0; i < bufferSize; i++)
             {

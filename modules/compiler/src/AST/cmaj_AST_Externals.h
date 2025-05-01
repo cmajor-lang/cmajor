@@ -213,7 +213,7 @@ private:
             return convertAudioDataToObject (data, sampleRate);
 
         // Resample to the right size
-        choc::buffer::ChannelArrayBuffer<float> resampledData (1, (uint32_t) numFrames);
+        choc::buffer::ChannelArrayBuffer<float> resampledData (1, (uint32_t) numFrames, false);
         choc::interpolation::sincInterpolate (resampledData, data);
         return convertAudioDataToObject (resampledData, sampleRate);
     }
