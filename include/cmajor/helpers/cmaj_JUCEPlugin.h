@@ -62,7 +62,10 @@ public:
           patch (std::move (patchToUse)),
           dllLoadedSuccessfully (initialiseDLL())
     {
-        juce::MessageManager::callAsync ([] { choc::messageloop::initialise(); });
+        if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+            choc::messageloop::initialise();
+        else
+            juce::MessageManager::callAsync ([] { choc::messageloop::initialise(); });
 
         if (! dllLoadedSuccessfully)
         {
