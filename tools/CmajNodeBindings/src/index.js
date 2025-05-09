@@ -1,5 +1,7 @@
-import raw from './raw';
-export { Performer, Program } from './raw'
+import raw from './raw.cjs';
+import pkg from './raw.cjs';
+const { Performer, Program } = pkg;
+export {Performer, Program}
 export class Engine extends raw.Engine {
 	getInputEndpoints = () => JSON.parse(super.getInputEndpoints());
 	getOutputEndpoints = () => JSON.parse(super.getOutputEndpoints());
