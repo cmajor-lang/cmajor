@@ -1,4 +1,4 @@
-import { Program, Engine } from "..";
+import { Program, Engine } from "../index.js";
 
 const program = new Program();
 
