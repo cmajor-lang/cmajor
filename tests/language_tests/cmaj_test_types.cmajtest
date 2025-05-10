@@ -1599,3 +1599,32 @@ bool test()
 
     return true;
 }
+
+
+## testFunction()
+
+void test1(const wrap<2> x) { test2(x); }
+void test2(const wrap<2> x) { }
+
+bool test()
+{
+    test1 (1);
+    return true;
+}
+
+## testFunction()
+
+struct Test
+{
+    wrap<2> x;
+
+    void test(const wrap<2> x) { this.x = x; }
+}
+
+bool test()
+{
+    Test t;
+    t.test (1);
+
+    return true;
+}
