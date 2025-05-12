@@ -891,7 +891,7 @@ private:
 
     static CastType getCastToBoundedType (const BoundedType& dest, const TypeBase& source)
     {
-        auto boundedSource = source.getAsBoundedType();
+        auto boundedSource = source.skipConstAndRefModifiers().getAsBoundedType();
 
         if (boundedSource != nullptr && dest.getBoundedIntLimit() >= boundedSource->getBoundedIntLimit())
             return CastType::identity;

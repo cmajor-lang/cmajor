@@ -85,3 +85,19 @@ bool testSliceOfSlice()
     var s = getSliceOfSlice();
     return s[2] == 5 && s[3] == 6;
 }
+
+## testFunction()
+
+void updateInPlace (float[] f)
+{
+    f[2] += 1;
+}
+
+bool test()
+{
+    float[10] f;
+
+    updateInPlace (f[1:5]);
+
+    return f[3] > 0.0f;
+}

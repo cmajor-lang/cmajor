@@ -20,9 +20,11 @@
 // executed when the patch is created.
 
 import * as presets from "../gui/presets/presetBank.js"
+import * as controllers from "../gui/controllers/controllerMapping.js"
 
 let patchConnection;
 let presetBank = new presets.PresetBank();
+let controllerMappings = new controllers.ControllerMappings();
 
 let currentParameterValues = new Map();
 let programNumber = 0;
@@ -87,6 +89,12 @@ const statusListener = status =>
         isSessionConnected = !! status.connected;
         patchConnection.requestStoredStateValue ("currentProgram");
     }
+
+    if (status.details?.inputs)
+    {
+        for (const endpointInfo of status.details.inputs)
+            controllerMappings.addEndpoint (endpointInfo)
+    }
 }
 
 let lastBank = 0;
@@ -105,8 +113,12 @@ export default function runWorker (pc)
     const midiInListener = event =>
     {
         if (midi.isController (event.message))
+        {
             if (midi.getControllerNumber (event.message) == 0) // bank select
                 lastBank = midi.getControllerValue (event.message);
+
+            controllerMappings.applyController (patchConnection, midi.getControllerNumber (event.message), midi.getControllerValue (event.message))
+        }
 
         if (midi.isProgramChange (event.message))
         {
@@ -116,6 +128,8 @@ export default function runWorker (pc)
     };
 
     patchConnection.addStatusListener (statusListener);
+    patchConnection.requestStatusUpdate();
+
     patchConnection.addStoredStateValueListener (stateValueChangeListener);
     patchConnection.addEndpointListener ("midiIn", midiInListener);
     patchConnection.addAllParameterListener (parameterListener);

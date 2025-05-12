@@ -121,6 +121,34 @@ static inline void transformSlices (AST::Program& program)
             }
         }
 
+        void visit (AST::InPlaceOperator& o) override
+        {
+            if (auto g = AST::castTo<AST::GetElement> (o.target))
+            {
+                if (auto parentValue = AST::castToValue (g->parent))
+                {
+                    auto& parentType = *parentValue->getResultType();
+
+                    if (parentType.isSlice())
+                    {
+                        if (choc::text::startsWith (o.findParentFunction()->getName(), getWriteSliceFunctionName()))
+                            return; // need to avoid modifying our generated functions
+
+                        auto& readFn = getOrCreateReadSliceElementFunction (parentType);
+                        auto& writeFn = getOrCreateWriteSliceElementFunction (parentType);
+
+                        auto& currentValue = AST::createFunctionCall (*g, readFn, *parentValue, g->getSingleIndex());
+
+                        auto& value = AST::createBinaryOp (*g,
+                                                           o.op,
+                                                           currentValue,
+                                                           *AST::castToValue (o.source));
+
+                        o.replaceWith (AST::createFunctionCall (*g, writeFn, *parentValue, g->getSingleIndex(), value));
+                    }
+                }
+            }
+        }
 
         AST::Function& getOrCreateSliceOfSliceFunction (const AST::TypeBase& sliceType)
         {
