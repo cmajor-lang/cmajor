@@ -141,10 +141,10 @@ processor Engine
     input event float AmplifierRelease         [[ name: "Amplifier Release"         , cc: 83    , unit: "%"  , min: 0.0, max: 100.0, init: 37.7953 ]];
     input event float Release                  [[ name: "Release on/off"            , cc: 85    , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
     input event float Velocity                 [[ name: "Velocity on/off"           , cc: 86    , unit: ""   , min: 0.0, max: 1.0,   init: 1.0, text:"Off|On", boolean ]];
-    input event float Repeat                   [[ name: "LFO Envelope Trigger"                  , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
-    input event float Drone                    [[ name: "Amplifier Hold"                        , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
-    input event float FilterHPF                [[ name: "Filter HPF-Mode"                       , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
-    input event float FilterInvertEnv          [[ name: "Filter Envelope Invert"                , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float Repeat                   [[ name: "LFO Envelope Trigger"      , cc: 30    , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float Drone                    [[ name: "Amplifier Hold"            , cc: 84    , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float FilterHPF                [[ name: "Filter HPF-Mode"           , cc: 74    , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
+    input event float FilterInvertEnv          [[ name: "Filter Envelope Invert"    , cc: 79    , unit: ""   , min: 0.0, max: 1.0,   init: 0.0, text:"Off|On", boolean ]];
     input event float Analog                   [[ name: "Analog"                    , cc: 87    , unit: "%"  , min: 0.0, max: 100.0, init: 33.0709 ]];
     input event float MasterTune               [[ name: "Master Tune"               , cc: 88    , unit: "ct" , min: 0.0, max: 100.0, init: 50.0 ]];
     input event float Volume                   [[ name: "Master Volume"             , cc: 7     , unit: "%"  , min: 0.0, max: 100.0, init: 100.0 ]];
