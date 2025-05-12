@@ -184,6 +184,7 @@ processor Engine
     float[delayLength] delayBuffer;
     bool testToneActive;
     bool sustainActive;
+    bool sostenutoActive;
     int filterVersion;
     int lastUnison;
     int youngestOffVoice = -1;
@@ -479,7 +480,12 @@ processor Engine
     event eventIn (std::notes::NoteOn e)       { noteOn  (int (e.pitch), int (e.velocity * 128.0f), 0.0f); }
     event eventIn (std::notes::NoteOff e)      { noteOff (int (e.pitch), int (e.velocity * 128.0f)); }
     event eventIn (std::notes::PitchBend e)    { setPitchBend (0.5f + 0.5f * (e.bendSemitones / 48.0f)); }
-    event eventIn (std::notes::Control e)      { if (e.control == 1) setModWheel (e.value); }
+    event eventIn (std::notes::Control e)
+    {
+        if (e.control == 1) setModWheel (e.value);
+        else if (e.control == 64) setSustain (e.value);
+        else if (e.control == 66) setSostenuto (e.value);
+    }
 
     event FilterVersion (float n)              { filterVersion = n > 0.6f ? 2 : (n < 0.3f ? 0 : 1); }
 
@@ -1297,6 +1303,45 @@ processor Engine
         state.modulationWheel = value * 5; // 0 to 5 (5/127)
     }
 
+    void setSustain (float value)
+    {
+        if (value > 0.5)
+        {
+            sustainActive = true;
+        }
+        else
+        {
+            sustainActive = false;
+            sustainedNotesOff();
+        }
+    }
+
+    void setSostenuto (float value)
+    {
+        if (value > 0.5)
+        {
+            sostenutoActive = true;
+            // Set sustain on for all notes that are currently playing
+            for (wrap<numVoices> i)
+            {
+                if (i == activeVoices)
+                    break;
+
+                if (collVoiceNote[i] != noteOffMarker)
+                {
+                    console <- i;
+                    collVoiceSustain[i] = true;
+                    // collVoiceHold[i] = true;
+                }
+            }
+        }
+        else
+        {
+            sostenutoActive = false;
+            sustainedNotesOff();
+        }
+    }
+
     // Delay Effect Parameters
 
     event DelayTime (float value)
@@ -1939,7 +1984,8 @@ processor Engine
 
             if (collVoiceNote[v] == note)
             {
-                collVoiceSustain[v] = sustainActive;
+                if (sustainActive)
+                    collVoiceSustain[v] = true;
 
                 if (! (collVoiceSustain[v] || collVoiceHold[v]))
                 {
