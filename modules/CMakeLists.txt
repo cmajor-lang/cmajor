@@ -34,7 +34,10 @@ function (MAKE_CMAJ_LIBRARY)
         MSVC_STATIC_RUNTIME
     )
 
-    set (oneValueArgs LIBRARY_NAME)
+    set (oneValueArgs
+        LIBRARY_NAME
+        OSX_DEPLOYMENT_TARGET
+    )
 
     cmake_parse_arguments (CMAJ "${options}" "${oneValueArgs}" "" ${ARGN})
 
@@ -47,6 +50,7 @@ function (MAKE_CMAJ_LIBRARY)
     message ("CMAJ_ENABLE_PERFORMER_CPP:        ${CMAJ_ENABLE_PERFORMER_CPP}")
     message ("CMAJ_ENABLE_CODEGEN_CPP:          ${CMAJ_ENABLE_CODEGEN_CPP}")
     message ("CMAJ_ENABLE_CODEGEN_LLVM_WASM:    ${CMAJ_ENABLE_CODEGEN_LLVM_WASM}")
+    message ("CMAJ_OSX_DEPLOYMENT_TARGET:       ${CMAJ_OSX_DEPLOYMENT_TARGET}")
 
     # -------------------------------------------------------------------
     # LLVM Stuff
@@ -340,6 +344,10 @@ function (MAKE_CMAJ_LIBRARY)
         ${CHOC_SOURCE}
         ${CMAJOR_SOURCE}
     )
+
+    if (${CMAJ_OSX_DEPLOYMENT_TARGET})
+        set_target_properties(${CMAJ_LIBRARY_NAME} PROPERTIES XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "${CMAJ_OSX_DEPLOYMENT_TARGET}")
+    endif()
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         foreach(LIB ${LLVM_LIBS} ${LLVM_EXTRA_LIBS})
