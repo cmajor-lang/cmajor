@@ -40,7 +40,8 @@ inline void enableWebViewPatchWorker (Patch& p)
 
         ~Worker() override
         {
-            choc::messageloop::postMessage ([w = std::shared_ptr (std::move (webview))] () mutable { w.reset(); });
+            // Delete the webivew on the msg thread
+            choc::messageloop::postMessage ([p = webview.release()] () mutable { delete p; });
         }
 
         void initialise (std::function<void(const choc::value::ValueView&)> sendMessageToPatch,
