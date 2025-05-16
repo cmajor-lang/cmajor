@@ -28,6 +28,7 @@
 #include "../../../include/cmaj_ErrorHandling.h"
 #include "choc/platform/choc_DynamicLibrary.h"
 #include "choc/text/choc_Files.h"
+#include "choc/platform/choc_Execute.h"
 
 #include "../../../../../include/cmajor/API/cmaj_Engine.h"
 #include "../../../../../include/cmajor/helpers/cmaj_PerformerProxy.h"
@@ -109,24 +110,17 @@ struct TemporaryCompiledDLL
                             + "&& g++ " + compilerFlags + " -c -o " + objFilename + " " + cppFilename
                             + "&& g++ -shared -o " + libFilename + " " + objFilename + " " + extraLinkerArgs;
 
-        auto* p = ::popen ((compileCommand + " 2>&1").c_str(), "r");
+        auto result = choc::execute (compileCommand, true);
 
-        char errorText[1024];
-        size_t errorSize = fread (errorText, 1, sizeof (errorText), p);
-        auto errorString = std::string (errorText, errorSize);
-
-        auto statusCode = ::pclose (p);
-
-        if (statusCode == 0 && ! choc::text::contains (errorString, "error:"))
+        if (result.statusCode == 0 && ! choc::text::contains (result.output, "error:"))
         {
             library = std::make_unique<choc::file::DynamicLibrary> (tmpFolder.file.string() + "/" + libFilename);
         }
         else
         {
-            std::cerr << std::endl << compileCommand << std::endl << errorString << std::endl;
-            throwError (Errors::failedToCompile (errorString));
+            std::cerr << std::endl << compileCommand << std::endl << result.output << std::endl;
+            throwError (Errors::failedToCompile (result.output));
         }
-
        #endif
     }
 
