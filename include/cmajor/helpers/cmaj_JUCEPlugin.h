@@ -1147,8 +1147,8 @@ public:
         void resized() override
         {
             auto r = getLocalBounds().reduced (4);
-            messageBox.setBounds (r);
             unloadButton.setBounds (r.removeFromTop (30).removeFromRight (80));
+            messageBox.setBounds (r);
         }
 
         void refresh()
