@@ -5,6 +5,7 @@
   "homepage": "./",
   "dependencies": {
     "@tonaljs/midi": "^3.3.1",
+    "@tonaljs/tonal": "^4.10.0",
     "framer-motion": "^1.6.7",
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
