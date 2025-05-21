@@ -120,10 +120,10 @@ struct AudioMIDIPlayer
     virtual std::vector<std::string> getAvailableAudioAPIs() = 0;
 
     /// Returns a list of sample rates that this device could be opened with.
-    virtual std::vector<int32_t> getAvailableSampleRates() = 0;
+    virtual std::vector<uint32_t> getAvailableSampleRates() = 0;
 
     /// Returns a list of block sizes that could be used to open this device.
-    virtual std::vector<int32_t> getAvailableBlockSizes() = 0;
+    virtual std::vector<uint32_t> getAvailableBlockSizes() = 0;
 
     /// Returns a list of devices that could be used for
     /// AudioDeviceOptions::inputDeviceName
@@ -132,6 +132,16 @@ struct AudioMIDIPlayer
     /// Returns a list of devices that could be used for
     /// AudioDeviceOptions::outputDeviceName
     virtual std::vector<std::string> getAvailableOutputDevices() = 0;
+
+    /// Attempts to open the device for use, returning true if successful.
+    /// On failure, use getLastError() to find out more.
+    virtual bool open() = 0;
+
+    /// Closes the device.
+    virtual void close() = 0;
+
+    /// If something failed when opening the device, this will return a string
+    virtual std::string getLastError() = 0;
 
 
 protected:
@@ -143,6 +153,7 @@ protected:
     std::vector<AudioMIDICallback*> callbacks;
     std::mutex callbackLock;
     choc::audio::AudioMIDIBlockDispatcher dispatcher;
+    uint32_t prerollFrames = 0;
 
     virtual void start() = 0;
     virtual void stop() = 0;
@@ -170,6 +181,11 @@ protected:
 
 inline AudioMIDIPlayer::AudioMIDIPlayer (const AudioDeviceOptions& o) : options (o)
 {
+    // There seem to be a lot of devices which glitch as they start up, so this silent
+    // preroll time gets us past that before the first block of real audio is sent.
+    // Would be nice to know when it's actually needed, but hey..
+    prerollFrames = 20000;
+
     dispatcher.setMidiOutputCallback ([this] (uint32_t, choc::midi::MessageView m)
     {
         if (auto len = m.length())
@@ -177,11 +193,15 @@ inline AudioMIDIPlayer::AudioMIDIPlayer (const AudioDeviceOptions& o) : options 
     });
 
     dispatcher.reset (options.sampleRate);
+    callbacks.reserve (16);
 }
 
 inline void AudioMIDIPlayer::addCallback (AudioMIDICallback& c)
 {
     bool needToStart = false;
+
+    if (options.sampleRate != 0)
+        c.sampleRateChanged (options.sampleRate);
 
     {
         const std::scoped_lock lock (callbackLock);
@@ -191,9 +211,6 @@ inline void AudioMIDIPlayer::addCallback (AudioMIDICallback& c)
 
         needToStart = callbacks.empty();
         callbacks.push_back (std::addressof (c));
-
-        if (options.sampleRate != 0)
-            c.sampleRateChanged (options.sampleRate);
     }
 
     if (needToStart)
@@ -249,6 +266,16 @@ inline void AudioMIDIPlayer::process (choc::buffer::ChannelArrayView<const float
                                       bool replaceOutput)
 {
     const std::scoped_lock lock (callbackLock);
+
+    if (prerollFrames != 0)
+    {
+        prerollFrames -= std::min (prerollFrames, input.getNumFrames());
+
+        if (replaceOutput)
+            output.clear();
+
+        return;
+    }
 
     if (callbacks.empty())
     {

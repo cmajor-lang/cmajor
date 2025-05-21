@@ -46,8 +46,12 @@ struct RenderingAudioMIDIPlayer  : public AudioMIDIPlayer
     RenderingAudioMIDIPlayer (const AudioDeviceOptions&, ProvideInputFn, HandleOutputFn);
     ~RenderingAudioMIDIPlayer() override;
 
-    std::vector<int32_t> getAvailableSampleRates() override         { return {}; }
-    std::vector<int32_t> getAvailableBlockSizes() override          { return {}; }
+    bool open() override { return true; }
+    void close() override {}
+    std::string getLastError() override { return {}; }
+
+    std::vector<uint32_t> getAvailableSampleRates() override        { return {}; }
+    std::vector<uint32_t> getAvailableBlockSizes() override         { return {}; }
     std::vector<std::string> getAvailableAudioAPIs() override       { return {}; }
     std::vector<std::string> getAvailableInputDevices() override    { return {}; }
     std::vector<std::string> getAvailableOutputDevices() override   { return {}; }

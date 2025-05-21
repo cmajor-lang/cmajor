@@ -42,6 +42,7 @@ std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer> createRtAudioMIDIPlayer (con
 //
 //==============================================================================
 
+#include <algorithm>
 #include "choc/gui/choc_MessageLoop.h"
 #include "choc/text/choc_OpenSourceLicenseList.h"
 
@@ -79,7 +80,7 @@ struct RtAudioMIDIPlayer  : public AudioMIDIPlayer
     }
 
     //==============================================================================
-    bool open()
+    bool open() override
     {
         close();
 
@@ -93,7 +94,7 @@ struct RtAudioMIDIPlayer  : public AudioMIDIPlayer
         return false;
     }
 
-    void close()
+    void close() override
     {
         deviceListCheckTimer = {};
         stop();
@@ -102,12 +103,8 @@ struct RtAudioMIDIPlayer  : public AudioMIDIPlayer
         closeAudio();
     }
 
-private:
-    void start() override {}
-    void stop() override {}
-
-    std::vector<int32_t> getAvailableSampleRates() override   { return availableSampleRates; }
-    std::vector<int32_t> getAvailableBlockSizes() override    { return { 16, 32, 48, 64, 96, 128, 196, 224, 256, 320, 480, 512, 768, 1024, 1536, 2048 }; }
+    std::vector<uint32_t> getAvailableSampleRates() override   { return availableSampleRates; }
+    std::vector<uint32_t> getAvailableBlockSizes() override    { return { 16, 32, 48, 64, 96, 128, 196, 224, 256, 320, 480, 512, 768, 1024, 1536, 2048 }; }
 
     std::vector<std::string> getAvailableAudioAPIs() override
     {
@@ -143,6 +140,15 @@ private:
         return result;
     }
 
+    std::string getLastError() override
+    {
+        return lastError;
+    }
+
+private:
+    void start() override {}
+    void stop() override {}
+
     //==============================================================================
     struct NamedMIDIIn
     {
@@ -165,13 +171,13 @@ private:
     std::vector<const float*> inputChannelPointers;
     std::vector<float*> outputChannelPointers;
     uint32_t xruns = 0;
-    std::vector<int32_t> availableSampleRates;
+    std::vector<uint32_t> availableSampleRates;
     choc::messageloop::Timer deviceListCheckTimer;
+    std::string lastError;
 
-    void handleAudioError (RtAudioErrorType type, const std::string& errorText)
+    void handleAudioError (RtAudioErrorType, const std::string& errorText)
     {
-        std::cout << "Audio device error: " << errorText << std::endl;
-        (void) type;
+        lastError = errorText;
     }
 
     void handleStreamUpdate()
@@ -185,8 +191,29 @@ private:
         (void) type;
     }
 
+    uint32_t chooseBestSampleRate() const
+    {
+        auto preferredRate = options.sampleRate > 0 ? options.sampleRate : 44100u;
+
+        if (options.sampleRate > 0)
+            for (auto rate : availableSampleRates)
+                if (rate == preferredRate)
+                    return rate;
+
+        for (auto rate : availableSampleRates)
+            if (rate >= 44100u)
+                return rate;
+
+        if (! availableSampleRates.empty())
+            return availableSampleRates.back();
+
+        return 44100;
+    }
+
     bool openAudio()
     {
+        lastError = {};
+
         rtAudio = std::make_unique<RtAudio> (getAPIToUse(),
                                              [this] (RtAudioErrorType type, const std::string& errorText) { handleAudioError (type, errorText); },
                                              [this] () { handleStreamUpdate (); });
@@ -202,22 +229,25 @@ private:
             return nullptr;
         };
 
-        auto getDeviceForName = [&] (const std::string& name) -> RtAudio::DeviceInfo*
+        auto getDeviceForName = [&] (const std::string& name, bool isInput) -> RtAudio::DeviceInfo*
         {
             for (auto& i : devices)
-                if (i.name == name)
+                if (i.name == name && isInput == (i.inputChannels != 0))
                     return std::addressof (i);
 
             return nullptr;
         };
 
         auto inputDeviceInfo = options.inputDeviceName.empty() ? getDeviceForID (rtAudio->getDefaultInputDevice())
-                                                               : getDeviceForName (options.inputDeviceName);
+                                                               : getDeviceForName (options.inputDeviceName, true);
 
         auto outputDeviceInfo = options.outputDeviceName.empty() ? getDeviceForID (rtAudio->getDefaultOutputDevice())
-                                                                 : getDeviceForName (options.outputDeviceName);
+                                                                 : getDeviceForName (options.outputDeviceName, false);
 
         updateAvailableSampleRateList (inputDeviceInfo, outputDeviceInfo);
+
+        options.outputDeviceName = outputDeviceInfo ? outputDeviceInfo->name : std::string();
+        options.inputDeviceName  = inputDeviceInfo ? inputDeviceInfo->name : std::string();
 
         RtAudio::StreamParameters inParams, outParams;
 
@@ -258,22 +288,21 @@ private:
         if (framesPerBuffer == 0)
             framesPerBuffer = 128;
 
-        auto rate = options.sampleRate > 0 ? static_cast<unsigned int> (options.sampleRate) : 44100u;
-
         RtAudio::StreamOptions streamOptions;
         streamOptions.flags = RTAUDIO_NONINTERLEAVED | RTAUDIO_SCHEDULE_REALTIME | RTAUDIO_ALSA_USE_DEFAULT;
 
         auto error = rtAudio->openStream (outputDeviceInfo != nullptr ? std::addressof (outParams) : nullptr,
                                           inputDeviceInfo != nullptr ? std::addressof (inParams) : nullptr,
                                           RTAUDIO_FLOAT32,
-                                          rate,
+                                          (unsigned int) chooseBestSampleRate(),
                                           std::addressof (framesPerBuffer),
                                           rtAudioCallback,
                                           this, std::addressof (streamOptions));
 
         if (error != RTAUDIO_NO_ERROR)
         {
-            std::cout << "Error opening audio device" << std::endl;
+            if (lastError.empty())
+                lastError = rtAudio->getErrorText();
 
             options.audioAPI = {};
             options.outputDeviceName = {};
@@ -287,8 +316,6 @@ private:
         }
 
         options.audioAPI = RtAudio::getApiDisplayName (rtAudio->getCurrentApi());
-        options.outputDeviceName = outputDeviceInfo ? outputDeviceInfo->name : std::string();
-        options.inputDeviceName  = inputDeviceInfo ? inputDeviceInfo->name : std::string();
         options.sampleRate = static_cast<uint32_t> (rtAudio->getStreamSampleRate());
         options.blockSize = static_cast<uint32_t> (framesPerBuffer);
         options.inputChannelCount = static_cast<uint32_t> (numInputChannels);
@@ -318,6 +345,7 @@ private:
             rtAudio.reset();
         }
 
+        lastError = {};
         xruns = 0;
         numInputChannels = {};
         numOutputChannels = {};
@@ -411,21 +439,35 @@ private:
 
     void updateAvailableSampleRateList (RtAudio::DeviceInfo* inputDeviceInfo, RtAudio::DeviceInfo* outputDeviceInfo)
     {
-        availableSampleRates.clear();
+        std::vector<unsigned int> rates;
 
-        if (inputDeviceInfo != nullptr)
-            for (auto rate : inputDeviceInfo->sampleRates)
-                availableSampleRates.push_back (static_cast<int32_t> (rate));
+        if (inputDeviceInfo != nullptr && outputDeviceInfo != nullptr)
+        {
+            auto inRates = inputDeviceInfo->sampleRates;
+            auto outRates = outputDeviceInfo->sampleRates;
+            std::sort (inRates.begin(), inRates.end());
+            std::sort (outRates.begin(), outRates.end());
 
-        if (outputDeviceInfo != nullptr)
-            for (auto rate : outputDeviceInfo->sampleRates)
-                availableSampleRates.push_back (static_cast<int32_t> (rate));
+            std::set_intersection (inRates.begin(), inRates.end(),
+                                   outRates.begin(), outRates.end(),
+                                   std::back_inserter (rates));
+        }
+        else if (inputDeviceInfo != nullptr)
+        {
+            rates = inputDeviceInfo->sampleRates;
+        }
+        else if (outputDeviceInfo != nullptr)
+        {
+            rates = outputDeviceInfo->sampleRates;
+        }
 
-        std::sort (availableSampleRates.begin(), availableSampleRates.end());
-        availableSampleRates.erase (std::unique (availableSampleRates.begin(), availableSampleRates.end()), availableSampleRates.end());
+        std::sort (rates.begin(), rates.end());
+        rates.erase (std::unique (rates.begin(), rates.end()), rates.end());
 
-        if (availableSampleRates.empty())
+        if (rates.empty())
             availableSampleRates = { 44100, 48000 };
+        else
+            availableSampleRates = rates;
     }
 
     std::unique_ptr<NamedMIDIIn> openMIDIIn (unsigned int portNum)
@@ -573,6 +615,7 @@ inline std::unique_ptr<AudioMIDIPlayer> createRtAudioMIDIPlayer (const AudioDevi
     if (player->open())
         return player;
 
+    std::cout << "Failed to open audio device: " << player->getLastError() << std::endl;
     return {};
 }
 

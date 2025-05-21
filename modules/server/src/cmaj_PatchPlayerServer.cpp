@@ -89,8 +89,8 @@ struct PatchPlayerServer
                      "availableAPIs", choc::value::createArray (audioPlayer->getAvailableAudioAPIs()),
                      "availableOutputDevices", choc::value::createArray (audioPlayer->getAvailableOutputDevices()),
                      "availableInputDevices", choc::value::createArray (audioPlayer->getAvailableInputDevices()),
-                     "sampleRates", choc::value::createArray (audioPlayer->getAvailableSampleRates()),
-                     "blockSizes", choc::value::createArray (audioPlayer->getAvailableBlockSizes()),
+                     "sampleRates", convertSampleRateVector (audioPlayer->getAvailableSampleRates()),
+                     "blockSizes", convertSampleRateVector (audioPlayer->getAvailableBlockSizes()),
                      "audioAPI", o.audioAPI,
                      "output", o.outputDeviceName,
                      "input", o.inputDeviceName,
@@ -98,7 +98,18 @@ struct PatchPlayerServer
                      "blockSize", static_cast<int32_t> (o.blockSize));
         }
 
-        return {};
+        return choc::json::create();
+    }
+
+    static choc::value::Value convertSampleRateVector (const std::vector<uint32_t>& rates)
+    {
+        std::vector<int32_t> result;
+        result.reserve (rates.size());
+
+        for (auto rate : rates)
+            result.push_back (static_cast<int32_t> (rate));
+
+        return choc::value::createArray (result);
     }
 
     void broadcastAudioDeviceProperties()
@@ -138,6 +149,10 @@ struct PatchPlayerServer
             audioPlayer = nullptr;
             refreshAllSessionAudioDevices();
             audioPlayer = createAudioMIDIPlayer (newOptions);
+
+            if (audioPlayer == nullptr)
+                audioPlayer = createAudioMIDIPlayer ({});
+
             refreshAllSessionAudioDevices();
             broadcastAudioDeviceProperties();
         }
@@ -1023,13 +1038,13 @@ namespace
             return {};
         }
 
-        std::vector<int32_t> getAvailableSampleRates() override
+        std::vector<uint32_t> getAvailableSampleRates() override
         {
             callHistory.addCall ("getAvailableSampleRates()");
             return { 44100, 48000 };
         }
 
-        std::vector<int32_t> getAvailableBlockSizes() override
+        std::vector<uint32_t> getAvailableBlockSizes() override
         {
             callHistory.addCall ("getAvailableBlockSizes()");
             return { 32, 64, 128};
@@ -1047,6 +1062,17 @@ namespace
             return { "out" };
         }
 
+        bool open() override
+        {
+            callHistory.addCall ("open()");
+            return true;
+        }
+
+        void close() override
+        {
+            callHistory.addCall ("close()");
+        }
+
         void start() override
         {
             callHistory.addCall ("start()");
@@ -1055,6 +1081,12 @@ namespace
         void stop() override
         {
             callHistory.addCall ("stop()");
+        }
+
+        std::string getLastError() override
+        {
+            callHistory.addCall ("getLastError()");
+            return {};
         }
 
         void handleOutgoingMidiMessage (const void* data, uint32_t length) override
