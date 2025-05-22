@@ -20,8 +20,8 @@
 
 #include "../../compiler/include/cmaj_ErrorHandling.h"
 #include "choc/javascript/choc_javascript.h"
+#include "choc/audio/io/choc_AudioMIDIPlayer.h"
 #include "../../../include/cmajor/helpers/cmaj_Patch.h"
-#include "../../playback/include/cmaj_AudioMIDIPlayer.h"
 
 
 namespace cmaj::javascript
@@ -29,7 +29,7 @@ namespace cmaj::javascript
     void executeScript (const std::string& file,
                         const choc::value::Value& engineOptions,
                         cmaj::BuildSettings& buildSettings,
-                        const cmaj::audio_utils::AudioDeviceOptions& audioOptions);
+                        const choc::audio::io::AudioDeviceOptions& audioOptions);
 
     //==============================================================================
     struct JavascriptEngine

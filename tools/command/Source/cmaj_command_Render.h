@@ -20,9 +20,9 @@
 
 #include "choc/audio/choc_MIDIFile.h"
 #include "choc/gui/choc_WebView.h"
+#include "choc/audio/io/choc_RenderingAudioMIDIPlayer.h"
 #include "../../../modules/playback/include/cmaj_PatchPlayer.h"
 #include "../../../modules/playback/include/cmaj_AudioFileUtils.h"
-#include "../../../modules/playback/include/cmaj_RenderingAudioMIDIPlayer.h"
 
 //==============================================================================
 struct RenderOptions
@@ -69,7 +69,7 @@ struct RenderOptions
     }
 
     std::string patchFile, inputAudioFile, inputMIDIFile, outputAudioFile;
-    cmaj::audio_utils::AudioDeviceOptions audioOptions;
+    choc::audio::io::AudioDeviceOptions audioOptions;
     uint64_t framesToRender = 0;
 };
 
@@ -141,7 +141,7 @@ struct RenderState
 
         std::cout << "Rendering: " << options.patchFile << std::endl;
 
-        auto audioMIDIPlayer = std::make_shared<cmaj::audio_utils::RenderingAudioMIDIPlayer> (audioOptions,
+        auto audioMIDIPlayer = std::make_shared<choc::audio::io::RenderingAudioMIDIPlayer> (audioOptions,
             [this] (choc::buffer::ChannelArrayView<float> audioInput,
                     std::vector<choc::midi::ShortMessage>& midiMessages,
                     std::vector<uint32_t>& midiMessageTimes) -> bool

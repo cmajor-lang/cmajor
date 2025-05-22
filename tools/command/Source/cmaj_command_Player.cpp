@@ -21,15 +21,25 @@
 #include "../../../modules/scripting/include/cmaj_ScriptEngine.h"
 #include "../../../modules/server/include/cmaj_PatchPlayerServer.h"
 #include "choc/containers/choc_ArgumentList.h"
-#include "../../../modules/playback/include/cmaj_RtAudioPlayer.h"
+#include "choc/audio/io/choc_RtAudioPlayer.h"
 
 void printCmajorVersion();
 
-static std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer> createDefaultAudioDevice (const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
+static std::unique_ptr<choc::audio::io::AudioMIDIPlayer> createDefaultAudioDevice (const choc::audio::io::AudioDeviceOptions& audioOptions)
 {
-    return cmaj::audio_utils::createRtAudioMIDIPlayer (audioOptions);
-}
+    auto player = std::make_unique<choc::audio::io::RtAudioMIDIPlayer> (audioOptions, [] (const std::string& message)
+    {
+        std::cout << message << std::endl;
+    });
 
+    auto error = player->getLastError();
+
+    if (error.empty())
+        return player;
+
+    std::cout << "Failed to open audio device: " << error << std::endl;
+    return {};
+}
 
 //==============================================================================
 static void runPatch (cmaj::PatchPlayer& player, const std::string& filename, int64_t framesToRender, bool stopOnError)
@@ -69,7 +79,7 @@ static void runPatch (cmaj::PatchPlayer& player, const std::string& filename, in
 void playFile (choc::ArgumentList& args,
                const choc::value::Value& engineOptions,
                cmaj::BuildSettings& buildSettings,
-               const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
+               const choc::audio::io::AudioDeviceOptions& audioOptions)
 {
     if (args.size() == 0)
         throw std::runtime_error ("Expected a filename to play");
@@ -150,7 +160,7 @@ void playFile (choc::ArgumentList& args,
 void runServerProcess (choc::ArgumentList& args,
                        const choc::value::Value& engineOptions,
                        cmaj::BuildSettings& buildSettings,
-                       const cmaj::audio_utils::AudioDeviceOptions& audioOptions)
+                       const choc::audio::io::AudioDeviceOptions& audioOptions)
 {
     cmaj::ServerOptions serverOptions;
 

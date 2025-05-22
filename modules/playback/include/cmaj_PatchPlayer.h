@@ -21,18 +21,19 @@
 #include <iostream>
 
 #include "../../compiler/include/cmaj_ErrorHandling.h"
+#include "choc/audio/io/choc_AudioMIDIPlayer.h"
+#include "choc/text/choc_JSON.h"
+
 #include "cmajor/helpers/cmaj_Patch.h"
 #include "cmajor/helpers/cmaj_PatchWorker_QuickJS.h"
 #include "cmajor/helpers/cmaj_PatchWorker_WebView.h"
-#include "choc/text/choc_JSON.h"
 #include "cmaj_AllocationChecker.h"
-#include "cmaj_AudioMIDIPlayer.h"
 
 namespace cmaj
 {
 
 //==============================================================================
-struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
+struct PatchPlayer  : public choc::audio::io::AudioMIDICallback
 {
     PatchPlayer (const choc::value::Value& engineOptions,
                  const cmaj::BuildSettings& buildSettings,
@@ -82,7 +83,7 @@ struct PatchPlayer  : public cmaj::audio_utils::AudioMIDICallback
         patch.setPlaybackParams (params, synchronousRebuild);
     }
 
-    void setAudioMIDIPlayer (std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> audioPlayerToUse)
+    void setAudioMIDIPlayer (std::shared_ptr<choc::audio::io::AudioMIDIPlayer> audioPlayerToUse)
     {
         if (audioPlayer != nullptr)
             audioPlayer->removeCallback (*this);
@@ -344,7 +345,7 @@ private:
     std::atomic<uint32_t> newTransportState { 0 };
     uint32_t blockCounter = 0;
 
-    std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> audioPlayer;
+    std::shared_ptr<choc::audio::io::AudioMIDIPlayer> audioPlayer;
 };
 
 } // namespace cmaj

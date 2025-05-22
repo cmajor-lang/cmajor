@@ -21,13 +21,13 @@
 #include <filesystem>
 #include "../../compiler/include/cmaj_ErrorHandling.h"
 #include "../../../include/cmajor/API/cmaj_Engine.h"
-#include "../../playback/include/cmaj_AudioMIDIPlayer.h"
+#include "choc/audio/io/choc_AudioMIDIPlayer.h"
 #include "choc/tests/choc_UnitTest.h"
 
 
 namespace cmaj
 {
-    using CreateAudioMIDIPlayerFn = std::function<std::unique_ptr<cmaj::audio_utils::AudioMIDIPlayer>(const cmaj::audio_utils::AudioDeviceOptions&)>;
+    using CreateAudioMIDIPlayerFn = std::function<std::unique_ptr<choc::audio::io::AudioMIDIPlayer>(const choc::audio::io::AudioDeviceOptions&)>;
 
     struct ServerOptions
     {
@@ -42,7 +42,7 @@ namespace cmaj
     void runPatchPlayerServer (const ServerOptions& serverOptions,
                                const choc::value::Value& engineOptions,
                                cmaj::BuildSettings& buildSettings,
-                               const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
+                               const choc::audio::io::AudioDeviceOptions& audioOptions,
                                CreateAudioMIDIPlayerFn);
 
     void runServerUnitTests (choc::test::TestProgress&);

@@ -39,7 +39,7 @@ namespace cmaj::javascript
 void executeScript (const std::string& file,
                     const choc::value::Value& engineOptions,
                     cmaj::BuildSettings& buildSettings,
-                    const cmaj::audio_utils::AudioDeviceOptions&)
+                    const choc::audio::io::AudioDeviceOptions&)
 {
     JavascriptEngine engine (buildSettings, engineOptions);
     engine.getContext().run (choc::file::loadFileAsString (file));

@@ -32,10 +32,10 @@
 void runUnitTests (choc::ArgumentList&, const choc::value::Value&, cmaj::BuildSettings&);
 
 void playFile (choc::ArgumentList&, const choc::value::Value& engineOptions,
-               cmaj::BuildSettings&, const cmaj::audio_utils::AudioDeviceOptions&);
+               cmaj::BuildSettings&, const choc::audio::io::AudioDeviceOptions&);
 
 void runServerProcess (choc::ArgumentList&, const choc::value::Value& engineOptions,
-                       cmaj::BuildSettings&, const cmaj::audio_utils::AudioDeviceOptions&);
+                       cmaj::BuildSettings&, const choc::audio::io::AudioDeviceOptions&);
 
 void printCmajorVersion()
 {
@@ -174,9 +174,9 @@ static cmaj::BuildSettings parseBuildArgs (choc::ArgumentList& args)
 
 
 //==============================================================================
-static cmaj::audio_utils::AudioDeviceOptions parseAudioDeviceArgs (choc::ArgumentList& args)
+static choc::audio::io::AudioDeviceOptions parseAudioDeviceArgs (choc::ArgumentList& args)
 {
-    cmaj::audio_utils::AudioDeviceOptions options;
+    choc::audio::io::AudioDeviceOptions options;
 
     options.sampleRate = args.removeIntValue<uint32_t> ("--rate", 0);
     options.blockSize  = args.removeIntValue<uint32_t> ("--block-size", 0);

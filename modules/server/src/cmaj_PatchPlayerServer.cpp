@@ -31,11 +31,11 @@ namespace cmaj
 
 struct PatchPlayerServer
 {
-    PatchPlayerServer (const ServerOptions&                         serverOptionsToUse,
-                       const choc::value::Value&                    engineOptionsToUse,
-                       cmaj::BuildSettings&                         buildSettingsToUse,
-                       const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
-                       CreateAudioMIDIPlayerFn                      createPlayer)
+    PatchPlayerServer (const ServerOptions& serverOptionsToUse,
+                       const choc::value::Value& engineOptionsToUse,
+                       cmaj::BuildSettings& buildSettingsToUse,
+                       const choc::audio::io::AudioDeviceOptions& audioOptions,
+                       CreateAudioMIDIPlayerFn createPlayer)
         : engineOptions (engineOptionsToUse),
           buildSettings (buildSettingsToUse),
           serverOptions (serverOptionsToUse),
@@ -980,7 +980,7 @@ private:
     CreateAudioMIDIPlayerFn createAudioMIDIPlayer;
 
     choc::threading::ThreadSafeFunctor<std::function<void(const choc::value::ValueView&)>> setAudioDevicePropsFn;
-    std::shared_ptr<cmaj::audio_utils::AudioMIDIPlayer> audioPlayer;
+    std::shared_ptr<choc::audio::io::AudioMIDIPlayer> audioPlayer;
     choc::network::HTTPServer httpServer;
 
     std::unordered_map<std::string, std::shared_ptr<Session>> activeSessions;
@@ -988,11 +988,11 @@ private:
 };
 
 //==============================================================================
-void runPatchPlayerServer (const ServerOptions&                         serverOptions,
-                           const choc::value::Value&                    engineOptions,
-                           cmaj::BuildSettings&                         buildSettings,
-                           const cmaj::audio_utils::AudioDeviceOptions& audioOptions,
-                           CreateAudioMIDIPlayerFn                      createPlayer)
+void runPatchPlayerServer (const ServerOptions& serverOptions,
+                           const choc::value::Value& engineOptions,
+                           cmaj::BuildSettings& buildSettings,
+                           const choc::audio::io::AudioDeviceOptions& audioOptions,
+                           CreateAudioMIDIPlayerFn createPlayer)
 {
     PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions, std::move (createPlayer));
 
@@ -1025,10 +1025,11 @@ namespace
         std::vector<std::string> calls;
     };
 
-    class StubAudioMidiPlayer : public cmaj::audio_utils::AudioMIDIPlayer
+    class StubAudioMidiPlayer : public choc::audio::io::AudioMIDIPlayer
     {
     public:
-        StubAudioMidiPlayer (CallHistory& ch, const cmaj::audio_utils::AudioDeviceOptions& o) : cmaj::audio_utils::AudioMIDIPlayer (o), callHistory (ch)
+        StubAudioMidiPlayer (CallHistory& ch, const choc::audio::io::AudioDeviceOptions& o)
+            : choc::audio::io::AudioMIDIPlayer (o), callHistory (ch)
         {
         }
 
@@ -1060,17 +1061,6 @@ namespace
         {
             callHistory.addCall ("getAvailableOutputDevices()");
             return { "out" };
-        }
-
-        bool open() override
-        {
-            callHistory.addCall ("open()");
-            return true;
-        }
-
-        void close() override
-        {
-            callHistory.addCall ("close()");
         }
 
         void start() override
@@ -1206,7 +1196,7 @@ namespace
 
         choc::value::Value engineOptions;
         cmaj::BuildSettings buildSettings;
-        cmaj::audio_utils::AudioDeviceOptions audioOptions;
+        choc::audio::io::AudioDeviceOptions audioOptions;
 
         CallHistory callHistory;
 
@@ -1217,7 +1207,8 @@ namespace
 
         std::string url = "http://127.0.0.1:8081/";
 
-        PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions, [&] (const cmaj::audio_utils::AudioDeviceOptions& options)
+        PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions,
+                                  [&] (const choc::audio::io::AudioDeviceOptions& options)
                                   {
                                       return std::make_unique<StubAudioMidiPlayer> (callHistory, options);
                                   });
