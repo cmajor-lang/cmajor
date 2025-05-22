@@ -60,8 +60,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
     target_link_libraries (CmajPlugin PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
     target_include_directories(CmajPlugin SYSTEM PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
-
-    add_compile_definitions (JUCE_USE_CUSTOM_PLUGIN_STANDALONE_ENTRYPOINT=1)
 endif ()
 
 target_sources(CmajPlugin PRIVATE ${SOURCE})
