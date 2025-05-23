@@ -119,6 +119,15 @@ static inline void transformSlices (AST::Program& program)
                     }
                 }
             }
+            else if (auto fn = AST::castTo<AST::FunctionCall> (a.target))
+            {
+                if (choc::text::startsWith (fn->getTargetFunction()->getName().get(), getSliceOfSliceFunctionName()))
+                {
+                    auto& writeSliceFn = getOrCreateWriteSliceOfSliceFunction (*fn->getResultType());
+
+                    a.replaceWith (AST::createFunctionCall (a.getParentScope(), writeSliceFn, *fn, a.source));
+                }
+            }
         }
 
         void visit (AST::InPlaceOperator& o) override
@@ -340,6 +349,58 @@ static inline void transformSlices (AST::Program& program)
             return std::string ("_sliceElement") + (isIncrement ? "Inc" : "Dec") + (isPost ? "Post" : "Pre");
         }
 
+
+        AST::Function& getOrCreateWriteSliceOfSliceFunction (const AST::TypeBase& sliceType)
+        {
+            CMAJ_ASSERT (sliceType.isSlice());
+            auto& elementType = *sliceType.getArrayOrVectorElementType();
+
+            AST::SignatureBuilder sig;
+            sig << getWriteSliceOfSliceFunctionName() << elementType;
+            auto name = intrinsicsNamespace.getStringPool().get (sig.toString (30));
+
+            if (auto f = intrinsicsNamespace.findFunction (name, 2))
+                return *f;
+
+            auto& readElementFn = getOrCreateReadSliceElementFunction (sliceType);
+            auto& writeElementFn = getOrCreateWriteSliceElementFunction (sliceType);
+
+            auto& f = AST::createFunctionInModule (intrinsicsNamespace, sliceType.context.allocator.createVoidType(), name);
+            auto slicesParam = AST::addFunctionParameter (f, sliceType, f.getStrings().array);
+            auto valuesParam = AST::addFunctionParameter (f, sliceType, f.getStrings().values);
+
+            auto& mainBlock = *f.getMainBlock();
+
+            auto& sliceSize = mainBlock.allocateChild<AST::ValueMetaFunction>();
+            sliceSize.op = AST::ValueMetaFunctionTypeEnum::Enum::size;
+            sliceSize.arguments.addReference (slicesParam);
+
+            auto &index = AST::createLocalVariableRef (mainBlock, "index", allocator.createConstantInt32 (0));
+
+            auto& loop = mainBlock.allocateChild<AST::LoopStatement>();
+            mainBlock.addStatement (loop);
+
+            auto& loopBlock = loop.allocateChild<AST::ScopeBlock>();
+            loop.body.referTo (loopBlock);
+
+            auto& v = AST::createVariableReference (loopBlock,
+                                                    AST::createLocalVariable (loopBlock,
+                                                                              "v",
+                                                                              elementType,
+                                                                              AST::createFunctionCall (loopBlock, readElementFn, valuesParam, index)));
+
+            loopBlock.addStatement (AST::createFunctionCall (loopBlock, writeElementFn, slicesParam, index, v));
+
+            loopBlock.addStatement (AST::createPreInc (loopBlock.context, index));
+
+            loopBlock.addStatement (AST::createIfStatement (loopBlock.context,
+                                                            AST::createBinaryOp (loopBlock, AST::BinaryOpTypeEnum::Enum::equals, index, sliceSize),
+                                                            loopBlock.allocateChild<AST::ReturnStatement>()));
+
+            return f;
+        }
+
+        static constexpr std::string_view getWriteSliceOfSliceFunctionName()  { return "_sliceWriteSliceOfSlice"; }
 
         AST::Namespace& rootNamespace;
         AST::Namespace& intrinsicsNamespace;

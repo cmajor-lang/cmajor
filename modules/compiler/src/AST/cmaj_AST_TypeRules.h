@@ -25,6 +25,7 @@ enum class CastType
     numericReduction,
     arrayLossless,
     arrayReduction,
+    widenToArrayLossless,
     widenToArray,
     sliceOfArray,
     vectorSize1ToScalar,
@@ -40,7 +41,7 @@ struct TypeRules
         return type == CastType::identity
             || type == CastType::numericLossless
             || type == CastType::arrayLossless
-            || type == CastType::widenToArray
+            || type == CastType::widenToArrayLossless
             || type == CastType::vectorSize1ToScalar
             || type == CastType::sliceOfArray;
     }
@@ -69,7 +70,7 @@ struct TypeRules
     static bool canCastTo (const TypeBase& dest, const TypeBase& source)          { return getCastType (dest, source) != CastType::impossible; }
     static bool canSilentlyCastTo (const TypeBase& dest, const TypeBase& source)  { return isSilentCast (getCastType (dest, source)); }
 
-    /// Permits literal constants that can be converted to the taget type without losing accuracy
+    /// Permits literal constants that can be converted to the target type without losing accuracy
     static bool canSilentlyCastTo (const TypeBase& destType, const ValueBase& value)
     {
         auto& sourceType = *value.getResultType();
@@ -84,6 +85,9 @@ struct TypeRules
         if (auto mcr = destType.getAsMakeConstOrRef())
             if (mcr->isNonConstReference() && value.isCompileTimeConstant())
                 return false;
+
+        if (destType.isNonConstSlice() && value.isCompileTimeConstant())
+            return false;
 
         if (canSilentlyCastTo (destType, sourceType))
             return true;
@@ -106,6 +110,7 @@ struct TypeRules
             {
                 if (auto f64 = value.getAsConstantFloat64())   return canLosslesslyConvertToFloat32 (f64->value.get());
                 if (auto i64 = value.getAsInt64())             return canLosslesslyConvertToFloat32 (*i64);
+                if (auto c64 = value.getAsConstantComplex64()) return canLosslesslyConvertToFloat32 (c64->real.get()) && canLosslesslyConvertToFloat32 (c64->imag.get());
             }
         }
 
@@ -127,8 +132,10 @@ struct TypeRules
                 return true;
 
         if (auto v = dest.getAsVectorType())
-            if (v->isSize1())
-                return canTruncateValueWithoutLossOfAccuracy (v->getElementType(), value);
+            return canTruncateValueWithoutLossOfAccuracy (v->getElementType(), value);
+
+        if (auto a = dest.getAsArrayType())
+            return canTruncateValueWithoutLossOfAccuracy (a->getInnermostElementTypeRef(), value);
 
         return false;
     }
@@ -751,6 +758,17 @@ private:
         return CastType::impossible;
     }
 
+    static CastType classifyWideningCast (CastType t)
+    {
+        if (t == CastType::impossible)
+            return CastType::impossible;
+
+        if (isSilentCast (t))
+            return CastType::widenToArrayLossless;
+
+        return CastType::widenToArray;
+    }
+
     static CastType getCastToArrayType (const ArrayType& dest, const TypeBase& source)
     {
         auto& destElementType = dest.getElementType (0);
@@ -770,8 +788,7 @@ private:
                 if (sourceArray->resolveFlattenedSize() != dest.resolveFlattenedSize())
                 {
                     if (destDimensions == sourceDimensions + 1)
-                        if (getCastType (destElementType, *sourceArray) != CastType::impossible)
-                            return CastType::widenToArray;
+                        return classifyWideningCast (getCastType (destElementType, *sourceArray));
 
                     return CastType::impossible;
                 }
@@ -795,26 +812,21 @@ private:
                 if (elementCastType == CastType::numericLossless)       return CastType::arrayLossless;
                 if (elementCastType == CastType::vectorSize1ToScalar)   return CastType::arrayLossless;
                 if (elementCastType == CastType::widenToArray)          return CastType::arrayLossless;
+                if (elementCastType == CastType::widenToArrayLossless)  return CastType::arrayLossless;
                 if (elementCastType == CastType::identity)              return CastType::identity;
             }
         }
 
         if (auto sourcePrim = source.getAsPrimitiveType())
-        {
-            if (getCastType (destElementType, *sourcePrim) != CastType::impossible)
-                return CastType::widenToArray;
-
-            return CastType::impossible;
-        }
+            return classifyWideningCast (getCastType (destElementType, *sourcePrim));
 
         if (auto sourceVec = source.getAsVectorType())
         {
             if (getCastType (destElementType, *sourceVec) != CastType::impossible)
-                return CastType::widenToArray;
+                return classifyWideningCast (getCastType (destElementType, *sourceVec));
 
-            if (getCastType (destElementType, sourceVec->getElementType()) != CastType::impossible)
-                if (sourceVec->isSize1())
-                    return CastType::widenToArray;
+            if (sourceVec->isSize1())
+                return classifyWideningCast (getCastType (destElementType, sourceVec->getElementType()));
 
             return CastType::impossible;
         }
@@ -822,7 +834,7 @@ private:
         if (! dest.isSlice())
             if (auto sourceStruct = source.getAsStructType())
                 if (destElementType.isIdentical (*sourceStruct))
-                    return CastType::widenToArray;
+                    return CastType::widenToArrayLossless;
 
         if (auto ref = source.getAsMakeConstOrRef())
             return getCastType (dest, *ref->getSource());
@@ -843,7 +855,7 @@ private:
                 if (dest.isSize1())
                     return elementCastType;
 
-                return CastType::widenToArray;
+                return classifyWideningCast (elementCastType);
             }
 
             return CastType::impossible;
@@ -861,8 +873,8 @@ private:
                 if (elementCast == CastType::numericLossless)   return CastType::arrayLossless;
             }
 
-            if (sourceVec->isSize1() && elementCast != CastType::impossible)
-                return CastType::widenToArray;
+            if (sourceVec->isSize1())
+                return classifyWideningCast (elementCast);
 
             return CastType::impossible;
         }

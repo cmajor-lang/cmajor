@@ -101,3 +101,192 @@ bool test()
 
     return f[3] > 0.0f;
 }
+
+## testFunction()
+
+bool compare (const int[] a, const int[] b)
+{
+    if (a.size != b.size)
+        return false;
+
+    for (int i = 0; i < a.size; i++)
+        if (a[i] != b[i])
+            return false;
+
+    return true;
+}
+
+bool test1()
+{
+    int[] a = (0, 0, 0);
+    int[] b = a;
+    int[] c = a[1:];
+
+    static_assert (a.isArray);
+    static_assert (b.isSlice);
+    static_assert (c.isSlice);
+
+    a[0] = 1;
+    b[1] = 2;
+    c[1] = 3;
+
+    return a.size == 3
+        && b.size == 3
+        && c.size == 2
+        && compare (a, int[] (1, 2, 3));
+}
+
+bool test2()
+{
+    int[] a = (0, 0, 0);
+    var b = int[] (a);
+    var c = int[] (a[1:]);
+
+    static_assert (a.isArray);
+    static_assert (b.isSlice);
+    static_assert (c.isSlice);
+
+    a[0] = 1;
+    b[1] = 2;
+    c[1] = 3;
+
+    return a.size == 3
+        && b.size == 3
+        && c.size == 2
+        && compare (a, int[] (1, 2, 3));
+}
+
+bool test3()
+{
+    int[] a = (0, 0, 0);
+    var b = a;
+    var c = a[1:];
+
+    static_assert (a.isArray);
+    static_assert (b.isArray);
+    static_assert (c.isArray);
+
+    a[0] = 1;
+    b[1] = 2;
+    c[1] = 3;
+
+    return a.size == 3
+        && b.size == 3
+        && c.size == 2
+        && compare (a, int[] (1, 0, 0))
+        && compare (b, int[] (0, 2, 0))
+        && compare (c, int[] (0, 3));
+}
+
+bool test4()
+{
+    const int[] a = (1, 0, 0);
+    int[] b = a;
+    int[] c = a[1:];
+
+    static_assert (a.isArray);
+    static_assert (b.isArray);
+    static_assert (c.isArray);
+
+    b[1] = 2;
+    c[1] = 3;
+
+    return a.size == 3
+        && b.size == 3
+        && c.size == 2
+        && compare (a, int[] (1, 0, 0))
+        && compare (b, int[] (1, 2, 0))
+        && compare (c, int[] (0, 3));
+}
+
+bool test5()
+{
+    int[] a = (1, 2, 3);
+    int[] b = (4, 5, 6);
+
+    int[] c = a;
+    c[0] = 10;
+    c = b;
+    c[0] = 20;
+
+    return compare (a, int[] (10, 2, 3))
+        && compare (b, int[] (20, 5, 6));
+}
+
+## testFunction()
+
+bool compare (const int[] a, const int[] b)
+{
+    if (a.size != b.size)
+        return false;
+
+    for (int i = 0; i < a.size; i++)
+        if (a[i] != b[i])
+            return false;
+
+    return true;
+}
+
+bool test6()
+{
+    int[] a = (0, 0, 0, 0, 0);
+
+    a[:]   = 1;
+    a[1:4] = 2;
+    a[2]   = 3;
+
+    return compare (a, int[] (1, 2, 3, 2, 1));
+}
+
+bool test7()
+{
+    int[] a = (0, 0, 0, 0, 0);
+    int[] b = a;
+
+    b[:]   = 1;
+    b[1:4] = 2;
+    b[2]   = 3;
+
+    return compare (a, int[] (1, 2, 3, 2, 1));
+}
+
+bool test8()
+{
+    int[] a = (0, 0, 0, 0, 0);
+    int[] b = (1, 2, 3);
+    int[] c = a;
+
+    c[:] = b;
+
+    return compare (a, int[] (1, 2, 3, 1, 2));
+}
+
+bool test9()
+{
+    int[] a = (0, 0, 0, 0, 0);
+    int[] b = (1, 2, 3);
+    int[] c = a;
+
+    c[:] = b[0:2];
+
+    return compare (a, int[] (1, 2, 1, 2, 1));
+}
+
+## testFunction()
+
+int fn (int[] s)
+{
+    return s[0];
+}
+
+int fn2 (int[] s)
+{
+    return fn (s[2:]);
+}
+
+bool test()
+{
+    int[] a = (1, 2, 3, 4, 5);
+
+    return fn2 (a) == 3;
+}

@@ -159,7 +159,7 @@ namespace intrinsics
 
     //==============================================================================
     /// Calculates the sum of the elements in a vector or array.
-    ArrayType.elementType sum<ArrayType> (ArrayType array)
+    ArrayType.elementType sum<ArrayType> (const ArrayType array)
     {
         static_assert ((array.isArray || array.isVector) && array.elementType.isScalar, "sum() requires an array or vector of scalar values");
 
@@ -207,7 +207,7 @@ namespace intrinsics
     }
 
     /// Multiplies all the elements of an array or vector of scalar values.
-    ArrayType.elementType product<ArrayType> (ArrayType array)
+    ArrayType.elementType product<ArrayType> (const ArrayType array)
     {
         static_assert ((array.isArray || array.isVector) && array.elementType.isScalar, "product() requires an array or vector of scalar values");
 

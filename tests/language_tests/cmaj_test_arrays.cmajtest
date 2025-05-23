@@ -445,7 +445,8 @@ void copySwapped<T> (T& out, const T& in)
 
 bool test_slices12()
 {
-    int[] a = (1, 2, 3);
+    int[3] array = (1, 2, 3);
+    int[] a = array;
     let size1 = a.size;
     a = ();
     let size2 = a.size;

@@ -540,7 +540,7 @@ bool allElementsTrue<T> (T a)
 {
     if const (a.isVector)
     {
-        for (int i = 0; i < a.size; ++i)
+        for (wrap<a.size> i)
             if (! a[i])
                 return false;
 

@@ -239,7 +239,7 @@ struct Cast  : public ValueBase
                     auto& sourceType = sourceAgg->getType();
                     auto castType = TypeRules::getCastType (destType, sourceType);
 
-                    if (castType != CastType::impossible && castType != CastType::widenToArray)
+                    if (castType != CastType::impossible && castType != CastType::widenToArrayLossless)
                         return castConstantList (a, destType, sourceAgg->values.iterateAs<const Object>(), onlySilentCastsAllowed);
 
                     if (sourceType.isSameType (destType, TypeBase::ComparisonFlags::duckTypeStructures))

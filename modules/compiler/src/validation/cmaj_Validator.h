@@ -507,6 +507,10 @@ namespace cmaj::validation
                         if (! hasAssignableAddress (arg))
                             throwError (arg, Errors::cannotPassConstAsNonConstRef());
 
+                    if (paramType.isNonConstSlice())
+                        if (getResultTypeOfValueOrThrowError (arg).isConst())
+                            throwError (arg, Errors::cannotPassConstToMutableSlice());
+
                     expectCastPossible (AST::getContext (arg), paramType, getAsValueOrThrowError (arg), false);
                 }
             }

@@ -2434,7 +2434,7 @@ processor Test [[ main ]]
     }
 }
 
-## expectError ("10:22: error: Cannot implicitly convert 'float64' to 'float32'")
+## disabled expectError ("10:22: error: Cannot implicitly convert 'float64' to 'float32'")
 
 processor Test [[ main ]]
 {

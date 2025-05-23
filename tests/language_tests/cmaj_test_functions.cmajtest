@@ -380,7 +380,14 @@ bool f()
 bool f (int a, int b)           { return false; }
 bool f (float64 a, float64 b)   { return true; }
 
-bool f() { return f(1.2, 3.0) && f(1.1, 2) && f(1.0f, 2.0f); }
+bool f() { return f(1.2, 3.0) && f(1.1, 2) && f (1.1f, 2) && ! f (1, 2); }
+
+## expectError ("5:19: error: Ambiguous function call: f(float32, float32)")
+
+bool f (int a, int b)           { return false; }
+bool f (float64 a, float64 b)   { return true; }
+
+bool f() { return f(1.0f, 2.0f); }
 
 ## expectError ("5:19: error: No suitable override found for function call: f(float64, float64)")
 

@@ -268,7 +268,7 @@ struct FunctionResolver  : public PassAvoidingGenericFunctionsAndModules
                     }
 
                     if (suitability == AST::TypeRules::ArgumentSuitability::impossible)
-                        if (arg.constant == nullptr || ! paramType->isBoundedType() || ! AST::TypeRules::canSilentlyCastTo (*paramType, *arg.constant))
+                        if (arg.constant == nullptr || ! AST::TypeRules::canSilentlyCastTo (*paramType, *arg.constant))
                             isImpossible = true;
 
                     requiresCast = true;

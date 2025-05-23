@@ -306,7 +306,7 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
                     {
                         if (auto sourceType = initialValue->getResultType())
                         {
-                            if (v.isExternal || (v.isGlobal() && v.findParentProcessor() == nullptr))
+                            if (declaredType->isSlice() &&  initialValue->isCompileTimeConstant())
                                 makeSliceSizeMatchTarget (v.declaredType, *sourceType);
 
                             declaredType = AST::castToTypeBase (v.declaredType); // may have changed
@@ -427,7 +427,7 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
 
         auto& bareTargetType = targetType.skipConstAndRefModifiers();
 
-        if (! AST::TypeRules::canSilentlyCastTo (bareTargetType, value))
+        if (! bareTargetType.isSlice() && ! AST::TypeRules::canSilentlyCastTo (bareTargetType, value))
             return;
 
         if (bareTargetType.isBoundedType() && sourceType.isPrimitiveInt())
@@ -436,6 +436,7 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
         auto& cast = AST::getContext (target).allocate<AST::Cast>();
         cast.targetType.createReferenceTo (bareTargetType);
         cast.arguments.addReference (value);
+        cast.onlySilentCastsAllowed = true;
         target.referTo (cast);
         registerChange();
     }

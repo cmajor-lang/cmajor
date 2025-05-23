@@ -122,6 +122,7 @@ struct Strings
                        in                            { stringPool.get ("in") },
                        out                           { stringPool.get ("out") },
                        value                         { stringPool.get ("value") },
+                       values                        { stringPool.get ("values") },
                        index                         { stringPool.get ("index") },
                        start                         { stringPool.get ("start") },
                        end                           { stringPool.get ("end") },

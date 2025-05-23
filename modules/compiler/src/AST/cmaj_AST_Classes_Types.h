@@ -60,6 +60,7 @@ struct TypeBase  : public Expression
     virtual bool isReference() const                { return false; }
     bool isNonConstReference() const                { return isReference() && ! isConst(); }
     bool isConstReference() const                   { return isReference() && isConst(); }
+    bool isNonConstSlice() const                    { return ! isConst() && isSlice(); }
 
     virtual TypeBase& skipConstAndRefModifiers()                { return *this; }
     virtual const TypeBase& skipConstAndRefModifiers() const    { return *this; }
