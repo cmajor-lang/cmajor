@@ -342,6 +342,37 @@ Because slices are *references* to another array, there are some rules in place 
 
 The compiler is fairly conservative when it comes to deciding what is safe, so sometimes a legitimate use of a slice may be flagged as illegal!
 
+### constant vs mutable slices
+
+Both constant and mutable slices can be constructed for an array. Mutable slices allow the contents of the referenced array to be modified via the slice.
+
+```cpp
+int[4] originalArray = (1, 2, 3, 4);
+const int[4] constArray = (1, 2, 3, 4);
+int[] slice = originalArray;                // Creates a mutable slice
+const int[] constSlice = originalArray;     // Creates a const slice of the array
+int[] sliceOfConst = constArray;            // error - cannot create a mutable slice of a constant array
+
+slice[2] = 10;                              // originalArray now contains (1, 2, 10, 4)
+slice = originalArray[2:];                  // Update slice to point to new part of originalArray
+slice[2] = 20;                              // originalArray now contains (1, 2, 10, 20)
+slice[0:3] = 0;                             // originalArray now contains (0, 0, 10, 20)
+slice[:] = 1;                               // originalArray now contains (1, 1, 1, 1)
+
+constSlice[2] = 20;                         // error - cannot modify elements of a const slice
+constSlice = originalArray[2:];             // error - cannot update the const slice reference
+```
+
+Assigning via a slice can also update a range of values using the range syntax, and part one array can be assigned to another array using this feature. All elements references in the target range are written using values from the source range, which is wrapped if less elements are provided than the target contains
+
+```cpp
+int[4] sourceArray = (1, 2, 3, 4);
+int[4] targetArray = (0, 0, 0, 0);
+
+int[] slice = targetArray;                  // slice references all of targetArray
+slice[:] = sourceArray[0:2];                // targetArray now contains (1, 2, 1, 2) - first two elements of sourceArray written to all elements of the slice
+```
+
 ### Vectors
 
 Vectors are similar to arrays, but with a few differences:

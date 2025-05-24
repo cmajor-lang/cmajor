@@ -290,3 +290,61 @@ bool test()
 
     return fn2 (a) == 3;
 }
+
+
+## expectError ("7:10: error: Cannot implicitly convert 1.1f ('float32') to 'int32'")
+
+void test()
+{
+    int[] a = (1, 2, 3);
+    int[] b = a;
+
+    b[1] = 1.1f;
+}
+
+
+## expectError ("5:17: error: Cannot convert type 'int32[3]' to 'float32[]'")
+
+void test()
+{
+    int[] a = (1, 2, 3);
+    float[] b = a;
+}
+
+## expectError ("8:9: error: Cannot convert type 'int32[3]' to 'float32[]'")
+
+void test()
+{
+    int[] a = (1, 2, 3);
+    float[] b = (1.1f, 1.2f, 1.3f);
+    float[] c = b;
+
+    c = a;
+}
+
+## expectError ("5:9: error: Values which may contain slices of local data cannot be assigned to variables which may outlive them")
+
+bool updateSlice (int[]& s)
+{
+    int[] a = (1, 1);
+    s = a;
+
+    return true;
+}
+
+## testFunction()
+
+bool updateSlice (int[] s)
+{
+    int[] a = (1, 1);
+    s = a;
+
+    return true;
+}
+
+bool test()
+{
+    int[] a;
+
+    return updateSlice (a);
+}

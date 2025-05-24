@@ -309,10 +309,14 @@ namespace cmaj::validation
             {
                 ensureVariablesScannedForLocalSlices();
                 auto& targetVariable = *target.getSourceVariable();
-                OutOfScopeSourcesForValue outOfScope (source, targetType, std::addressof (targetVariable));
 
-                if (! outOfScope.sourcesFound.empty())
-                    throwLocalDataError (outOfScope, AST::getContext (a.source), Errors::cannotAssignSliceToWiderScope());
+                if ((! targetVariable.isParameter()) || targetVariable.getType()->isNonConstReference())
+                {
+                    OutOfScopeSourcesForValue outOfScope (source, targetType, std::addressof (targetVariable));
+
+                    if (! outOfScope.sourcesFound.empty())
+                        throwLocalDataError (outOfScope, AST::getContext (a.source), Errors::cannotAssignSliceToWiderScope());
+                }
             }
         }
 
