@@ -78,7 +78,7 @@ namespace std::filters (using FrameType = float32,
             namespace Mode
             {
                 let lowPass = 0;
-                let highpass = 1;
+                let highPass = 1;
             }
 
             Implementation create (int mode, float64 processorFrequency, float64 filterFrequency)
