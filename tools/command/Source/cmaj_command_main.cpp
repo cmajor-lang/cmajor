@@ -186,8 +186,8 @@ static choc::audio::io::AudioDeviceOptions parseAudioDeviceArgs (choc::ArgumentL
     options.inputChannelCount  = args.removeIntValue<uint32_t> ("--inputs", 256);
     options.outputChannelCount = args.removeIntValue<uint32_t> ("--outputs", 256);
 
-    options.outputDeviceName = args.removeValueFor ("--output-device", {});
-    options.inputDeviceName  = args.removeValueFor ("--input-device", {});
+    options.outputDeviceID = args.removeValueFor ("--output-device", {});
+    options.inputDeviceID  = args.removeValueFor ("--input-device", {});
 
     return options;
 }

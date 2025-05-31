@@ -446,7 +446,14 @@ class AudioDevicePropertiesPanel  extends HTMLElement
             let options = "";
 
             for (let item of list)
-                options += `<option value="${item}" ${item == current ? "selected" : ""}>${item}</option>`;
+            {
+                if (item.divider)
+                    options += `<option disabled>──────────</option>`;
+                else if (item.ID !== undefined)
+                    options += `<option value="${item.ID}" ${item.ID == current ? "selected" : ""}>${item.name}</option>`;
+                else
+                    options += `<option value="${item}" ${item == current ? "selected" : ""}>${item}</option>`;
+            }
 
             html += `<div class="cmaj-device-io-item">
                       <label for="${id}">${label}:</label>
@@ -458,10 +465,12 @@ class AudioDevicePropertiesPanel  extends HTMLElement
             addItem ("Audio API", "cmaj-device-io-api", p.availableAPIs, p.audioAPI);
 
         if (p.availableOutputDevices)
-            addItem ("Output Device", "cmaj-device-io-out", p.availableOutputDevices, p.output);
+            addItem ("Output Device", "cmaj-device-io-out",
+                    [{ ID: "", name: "Use default device" }, { divider: true }, ...p.availableOutputDevices], p.output);
 
         if (p.availableInputDevices)
-            addItem ("Input Device", "cmaj-device-io-in", p.availableInputDevices, p.input);
+            addItem ("Input Device", "cmaj-device-io-in",
+                     [{ ID: "", name: "Use default device" }, { divider: true }, ...p.availableInputDevices], p.input);
 
         if (p.sampleRates)
             addItem ("Sample Rate", "cmaj-device-io-rate", p.sampleRates, p.rate);

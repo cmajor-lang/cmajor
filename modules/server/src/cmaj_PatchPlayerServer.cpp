@@ -87,18 +87,28 @@ struct PatchPlayerServer
 
             return choc::json::create (
                      "availableAPIs", choc::value::createArray (audioPlayer->getAvailableAudioAPIs()),
-                     "availableOutputDevices", choc::value::createArray (audioPlayer->getAvailableOutputDevices()),
-                     "availableInputDevices", choc::value::createArray (audioPlayer->getAvailableInputDevices()),
+                     "availableOutputDevices", convertDeviceList (audioPlayer->getAvailableOutputDevices()),
+                     "availableInputDevices", convertDeviceList (audioPlayer->getAvailableInputDevices()),
                      "sampleRates", convertSampleRateVector (audioPlayer->getAvailableSampleRates()),
                      "blockSizes", convertSampleRateVector (audioPlayer->getAvailableBlockSizes()),
                      "audioAPI", o.audioAPI,
-                     "output", o.outputDeviceName,
-                     "input", o.inputDeviceName,
+                     "output", o.outputDeviceID,
+                     "input", o.inputDeviceID,
                      "rate", static_cast<int32_t> (o.sampleRate),
                      "blockSize", static_cast<int32_t> (o.blockSize));
         }
 
         return choc::json::create();
+    }
+
+    static choc::value::Value convertDeviceList (const std::vector<choc::audio::io::AudioDeviceInfo>& devices)
+    {
+        return choc::value::createArray ((uint32_t) devices.size(), [&] (uint32_t i)
+        {
+            auto& d = devices[i];
+            return choc::json::create ("ID", d.deviceID,
+                                       "name", d.name);
+        });
     }
 
     static choc::value::Value convertSampleRateVector (const std::vector<uint32_t>& rates)
@@ -135,14 +145,14 @@ struct PatchPlayerServer
         auto newOptions = o;
 
         newOptions.audioAPI = options["audioAPI"].getWithDefault<std::string> (o.audioAPI);
-        newOptions.outputDeviceName = options["output"].getWithDefault<std::string> (o.outputDeviceName);
-        newOptions.inputDeviceName = options["input"].getWithDefault<std::string> (o.inputDeviceName);
+        newOptions.outputDeviceID = options["output"].getWithDefault<std::string> (o.outputDeviceID);
+        newOptions.inputDeviceID = options["input"].getWithDefault<std::string> (o.inputDeviceID);
         newOptions.sampleRate = static_cast<uint32_t> (options["rate"].getWithDefault<int32_t> (static_cast<int32_t> (o.sampleRate)));
         newOptions.blockSize = static_cast<uint32_t> (options["blockSize"].getWithDefault<int32_t> (static_cast<int32_t> (o.blockSize)));
 
         if (newOptions.audioAPI != o.audioAPI
-             || newOptions.outputDeviceName != o.outputDeviceName
-             || newOptions.inputDeviceName != o.inputDeviceName
+             || newOptions.outputDeviceID != o.outputDeviceID
+             || newOptions.inputDeviceID != o.inputDeviceID
              || newOptions.sampleRate != o.sampleRate
              || newOptions.blockSize != o.blockSize)
         {
@@ -1051,16 +1061,16 @@ namespace
             return { 32, 64, 128};
         }
 
-        std::vector<std::string> getAvailableInputDevices() override
+        std::vector<choc::audio::io::AudioDeviceInfo> getAvailableInputDevices() override
         {
             callHistory.addCall ("getAvailableInputDevices()");
-            return { "in" };
+            return { { "in", "in" } };
         }
 
-        virtual std::vector<std::string> getAvailableOutputDevices() override
+        std::vector<choc::audio::io::AudioDeviceInfo> getAvailableOutputDevices() override
         {
             callHistory.addCall ("getAvailableOutputDevices()");
-            return { "out" };
+            return { { "out", "out" } };
         }
 
         void start() override
