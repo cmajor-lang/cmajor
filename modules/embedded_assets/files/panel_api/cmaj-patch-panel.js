@@ -480,11 +480,20 @@ class AudioDevicePropertiesPanel  extends HTMLElement
 
         this.innerHTML = html;
 
-        this.querySelector ("#cmaj-device-io-api").onchange       = e => { this.setAudioAPI (e.target.value); };
-        this.querySelector ("#cmaj-device-io-out").onchange       = e => { this.setOutputDevice (e.target.value); };
-        this.querySelector ("#cmaj-device-io-in").onchange        = e => { this.setInputDevice (e.target.value); };
-        this.querySelector ("#cmaj-device-io-rate").onchange      = e => { this.setRate (e.target.value); };
-        this.querySelector ("#cmaj-device-io-blocksize").onchange = e => { this.setBlockSize (e.target.value); };
+        if (this.querySelector ("#cmaj-device-io-api"))
+            this.querySelector ("#cmaj-device-io-api").onchange = e => { this.setAudioAPI (e.target.value); };
+
+        if (this.querySelector ("#cmaj-device-io-out"))
+            this.querySelector ("#cmaj-device-io-out").onchange = e => { this.setOutputDevice (e.target.value); };
+
+        if (this.querySelector ("#cmaj-device-io-in"))
+            this.querySelector ("#cmaj-device-io-in").onchange = e => { this.setInputDevice (e.target.value); };
+
+        if (this.querySelector ("#cmaj-device-io-rate"))
+            this.querySelector ("#cmaj-device-io-rate").onchange = e => { this.setRate (e.target.value); };
+
+        if (this.querySelector ("#cmaj-device-io-blocksize"))
+            this.querySelector ("#cmaj-device-io-blocksize").onchange = e => { this.setBlockSize (e.target.value); };
     }
 
     setAudioAPI (newAPI)

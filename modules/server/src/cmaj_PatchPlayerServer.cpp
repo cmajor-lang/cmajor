@@ -1073,6 +1073,18 @@ namespace
             return { { "out", "out" } };
         }
 
+        std::vector<std::string> getAvailableMIDIInputDevices() override
+        {
+            callHistory.addCall ("getAvailableMIDIInputDevices()");
+            return {};
+        }
+
+        std::vector<std::string> getAvailableMIDIOutputDevices() override
+        {
+            callHistory.addCall ("getAvailableMIDIOutputDevices()");
+            return {};
+        }
+
         void start() override
         {
             callHistory.addCall ("start()");
