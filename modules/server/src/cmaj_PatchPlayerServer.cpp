@@ -218,8 +218,10 @@ struct PatchPlayerServer
             }
         }
 
-        choc::network::HTTPContent getHTTPContent (std::string_view path) override
+        choc::network::HTTPContent getHTTPContent (const choc::network::HTTPRequest& request) override
         {
+            auto path = request.path;
+
             if (auto p = path.find ("?"); p != std::string::npos)
                 path = path.substr (0, path.find ("?"));
 
