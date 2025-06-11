@@ -516,7 +516,7 @@ private:
 
         auto& resultValue = AST::castToValueRef (r.value);
         auto& functionReturnType = AST::castToTypeBaseRef (r.getParentFunction().returnType);
-        builder.addReturnValue (createValueReaderWithFlushedOpsStack (functionReturnType, createValueReader (resultValue)));
+        builder.addReturnValue (createValueReaderWithFlushedOpsStack (functionReturnType.skipConstAndRefModifiers(), createValueReader (resultValue)));
     }
 
     void emitLoop (const AST::LoopStatement& loop)

@@ -1947,7 +1947,7 @@ struct LLVMCodeGenerator
 
     bool functionShouldReturnTypeAsArgument (const AST::TypeBase& returnType)
     {
-        return returnType.isFixedSizeArray();
+        return returnType.skipConstAndRefModifiers().isFixedSizeArray();
     }
 
 };

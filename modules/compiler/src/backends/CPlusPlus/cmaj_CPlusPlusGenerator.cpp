@@ -2069,6 +2069,14 @@ struct Slice
         return { elements + start, std::min (static_cast<SizeType> (end - start), numElements - start) };
     }
 
+    const Slice slice (IndexType start, IndexType end) const noexcept
+    {
+        if (numElements == 0) return {};
+        if (start >= numElements) return {};
+
+        return { elements + start, std::min (static_cast<SizeType> (end - start), numElements - start) };
+    }
+
     ElementType* elements = nullptr;
     SizeType numElements = 0;
 

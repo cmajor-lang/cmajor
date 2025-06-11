@@ -926,7 +926,7 @@ struct S2
 bool test3() { S s = (a); S2 s2; s2.set (s); return s2.s.x[1] == 2; }
 bool test4() { let a = int[](1, 2, 3); S s = (a); S2 s2; s2.set (s); return s2.s.x[1] == 2; }
 
-## disabled expectError()
+## expectError ("12:13: error: Cannot implicitly convert float32[] (0.0f, 0.06279052f, 0.12533323f, 0.18738131f, 0.24868989f, 0.309017f, 0.36812454f, 0.42577928f, 0.48175368f, 0.5358268... ('const float32[]') to 'float32[]'")
 
 processor P [[ main ]]
 {

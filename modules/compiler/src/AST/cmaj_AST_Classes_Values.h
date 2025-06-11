@@ -1406,7 +1406,7 @@ struct GetArrayOrVectorSlice  : public ValueBase
                 }
                 else
                 {
-                    if (auto arrayType = parentType->getAsArrayType())
+                    if (auto arrayType = parentType->skipConstAndRefModifiers().getAsArrayType())
                         return createSliceOfType (context, arrayType->getInnermostElementTypeRef());
                 }
             }

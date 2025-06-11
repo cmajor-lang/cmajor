@@ -197,6 +197,7 @@ static inline const AST::TypeBase& getResultTypeOfValueOrThrowError (const AST::
     if (type == nullptr)
     {
         failIfModule (value);
+        type = getAsValueOrThrowError (errorContext, value).getResultType();
         throwError (errorContext, Errors::expectedValue());
     }
 

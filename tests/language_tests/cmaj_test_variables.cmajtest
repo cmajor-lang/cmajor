@@ -159,12 +159,12 @@ bool testShadowingBug()
     return true;
 }
 
-## expectError ("3:34: error: Wrong number of values to create a type 'int32[3]'")
+## expectError ("3:34: error: Wrong number of values to create a type 'const int32[3]'")
 
 namespace N { const int[3] v1 = (1, 2, 3); }
 namespace N { const int[3] v2 = (1, 2, 3, 4); }
 
-## expectError ("3:34: error: Wrong number of values to create a type 'int32<3>'")
+## expectError ("3:34: error: Wrong number of values to create a type 'const int32<3>'")
 
 namespace N { const int<3> v1 = (1, 2, 3); }
 namespace N { const int<3> v2 = (1, 2, 3, 4); }

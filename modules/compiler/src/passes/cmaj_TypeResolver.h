@@ -421,6 +421,12 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
             return;
         }
 
+        if (targetType.isNonConstSlice() && sourceType.isConst())
+        {
+            registerFailure();
+            return;
+        }
+
         if (targetType.isSameType (sourceType, AST::TypeBase::ComparisonFlags::ignoreConst
                                                 | AST::TypeBase::ComparisonFlags::ignoreReferences))
             return;
@@ -428,16 +434,33 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
         auto& bareTargetType = targetType.skipConstAndRefModifiers();
 
         if (! bareTargetType.isSlice() && ! AST::TypeRules::canSilentlyCastTo (bareTargetType, value))
+        {
+            registerFailure();
             return;
+        }
 
         if (bareTargetType.isBoundedType() && sourceType.isPrimitiveInt())
             return;
 
         auto& cast = AST::getContext (target).allocate<AST::Cast>();
-        cast.targetType.createReferenceTo (bareTargetType);
+
+        if (targetType.isSlice() && targetType.isConst())
+        {
+            auto& makeConstOrRef = AST::getContext (target).allocate<AST::MakeConstOrRef>();
+            makeConstOrRef.source.createReferenceTo (bareTargetType);
+            makeConstOrRef.makeConst = true;
+            cast.targetType.createReferenceTo (makeConstOrRef);
+        }
+        else
+        {
+            cast.targetType.createReferenceTo (bareTargetType);
+        }
+
         cast.arguments.addReference (value);
         cast.onlySilentCastsAllowed = true;
+
         target.referTo (cast);
+
         registerChange();
     }
 
@@ -448,9 +471,6 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
 
         if (expectedType.isVoid())
             throwError (valueProp, Errors::targetCannotBeVoid());
-
-        if (auto m = expectedType.getAsMakeConstOrRef())
-            return convertUntypedValueOrListToValue (valueProp, m->getSourceRef(), handleSingleItems);
 
         auto& value = valueProp.getObjectRef();
 
@@ -483,7 +503,20 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
             }
 
             auto& cast = replaceWithNewObject<AST::Cast> (value);
-            cast.targetType.createReferenceTo (expectedType);
+
+            if (expectedType.isReference())
+            {
+                // Strip the reference from the generated type
+                auto& makeConstOrRef = AST::getContext (expectedType).allocate<AST::MakeConstOrRef>();
+                makeConstOrRef.source.createReferenceTo (expectedType.skipConstAndRefModifiers());
+                makeConstOrRef.makeConst = expectedType.isConst();
+                cast.targetType.createReferenceTo (makeConstOrRef);
+            }
+            else
+            {
+                cast.targetType.createReferenceTo (expectedType);
+            }
+
             cast.arguments.moveListItems (list->items);
             cast.onlySilentCastsAllowed = true;
 
