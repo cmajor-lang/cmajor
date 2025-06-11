@@ -444,7 +444,18 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
 
         auto& cast = AST::getContext (target).allocate<AST::Cast>();
 
-        if (targetType.isSlice() && targetType.isConst())
+        bool makeConst = false;
+
+        if (targetType.isSlice())
+        {
+            if (targetType.isConst())
+                makeConst = true;
+
+            if (AST::TypeRules::canSilentlyCastTo (*targetType.getArrayOrVectorElementType(), value))
+                makeConst = true;
+        }
+
+        if (makeConst)
         {
             auto& makeConstOrRef = AST::getContext (target).allocate<AST::MakeConstOrRef>();
             makeConstOrRef.source.createReferenceTo (bareTargetType);

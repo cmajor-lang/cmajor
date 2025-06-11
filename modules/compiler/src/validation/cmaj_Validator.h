@@ -303,10 +303,14 @@ namespace cmaj::validation
             auto& targetType = getResultTypeOfValueOrThrowError (target).skipConstAndRefModifiers();
             auto& source = getAsValueOrThrowError (a.source);
 
-            expectSilentCastPossible (a.context, targetType, source);
-
             if (targetType.containsSlice())
             {
+                // For slices, constness of the source is not important, as we can always assign a slice to a slice
+                // If the target is mutable, a const source is copied to the target slice, rather than the slice
+                // pointing at the new source, so the language semantics mean that constness changes behaviour rather
+                // than being an error
+                expectCastPossible (a.context, targetType, source.getResultType()->skipConstAndRefModifiers(), true);
+
                 ensureVariablesScannedForLocalSlices();
                 auto& targetVariable = *target.getSourceVariable();
 
@@ -317,6 +321,10 @@ namespace cmaj::validation
                     if (! outOfScope.sourcesFound.empty())
                         throwLocalDataError (outOfScope, AST::getContext (a.source), Errors::cannotAssignSliceToWiderScope());
                 }
+            }
+            else
+            {
+                expectSilentCastPossible (a.context, targetType, source);
             }
         }
 

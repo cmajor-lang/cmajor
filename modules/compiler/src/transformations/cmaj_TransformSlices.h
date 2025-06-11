@@ -134,9 +134,9 @@ static inline void transformSlices (AST::Program& program)
                 {
                     if (auto v = AST::castTo<AST::ValueBase> (a.source))
                     {
-                        if (v->getResultType()->isSlice() && v->getResultType()->isConst())
+                        if (v->getResultType()->isArray() && v->getResultType()->isConst())
                         {
-                            // Assignment of a const slice to a non-const slice copies elements
+                            // Assignment of a const slice/array to a non-const slice copies elements
                             auto& writeSliceFn = getOrCreateWriteSliceOfSliceFunction (*r->getResultType());
 
                             a.replaceWith (AST::createFunctionCall (a.getParentScope(), writeSliceFn, *r, a.source));

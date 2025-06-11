@@ -1020,7 +1020,8 @@ static bool applySizeIfSlice (AST::ChildObject& possibleSlice, size_t newSize)
 
             possibleSlice.setChildObject (createArrayOfType (array.context,
                                                              array.getInnermostElementTypeObject(),
-                                                             static_cast<int32_t> (newSize)));
+                                                             static_cast<int32_t> (newSize),
+                                                             type->isConst()));
             return true;
         }
     }

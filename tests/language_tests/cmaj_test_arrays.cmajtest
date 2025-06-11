@@ -706,7 +706,7 @@ processor P [[ main ]]
 {
     output stream int out;
 
-    struct S { int[] x; }
+    struct S { const int[] x; }
     S gs;
     const int[] a = (1, 2, 3, 4);
 
@@ -729,7 +729,7 @@ processor P [[ main ]]
 
 struct S { int[] x; }
 
-const int[] a = (1, 2, 3);
+int[] a = (1, 2, 3);
 
 S f1()
 {
@@ -852,7 +852,7 @@ struct T
     int i;
 }
 
-const int[] a = (1, 2, 3);
+int[] a = (1, 2, 3);
 
 S f1()
 {
@@ -902,7 +902,7 @@ processor P [[main]]
 
 ## testFunction()
 
-struct S { int[] x; }
+struct S { const int[] x; }
 const int[] a = (1, 2, 3);
 
 S f1()

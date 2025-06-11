@@ -438,7 +438,7 @@ static void expectCastPossible (const AST::ObjectContext& errorLocation,
                 throwError (errorLocation, Errors::cannotImplicitlyCastValue (AST::print (*constantValue),
                                                                               printType (sourceType),
                                                                               printType (targetType)));
-            
+
             throwError (errorLocation, Errors::cannotImplicitlyCastValue (AST::print (*constantValue),
                                                                           printType (sourceType),
                                                                           printType (targetType)));

@@ -92,11 +92,22 @@ static TypeBase& createArrayOfType (Object& parent, const TypeType& type, const 
 }
 
 template <typename TypeType, typename SizeType>
-static TypeBase& createArrayOfType (const ObjectContext& context, const TypeType& type, const SizeType& arraySize)
+static TypeBase& createArrayOfType (const ObjectContext& context, const TypeType& type, const SizeType& arraySize, bool asConst = false)
 {
     auto& arrayType = context.allocate<ArrayType>();
     arrayType.setInnermostElementType (type);
     arrayType.setArraySize (arraySize);
+
+    if (asConst)
+    {
+        auto& constOrRef = context.allocate<MakeConstOrRef>();
+        constOrRef.source.createReferenceTo (arrayType);
+        constOrRef.makeRef = false;
+        constOrRef.makeConst = true;
+
+        return constOrRef;
+    }
+
     return arrayType;
 }
 
