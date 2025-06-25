@@ -159,5 +159,50 @@ inline cmaj::PatchManifest::View findDefaultViewForPatch (const cmaj::Patch& pat
     return {};
 }
 
+//==============================================================================
+inline bool addChildView (void* parent, void* child)
+{
+  #if CHOC_OSX
+    try
+    {
+        choc::objc::call<void> ((id) parent, "addSubview:", (id) child);
+        return true;
+    }
+    catch (...) {}
+
+    return false;
+  #elif CHOC_WINDOWS
+    if (SetParent (static_cast<HWND> (child), static_cast<HWND> (parent)) == nullptr)
+        return false;
+
+    ShowWindow (static_cast<HWND> (child), SW_SHOWNA);
+    return true;
+  #else
+    (void) parent;
+    (void) child;
+    // TODO: support linux
+    return false;
+  #endif
+}
+
+inline bool setViewSize (void* view, uint32_t width, uint32_t height)
+{
+  #if CHOC_OSX
+    CHOC_AUTORELEASE_BEGIN
+    auto frame = choc::objc::CGRect {{ 0, 0 }, { (choc::objc::CGFloat) width, (choc::objc::CGFloat) height }};
+    choc::objc::call<void> ((id) view, "setFrame:", frame);
+    CHOC_AUTORELEASE_END
+    return true;
+  #elif CHOC_WINDOWS
+    return MoveWindow (static_cast<HWND> (view), 0, 0, static_cast<int> (width), static_cast<int> (height), true);
+  #else
+    (void) view;
+    (void) width;
+    (void) height;
+    // TODO: support linux
+    return false;
+  #endif
+}
+
 
 } // namespace cmaj::plugin
