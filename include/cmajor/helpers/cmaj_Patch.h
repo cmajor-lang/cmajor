@@ -2444,9 +2444,11 @@ inline void Patch::sendPatchStatusChangeToViews() const
 {
     if (renderer)
     {
+        auto errorOrWarningString = renderer->errors.hasErrors() ? "error" : "warning";
+
         broadcastMessageToViews ("status",
                                  choc::json::create (
-                                    "error", renderer->errors.toString(),
+                                    errorOrWarningString, renderer->errors.toString(),
                                     "manifest", renderer->manifest.manifest,
                                     "details", renderer->programDetails,
                                     "sampleRate", renderer->sampleRate,

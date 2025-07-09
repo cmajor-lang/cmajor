@@ -381,12 +381,9 @@ inline bool Engine::link (DiagnosticMessageList& messages, CacheDatabaseInterfac
    }
 
     if (auto result = choc::com::StringPtr (engine->link (cache)))
-    {
         messages.addFromJSONString (result);
-        return false;
-    }
 
-    return true;
+    return ! messages.hasErrors();
 }
 
 inline Performer Engine::createPerformer()
