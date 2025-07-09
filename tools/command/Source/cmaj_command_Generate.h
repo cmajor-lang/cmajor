@@ -104,6 +104,9 @@ void generateFromPatch (choc::ArgumentList& args,
     patch.statusChanged = [] (const cmaj::Patch::Status& s)
     {
         std::cout << s.statusMessage << std::endl;
+
+        if (s.messageList.hasWarnings())
+            std::cout << s.messageList.toString() << std::endl;
     };
 
     patch.setHostDescription ("Cmajor Generate");
