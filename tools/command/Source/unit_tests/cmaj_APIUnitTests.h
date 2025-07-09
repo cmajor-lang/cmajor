@@ -196,6 +196,7 @@ namespace cmaj::api_tests
                                                       .setMaxBlockSize (10));
 
         // Post link
+        messages.clear();
         CHOC_EXPECT_TRUE (engine.link (messages, {}));
         auto performer = engine.createPerformer();
         CHOC_EXPECT_TRUE (performer);
