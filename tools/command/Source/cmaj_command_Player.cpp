@@ -65,6 +65,9 @@ static void runPatch (cmaj::PatchPlayer& player, const std::string& filename, in
     {
         std::cout << s.statusMessage << std::endl;
 
+        if (s.messageList.hasWarnings())
+            std::cout << s.messageList.toString() << std::endl;
+
         if (stopOnError && s.messageList.hasErrors())
             shouldStop = true;
     };
