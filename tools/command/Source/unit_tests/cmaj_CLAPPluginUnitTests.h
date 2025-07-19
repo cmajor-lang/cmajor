@@ -23,7 +23,7 @@
 #include "cmajor/helpers/cmaj_PatchHelpers.h"
 
 #include "choc/platform/choc_Assert.h"
-#include "choc/tests/choc_UnitTest.h"
+#include "choc/platform/choc_UnitTest.h"
 
 #include <algorithm>
 #include <array>

@@ -20,8 +20,8 @@
 
 #include <memory>
 #include "cmaj_Patch.h"
-#include "../../choc/gui/choc_WebView.h"
-#include "../../choc/network/choc_MIMETypes.h"
+#include "../../choc/choc/gui/choc_WebView.h"
+#include "../../choc/choc/network/choc_MIMETypes.h"
 
 namespace cmaj
 {

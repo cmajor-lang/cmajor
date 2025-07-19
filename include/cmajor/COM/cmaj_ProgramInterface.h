@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "../../choc/containers/choc_COM.h"
+#include "../../choc/choc/containers/choc_COM.h"
 
 #ifdef __clang__
  #pragma clang diagnostic push

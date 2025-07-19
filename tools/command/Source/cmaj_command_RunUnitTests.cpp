@@ -17,7 +17,7 @@
 //  DISCLAIMED.
 
 #include "../../../modules/compiler/include/cmaj_ErrorHandling.h"
-#include "choc/tests/choc_UnitTest.h"
+#include "choc/platform/choc_UnitTest.h"
 #include "choc/containers/choc_ArgumentList.h"
 
 #include "../../../modules/server/include/cmaj_PatchPlayerServer.h"

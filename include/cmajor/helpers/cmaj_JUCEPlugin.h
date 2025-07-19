@@ -31,7 +31,7 @@
 #endif
 
 #include <utility>
-#include "../../choc/memory/choc_xxHash.h"
+#include "../../choc/choc/memory/choc_xxHash.h"
 #include "cmaj_PatchWebView.h"
 #include "cmaj_GeneratedCppEngine.h"
 

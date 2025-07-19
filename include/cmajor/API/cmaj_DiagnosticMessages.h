@@ -19,7 +19,7 @@
 #pragma once
 
 #include "cmaj_SourceFiles.h"
-#include "../../choc/text/choc_JSON.h"
+#include "../../choc/choc/text/choc_JSON.h"
 
 
 namespace cmaj

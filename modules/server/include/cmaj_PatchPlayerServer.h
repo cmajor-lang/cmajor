@@ -22,7 +22,7 @@
 #include "../../compiler/include/cmaj_ErrorHandling.h"
 #include "../../../include/cmajor/API/cmaj_Engine.h"
 #include "choc/audio/io/choc_AudioMIDIPlayer.h"
-#include "choc/tests/choc_UnitTest.h"
+#include "choc/platform/choc_UnitTest.h"
 
 
 namespace cmaj

@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "../../choc/threading/choc_ThreadSafeFunctor.h"
+#include "../../choc/choc/threading/choc_ThreadSafeFunctor.h"
 #include "../COM/cmaj_CacheDatabaseInterface.h"
 
 namespace cmaj

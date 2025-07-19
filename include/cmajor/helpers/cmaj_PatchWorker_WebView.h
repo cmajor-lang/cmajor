@@ -19,10 +19,10 @@
 #pragma once
 
 #include "cmaj_Patch.h"
-#include "../../choc/javascript/choc_javascript.h"
-#include "../../choc/javascript/choc_javascript_Console.h"
-#include "../../choc/gui/choc_WebView.h"
-#include "../../choc/network/choc_MIMETypes.h"
+#include "../../choc/choc/javascript/choc_javascript.h"
+#include "../../choc/choc/javascript/choc_javascript_Console.h"
+#include "../../choc/choc/gui/choc_WebView.h"
+#include "../../choc/choc/network/choc_MIMETypes.h"
 
 
 namespace cmaj

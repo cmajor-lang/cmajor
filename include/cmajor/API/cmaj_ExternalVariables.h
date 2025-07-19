@@ -18,9 +18,9 @@
 
 #pragma once
 
-#include "../../choc/audio/choc_AudioFileFormat.h"
-#include "../../choc/audio/choc_SincInterpolator.h"
-#include "../../choc/audio/choc_SampleBufferUtilities.h"
+#include "../../choc/choc/audio/choc_AudioFileFormat.h"
+#include "../../choc/choc/audio/choc_SincInterpolator.h"
+#include "../../choc/choc/audio/choc_SampleBufferUtilities.h"
 
 namespace cmaj
 {

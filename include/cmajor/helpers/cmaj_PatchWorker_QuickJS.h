@@ -19,9 +19,9 @@
 #pragma once
 
 #include "cmaj_Patch.h"
-#include "../../choc/javascript/choc_javascript_QuickJS.h"
-#include "../../choc/javascript/choc_javascript_Timer.h"
-#include "../../choc/javascript/choc_javascript_Console.h"
+#include "../../choc/choc/javascript/choc_javascript_QuickJS.h"
+#include "../../choc/choc/javascript/choc_javascript_Timer.h"
+#include "../../choc/choc/javascript/choc_javascript_Console.h"
 
 
 namespace cmaj

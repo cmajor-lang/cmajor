@@ -15,7 +15,7 @@
 #define CHOC_ASSERT(x) assert(x)
 
 #include "../../../include/cmajor/API/cmaj_Engine.h"
-#include "../../../include/choc/audio/choc_Oscillators.h"
+#include "../../../include/choc/choc/audio/choc_Oscillators.h"
 
 // This is the Cmajor code that we'll compile and run:
 static constexpr auto code = R"(

@@ -18,10 +18,10 @@
 
 #pragma once
 
-#include "../../choc/containers/choc_SmallVector.h"
-#include "../../choc/containers/choc_COM.h"
-#include "../../choc/text/choc_JSON.h"
-#include "../../choc/audio/choc_MIDI.h"
+#include "../../choc/choc/containers/choc_SmallVector.h"
+#include "../../choc/choc/containers/choc_COM.h"
+#include "../../choc/choc/text/choc_JSON.h"
+#include "../../choc/choc/audio/choc_MIDI.h"
 
 
 namespace cmaj

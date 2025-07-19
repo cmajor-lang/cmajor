@@ -23,7 +23,7 @@
 #include "cmaj_Program.h"
 #include "cmaj_Endpoints.h"
 #include "cmaj_ExternalVariables.h"
-#include "../../choc/audio/choc_SampleBufferUtilities.h"
+#include "../../choc/choc/audio/choc_SampleBufferUtilities.h"
 
 namespace cmaj
 {

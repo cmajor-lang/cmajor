@@ -3,6 +3,11 @@ cmake_minimum_required (VERSION 3.16..3.22)
 set_property (GLOBAL PROPERTY CMAJ_MODULE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set_property (GLOBAL PROPERTY CMAJ_VERSION ${CMAJ_VERSION})
 
+# Add choc library once (must be called before any MAKE_CMAJ_LIBRARY calls)
+if (NOT TARGET choc::choc)
+    add_subdirectory (${CMAKE_CURRENT_SOURCE_DIR}/../include/choc choc_build)
+endif()
+
 macro (TRANSFORM_BOOL VARIABLE)
     if (${VARIABLE})
         set (${VARIABLE} 1)
@@ -273,13 +278,6 @@ function (MAKE_CMAJ_LIBRARY)
     )
 
     # -------------------------------------------------------------------
-    file (GLOB_RECURSE CHOC_SOURCE
-        ${CMAJ_MODULE_DIR}/../include/choc/*.h
-    )
-
-    source_group (TREE "${CMAJ_MODULE_DIR}/../include/choc" PREFIX "choc" FILES ${CHOC_SOURCE})
-
-    # -------------------------------------------------------------------
     file (GLOB_RECURSE CMAJOR_SOURCE
         ${CMAJ_MODULE_DIR}/../include/cmajor/*.h
     )
@@ -345,7 +343,6 @@ function (MAKE_CMAJ_LIBRARY)
 
     add_library (${CMAJ_LIBRARY_NAME} OBJECT
         ${SOURCE}
-        ${CHOC_SOURCE}
         ${CMAJOR_SOURCE}
     )
 
@@ -377,6 +374,9 @@ function (MAKE_CMAJ_LIBRARY)
         PUBLIC
             ${CMAJ_MODULE_DIR}/../include
     )
+
+    # Link against choc library
+    target_link_libraries (${CMAJ_LIBRARY_NAME} PUBLIC choc::choc)
 
     target_include_directories (${CMAJ_LIBRARY_NAME}
         PRIVATE
@@ -426,6 +426,7 @@ function (MAKE_CMAJ_LIBRARY)
         PRIVATE
             ${LLVM_LIBS}
             ${LLVM_EXTRA_LIBS}
+            ${CHOC_TARGET}
     )
 
     if (CMAJ_INCLUDE_SCRIPTING)

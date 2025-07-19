@@ -18,14 +18,14 @@
 
 #pragma once
 
-#include "../../choc/threading/choc_ThreadSafeFunctor.h"
-#include "../../choc/threading/choc_TaskThread.h"
-#include "../../choc/platform/choc_HighResolutionSteadyClock.h"
+#include "../../choc/choc/threading/choc_ThreadSafeFunctor.h"
+#include "../../choc/choc/threading/choc_TaskThread.h"
+#include "../../choc/choc/platform/choc_HighResolutionSteadyClock.h"
 #include "cmaj_PatchManifest.h"
 #include "../API/cmaj_Endpoints.h"
 
 #if ! CHOC_EMSCRIPTEN
- #include "../../choc/gui/choc_MessageLoop.h"
+ #include "../../choc/choc/gui/choc_MessageLoop.h"
  #define CMAJ_HAS_MESSAGE_LOOP 1
 #else
  #define CMAJ_HAS_MESSAGE_LOOP 0

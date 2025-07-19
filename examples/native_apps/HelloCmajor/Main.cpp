@@ -9,7 +9,7 @@
 #include <iostream>
 #include <memory>
 #include "../../../include/cmajor/API/cmaj_Engine.h"
-#include "../../../include/choc/audio/choc_Oscillators.h"
+#include "../../../include/choc/choc/audio/choc_Oscillators.h"
 
 static constexpr auto code = R"(
 

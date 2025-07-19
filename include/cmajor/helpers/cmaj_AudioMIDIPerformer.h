@@ -21,13 +21,13 @@
 #include <iostream>
 #include <thread>
 
-#include "../../choc/memory/choc_Endianness.h"
-#include "../../choc/containers/choc_VariableSizeFIFO.h"
-#include "../../choc/containers/choc_Value.h"
-#include "../../choc/containers/choc_NonAllocatingStableSort.h"
-#include "../../choc/audio/choc_SampleBuffers.h"
-#include "../../choc/audio/choc_MIDI.h"
-#include "../../choc/audio/choc_AudioMIDIBlockDispatcher.h"
+#include "../../choc/choc/memory/choc_Endianness.h"
+#include "../../choc/choc/containers/choc_VariableSizeFIFO.h"
+#include "../../choc/choc/containers/choc_Value.h"
+#include "../../choc/choc/containers/choc_NonAllocatingStableSort.h"
+#include "../../choc/choc/audio/choc_SampleBuffers.h"
+#include "../../choc/choc/audio/choc_MIDI.h"
+#include "../../choc/choc/audio/choc_AudioMIDIBlockDispatcher.h"
 
 #include "cmaj_EndpointTypeCoercion.h"
 

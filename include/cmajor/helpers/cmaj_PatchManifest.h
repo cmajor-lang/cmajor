@@ -21,12 +21,12 @@
 #include <algorithm>
 #include <optional>
 #include <unordered_map>
-#include "../../choc/platform/choc_Platform.h"
-#include "../../choc/text/choc_Files.h"
-#include "../../choc/audio/choc_AudioFileFormat_WAV.h"
-#include "../../choc/audio/choc_AudioFileFormat_Ogg.h"
-#include "../../choc/audio/choc_AudioFileFormat_FLAC.h"
-#include "../../choc/audio/choc_AudioFileFormat_MP3.h"
+#include "../../choc/choc/platform/choc_Platform.h"
+#include "../../choc/choc/text/choc_Files.h"
+#include "../../choc/choc/audio/choc_AudioFileFormat_WAV.h"
+#include "../../choc/choc/audio/choc_AudioFileFormat_Ogg.h"
+#include "../../choc/choc/audio/choc_AudioFileFormat_FLAC.h"
+#include "../../choc/choc/audio/choc_AudioFileFormat_MP3.h"
 #include "../API/cmaj_Program.h"
 #include "../API/cmaj_ExternalVariables.h"
 
