@@ -16,7 +16,7 @@
 
 #define CHOC_ASSERT(x) assert(x)
 #include "../../../include/cmajor/helpers/cmaj_JUCEPluginFormat.h"
-#include "../../../include/choc/javascript/choc_javascript_QuickJS.h"
+#include "../../../include/choc/choc/javascript/choc_javascript_QuickJS.h"
 
 
 // Looks for a .cmajorpatch in the same folder as the plugin, with the same name (up to the extension)
