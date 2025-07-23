@@ -152,6 +152,7 @@ target_include_directories(cmajor_compiler
     PRIVATE
         ../../3rdParty
         ../../3rdParty/llvm/release/wasm/wasm32/include
+        ../../include/choc
         ../../include
 )
 
