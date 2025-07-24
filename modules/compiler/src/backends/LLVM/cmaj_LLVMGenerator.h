@@ -268,7 +268,7 @@ struct LLVMCodeGenerator
                 return p.fatPointerType;
 
         ::llvm::SmallVector<::llvm::Type*, 32> memberTypes;
-        memberTypes.push_back (getLLVMType (elementType)->getPointerTo());
+        memberTypes.push_back (::llvm::PointerType::getUnqual (getLLVMType (elementType)));
         memberTypes.push_back (getInt32Type());
 
         auto newType = ::llvm::StructType::create (*context, memberTypes, getFatPointerStructName(), false);
@@ -636,7 +636,7 @@ struct LLVMCodeGenerator
             auto sourceType = getLLVMType (*mcr->getSource());
 
             if (mcr->makeRef)
-                return sourceType->getPointerTo();
+                return ::llvm::PointerType::getUnqual (sourceType);
 
             return sourceType;
         }
@@ -816,7 +816,7 @@ struct LLVMCodeGenerator
 
         if (functionShouldReturnTypeAsArgument (returnType))
         {
-            llvmParamTypes.push_back (llvmReturnType->getPointerTo());
+            llvmParamTypes.push_back (::llvm::PointerType::getUnqual (llvmReturnType));
             llvmReturnType = ::llvm::Type::getVoidTy (*context);
         }
 
@@ -825,7 +825,7 @@ struct LLVMCodeGenerator
             auto type = getLLVMType (param);
 
             if (! type->isPointerTy() && getTypeSize (type) >= maxSizeForStoreOperation)
-                type = type->getPointerTo();
+                type = ::llvm::PointerType::getUnqual (type);
 
             llvmParamTypes.push_back (type);
         }
@@ -1305,7 +1305,7 @@ struct LLVMCodeGenerator
                                                                   "_slice_const" + std::to_string (++sliceConstantIndex));
 
             auto& elementType = *type.getArrayOrVectorElementType();
-            auto pointerType = getLLVMType (elementType)->getPointerTo();
+            auto pointerType = ::llvm::PointerType::getUnqual (getLLVMType (elementType));
 
             ::llvm::SmallVector<::llvm::Constant*, 32> fatPointerMembers;
             fatPointerMembers.push_back (::llvm::ConstantExpr::getPointerCast (sourceDataConstant, pointerType));
@@ -1546,7 +1546,7 @@ struct LLVMCodeGenerator
         else
         {
             ::llvm::Type* overloads[] = { input->getType() };
-            auto absFn = ::llvm::Intrinsic::getDeclaration (targetModule.get(), ::llvm::Intrinsic::fabs, overloads);
+            auto absFn = ::llvm::Intrinsic::getOrInsertDeclaration (targetModule.get(), ::llvm::Intrinsic::fabs, overloads);
             CMAJ_ASSERT (absFn != nullptr);
             auto absInput = b.CreateCall (absFn, { input });
             op = b.CreateFCmp (::llvm::CmpInst::Predicate::FCMP_OEQ, absInput, ::llvm::ConstantFP::getInfinity (input->getType()));
@@ -1592,7 +1592,7 @@ struct LLVMCodeGenerator
 
         ::llvm::Type* overloads[] = { args[0]->getType() };
 
-        if (auto intrinsicFn = ::llvm::Intrinsic::getDeclaration (targetModule.get(), intrinsicID, overloads))
+        if (auto intrinsicFn = ::llvm::Intrinsic::getOrInsertDeclaration (targetModule.get(), intrinsicID, overloads))
             return makeReader (getBlockBuilder().CreateCall (intrinsicFn, args), returnType);
 
         return {};
@@ -1732,7 +1732,7 @@ struct LLVMCodeGenerator
 
             ::llvm::Value* indexes[] = { dereference (index) };
             return makeReader (b.CreateGEP (getLLVMType (resultType),
-                                            dereference (pointer, getLLVMType (resultType)->getPointerTo()), indexes), resultType);
+                                            dereference (pointer, ::llvm::PointerType::getUnqual (getLLVMType (resultType))), indexes), resultType);
         }
 
         ::llvm::Value* indexes[] = { createConstantInt32 (0).value, dereference (index) };
@@ -1759,7 +1759,7 @@ struct LLVMCodeGenerator
 
             ::llvm::Value* indexes[] = { dereference (index) };
             return makeReference (b.CreateGEP (getLLVMType (resultType),
-                                               dereference (pointer, getLLVMType (resultType)->getPointerTo()), indexes), resultType);
+                                               dereference (pointer, ::llvm::PointerType::getUnqual (getLLVMType (resultType))), indexes), resultType);
         }
 
         if (! pointeeType->isAggregateType()) // a vector size 1 might have been reduced to a primitive type
@@ -1893,7 +1893,7 @@ struct LLVMCodeGenerator
                                            end,
                                            start);
 
-        auto ptr = b.CreateLoad (getLLVMType (elementType)->getPointerTo(), dataField);
+        auto ptr = b.CreateLoad (::llvm::PointerType::getUnqual (getLLVMType (elementType)), dataField);
         auto sliceDataField = b.CreateInBoundsGEP (getLLVMType (elementType), ptr, { startIndex });
 
         b.CreateStore (sliceDataField,    b.CreateConstInBoundsGEP2_32 (fatPointerType, fatPointer, 0, 0));
@@ -1939,10 +1939,10 @@ struct LLVMCodeGenerator
             valuePointer = getPointer (value);
         }
 
-        auto address = b.CreateBitCast (valuePointer, ::llvm::Type::getInt8Ty(*context)->getPointerTo());
+        auto address = b.CreateBitCast (valuePointer, ::llvm::PointerType::getUnqual (::llvm::Type::getInt8Ty(*context)));
         ::llvm::Value* indexes[] = { createConstantInt32 (-static_cast<int32_t> (getStructMemberOffset (parentType, index))).value };
         auto offsetAddress = b.CreateInBoundsGEP (::llvm::Type::getInt8Ty (*context), address, indexes);
-        return makeReference (b.CreateBitCast (offsetAddress, getLLVMType (parentType)->getPointerTo()), parentType);
+        return makeReference (b.CreateBitCast (offsetAddress, ::llvm::PointerType::getUnqual (getLLVMType (parentType))), parentType);
     }
 
     bool functionShouldReturnTypeAsArgument (const AST::TypeBase& returnType)

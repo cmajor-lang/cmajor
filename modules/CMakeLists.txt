@@ -189,6 +189,7 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMXRay
         LLVMLibDriver
         LLVMDlltoolDriver
+        LLVMTelemetry
         LLVMTextAPIBinaryReader
         LLVMCoverage
         LLVMLineEditor
@@ -214,23 +215,25 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMMCA
         LLVMMCDisassembler
         LLVMLTO
-        LLVMFrontendOpenACC
-        LLVMFrontendHLSL
-        LLVMFrontendDriver
-        LLVMExtensions
 
         ${LLVM_POLLY_LIBS}
 
         LLVMPasses
         LLVMHipStdPar
-        LLVMCoroutines
         LLVMCFGuard
+        LLVMCoroutines
         LLVMipo
-        LLVMInstrumentation
         LLVMVectorize
+        LLVMSandboxIR
         LLVMLinker
+        LLVMInstrumentation
         LLVMFrontendOpenMP
         LLVMFrontendOffloading
+        LLVMFrontendOpenACC
+        LLVMFrontendHLSL
+        LLVMFrontendDriver
+        LLVMFrontendAtomic
+        LLVMExtensions
         LLVMDWARFLinkerParallel
         LLVMDWARFLinkerClassic
         LLVMDWARFLinker
@@ -242,6 +245,7 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMTarget
         LLVMObjCARCOpts
         LLVMCodeGenTypes
+        LLVMCGData
         LLVMIRPrinter
         LLVMInterfaceStub
         LLVMFileCheck
@@ -257,6 +261,7 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMDebugInfoBTF
         LLVMDebugInfoPDB
         LLVMDebugInfoMSF
+        LLVMDebugInfoCodeView
         LLVMDebugInfoDWARF
         LLVMObject
         LLVMTextAPI
@@ -264,7 +269,6 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMIRReader
         LLVMAsmParser
         LLVMMC
-        LLVMDebugInfoCodeView
         LLVMBitReader
         LLVMFuzzerCLI
         LLVMCore
