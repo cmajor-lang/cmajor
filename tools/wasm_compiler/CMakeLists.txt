@@ -44,6 +44,7 @@ set (EXTRA_LIBS
     LLVMXRay
     LLVMLibDriver
     LLVMDlltoolDriver
+    LLVMTelemetry
     LLVMTextAPIBinaryReader
     LLVMCoverage
     LLVMLineEditor
@@ -74,20 +75,22 @@ set (EXTRA_LIBS
     LLVMMCA
     LLVMMCDisassembler
     LLVMLTO
+    LLVMPasses
+    LLVMHipStdPar
+    LLVMCFGuard
+    LLVMCoroutines
+    LLVMipo
+    LLVMVectorize
+    LLVMSandboxIR
+    LLVMLinker
+    LLVMInstrumentation
+    LLVMFrontendOpenMP
+    LLVMFrontendOffloading
     LLVMFrontendOpenACC
     LLVMFrontendHLSL
     LLVMFrontendDriver
+    LLVMFrontendAtomic
     LLVMExtensions
-    LLVMPasses
-    LLVMHipStdPar
-    LLVMCoroutines
-    LLVMCFGuard
-    LLVMipo
-    LLVMInstrumentation
-    LLVMVectorize
-    LLVMLinker
-    LLVMFrontendOpenMP
-    LLVMFrontendOffloading
     LLVMDWARFLinkerParallel
     LLVMDWARFLinkerClassic
     LLVMDWARFLinker
@@ -99,6 +102,7 @@ set (EXTRA_LIBS
     LLVMTarget
     LLVMObjCARCOpts
     LLVMCodeGenTypes
+    LLVMCGData
     LLVMIRPrinter
     LLVMInterfaceStub
     LLVMFileCheck
@@ -114,6 +118,7 @@ set (EXTRA_LIBS
     LLVMDebugInfoBTF
     LLVMDebugInfoPDB
     LLVMDebugInfoMSF
+    LLVMDebugInfoCodeView
     LLVMDebugInfoDWARF
     LLVMObject
     LLVMTextAPI
@@ -121,7 +126,6 @@ set (EXTRA_LIBS
     LLVMIRReader
     LLVMAsmParser
     LLVMMC
-    LLVMDebugInfoCodeView
     LLVMBitReader
     LLVMFuzzerCLI
     LLVMCore
