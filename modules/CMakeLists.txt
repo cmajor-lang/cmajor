@@ -451,7 +451,7 @@ function (MAKE_CMAJ_LIBRARY)
     endif()
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-        target_link_libraries (${CMAJ_LIBRARY_NAME} PUBLIC ws2_3 ntdll)
+        target_link_libraries (${CMAJ_LIBRARY_NAME} PUBLIC ws2_32 ntdll)
     endif()
 
 endfunction()
