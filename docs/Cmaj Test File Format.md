@@ -57,6 +57,8 @@ Any content at the start of the file, up to the first `##` line, is parsed as Ja
 
 The special delimiter `## global` is used to declare a chunk of code which will be prefixed onto all the other tests in the file. So if you're running many tests which all share a set of types or functions, you can avoid repeated code by putting the common definitions in a `global` section.
 
+You can also specify a file or directory to the global command (e.g. `## global ("test.cmajor")`) which will pull in the given file or directory of source into the global space for this test file, allowing tests to be written for a library of cmajor utilities
+
 ### `## disabled [test...]`
 
 To quickly disable a test, insert the token `disabled` in front of the test directive (anything following `disabled` on the line is ignored), and the test will be counted as disabled in the results.
