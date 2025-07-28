@@ -1,0 +1,4 @@
+namespace G
+{
+    const int j = 4;
+}

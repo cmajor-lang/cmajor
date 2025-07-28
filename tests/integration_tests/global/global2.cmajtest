@@ -1,0 +1,8 @@
+## global ("test.cmajor")
+
+## testFunction()
+
+bool test()
+{
+    return G::i == 2;
+}

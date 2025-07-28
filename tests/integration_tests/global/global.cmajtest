@@ -1,0 +1,13 @@
+## global
+
+namespace G
+{
+    const int i = 1;
+}
+
+## testFunction()
+
+bool test()
+{
+    return G::i == 1;
+}

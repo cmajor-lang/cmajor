@@ -1,0 +1,8 @@
+## global ("d")
+
+## testFunction()
+
+bool test()
+{
+    return G::i == 3 && G::j == 4;
+}

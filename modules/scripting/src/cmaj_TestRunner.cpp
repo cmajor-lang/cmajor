@@ -270,7 +270,22 @@ namespace cmaj::test
                             if (! globalSource.empty())
                                 throw std::runtime_error ("Multiple global sections declared in test file");
 
-                            globalSource = body.str();
+                            if (testSection.header.find ("(") == std::string::npos)
+                            {
+                                globalSource = body.str();
+                            }
+                            else
+                            {
+                                // Expect a single quoted argument - should really do a better parse job here
+                                auto split = choc::text::splitString (testSection.header, '\"', false);
+
+                                if (split.size() == 3)
+                                {
+                                    // Middle string is the argument
+                                    auto path = std::filesystem::path (filename).parent_path() / split[1];
+                                    globalSource = readSource (path);
+                                }
+                            }
                         }
                         else
                         {
@@ -299,6 +314,19 @@ namespace cmaj::test
                 testSection.body = body.str();
                 addTest (testSection);
             }
+        }
+
+        std::string readSource (std::filesystem::path fileOrDirectory)
+        {
+            if (! is_directory (fileOrDirectory))
+                return choc::file::loadFileAsString (fileOrDirectory.string());
+
+            std::string result;
+
+            for (auto& file : std::filesystem::recursive_directory_iterator (fileOrDirectory))
+                result += readSource (file);
+
+            return result;
         }
     };
 
