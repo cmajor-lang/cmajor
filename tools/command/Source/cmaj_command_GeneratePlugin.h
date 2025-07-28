@@ -304,6 +304,7 @@ endif()
 juce_add_plugin(${productName}
     FORMATS ${pluginFormats}
     DESCRIPTION "${description}"
+    PRODUCT_NAME "${productName}"
     BUNDLE_ID "${ID}"
     PLUGIN_CODE "${pluginCode}"
     PLUGIN_MANUFACTURER_CODE "${manufacturerCode}"
