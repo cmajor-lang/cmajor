@@ -1154,6 +1154,7 @@ public:
         void refresh()
         {
             unloadButton.setVisible (plugin.patch->isLoaded());
+            messageBox.setVisible (! plugin.patch->isLoaded());
 
            #if JUCE_MAJOR_VERSION == 8
             juce::Font f (juce::FontOptions (18.0f));
@@ -1167,7 +1168,7 @@ public:
             auto text = plugin.statusMessage;
 
             if (text.empty())
-                text = "Drag-and-drop a .cmajorpatch file here to load it";
+                text = "Cmajor " + std::string (cmaj::Library::getVersion()) + "\n\nDrag-and-drop a .cmajorpatch file here to load it";
 
             messageBox.setText (text);
         }
