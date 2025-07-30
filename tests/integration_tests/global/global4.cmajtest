@@ -1,4 +1,4 @@
-## global ("d")
+## global ("d/test.cmajor", "d/test2.cmajor")
 
 ## testFunction()
 

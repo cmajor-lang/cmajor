@@ -88,8 +88,26 @@ namespace cmaj::test
 
             if (! globalSource.empty())
             {
-                oss << "## global" << std::endl;
-                oss << globalSource;
+                if (globalSourceArguments.empty())
+                {
+                    oss << "## global" << std::endl;
+                    oss << globalSource;
+                }
+                else
+                {
+                    oss << "## global (";
+
+                    bool first = true;
+
+                    for (auto a : globalSourceArguments)
+                    {
+                        oss << (first ? "" : ", ");
+                        oss << "\"" << a << "\"";
+                        first = false;
+                    }
+
+                    oss << ")" << std::endl << std::endl;
+                }
             }
 
             for (auto& test : tests)
@@ -236,6 +254,7 @@ namespace cmaj::test
 
         //==============================================================================
         std::string filename, userScript, globalSource;
+        std::vector<std::string> globalSourceArguments;
         std::atomic<int> passed { 0 }, failed { 0 }, disabled { 0 }, unsupported { 0 };
         std::chrono::duration<double> time = {};
         std::vector<TestCase> tests;
@@ -270,21 +289,40 @@ namespace cmaj::test
                             if (! globalSource.empty())
                                 throw std::runtime_error ("Multiple global sections declared in test file");
 
-                            if (testSection.header.find ("(") == std::string::npos)
+                            auto p = testSection.header.find ("(");
+
+                            if (p == std::string::npos)
                             {
                                 globalSource = body.str();
                             }
                             else
                             {
-                                // Expect a single quoted argument - should really do a better parse job here
+                                // Parse a comma separated list of strings as global arguments
                                 auto split = choc::text::splitString (testSection.header, '\"', false);
 
-                                if (split.size() == 3)
+                                size_t i = 1;
+
+                                while (i < split.size() - 1)
                                 {
-                                    // Middle string is the argument
-                                    auto path = std::filesystem::path (filename).parent_path() / split[1];
-                                    globalSource = readSource (path);
+                                    if (i % 2 == 1)
+                                    {
+                                        globalSourceArguments.push_back (split[i]);
+
+                                        auto path = std::filesystem::path (filename).parent_path() / split[i];
+                                        globalSource += readSource (path);
+                                    }
+                                    else
+                                    {
+                                        // expect comma delimited strings
+                                        if (choc::text::trim (split[i]) != ",")
+                                            throw std::runtime_error ("Expecting a comma separated list");
+                                    }
+
+                                    i++;
                                 }
+
+                                if (choc::text::trim (split[i]) != ")")
+                                    throw std::runtime_error ("Missing closing brace");
                             }
                         }
                         else
