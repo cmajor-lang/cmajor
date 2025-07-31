@@ -1869,12 +1869,16 @@ A commonly-used annotation is to add `[[ main ]]` to one of the processors in a 
 
 Inside a processor, the following special constants are available:
 
-| Name                    | Type      | Description                                                           |
-|-------------------------|-----------|-----------------------------------------------------------------------|
-| `processor.frequency`   | `float64` | The frequency of the processor in frames-per-second                   |
-| `processor.period`      | `float64` | The length in seconds of one frame for this processor                 |
-| `processor.id`          | `int32`   | A value which is unique for every instance of a particular processor. |
-| `processor.session`     | `int32`   | A value which is unique for each run of the program                   |
+| Name                        | Type      | Description                                                           |
+|-----------------------------|-----------|-----------------------------------------------------------------------|
+| `processor.frequency`       | `float64` | The frequency of the processor in frames-per-second                   |
+| `processor.period`          | `float64` | The length in seconds of one frame for this processor                 |
+| `processor.id`              | `int32`   | A value which is unique for every instance of a particular processor. |
+| `processor.session`         | `int32`   | A value which is unique for each run of the program                   |
+| `processor.maxFrequency`    | `float64` | The maximum frequency (frames-per-second) supported by the processor  |
+| `processor.maxBlockSize`    | `int32`   | The maximum number of frames that may be processed in a single block  |
+| `processor.eventBufferSize` | `int32`   | The maximum number of events that can be buffered per block           |
+| `processor.debug`           | `bool`    | True if the processor is running in debug mode                        |
 
 Some global numerical constants are also defined:
 
