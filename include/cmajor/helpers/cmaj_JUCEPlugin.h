@@ -920,6 +920,12 @@ protected:
 
             lookAndFeel.setColour (juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
             lookAndFeel.setColour (juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
+
+            if (auto manifest = owner.patch->getManifest())
+                if (auto v = manifest->findDefaultView())
+                    if (auto colour = choc::text::trim (v->view["background"].toString()); ! colour.empty())
+                        lookAndFeel.setColour (juce::ResizableWindow::backgroundColourId, juce::Colour::fromString (colour));
+
             setLookAndFeel (&lookAndFeel);
 
             extraComp = owner.createExtraComponent();
@@ -958,7 +964,8 @@ protected:
 
             if (auto manifest = owner.patch->getManifest())
                 if (auto v = manifest->findDefaultView())
-                    view = *v;
+                    if (owner.lastEditorWidth == 0 && owner.lastEditorHeight == 0)
+                        view = *v;
 
             if (view.getWidth()  == 0)  view.view.setMember ("width", defaultWidth);
             if (view.getHeight() == 0)  view.view.setMember ("height", defaultHeight);

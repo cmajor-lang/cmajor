@@ -80,6 +80,7 @@ inline PatchWebView::PatchWebView (Patch& p, const PatchManifest::View& view)
     options.enableDebugMode = false;
    #endif
 
+    options.transparentBackground = true;
     options.acceptsFirstMouseClick = true;
     options.fetchResource = [this] (const auto& path) { return onRequest (path); };
 
