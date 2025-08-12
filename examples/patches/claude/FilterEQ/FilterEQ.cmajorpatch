@@ -1,0 +1,19 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "com.cmajor.examples.filtereq",
+    "version":          "1.0",
+    "name":             "FilterEQ",
+    "description":      "A multiband filter with high pass, three peak filters, and low pass filter",
+    "category":         "filter",
+    "manufacturer":     "Cmajor Software Ltd",
+    "isInstrument":     false,
+
+    "source":           "FilterEQ.cmajor",
+
+    "view": {
+        "src":              "FilterEQ_GUI.js",
+        "width":            800,
+        "height":           600,
+        "resizable":        false
+    }
+}

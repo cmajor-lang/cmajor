@@ -1,0 +1,193 @@
+/*
+    FilterEQ - A multiband filter with interactive GUI
+
+    This patch implements:
+    - High pass filter (cutoff frequency and Q)
+    - Three peak filters (frequency, gain in dB, and Q)
+    - Low pass filter (cutoff frequency and Q)
+    - Individual filter enable/disable controls
+*/
+
+/// Main FilterEQ processor
+processor FilterEQ [[ main ]]
+{
+    input stream float<2> audioIn;
+    output stream float<2> audioOut;
+
+    // Filter parameter inputs
+    input event
+    {
+        // High pass filter
+        bool hpEnable           [[ name: "HP Enable",       init: true,  boolean ]];
+        float hpFrequency       [[ name: "HP Frequency",    min: 10,    max: 1000,  init: 80,   unit: "Hz" ]];
+        float hpQ               [[ name: "HP Q",            min: 0.1,   max: 10,    init: 0.707 ]];
+
+        // Peak filter 1
+        bool peak1Enable        [[ name: "Peak1 Enable",    init: true,  boolean ]];
+        float peak1Frequency    [[ name: "Peak1 Frequency", min: 20,    max: 20000, init: 200,  unit: "Hz" ]];
+        float peak1Gain         [[ name: "Peak1 Gain",      min: -20,   max: 20,    init: 0,    unit: "dB" ]];
+        float peak1Q            [[ name: "Peak1 Q",         min: 0.1,   max: 10,    init: 1.0 ]];
+
+        // Peak filter 2
+        bool peak2Enable        [[ name: "Peak2 Enable",    init: true,  boolean ]];
+        float peak2Frequency    [[ name: "Peak2 Frequency", min: 20,    max: 20000, init: 1000, unit: "Hz" ]];
+        float peak2Gain         [[ name: "Peak2 Gain",      min: -20,   max: 20,    init: 0,    unit: "dB" ]];
+        float peak2Q            [[ name: "Peak2 Q",         min: 0.1,   max: 10,    init: 1.0 ]];
+
+        // Peak filter 3
+        bool peak3Enable        [[ name: "Peak3 Enable",    init: true,  boolean ]];
+        float peak3Frequency    [[ name: "Peak3 Frequency", min: 20,    max: 20000, init: 5000, unit: "Hz" ]];
+        float peak3Gain         [[ name: "Peak3 Gain",      min: -20,   max: 20,    init: 0,    unit: "dB" ]];
+        float peak3Q            [[ name: "Peak3 Q",         min: 0.1,   max: 10,    init: 1.0 ]];
+
+        // Low pass filter
+        bool lpEnable           [[ name: "LP Enable",       init: true,  boolean ]];
+        float lpFrequency       [[ name: "LP Frequency",    min: 1000,  max: 20000, init: 10000, unit: "Hz" ]];
+        float lpQ               [[ name: "LP Q",            min: 0.1,   max: 10,    init: 0.707 ]];
+    }
+
+    // Filter state variables
+    bool highPassEnabled = true;
+    float highPassFreq = 80.0f;
+    float highPassQ = 0.707f;
+    bool updateHighPass = true;
+
+    bool peak1Enabled = true;
+    float peak1Freq = 200.0f;
+    float peak1GainDb = 0.0f;
+    float peak1QVal = 1.0f;
+    bool updatePeak1 = true;
+
+    bool peak2Enabled = true;
+    float peak2Freq = 1000.0f;
+    float peak2GainDb = 0.0f;
+    float peak2QVal = 1.0f;
+    bool updatePeak2 = true;
+
+    bool peak3Enabled = true;
+    float peak3Freq = 5000.0f;
+    float peak3GainDb = 0.0f;
+    float peak3QVal = 1.0f;
+    bool updatePeak3 = true;
+
+    bool lowPassEnabled = true;
+    float lowPassFreq = 10000.0f;
+    float lowPassQ = 0.707f;
+    bool updateLowPass = true;
+
+    // Filter implementations using simper filters
+    std::filters (float<2>)::simper::Implementation highPassFilter;
+    std::filters (float<2>)::simper::Implementation peak1Filter;
+    std::filters (float<2>)::simper::Implementation peak2Filter;
+    std::filters (float<2>)::simper::Implementation peak3Filter;
+    std::filters (float<2>)::simper::Implementation lowPassFilter;
+
+    // Event handlers for parameter updates
+    event hpEnable (bool enable)            { highPassEnabled = enable; }
+    event hpFrequency (float freq)          { highPassFreq = freq; updateHighPass = true; }
+    event hpQ (float q)                     { highPassQ = q; updateHighPass = true; }
+
+    event peak1Enable (bool enable)         { peak1Enabled = enable; }
+    event peak1Frequency (float freq)       { peak1Freq = freq; updatePeak1 = true; }
+    event peak1Gain (float gain)            { peak1GainDb = gain; updatePeak1 = true; }
+    event peak1Q (float q)                  { peak1QVal = q; updatePeak1 = true; }
+
+    event peak2Enable (bool enable)         { peak2Enabled = enable; }
+    event peak2Frequency (float freq)       { peak2Freq = freq; updatePeak2 = true; }
+    event peak2Gain (float gain)            { peak2GainDb = gain; updatePeak2 = true; }
+    event peak2Q (float q)                  { peak2QVal = q; updatePeak2 = true; }
+
+    event peak3Enable (bool enable)         { peak3Enabled = enable; }
+    event peak3Frequency (float freq)       { peak3Freq = freq; updatePeak3 = true; }
+    event peak3Gain (float gain)            { peak3GainDb = gain; updatePeak3 = true; }
+    event peak3Q (float q)                  { peak3QVal = q; updatePeak3 = true; }
+
+    event lpEnable (bool enable)            { lowPassEnabled = enable; }
+    event lpFrequency (float freq)          { lowPassFreq = freq; updateLowPass = true; }
+    event lpQ (float q)                     { lowPassQ = q; updateLowPass = true; }
+
+    void main()
+    {
+        // Initialize filters
+        highPassFilter.setMode (std::filters (float<2>)::simper::Mode::highPass);
+        highPassFilter.setFrequency (processor.frequency, highPassFreq, highPassQ, 0.0);
+
+        peak1Filter.setMode (std::filters (float<2>)::simper::Mode::bell);
+        peak1Filter.setFrequency (processor.frequency, peak1Freq, peak1QVal, peak1GainDb);
+
+        peak2Filter.setMode (std::filters (float<2>)::simper::Mode::bell);
+        peak2Filter.setFrequency (processor.frequency, peak2Freq, peak2QVal, peak2GainDb);
+
+        peak3Filter.setMode (std::filters (float<2>)::simper::Mode::bell);
+        peak3Filter.setFrequency (processor.frequency, peak3Freq, peak3QVal, peak3GainDb);
+
+        lowPassFilter.setMode (std::filters (float<2>)::simper::Mode::lowPass);
+        lowPassFilter.setFrequency (processor.frequency, lowPassFreq, lowPassQ, 0.0);
+
+        loop
+        {
+            // Update filter parameters if needed
+            if (updateHighPass)
+            {
+                highPassFilter.setFrequency (processor.frequency, highPassFreq, highPassQ, 0.0);
+                updateHighPass = false;
+            }
+
+            if (updatePeak1)
+            {
+                peak1Filter.setFrequency (processor.frequency, peak1Freq, peak1QVal, peak1GainDb);
+                updatePeak1 = false;
+            }
+
+            if (updatePeak2)
+            {
+                peak2Filter.setFrequency (processor.frequency, peak2Freq, peak2QVal, peak2GainDb);
+                updatePeak2 = false;
+            }
+
+            if (updatePeak3)
+            {
+                peak3Filter.setFrequency (processor.frequency, peak3Freq, peak3QVal, peak3GainDb);
+                updatePeak3 = false;
+            }
+
+            if (updateLowPass)
+            {
+                lowPassFilter.setFrequency (processor.frequency, lowPassFreq, lowPassQ, 0.0);
+                updateLowPass = false;
+            }
+
+            // Process audio through filter chain
+            let inputSignal = audioIn;
+            var outputSignal = inputSignal;
+
+            // Apply filters in series if enabled
+            if (highPassEnabled)
+                outputSignal = highPassFilter.process (outputSignal);
+
+            if (peak1Enabled)
+                outputSignal = peak1Filter.process (outputSignal);
+
+            if (peak2Enabled)
+                outputSignal = peak2Filter.process (outputSignal);
+
+            if (peak3Enabled)
+                outputSignal = peak3Filter.process (outputSignal);
+
+            if (lowPassEnabled)
+                outputSignal = lowPassFilter.process (outputSignal);
+
+            audioOut <- outputSignal;
+            advance();
+        }
+    }
+
+    void reset()
+    {
+        highPassFilter.reset();
+        peak1Filter.reset();
+        peak2Filter.reset();
+        peak3Filter.reset();
+        lowPassFilter.reset();
+    }
+}
