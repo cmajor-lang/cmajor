@@ -259,7 +259,7 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
 
 #include <JuceHeader.h>
 #include "cmajor/helpers/cmaj_JUCEPlugin.h"
-#include "choc/choc/javascript/choc_javascript_QuickJS.h"
+#include "choc/javascript/choc_javascript_QuickJS.h"
 
 ${mainClass}
 
@@ -341,7 +341,7 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" FILES ${HEADERS})
 
 target_compile_features(${productName} PRIVATE cxx_std_17)
 
-target_include_directories(${productName} PRIVATE ${cmajorIncludePath})
+target_include_directories(${productName} PRIVATE ${cmajorIncludePath} ${cmajorIncludePath}/choc)
 
 target_link_libraries(${productName}
     PRIVATE
@@ -412,7 +412,7 @@ inline void createClapPluginFiles (GeneratedFiles& generatedFiles,
 
     const auto mainCppTemplate = R"cpp(
 #include "cmaj_CLAPPlugin.h"
-#include "choc/choc/javascript/choc_javascript_QuickJS.h"
+#include "choc/javascript/choc_javascript_QuickJS.h"
 
 ${mainClass}
 

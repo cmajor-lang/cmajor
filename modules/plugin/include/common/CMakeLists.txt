@@ -5,7 +5,7 @@ if(NOT CMAJ_INCLUDE_PATH)
 endif()
 
 add_library(cmaj_public_deps_for_plugin_wrapper INTERFACE)
-target_include_directories(cmaj_public_deps_for_plugin_wrapper INTERFACE $<BUILD_INTERFACE:${CMAJ_INCLUDE_PATH}>)
+target_include_directories(cmaj_public_deps_for_plugin_wrapper INTERFACE $<BUILD_INTERFACE:${CMAJ_INCLUDE_PATH}> $<BUILD_INTERFACE:${CMAJ_INCLUDE_PATH}/choc>)
 target_compile_features(cmaj_public_deps_for_plugin_wrapper INTERFACE cxx_std_17)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
