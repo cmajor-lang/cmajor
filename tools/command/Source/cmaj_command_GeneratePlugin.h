@@ -259,7 +259,7 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
 
 #include <JuceHeader.h>
 #include "cmajor/helpers/cmaj_JUCEPlugin.h"
-#include "choc/javascript/choc_javascript_QuickJS.h"
+#include "choc/choc/javascript/choc_javascript_QuickJS.h"
 
 ${mainClass}
 
@@ -412,7 +412,7 @@ inline void createClapPluginFiles (GeneratedFiles& generatedFiles,
 
     const auto mainCppTemplate = R"cpp(
 #include "cmaj_CLAPPlugin.h"
-#include "choc/javascript/choc_javascript_QuickJS.h"
+#include "choc/choc/javascript/choc_javascript_QuickJS.h"
 
 ${mainClass}
 
