@@ -54,7 +54,7 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" FILES ${SOURCE})
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_package(PkgConfig REQUIRED)
     pkg_check_modules (GTK3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
-    pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.1 IMPORTED_TARGET)
+    pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
     target_link_libraries (cmaj PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
 
     if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")

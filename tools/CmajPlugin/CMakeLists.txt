@@ -57,7 +57,7 @@ file(GLOB_RECURSE SOURCE
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_package(PkgConfig REQUIRED)
     pkg_check_modules (GTK3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
-    pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.1 IMPORTED_TARGET)
+    pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
     target_link_libraries (CmajPlugin PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
     target_include_directories(CmajPlugin SYSTEM PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
 endif ()
