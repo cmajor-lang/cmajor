@@ -14,7 +14,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(gtk3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
-    pkg_check_modules(webkit2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
+    pkg_check_modules(webkit2 REQUIRED ${WEBKIT2_GTK_VERSION} IMPORTED_TARGET)
     target_link_libraries(cmaj_public_deps_for_plugin_wrapper INTERFACE PkgConfig::gtk3 PkgConfig::webkit2)
 endif()
 
