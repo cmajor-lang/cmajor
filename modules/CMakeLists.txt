@@ -286,7 +286,12 @@ function (MAKE_CMAJ_LIBRARY)
         ${CMAJ_MODULE_DIR}/../include/cmajor/*.h
     )
 
+        file (GLOB_RECURSE CHOC_SOURCE
+        ${CMAJ_MODULE_DIR}/../include/choc/choc/*.h
+    )
+
     source_group (TREE "${CMAJ_MODULE_DIR}/../include/cmajor" PREFIX "cmajor" FILES ${CMAJOR_SOURCE})
+    source_group (TREE "${CMAJ_MODULE_DIR}/../include/choc" PREFIX "choc" FILES ${CHOC_SOURCE})
 
     # -------------------------------------------------------------------
 
@@ -348,6 +353,7 @@ function (MAKE_CMAJ_LIBRARY)
     add_library (${CMAJ_LIBRARY_NAME} OBJECT
         ${SOURCE}
         ${CMAJOR_SOURCE}
+        ${CHOC_SOURCE}
     )
 
     if (${CMAJ_OSX_DEPLOYMENT_TARGET})
