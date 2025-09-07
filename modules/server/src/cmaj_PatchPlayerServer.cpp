@@ -326,19 +326,27 @@ struct PatchPlayerServer
 
         void handleMessageFromClient (const choc::value::ValueView& message)
         {
-            if (currentSession != nullptr)
-                if (currentSession->handleMessageFromClient (message))
-                    return;
+            DiagnosticMessageList messageList;
 
-            if (auto typeMember = message["type"]; typeMember.isString())
+            catchAllErrors (messageList, [&]
             {
-                auto type = typeMember.getString();
+                if (currentSession != nullptr)
+                    if (currentSession->handleMessageFromClient (message))
+                        return;
 
-                if (type == "req_audio_device_props")
-                    owner.broadcastAudioDeviceProperties();
-                else if (type == "set_audio_device_props")
-                    owner.sendAudioDeviceProperties (choc::value::Value (message["properties"]));
-             }
+                if (auto typeMember = message["type"]; typeMember.isString())
+                {
+                    auto type = typeMember.getString();
+
+                    if (type == "req_audio_device_props")
+                        owner.broadcastAudioDeviceProperties();
+                    else if (type == "set_audio_device_props")
+                        owner.sendAudioDeviceProperties (choc::value::Value (message["properties"]));
+                }
+            });
+
+            if (! messageList.empty())
+                std::cout << messageList.toJSONString (true) << std::endl;
         }
 
         PatchPlayerServer& owner;
