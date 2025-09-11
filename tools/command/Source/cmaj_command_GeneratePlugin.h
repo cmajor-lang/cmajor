@@ -452,9 +452,27 @@ endif()
 
 project("${CMAJ_CMAKE_PROJECT_NAME}" VERSION "${CMAJ_TARGET_PATCH_VERSION}" LANGUAGES CXX C)
 
+OPTION (WEBKIT2_GTK_VERSION "Which version of webkit to use")
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+endif()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    if (NOT WEBKIT2_GTK_VERSION)
+        find_package (PkgConfig REQUIRED)
+
+        pkg_check_modules (package_to_be_found webkit2gtk-4.1 QUIET)
+
+        if(package_to_be_found_FOUND)
+            set (WEBKIT2_GTK_VERSION "webkit2gtk-4.1")
+        else()
+            set (WEBKIT2_GTK_VERSION "webkit2gtk-4.0")
+        endif()
+    endif()
+
+    message ("Using webkit ${WEBKIT2_GTK_VERSION}")
 endif()
 
 if(NOT CMAJ_PLUGIN_HELPERS_PATH)
