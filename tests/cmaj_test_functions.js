@@ -1111,7 +1111,7 @@ function runScript (options)
             }
             else
             {
-                let result = eventDataComparison (testSection, outputEndpoints[i].values, expectedData);
+                let result = eventDataComparison (testSection, outputEndpoints[i].values, expectedData, options.maxDiffDb);
 
                 if (result != null)
                 {
@@ -1135,7 +1135,7 @@ function runScript (options)
             }
             else
             {
-                let result = eventDataComparison (testSection, outputEndpoints[i].events, expectedData);
+                let result = eventDataComparison (testSection, outputEndpoints[i].events, expectedData, options.maxDiffDb);
 
                 if (result != null)
                 {
@@ -1377,7 +1377,88 @@ function removeObjNameValues (data)
             removeObjNameValues (data[key]);
 }
 
-function eventDataComparison (testSection, data, expectedData)
+// Check that expected and actual match. These values can be any javascript type. All values should
+// match, and float values should be within maxDiff of each other
+function compareValues (expected, actual, maxDiffDb)
+{
+    // Check for strict equality first (handles primitives and references)
+    if (expected === actual)
+        return true;
+
+    // Handle null/undefined cases
+    if (expected == null || actual == null)
+        return false;
+
+    // Get the types
+    const expectedType = typeof expected;
+    const actualType = typeof actual;
+
+    // Types must match
+    if (expectedType !== actualType)
+        return false;
+
+    // Handle numbers with tolerance
+    if (expectedType === "number")
+    {
+        if (! isFinite (expected) || ! isFinite (actual))
+            return expected === actual; // Handle NaN, Infinity cases with strict equality
+
+        let diffDb = 20.0 * Math.log10 (Math.abs (expected - actual));
+
+        return diffDb <= maxDiffDb;
+    }
+
+    // Handle strings
+    if (expectedType === "string")
+        return expected === actual;
+
+    // Handle arrays
+    if (Array.isArray (expected))
+    {
+        if (! Array.isArray (actual))
+            return false;
+
+        if (expected.length !== actual.length)
+            return false;
+
+        for (let i = 0; i < expected.length; i++)
+        {
+            if (! compareValues (expected[i], actual[i], maxDiffDb))
+                return false;
+        }
+
+        return true;
+    }
+
+    // Handle objects
+    if (expectedType === "object")
+    {
+        if (Array.isArray (actual))
+            return false;
+
+        const expectedKeys = Object.keys (expected);
+        const actualKeys = Object.keys (actual);
+
+        if (expectedKeys.length !== actualKeys.length)
+            return false;
+
+        for (let key of expectedKeys)
+        {
+            if (! (key in actual))
+                return false;
+
+            if (! compareValues (expected[key], actual[key], maxDiffDb))
+                return false;
+        }
+
+        return true;
+    }
+
+    // For other types (boolean, function, symbol), use strict equality
+    return expected === actual;
+}
+
+function eventDataComparison (testSection, data, expectedData, maxDiff)
 {
     if (data.length != expectedData.length)
         return "Different number of events - expected " + expectedData.length + ", got " + data.length;
@@ -1393,20 +1474,24 @@ function eventDataComparison (testSection, data, expectedData)
         // Handle support for value or event which occur in value/event json
         if ('value' in data[i] || 'value' in expectedData[i])
         {
-            var expectedValue = JSON.stringify (expectedData[i].value);
-            var dataValue = JSON.stringify (data[i].value);
+            if (! compareValues (expectedData[i].value, data[i].value, maxDiff))
+            {
+                var expectedValue = JSON.stringify (expectedData[i].value);
+                var dataValue = JSON.stringify (data[i].value);
 
-            if (dataValue !== expectedValue)
-                return "Event " + i + " has different value data - expected " + expectedValue + ", got " + dataValue;
+                return "Event " + i + " has different value data - expected " + expectedValue + ", got " + dataValue + " maxDiff:" + maxDiff;
+            }
         }
 
         if ('event' in data[i] || 'event' in expectedData[i])
         {
-            expectedValue = JSON.stringify (expectedData[i].event);
-            dataValue = JSON.stringify (data[i].event);
+            if (! compareValues (expectedData[i].event, data[i].event, maxDiff))
+            {
+                var expectedEvent = JSON.stringify (expectedData[i].event);
+                var dataEvent = JSON.stringify (data[i].event);
 
-            if (dataValue !== expectedValue)
-                return "Event " + i + " has different event data - expected " + expectedValue + ", got " + dataValue;
+                return "Event " + i + " has different event data - expected " + expectedEvent + ", got " + dataEvent + " maxDiff:" + maxDiff;
+            }
         }
     }
 
