@@ -157,7 +157,7 @@ target_compile_options(RenderPatchSharedLib PRIVATE ${CMAJ_WARNING_FLAGS})
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_package(PkgConfig REQUIRED)
     pkg_check_modules (GTK3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
-    pkg_check_modules (WEBKIT2 REQUIRED webkit2gtk-4.0 IMPORTED_TARGET)
+    pkg_check_modules (WEBKIT2 REQUIRED ${WEBKIT2_GTK_VERSION} IMPORTED_TARGET)
     target_include_directories (RenderPatchSharedLib PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
     target_link_libraries (RenderPatchSharedLib PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
 
