@@ -169,6 +169,9 @@ static cmaj::BuildSettings parseBuildArgs (choc::ArgumentList& args)
     if (auto bufferSize = args.removeIntValue<uint32_t> ("--eventBufferSize"))
         buildSettings.setEventBufferSize (*bufferSize);
 
+    if (auto maxFrequency = args.removeIntValue<uint32_t> ("--maxFrequency"))
+        buildSettings.setMaxFrequency (*maxFrequency);
+
     return buildSettings;
 }
 
