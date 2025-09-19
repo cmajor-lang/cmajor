@@ -320,7 +320,7 @@ IO_STRUCT cmajIO = {};
         {
             auto indent = out.createIndentWithBraces();
 
-            out << "assert (frequency <= getMaxFrequency());" << newLine;
+            out << "if (frequency > getMaxFrequency()) throw std::runtime_error (\"frequency out of range\");" << newLine;
             out << "initSessionID = sessionID;" << newLine;
             out << "initFrequency = frequency;" << newLine;
             out << "reset();" << newLine;
@@ -375,9 +375,14 @@ IO_STRUCT cmajIO = {};
             }
 
             if (auto f = mainProcessor.findSystemAdvanceFunction())
+            {
                 out << codeGenerator->getFunctionName (*f) << " (cmajState, cmajIO, frames);" << newLine;
+            }
             else
-                out << "assert (frames == 1); advanceOneFrame();" << newLine;
+            {
+                out << "if (frames != 1) throw std::runtime_error (\" expecting single frame advance\");" <<newLine;
+                out << "advanceOneFrame();" << newLine;
+            }
         }
 
         out << blankLine;
@@ -408,7 +413,7 @@ IO_STRUCT cmajIO = {};
             if (! anyDone)
                 out << "(void) endpointHandle; (void) dest;" << blankLine;
 
-            out << "assert (false);" << newLine;
+            out << "throw std::runtime_error (\"Unknown value endpointHandle:\" + std::to_string (endpointHandle));" << newLine;
         }
 
         out << blankLine;
@@ -436,7 +441,7 @@ IO_STRUCT cmajIO = {};
             if (! anyDone)
                 out << "(void) endpointHandle; (void) dest; (void) numFramesToCopy;" << blankLine;
 
-            out << "assert (false);" << newLine;
+            out << "throw std::runtime_error (\"Unknown stream endpointHandle:\" + std::to_string (endpointHandle));" << newLine;
         }
 
         out << blankLine;
@@ -463,7 +468,8 @@ IO_STRUCT cmajIO = {};
             if (eventOutputs.empty())
                 out << "(void) endpointHandle;" << blankLine;
 
-            out << "assert (false); return {};" << newLine;
+            out << "throw std::runtime_error (\"Unknown event endpointHandle:\" + std::to_string (endpointHandle));" << newLine;
+            out << "return {};" << newLine;
         }
 
         out << blankLine;
@@ -493,7 +499,8 @@ IO_STRUCT cmajIO = {};
             if (eventOutputs.empty())
                 out << "(void) endpointHandle; (void) index;" << blankLine;
 
-            out << "assert (false); return {};" << newLine;
+            out << "throw std::runtime_error (\"Unknown event endpointHandle:\" + std::to_string (endpointHandle));" << newLine;
+            out << "return {};" << newLine;
         }
 
         out << blankLine;
@@ -513,7 +520,8 @@ IO_STRUCT cmajIO = {};
                         << ") return " << static_cast<uint32_t> (dataType.getValueDataSize()) << ";" << newLine;
             }
 
-            out << "assert (false); return 0;" << newLine;
+            out << "throw std::runtime_error (\"Unknown event endpointHandle:\" + std::to_string (endpointHandle));" << newLine;
+            out << "return 0;" << newLine;
         }
 
         out << blankLine;
@@ -560,7 +568,8 @@ IO_STRUCT cmajIO = {};
             if (eventOutputs.empty())
                 out << "(void) endpointHandle; (void) index; (void) dest;" << blankLine;
 
-            out << "assert (false);" << newLine << "return {};" << newLine;
+            out << "throw std::runtime_error (\"Unknown event endpointHandle:\" + std::to_string (endpointHandle));" << newLine;
+            out << "return {};" << newLine;
         }
 
         out << blankLine;
@@ -1851,10 +1860,10 @@ struct EndpointInfo
         return R"CPPGEN(
 #include <cstdint>
 #include <cmath>
-#include <cassert>
 #include <string>
 #include <cstring>
 #include <array>
+#include <stdexcept>
 
 //==============================================================================
 /// Auto-generated C++ class for the 'NAME' processor
