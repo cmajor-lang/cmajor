@@ -112,6 +112,7 @@ struct TemporaryCompiledDLL
        #ifdef WIN32
         (void) compilerFlags;
         (void) extraLinkerArgs;
+        (void) compilerToUse;
         throwError (Errors::unimplementedFeature ("cpp performer on windows"));
        #else
         auto compileCommand = "cd " + tmpFolder.file.string()
