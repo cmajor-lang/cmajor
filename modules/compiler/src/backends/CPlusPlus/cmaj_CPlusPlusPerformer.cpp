@@ -44,7 +44,7 @@ namespace cmaj::cplusplus
 //==============================================================================
 struct TemporaryCompiledDLL
 {
-    TemporaryCompiledDLL (const std::string& cppContent, cmaj::BuildSettings settings, const std::string& extraCompileArgs, const std::string& extraLinkerArgs)
+    TemporaryCompiledDLL (const std::string& cppContent, cmaj::BuildSettings settings, const std::string& extraCompileArgs, const std::string& extraLinkerArgs, const std::string& overrideCompiler)
         : buildSettings (settings)
     {
         try
@@ -73,16 +73,24 @@ struct TemporaryCompiledDLL
             }
         };
 
+        auto getCompiler = [] (const std::string& compiler) -> std::string
+        {
+            if (! compiler.empty())
+                return compiler;
+
+            return "g++";
+        };
+
         auto cmajorFolder = std::filesystem::path (__FILE__);
 
-        while (! cmajorFolder.filename().empty() && cmajorFolder.filename() != "cmajor-dev")
+        while (! cmajorFolder.filename().empty() && cmajorFolder.filename() != "cmajor")
             cmajorFolder = cmajorFolder.parent_path();
 
-        cmajorFolder.append ("cmajor").append ("include");
+        cmajorFolder.append ("include");
 
-        build (getOptimisationFlag (buildSettings.getOptimisationLevel())
+        build (getCompiler (overrideCompiler),
+               getOptimisationFlag (buildSettings.getOptimisationLevel())
                + " -I" + cmajorFolder.string()
-               + " -DMAX_BLOCK_SIZE=" + std::to_string (buildSettings.getMaxBlockSize()) +
                + " -std=c++17 -fPIC -Wno-#pragma-messages -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare -Werror -Wall -Wextra " + extraCompileArgs,
                extraLinkerArgs);
     }
@@ -99,7 +107,7 @@ struct TemporaryCompiledDLL
         catch (...) {}
     }
 
-    void build (const std::string& compilerFlags, const std::string& extraLinkerArgs)
+    void build (const std::string& compilerToUse, const std::string& compilerFlags, const std::string& extraLinkerArgs)
     {
        #ifdef WIN32
         (void) compilerFlags;
@@ -107,8 +115,8 @@ struct TemporaryCompiledDLL
         throwError (Errors::unimplementedFeature ("cpp performer on windows"));
        #else
         auto compileCommand = "cd " + tmpFolder.file.string()
-                            + "&& g++ " + compilerFlags + " -c -o " + objFilename + " " + cppFilename
-                            + "&& g++ -shared -o " + libFilename + " " + objFilename + " " + extraLinkerArgs;
+                            + "&& " + compilerToUse + " " + compilerFlags + " -c -o " + objFilename + " " + cppFilename
+                            + "&& " + compilerToUse + " -shared -o " + libFilename + " " + objFilename + " " + extraLinkerArgs;
 
         auto result = choc::execute (compileCommand, true);
 
@@ -169,7 +177,7 @@ struct CPlusPlusEngine
             if (code.code.empty())
                 return;
 
-            std::string extraCompileArgs, extraLinkerArgs;
+            std::string extraCompileArgs, extraLinkerArgs, overrideCompiler;
 
             if (cppEngine.engine.options.isObject())
             {
@@ -179,11 +187,9 @@ struct CPlusPlusEngine
                     code.mainClassName = "test";
                 }
 
-                if (cppEngine.engine.options.hasObjectMember ("extraCompileArgs"))
-                    extraCompileArgs = cppEngine.engine.options["extraCompileArgs"].getString();
-
-                if (cppEngine.engine.options.hasObjectMember ("extraLinkerArgs"))
-                    extraLinkerArgs = cppEngine.engine.options["extraLinkerArgs"].getString();
+                extraCompileArgs = getOptionParameter (cppEngine, "extraCompileArgs");
+                extraLinkerArgs  = getOptionParameter (cppEngine, "extraLinkerArgs");
+                overrideCompiler = getOptionParameter (cppEngine, "overrideCompiler");
             }
 
             code.code += getWrapperCode (code.mainClassName);
@@ -191,11 +197,31 @@ struct CPlusPlusEngine
             dll = std::make_unique<TemporaryCompiledDLL> (code.code,
                                                           buildSettings,
                                                           extraCompileArgs,
-                                                          extraLinkerArgs);
+                                                          extraLinkerArgs,
+                                                          overrideCompiler);
 
             CMAJ_ASSERT (dll->library != nullptr);
 
             loadFunction (createEngineFn, "createEngine");
+        }
+
+        static std::string_view getOptionParameter (CPlusPlusEngine& cppEngine, const std::string& option)
+        {
+#ifdef __APPLE__
+            std::string platformSpecificPath = "apple";
+#else
+            std::string platformSpecificPath = "linux";
+#endif
+
+            if (cppEngine.engine.options.hasObjectMember (platformSpecificPath))
+                if (cppEngine.engine.options[platformSpecificPath].isObject())
+                    if (cppEngine.engine.options[platformSpecificPath].hasObjectMember (option))
+                        return cppEngine.engine.options[platformSpecificPath][option].getString();
+
+            if (cppEngine.engine.options.hasObjectMember (option))
+                return cppEngine.engine.options[option].getString();
+
+            return {};
         }
 
         //==============================================================================
