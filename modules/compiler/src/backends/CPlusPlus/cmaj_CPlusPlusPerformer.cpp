@@ -209,8 +209,10 @@ struct CPlusPlusEngine
         {
 #ifdef __APPLE__
             std::string platformSpecificPath = "apple";
-#else
+#elif defined(__linux__)
             std::string platformSpecificPath = "linux";
+#else
+            std::string platformSpecificPath = "windows";
 #endif
 
             if (cppEngine.engine.options.hasObjectMember (platformSpecificPath))
