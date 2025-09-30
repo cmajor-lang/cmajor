@@ -147,7 +147,7 @@ struct TemporaryCompiledDLL
 
         if (result.statusCode == 0 && ! choc::text::contains (result.output, "error:"))
         {
-            library = std::make_unique<choc::file::DynamicLibrary> (tmpFolder.file.string() + "\\" + libFilename);
+            library = std::make_unique<choc::file::DynamicLibrary> (tmpFolder.file.string() + "/" + libFilename);
         }
         else
         {
