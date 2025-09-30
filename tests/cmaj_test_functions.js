@@ -343,7 +343,7 @@ function expectError (expectedError, options)
     }
     else
     {
-        if (newErrorLine == "Language feature not yet implemented: cpp performer on windows!")
+        if (newErrorLine == "error: Language feature not yet implemented: cpp performer on windows!")
         {
             testSection.reportUnsupported (error);
             return;
