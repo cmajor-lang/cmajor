@@ -149,6 +149,23 @@ class PatchManifest
 //==============================================================================
 /*  This test attempts to compile and run a processor, checking its output.
 
+    Helper function to ensure that cpp performer tests on windows do not trigger
+    a test failure, but an unsupported test
+*/
+function reportFailOrUnsupported (testSection, error)
+{
+    if (error.message == "Language feature not yet implemented: cpp performer on windows!")
+    {
+        testSection.reportUnsupported (error);
+        return;
+    }
+
+    testSection.reportFail (error);
+}
+
+//==============================================================================
+/*  This test attempts to compile and run a processor, checking its output.
+
     The test expects to find a main processor which has an output stream (or an
     output event) that emits int32 values.
 
@@ -326,6 +343,12 @@ function expectError (expectedError, options)
     }
     else
     {
+        if (newErrorLine == "Language feature not yet implemented: cpp performer on windows!")
+        {
+            testSection.reportUnsupported (error);
+            return;
+        }
+
         testSection.logCompilerError (error);
         testSection.reportFail ("error mismatch");
 
@@ -477,7 +500,7 @@ function testCompile (options)
 
     if (isError (engine, options))
     {
-        testSection.reportFail (engine);
+        reportFailOrUnsupported (testSection, engine);
         return;
     }
 
@@ -496,7 +519,7 @@ function testCompile (options)
 
         if (isError (error, options))
         {
-            testSection.reportFail (error);
+            reportFailOrUnsupported (testSection, error);
             return;
         }
     }
@@ -519,7 +542,7 @@ function testCompile (options)
 
             if (isError (error, options))
             {
-                testSection.reportFail (error);
+                reportFailOrUnsupported (testSection, error);
                 return;
             }
         }
@@ -669,11 +692,7 @@ function performanceTest (options)
 
     if (isError (timingInfo.linkTime, options))
     {
-        if (timingInfo.linkTime.message == "Language feature not yet implemented: cpp performer on windows!")
-            testSection.reportUnsupported (timingInfo.linkTime);
-        else
-            testSection.reportFail (timingInfo.linkTime);
-
+        reportFailOrUnsupported (testSection, timingInfo.linkTime);
         return;
     }
 
@@ -902,11 +921,7 @@ function runScript (options)
 
     if (isError (timingInfo.linkTime, options))
     {
-        if (timingInfo.linkTime.message == "Language feature not yet implemented: cpp performer on windows!")
-            testSection.reportUnsupported (timingInfo.linkTime);
-        else
-            testSection.reportFail (timingInfo.linkTime);
-
+        reportFailOrUnsupported (testSection, timingInfo.linkTime);
         return;
     }
 
