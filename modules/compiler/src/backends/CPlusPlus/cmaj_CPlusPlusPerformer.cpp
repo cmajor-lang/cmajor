@@ -62,6 +62,17 @@ struct TemporaryCompiledDLL
 
         auto getOptimisationFlag = [] (int level) -> std::string
         {
+           #ifdef WIN32
+            switch (level)
+            {
+            case 0:     return "/Od";
+            case 1:     return "/O1";
+            case 2:     return "/O2";
+            case 3:     return "/O3";
+            case 4:     return "/O3 /fp:fast";
+            default:    return "/O3";
+            }
+           #else
             switch (level)
             {
                 case 0:     return "-O0 -g";
@@ -71,6 +82,7 @@ struct TemporaryCompiledDLL
                 case 4:     return "-O3 -ffast-math";
                 default:    return "-O3";
             }
+           #endif
         };
 
         auto getCompiler = [] (const std::string& compiler) -> std::string
@@ -78,7 +90,11 @@ struct TemporaryCompiledDLL
             if (! compiler.empty())
                 return compiler;
 
+           #ifdef WIN32
+            return "cl.exe";
+           #else
             return "g++";
+           #endif
         };
 
         auto cmajorFolder = std::filesystem::path (__FILE__);
@@ -88,11 +104,19 @@ struct TemporaryCompiledDLL
 
         cmajorFolder.append ("include");
 
+#ifdef WIN32
+        build (getCompiler (overrideCompiler),
+               getOptimisationFlag (buildSettings.getOptimisationLevel())
+               + " /I" + cmajorFolder.string()
+               + " /std:c++17 /Zc:__cplusplus " + extraCompileArgs,
+               extraLinkerArgs);
+#else
         build (getCompiler (overrideCompiler),
                getOptimisationFlag (buildSettings.getOptimisationLevel())
                + " -I" + cmajorFolder.string()
                + " -std=c++17 -fPIC -Wno-#pragma-messages -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare -Werror -Wall -Wextra " + extraCompileArgs,
                extraLinkerArgs);
+#endif
     }
 
     ~TemporaryCompiledDLL()
@@ -110,33 +134,37 @@ struct TemporaryCompiledDLL
     void build (const std::string& compilerToUse, const std::string& compilerFlags, const std::string& extraLinkerArgs)
     {
        #ifdef WIN32
-        (void) compilerFlags;
         (void) extraLinkerArgs;
-        (void) compilerToUse;
-        throwError (Errors::unimplementedFeature ("cpp performer on windows"));
+
+        auto compileCommand = compilerToUse + " " + compilerFlags + " /EHsc /LD /Fe:" + tmpFolder.file.string() + "/" + libFilename + " " + tmpFolder.file.string() + "/" + cppFilename;
        #else
         auto compileCommand = "cd " + tmpFolder.file.string()
                             + "&& " + compilerToUse + " " + compilerFlags + " -c -o " + objFilename + " " + cppFilename
                             + "&& " + compilerToUse + " -shared -o " + libFilename + " " + objFilename + " " + extraLinkerArgs;
+       #endif
 
         auto result = choc::execute (compileCommand, true);
 
         if (result.statusCode == 0 && ! choc::text::contains (result.output, "error:"))
         {
-            library = std::make_unique<choc::file::DynamicLibrary> (tmpFolder.file.string() + "/" + libFilename);
+            library = std::make_unique<choc::file::DynamicLibrary> (tmpFolder.file.string() + "\\" + libFilename);
         }
         else
         {
             std::cerr << std::endl << compileCommand << std::endl << result.output << std::endl;
             throwError (Errors::failedToCompile (result.output));
         }
-       #endif
     }
 
     choc::file::TempFile tmpFolder { choc::file::TempFile::createRandomFilename("cmaj_temp", "d") };
     std::string cppFilename = "cmaj.cpp";
     std::string objFilename = "cmaj.o";
+
+   #ifdef WIN32
+    std::string libFilename = "cmaj.dll";
+   #else
     std::string libFilename = "cmaj.so";
+   #endif
 
     std::unique_ptr<choc::file::DynamicLibrary> library;
     cmaj::BuildSettings buildSettings;
