@@ -68,7 +68,7 @@ struct TemporaryCompiledDLL
                 case 1:     return "-O1";
                 case 2:     return "-O2";
                 case 3:     return "-O3";
-                case 4:     return "-O3 -ffast-math -Wno-nan-infinity-disabled";
+                case 4:     return "-O3 -ffast-math";
                 default:    return "-O3";
             }
         };
