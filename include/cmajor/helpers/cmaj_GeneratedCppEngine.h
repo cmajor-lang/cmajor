@@ -91,7 +91,7 @@ struct GeneratedCppEngine  : public choc::com::ObjectWithAtomicRefCount<EngineIn
     //==============================================================================
     choc::com::String* getProgramDetails() override
     {
-        return choc::com::createRawString (std::string (GeneratedCppClass::programDetailsJSON, sizeof (GeneratedCppClass::programDetailsJSON)));
+        return choc::com::createRawString (GeneratedCppClass::programDetailsJSON);
     }
 
     EndpointHandle getEndpointHandle (const char* endpointName) override

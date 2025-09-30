@@ -154,7 +154,7 @@ namespace cmaj::cpp_utils
               && choc::text::findInvalidUTF8Data (text.data(), text.size()) == nullptr)
             return "constexpr const char* " + std::string (name) + " =\n        " + createMultiLineStringLiteral (text, "        ") + ";";
 
-        return "constexpr const char " + std::string (name) + "[] = {\n        " + createDataLiteral (text) + " };\n";
+        return "constexpr const char " + std::string (name) + "[] = {\n        " + createDataLiteral (text) + ", 0 };\n";
     }
 
     inline std::string makeSafeIdentifier (std::string_view name)
