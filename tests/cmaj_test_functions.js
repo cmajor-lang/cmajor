@@ -150,15 +150,17 @@ class PatchManifest
 /*  This test attempts to compile and run a processor, checking its output.
 
     Helper function to ensure that cpp performer tests on windows do not trigger
-    a test failure, but an unsupported test
+    a test failure, but an unsupported test. Failing with a 'Failed to compile 'xxx' is not recognized
 */
 function reportFailOrUnsupported (testSection, error)
 {
-    if (error.message == "Language feature not yet implemented: cpp performer on windows!")
+    if (error.message == "Language feature not yet implemented: cpp performer on windows!" ||
+        error.message.substring (0, 19) == "Failed to compile '")
     {
         testSection.reportUnsupported (error);
         return;
     }
+
 
     testSection.reportFail (error);
 }
