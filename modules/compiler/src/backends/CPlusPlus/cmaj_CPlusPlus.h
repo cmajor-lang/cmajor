@@ -22,6 +22,7 @@
 
 #if CMAJ_ENABLE_PERFORMER_CPP || CMAJ_ENABLE_CODEGEN_CPP
 
+#include <filesystem>
 #include "../../../include/cmaj_ErrorHandling.h"
 #include "../../../../../include/cmajor/COM/cmaj_EngineFactoryInterface.h"
 
