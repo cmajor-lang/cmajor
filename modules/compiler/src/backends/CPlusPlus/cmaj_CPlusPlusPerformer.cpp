@@ -65,12 +65,12 @@ struct TemporaryCompiledDLL
            #ifdef WIN32
             switch (level)
             {
-            case 0:     return "/Od";
-            case 1:     return "/O1";
-            case 2:     return "/O2";
-            case 3:     return "/O3";
-            case 4:     return "/O3 /fp:fast";
-            default:    return "/O3";
+                case 0:     return "/Od";
+                case 1:     return "/O1";
+                case 2:     return "/O2";
+                case 3:     return "/O2 /Ob2";
+                case 4:     return "/O2 /Ob2 /fp:fast";
+                default:    return "/O2 /Ob2";
             }
            #else
             switch (level)
@@ -136,7 +136,11 @@ struct TemporaryCompiledDLL
        #ifdef WIN32
         (void) extraLinkerArgs;
 
-        auto compileCommand = compilerToUse + " " + compilerFlags + " /EHsc /LD /Fe:" + tmpFolder.file.string() + "/" + libFilename + " " + tmpFolder.file.string() + "/" + cppFilename;
+        auto compileCommand = compilerToUse + " " + compilerFlags
+                                            + " /EHsc /LD"
+                                            + " /Fe:" + tmpFolder.file.string() + "/" + libFilename
+                                            + " /Fo:" + tmpFolder.file.string() + "/" + objFilename
+                                            + " " + tmpFolder.file.string() + "/" + cppFilename;
        #else
         auto compileCommand = "cd " + tmpFolder.file.string()
                             + "&& " + compilerToUse + " " + compilerFlags + " -c -o " + objFilename + " " + cppFilename
@@ -158,12 +162,13 @@ struct TemporaryCompiledDLL
 
     choc::file::TempFile tmpFolder { choc::file::TempFile::createRandomFilename("cmaj_temp", "d") };
     std::string cppFilename = "cmaj.cpp";
-    std::string objFilename = "cmaj.o";
 
    #ifdef WIN32
     std::string libFilename = "cmaj.dll";
+    std::string objFilename = "cmaj.obj";
    #else
     std::string libFilename = "cmaj.so";
+    std::string objFilename = "cmaj.o";
    #endif
 
     std::unique_ptr<choc::file::DynamicLibrary> library;
