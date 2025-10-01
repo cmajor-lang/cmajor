@@ -754,7 +754,7 @@ function testPatch (file, expectedError)
 {
     const testSection = getCurrentTestSection();
     const absolutePath = testSection.getAbsolutePath (file);
-    const error = loadAndTestPatch (absolutePath, 44100, 128);
+    const error = loadAndTestPatch (absolutePath, getDefaultEngineOptions(), 44100, 128);
 
     let newErrorLine = getErrorReportString (error);
 

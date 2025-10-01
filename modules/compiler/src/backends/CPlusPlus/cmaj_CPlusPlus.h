@@ -42,6 +42,8 @@ namespace cmaj::cplusplus
    #if CMAJ_ENABLE_PERFORMER_CPP
     EngineFactoryPtr createEngineFactory();
    #endif // CMAJ_ENABLE_PERFORMER_CPP
+
+    void unzipCmajorHeaders (const std::filesystem::path& outputPath);
 }
 
 #endif

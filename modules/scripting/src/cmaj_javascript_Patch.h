@@ -40,9 +40,11 @@ struct PatchLibrary
 
             patch.setHostDescription ("Cmajor Test");
 
-            patch.createEngine = [this]
+            auto engineOptions = args[1];
+
+            patch.createEngine = [this, engineOptions]
             {
-                auto engine = cmaj::Engine::create (engineType);
+                auto engine = cmaj::Engine::create (engineType, engineOptions);
                 engine.setBuildSettings (buildSettings);
                 return engine;
             };
@@ -54,10 +56,10 @@ struct PatchLibrary
 
             auto params = patch.getPlaybackParams();
 
-            if (auto rate = args[1])
+            if (auto rate = args[2])
                 params.sampleRate = rate->getWithDefault<double> (0);
 
-            if (auto blockSize = args[2])
+            if (auto blockSize = args[3])
                 params.blockSize = static_cast<uint32_t> (blockSize->getWithDefault<int32_t> (0));
 
             patch.setPlaybackParams (params);

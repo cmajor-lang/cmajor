@@ -29,11 +29,13 @@
 #include "choc/platform/choc_DynamicLibrary.h"
 #include "choc/text/choc_Files.h"
 #include "choc/platform/choc_Execute.h"
+#include "choc/containers/choc_ZipFile.h"
 
 #include "../../../../../include/cmajor/API/cmaj_Engine.h"
 #include "../../../../../include/cmajor/helpers/cmaj_PerformerProxy.h"
 #include "../cmaj_EngineBase.h"
 #include "../../AST/cmaj_AST.h"
+#include "cmaj_EmbeddedIncludeFolder.h"
 
 #include "cmaj_CPlusPlus.h"
 
@@ -41,11 +43,20 @@
 namespace cmaj::cplusplus
 {
 
+void unzipCmajorHeaders (const std::filesystem::path& outputPath)
+{
+    auto compressed = std::string (reinterpret_cast<const char*> (cmajorIncludeFolderZip), sizeof (cmajorIncludeFolderZip));
+    auto in = std::make_shared<std::istringstream> (compressed, std::ios::binary);
+    choc::zip::ZipFile zip (in);
+    zip.uncompressToFolder (outputPath, true, false);
+}
+
 //==============================================================================
 struct TemporaryCompiledDLL
 {
-    TemporaryCompiledDLL (const std::string& cppContent, cmaj::BuildSettings settings, const std::string& extraCompileArgs, const std::string& extraLinkerArgs, const std::string& overrideCompiler)
-        : buildSettings (settings)
+    TemporaryCompiledDLL (const std::string& cppContent, choc::value::ValueView options_, cmaj::BuildSettings settings)
+        : options (options_),
+          buildSettings (settings)
     {
         try
         {
@@ -59,6 +70,8 @@ struct TemporaryCompiledDLL
         {
             CMAJ_ASSERT_FALSE;
         }
+
+        unzipCmajorHeaders (tmpFolder.file.string() + "/include");
 
         auto getOptimisationFlag = [] (int level) -> std::string
         {
@@ -85,10 +98,12 @@ struct TemporaryCompiledDLL
            #endif
         };
 
-        auto getCompiler = [] (const std::string& compiler) -> std::string
+        auto getCompiler = [&]() -> std::string
         {
-            if (! compiler.empty())
-                return compiler;
+            auto overrideCompiler = getOptionParameter ("overrideCompiler");
+
+            if (! overrideCompiler.empty())
+                return overrideCompiler;
 
            #ifdef WIN32
             return "cl.exe";
@@ -97,23 +112,20 @@ struct TemporaryCompiledDLL
            #endif
         };
 
-        auto cmajorFolder = std::filesystem::path (__FILE__);
-
-        while (! cmajorFolder.filename().empty() && cmajorFolder.filename() != "cmajor")
-            cmajorFolder = cmajorFolder.parent_path();
-
-        cmajorFolder.append ("include");
+        const auto cmajorHeaderPath = tmpFolder.file.string() + "/include";
+        const auto extraCompileArgs = getOptionParameter ("extraCompileArgs");
+        const auto extraLinkerArgs  = getOptionParameter ("extraLinkerArgs");
 
 #ifdef WIN32
-        build (getCompiler (overrideCompiler),
+        build (getCompiler(),
                getOptimisationFlag (buildSettings.getOptimisationLevel())
-               + " /I" + cmajorFolder.string()
+               + " /I" + cmajorHeaderPath
                + " /std:c++17 /Zc:__cplusplus " + extraCompileArgs,
                extraLinkerArgs);
 #else
-        build (getCompiler (overrideCompiler),
+        build (getCompiler(),
                getOptimisationFlag (buildSettings.getOptimisationLevel())
-               + " -I" + cmajorFolder.string()
+               + " -I" + cmajorHeaderPath
                + " -std=c++17 -fPIC -Wno-#pragma-messages -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare -Werror -Wall -Wextra " + extraCompileArgs,
                extraLinkerArgs);
 #endif
@@ -160,6 +172,28 @@ struct TemporaryCompiledDLL
         }
     }
 
+    std::string getOptionParameter (const std::string& option)
+    {
+#ifdef __APPLE__
+        std::string platformSpecificPath = "apple";
+#elif defined(__linux__)
+        std::string platformSpecificPath = "linux";
+#else
+        std::string platformSpecificPath = "windows";
+#endif
+
+        if (options.hasObjectMember (platformSpecificPath))
+            if (options[platformSpecificPath].isObject())
+                if (options[platformSpecificPath].hasObjectMember (option))
+                    return std::string (options[platformSpecificPath][option].getString());
+
+        if (options.hasObjectMember (option))
+            return std::string (options[option].getString());
+
+        return {};
+    }
+
+
     choc::file::TempFile tmpFolder { choc::file::TempFile::createRandomFilename("cmaj_temp", "d") };
     std::string cppFilename = "cmaj.cpp";
 
@@ -172,6 +206,7 @@ struct TemporaryCompiledDLL
    #endif
 
     std::unique_ptr<choc::file::DynamicLibrary> library;
+    choc::value::ValueView options;
     cmaj::BuildSettings buildSettings;
 };
 
@@ -211,8 +246,6 @@ struct CPlusPlusEngine
             if (code.code.empty())
                 return;
 
-            std::string extraCompileArgs, extraLinkerArgs, overrideCompiler;
-
             if (cppEngine.engine.options.isObject())
             {
                 if (cppEngine.engine.options.hasObjectMember ("overrideSource"))
@@ -220,44 +253,17 @@ struct CPlusPlusEngine
                     code.code = choc::file::loadFileAsString (std::string (cppEngine.engine.options["overrideSource"].getString()));
                     code.mainClassName = "test";
                 }
-
-                extraCompileArgs = getOptionParameter (cppEngine, "extraCompileArgs");
-                extraLinkerArgs  = getOptionParameter (cppEngine, "extraLinkerArgs");
-                overrideCompiler = getOptionParameter (cppEngine, "overrideCompiler");
             }
 
             code.code += getWrapperCode (code.mainClassName);
 
             dll = std::make_unique<TemporaryCompiledDLL> (code.code,
-                                                          buildSettings,
-                                                          extraCompileArgs,
-                                                          extraLinkerArgs,
-                                                          overrideCompiler);
+                                                          cppEngine.engine.options,
+                                                          buildSettings);
 
             CMAJ_ASSERT (dll->library != nullptr);
 
             loadFunction (createEngineFn, "createEngine");
-        }
-
-        static std::string_view getOptionParameter (CPlusPlusEngine& cppEngine, const std::string& option)
-        {
-#ifdef __APPLE__
-            std::string platformSpecificPath = "apple";
-#elif defined(__linux__)
-            std::string platformSpecificPath = "linux";
-#else
-            std::string platformSpecificPath = "windows";
-#endif
-
-            if (cppEngine.engine.options.hasObjectMember (platformSpecificPath))
-                if (cppEngine.engine.options[platformSpecificPath].isObject())
-                    if (cppEngine.engine.options[platformSpecificPath].hasObjectMember (option))
-                        return cppEngine.engine.options[platformSpecificPath][option].getString();
-
-            if (cppEngine.engine.options.hasObjectMember (option))
-                return cppEngine.engine.options[option].getString();
-
-            return {};
         }
 
         //==============================================================================

@@ -343,6 +343,12 @@ createEmbeddedZipData ("cmajor/include", "cmajorIncludeFolderZip",
 
 print ("-------------------------------------------------------------")
 
+createEmbeddedZipData ("cmajor/include", "cmajorIncludeFolderZip",
+                       os.path.join (repoFolder, "modules/compiler/src/backends/CPlusPlus/cmaj_EmbeddedIncludeFolder.h"),
+                       os.path.join (repoFolder, "include"))
+
+print ("-------------------------------------------------------------")
+
 createEmbeddedZipData ("cmajor/modules/plugin/include", "cmajorPluginHelpersFolderZip",
                        os.path.join (repoFolder, "tools/command/Source/cmaj_command_EmbeddedPluginHelpersFolder.h"),
                        os.path.join (repoFolder, "modules/plugin/include"))
