@@ -70,6 +70,9 @@ cmaj <command> [options]    Runs the given command. Options can include the foll
     --sessionID=n           Set the session id to the given value
     --eventBufferSize=n     Set the max number of events per buffer
     --engine=<type>         Use the specified engine - e.g. llvm, webview, cpp
+                            When using cpp, the additional options --overrideCompiler=<v>,
+                            --extraCompileArgs=<v> and --extraLinkerArgs=<v> can be specified to 
+                            alter the compiler and arguments used
     --simd                  WASM generation uses SIMD/non-SIMD at runtime (default)
     --no-simd               WASM generation does not emit SIMD
     --simd-only             WASM generation only emits SIMD
@@ -212,6 +215,15 @@ static choc::value::Value parseEngineArgs (choc::ArgumentList& args)
 
     if (auto worker = args.removeValueFor ("--worker"))
         engineOptions.addMember ("worker", *worker);
+
+    if (auto overrideCompiler = args.removeValueFor ("--overrideCompiler"))
+        engineOptions.addMember ("overrideCompiler", *overrideCompiler);
+
+    if (auto extraCompileArgs = args.removeValueFor ("--extraCompileArgs"))
+        engineOptions.addMember ("extraCompileArgs", *extraCompileArgs);
+
+    if (auto extraLinkerArgs = args.removeValueFor ("--extraLinkerArgs"))
+        engineOptions.addMember ("extraLinkerArgs", *extraLinkerArgs);
 
     return engineOptions;
 }
