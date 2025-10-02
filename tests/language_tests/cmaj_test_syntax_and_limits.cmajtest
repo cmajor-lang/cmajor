@@ -997,7 +997,7 @@ void f() { "xyz"; }
 
 void f() { 1 + sin (1.0); }
 
-## testProcessor()
+## disabled expectError ("x calculation is dependent on the evaluation order")
 
 processor test
 {

@@ -520,8 +520,9 @@ bool test()
 
 void foo() { complex64 n = 2 + 3i; }
 
-## testFunction()
+## testFunction( { optimisationLevel: 3 })
 
+// This test uses isnan/inf so fastmath type logic can throw this, hence forced to O3
 bool testComplex32Operators()
 {
     complex zero = 0;
@@ -535,6 +536,8 @@ bool testComplex32Operators()
     return v1.real.isnan() && v1.imag.isnan() && (v2.real == inf || v2.real.isnan()) && v2.imag.isnan()
         && v3.real.isnan() && v3.imag.isnan() && (v4.real == -inf || v4.real.isnan())&& v4.imag.isnan();
 }
+
+## testFunction()
 
 bool allElementsTrue<T> (T a)
 {
