@@ -77,7 +77,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    set (EXTRA_LIBS "dsound")
+    set (EXTRA_LIBS "dsound" "winmm")
 endif()
 
 MAKE_CMAJ_LIBRARY (
