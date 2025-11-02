@@ -11,10 +11,33 @@
 //  This code may be used under either a GPLv3 or commercial
 //  license: see LICENSE.md for more details.
 
+## global
+
+processor NoiseSource (using FrameType)
+{
+    output stream FrameType out;
+
+    std::random::RNG rng;
+
+    void main()
+    {
+        loop
+        {
+            FrameType v;
+
+            for (wrap<FrameType.size> i)
+                v[i] = rng.getBipolar();
+
+            out <- v;
+
+            advance();
+        }
+    }
+}
 
 ## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"onepole" })
 
-graph test
+graph test [[ main ]]
 {
     output stream float low, high;
     input event int mode;
@@ -36,7 +59,7 @@ graph test
 
 ## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"svf" })
 
-graph test
+graph test [[ main ]]
 {
     output stream float low, high, band;
     input event int mode;
@@ -60,7 +83,7 @@ graph test
 
 ## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"multimode" })
 
-graph test
+graph test [[ main ]]
 {
     output stream float low, high, band;
     input event float frequency;
@@ -83,7 +106,7 @@ graph test
 
 ## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"multimode" })
 
-graph test
+graph test [[ main ]]
 {
     output stream float low, high, band;
     input event float frequency;
@@ -135,38 +158,21 @@ graph test [[ main ]]
 
 ## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"butterworth" })
 
-processor WideNoise (int channels)
-{
-    output stream float<channels> out;
-
-    std::random::RNG rng;
-
-    void main()
-    {
-        loop
-        {
-            float<channels> v;
-
-            for (wrap<channels> i)
-                v[i] = rng.getBipolar();
-
-            out <- v;
-
-            advance();
-        }
-    }
-}
-
 graph filters [[ main ]]
 {
     output stream float<2> low2, low3, low6, high4, high8;
 
-    node noiseSource = WideNoise(2);
-    node l2 = std::filters (float<2>)::butterworth (2)::Processor (0, 1000);
-    node l3 = std::filters (float<2>)::butterworth (3)::Processor (0, 1000);
-    node l6 = std::filters (float<2>)::butterworth (6)::Processor (0, 1000);
-    node h4 = std::filters (float<2>)::butterworth (4)::Processor (1, 1000);
-    node h8 = std::filters (float<2>)::butterworth (8)::Processor (1, 1000);
+    namespace Mode = std::filters::butterworth::Mode;
+
+    node
+    {
+        noiseSource = NoiseSource (float<2>);
+        l2 = std::filters (float<2>)::butterworth (2)::Processor (Mode::lowPass, 1000);
+        l3 = std::filters (float<2>)::butterworth (3)::Processor (Mode::lowPass, 1000);
+        l6 = std::filters (float<2>)::butterworth (6)::Processor (Mode::lowPass, 1000);
+        h4 = std::filters (float<2>)::butterworth (4)::Processor (Mode::highPass, 1000);
+        h8 = std::filters (float<2>)::butterworth (8)::Processor (Mode::highPass, 1000);
+    }
 
     connection
     {
@@ -179,7 +185,6 @@ graph filters [[ main ]]
         h8.out -> high8;
     }
 }
-
 
 
 ## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"crossover" })
@@ -208,8 +213,8 @@ graph filters [[ main ]]
     output stream float64<2> high;
 
     node source    = std::noise::White;
-    node source2   = WideNoise (float, 2);
-    node source3   = WideNoise (float64, 2);
+    node source2   = NoiseSource (float<2>);
+    node source3   = NoiseSource (float64<2>);
 
     node lowPassNode   = std::filters (float<2>)::simper::Processor (std::filters (float<2>)::simper::Mode::lowPass,   1000.0, 1, 20);
     node highPassNode  = std::filters (float64<2>)::simper::Processor (std::filters (float64<2>)::simper::Mode::highPass,  1000.0, 1, 20);
@@ -239,27 +244,6 @@ graph filters [[ main ]]
     }
 }
 
-processor WideNoise (using FrameType, int channels)
-{
-    output stream FrameType<channels> out;
-
-    std::random::RNG rng;
-
-    void main()
-    {
-        loop
-        {
-            FrameType<channels> v;
-
-            for (wrap<channels> i)
-                v[i] = rng.getBipolar();
-
-            out <- v;
-
-            advance();
-        }
-    }
-}
 
 ## runScript ({ frequency:44100, blockSize:32, samplesToRender:1000, subDir:"composed" })
 
