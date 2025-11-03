@@ -2108,6 +2108,10 @@ struct Slice
   #pragma clang diagnostic ignored "-Wunused-but-set-variable"
  #endif
 
+ #if __clang_major__ >= 17
+  #pragma clang diagnostic ignored "-Wnan-infinity-disabled"
+ #endif
+
 #elif __GNUC__
  #pragma GCC diagnostic push
  #pragma GCC diagnostic ignored "-Wunused-variable"
