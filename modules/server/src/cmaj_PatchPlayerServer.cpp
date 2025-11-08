@@ -52,6 +52,7 @@ struct PatchPlayerServer
             writeToConsole ("\nCmajor server active: " + httpServer.getHTTPAddress() + "\n\n");
 
             audioPlayer = createAudioMIDIPlayer (audioOptions);
+            audioPlayer->options.midiClientName = midiClientName;
             refreshAllSessionAudioDevices();
         }
         else
@@ -149,6 +150,7 @@ struct PatchPlayerServer
         newOptions.inputDeviceID = options["input"].getWithDefault<std::string> (o.inputDeviceID);
         newOptions.sampleRate = static_cast<uint32_t> (options["rate"].getWithDefault<int32_t> (static_cast<int32_t> (o.sampleRate)));
         newOptions.blockSize = static_cast<uint32_t> (options["blockSize"].getWithDefault<int32_t> (static_cast<int32_t> (o.blockSize)));
+        newOptions.midiClientName = midiClientName;
 
         if (newOptions.audioAPI != o.audioAPI
              || newOptions.outputDeviceID != o.outputDeviceID
@@ -180,6 +182,8 @@ struct PatchPlayerServer
     {
         return choc::text::createHexString (createRandomUint64());
     }
+
+    static constexpr auto midiClientName = "Cmajor";
 
     struct Session;
 
