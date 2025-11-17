@@ -281,6 +281,8 @@ project(
     LANGUAGES CXX C
 )
 
+OPTION (WEBKIT2_GTK_VERSION "Which version of webkit to use")
+
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 set(JUCE_ENABLE_MODULE_SOURCE_GROUPS ON)
 
@@ -299,6 +301,22 @@ endif()
 
 if (MSVC)
     add_compile_options (/Zc:__cplusplus)
+endif()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    if (NOT WEBKIT2_GTK_VERSION)
+        find_package (PkgConfig REQUIRED)
+
+        pkg_check_modules (package_to_be_found webkit2gtk-4.1 QUIET)
+
+        if(package_to_be_found_FOUND)
+            set (WEBKIT2_GTK_VERSION "webkit2gtk-4.1")
+        else()
+            set (WEBKIT2_GTK_VERSION "webkit2gtk-4.0")
+        endif()
+    endif()
+
+    message ("Using webkit ${WEBKIT2_GTK_VERSION}")
 endif()
 
 juce_add_plugin(${productName}
@@ -348,6 +366,14 @@ target_link_libraries(${productName}
         juce::juce_audio_utils
         $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
 )
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules (GTK3 REQUIRED gtk+-3.0 IMPORTED_TARGET)
+    pkg_check_modules (WEBKIT2 REQUIRED ${WEBKIT2_GTK_VERSION} IMPORTED_TARGET)
+    target_link_libraries (${productName} PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
+    target_include_directories(${productName} PRIVATE ${GTK3_INCLUDE_DIRS} ${WEBKIT2_INCLUDE_DIRS})
+endif()
 )cmake",
         "${projectName}", projectName,
         "${productName}", productName,
