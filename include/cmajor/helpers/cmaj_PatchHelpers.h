@@ -49,6 +49,7 @@ struct PatchParameterProperties
     std::vector<std::string> valueStrings;
     bool isEvent = false, boolean = false, automatable = false, hidden = false, discrete = false;
     uint32_t rampFrames = 0;
+    bool shouldRound = false;
 
     /// Takes a full-range value, clamps it to lie between minValue and maxValue,
     /// and also applies any snapping that may be required according to the `step`
@@ -85,6 +86,7 @@ struct PatchParameterProperties
 
 private:
     //==============================================================================
+    bool isIntegerType (const EndpointDetails&) const;
     bool hasFormatString() const;
     bool hasDiscreteTextOptions() const;
     size_t toDiscreteOptionIndex (float newValue) const;
@@ -268,13 +270,14 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
 {
     isEvent = details.isEvent();
 
-    endpointID = details.endpointID.toString();
-    name       = details.annotation["name"].getWithDefault<std::string> (endpointID);
-    unit       = details.annotation["unit"].toString();
-    group      = details.annotation["group"].toString();
-    minValue   = details.annotation["min"].getWithDefault<float> (0);
-    maxValue   = details.annotation["max"].getWithDefault<float> (1.0f);
-    step       = details.annotation["step"].getWithDefault<float> (0);
+    endpointID  = details.endpointID.toString();
+    name        = details.annotation["name"].getWithDefault<std::string> (endpointID);
+    unit        = details.annotation["unit"].toString();
+    group       = details.annotation["group"].toString();
+    minValue    = details.annotation["min"].getWithDefault<float> (0);
+    maxValue    = details.annotation["max"].getWithDefault<float> (1.0f);
+    step        = details.annotation["step"].getWithDefault<float> (0);
+    shouldRound = isIntegerType (details);
 
     if (auto text = details.annotation["text"].toString(); ! text.empty())
     {
@@ -301,6 +304,15 @@ inline PatchParameterProperties::PatchParameterProperties (const EndpointDetails
     hidden        = details.annotation["hidden"].getWithDefault<bool> (false);
     discrete      = details.annotation["discrete"].getWithDefault<bool> (false);
     rampFrames    = details.annotation["rampFrames"].getWithDefault<uint32_t> (0);
+}
+
+inline bool PatchParameterProperties::isIntegerType (const EndpointDetails& details) const
+{
+    for (auto& type : details.dataTypes)
+        if (! type.isInt())
+            return false;
+
+    return true;
 }
 
 inline float PatchParameterProperties::snapAndConstrainValue (float newValue) const
@@ -476,8 +488,9 @@ inline std::optional<float> PatchParameterProperties::toValueFromDiscreteOptionI
 {
     if (auto numDiscreteSteps = getNumDiscreteOptions(); numDiscreteSteps > 1)
     {
-        auto index0to1 = static_cast<double> (i) / static_cast<double> (numDiscreteSteps - 1);
-        return convertFrom0to1 (static_cast<float> (index0to1));
+        auto value = static_cast<float> (minValue + ((maxValue - minValue) * i) / (numDiscreteSteps - 1));
+
+        return shouldRound ? std::round (value) : value;
     }
 
     return {};
