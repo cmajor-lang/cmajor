@@ -154,8 +154,7 @@ class PatchManifest
 */
 function reportFailOrUnsupported (testSection, error)
 {
-    if (error.message == "Language feature not yet implemented: cpp performer on windows!" ||
-        error.message.substring (0, 19) == "Failed to compile '")
+    if (error.message.substring (0, 19) == "Failed to compile '")
     {
         testSection.reportUnsupported (error);
         return;
@@ -345,8 +344,7 @@ function expectError (expectedError, options)
     }
     else
     {
-        if (newErrorLine == "error: Language feature not yet implemented: cpp performer on windows!" ||
-            newErrorLine.substring (0, 26) == "error: Failed to compile '")
+        if (newErrorLine.substring (0, 26) == "error: Failed to compile '")
         {
             testSection.reportUnsupported (error);
             return;
