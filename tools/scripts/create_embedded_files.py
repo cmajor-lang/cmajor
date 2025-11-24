@@ -85,7 +85,7 @@ def createHTMLFile(targetFile, folder):
     print ("Searching: " + folder)
 
     for root, dirs, files in os.walk (folder):
-        for file in files:
+        for file in sorted (files):
             if file.endswith(".html"):
                 with open (os.path.join(root, file), 'r') as f:
                     content += "//==============================================================================\n"
@@ -104,7 +104,7 @@ def createZipImageLiteral(folder):
 
     with zipfile.ZipFile (tempZipFile, 'w', zipfile.ZIP_DEFLATED, True, 9) as zip:
         for root, dirs, files in os.walk (folder):
-            for file in files:
+            for file in sorted (files):
                 path = os.path.normpath (os.path.join (root, file))
 
                 if (path.find ("/.") < 0):
@@ -189,7 +189,7 @@ FILE_DATA
     filesToAdd = []
 
     for root, dirs, files in os.walk (assetFolder):
-        for file in files:
+        for file in sorted (files):
             if file.find (".DS_Store") < 0:
                 with open (os.path.join (root, file), 'rb') as f:
                     filesToAdd.append ([ os.path.relpath (os.path.join (root, file), assetFolder), f.read() ])
@@ -254,7 +254,7 @@ FILE_DATA
     filesToAdd = []
 
     for root, dirs, files in os.walk (assetFolder):
-        for file in files:
+        for file in sorted (files):
             if file.find (".DS_Store") < 0:
                 with open (os.path.join (root, file), 'rb') as f:
                     filesToAdd.append ([ os.path.relpath (os.path.join (root, file), assetFolder), f.read() ])
@@ -296,7 +296,7 @@ FILE_DATA
     filesToAdd = []
 
     for root, dirs, files in os.walk (assetFolder):
-        for file in files:
+        for file in sorted (files):
             path = os.path.relpath (os.path.join (root, file), assetFolder)
 
             if path.find (".DS_Store") < 0:
