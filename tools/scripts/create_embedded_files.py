@@ -35,7 +35,7 @@ differencesFound = 0
 #####################################################################################################
 parser = argparse.ArgumentParser (description = "This script updates the embedded assets in the projuect")
 
-parser.add_argument ("--dryRun", help = "Specifies that we should do a dry run and not update files", action=argparse.BooleanOptionalAction, default=False)
+parser.add_argument ("--dryRun", help = "Specifies that we should do a dry run and not update files", action='store_true', default=False)
 
 args = parser.parse_args()
 
