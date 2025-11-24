@@ -71,8 +71,6 @@ struct TemporaryCompiledDLL
             CMAJ_ASSERT_FALSE;
         }
 
-        unzipCmajorHeaders (tmpFolder.file.string() + "/include");
-
         auto getOptimisationFlag = [] (int level) -> std::string
         {
            #ifdef WIN32
@@ -112,7 +110,19 @@ struct TemporaryCompiledDLL
            #endif
         };
 
-        const auto cmajorHeaderPath = tmpFolder.file.string() + "/include";
+        auto getCmajorHeaderPath = [&]() -> std::string
+        {
+            auto cmajorIncludePath = getOptionParameter ("cmajorIncludePath");
+
+            if (! cmajorIncludePath.empty())
+                return cmajorIncludePath;
+
+            unzipCmajorHeaders (tmpFolder.file.string() + "/include");
+
+            return tmpFolder.file.string() + "/include";
+        };
+
+        const auto cmajorHeaderPath = getCmajorHeaderPath();
         const auto extraCompileArgs = getOptionParameter ("extraCompileArgs");
         const auto extraLinkerArgs  = getOptionParameter ("extraLinkerArgs");
 
@@ -175,7 +185,7 @@ struct TemporaryCompiledDLL
     std::string getOptionParameter (const std::string& option)
     {
 #ifdef __APPLE__
-        std::string platformSpecificPath = "apple";
+        std::string platformSpecificPath = "macos";
 #elif defined(__linux__)
         std::string platformSpecificPath = "linux";
 #else

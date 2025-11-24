@@ -225,6 +225,9 @@ static choc::value::Value parseEngineArgs (choc::ArgumentList& args)
     if (auto extraLinkerArgs = args.removeValueFor ("--extraLinkerArgs"))
         engineOptions.addMember ("extraLinkerArgs", *extraLinkerArgs);
 
+    if (auto cmajorIncludePath = args.removeValueFor ("--cmajorIncludePath"))
+        engineOptions.addMember ("cmajorIncludePath", *cmajorIncludePath);
+
     return engineOptions;
 }
 
