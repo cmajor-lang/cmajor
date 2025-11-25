@@ -112,9 +112,16 @@ def createZipImageLiteral(folder):
 
         filesToZip.sort()
 
+        # for file in filesToZip:
+        #     print ("zipping " + file)
+        #     zip.write (file, os.path.relpath (file, folder))
+
+        # Avoid file timestamp being included as this makes the zip unstable, and stops dryRun working
         for file in filesToZip:
             print ("zipping " + file)
-            zip.write (file, os.path.relpath (file, folder))
+            info = zipfile.ZipInfo (filename = os.path.relpath (file, folder), date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            zip.writestr (info, open (file, "rb").read())
 
         zip.close()
 
