@@ -1,0 +1,264 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     (C)2024 Cmajor Software Ltd
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     https://cmajor.dev
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88
+//                                           ,88
+//                                        888P"
+//
+//  This code may be used under either a GPLv3 or commercial
+//  license: see LICENSE.md for more details.
+
+## global
+
+namespace data
+{
+    let messages = std::midi::Message[] (std::midi::Message (0x802030),
+                                         std::midi::Message (0x911020),
+                                         std::midi::Message (0xa21245),
+                                         std::midi::Message (0xb34050),
+                                         std::midi::Message (0xc44400),
+                                         std::midi::Message (0xd57f00),
+                                         std::midi::Message (0xe60106));
+}
+
+processor MessageSource
+{
+    output event std::midi::Message midi;
+
+    void main()
+    {
+        for (wrap<data::messages.size> i)
+            midi <- data::messages[i];
+
+        advance();
+    }
+}
+
+
+## testFunction()
+
+bool testNoteOff()
+{
+    let msg = data::messages[0];
+
+    return msg.isNoteOff() &&
+           msg.getChannel0to15() == 0 &&
+           msg.getNoteNumber() == 0x20 &&
+           msg.getVelocity() == 0x30;
+}
+
+bool testNoteOn()
+{
+    let msg = data::messages[1];
+
+    return msg.isNoteOn() &&
+           msg.getChannel0to15() == 1 &&
+           msg.getNoteNumber() == 0x10 &&
+           msg.getVelocity() == 0x20;
+}
+
+bool testAftertouch()
+{
+    let msg = data::messages[2];
+
+    return msg.isAftertouch() &&
+           msg.getChannel0to15() == 2 &&
+           msg.getNoteNumber() == 0x12 &&
+           msg.getAfterTouchValue() == 0x45;
+}
+
+bool testController()
+{
+    let msg = data::messages[3];
+
+    return msg.isController() &&
+           msg.getChannel0to15() == 3 &&
+           msg.getControllerNumber() == 0x40 &&
+           msg.getControllerValue() == 0x50;
+}
+
+bool testProgramChange()
+{
+    let msg = data::messages[4];
+
+    return msg.isProgramChange() &&
+           msg.getChannel0to15() == 4 &&
+           msg.getProgramChangeNumber() == 0x44;
+}
+
+bool testChannelPressure()
+{
+    let msg = data::messages[5];
+
+    return msg.isChannelPressure() &&
+           msg.getChannel0to15() == 5 &&
+           msg.getProgramChangeNumber() == 0x7f;
+}
+
+bool testPitchWheel()
+{
+    let msg = data::messages[6];
+
+    return msg.isPitchWheel() &&
+           msg.getChannel0to15() == 6 &&
+           msg.getPitchWheelValue() == 0x0301;
+}
+
+
+## testProcessor()
+
+graph Test [[ main ]]
+{
+    output event int result;
+
+    connection
+        MessageSource -> std::midi::MPEConverter -> MessageSink -> result;
+}
+
+processor MessageSink
+{
+    input event (std::notes::NoteOn,
+                 std::notes::NoteOff,
+                 std::notes::PitchBend,
+                 std::notes::Slide,
+                 std::notes::Pressure,
+                 std::notes::Aftertouch,
+                 std::notes::ProgramChange,
+                 std::notes::Control) eventIn;
+
+    output event int result;
+
+    event eventIn (std::notes::NoteOff noteOff)
+    {
+        processedMessages++;
+
+        success &&= (processedMessages == 1 &&
+                     noteOff.channel == 0 &&
+                     noteOff.pitch == 0x20 &&
+                     near (noteOff.velocity, 0x30));
+    }
+
+    event eventIn (std::notes::NoteOn noteOn)
+    {
+        processedMessages++;
+
+        success &&= (processedMessages == 2 &&
+                     noteOn.channel == 1 &&
+                     noteOn.pitch == 0x10 &&
+                     near (noteOn.velocity, 0x20));
+    }
+
+    event eventIn (std::notes::Aftertouch aftertouch)
+    {
+        processedMessages++;
+
+        success &&= (processedMessages == 3 &&
+                     aftertouch.channel == 2 &&
+                     aftertouch.pitch == 0x12 &&
+                     near (aftertouch.pressure, 0x45));
+    }
+
+    event eventIn (std::notes::Control control)
+    {
+        processedMessages++;
+
+        success &&= (processedMessages == 4 &&
+                     control.channel == 3 &&
+                     control.control == 0x40 &&
+                     near (control.value, 0x50));
+    }
+
+    event eventIn (std::notes::ProgramChange programChange)
+    {
+        processedMessages++;
+
+        success &&= (processedMessages == 5 &&
+                     programChange.channel == 4 &&
+                     programChange.program == 0x44);
+    }
+
+    event eventIn (std::notes::Pressure pressure)
+    {
+        processedMessages++;
+
+        success &&= (processedMessages == 6 &&
+                     pressure.channel == 5 &&
+                     near (pressure.pressure, 0x7f));
+    }
+
+    event eventIn (std::notes::PitchBend pitch)
+    {
+        processedMessages++;
+
+        success &&= (processedMessages == 7 &&
+                     pitch.channel == 6 &&
+                     near (pitch.bendSemitones, 0x06, 0x01));
+    }
+
+    bool near (float f, int midiValue)
+    {
+        let v = midiValue * (1.0f / 127.0f);
+
+        return (abs (f - v) < 0.0001f);
+    }
+
+    bool near (float f, int midiValue1, int midiValue2)
+    {
+        let v = std::midi::semitoneBendRange * (((midiValue1 << 7) + midiValue2 - 8192) * (1.0f / (8192.0f)));
+
+        return (abs (f - v) < 0.0001f);
+    }
+
+    int processedMessages = 0;
+
+    bool success = true;
+
+    void main()
+    {
+        if (processedMessages == 7 && success)
+            result <- 1;
+
+        advance();
+    }
+}
+
+
+## testProcessor()
+
+// Confirm that the messages round trip through the MPEConverter and NoteToMIDI
+graph Test [[ main ]]
+{
+    output event int result;
+
+    connection
+        MessageSource -> std::midi::MPEConverter -> std::midi::NoteToMIDI -> MessageSink -> result;
+}
+
+processor MessageSink
+{
+    input event std::midi::Message midiIn;
+    output event int result;
+
+    event midiIn (std::midi::Message m)
+    {
+        if (data::messages.at (processedMessages).message != m.message)
+            success = false;
+
+        processedMessages++;
+    }
+
+    int processedMessages = 0;
+
+    bool success = true;
+
+    void main()
+    {
+        if (processedMessages == 7 && success)
+            result <- 1;
+
+        advance();
+    }
+}

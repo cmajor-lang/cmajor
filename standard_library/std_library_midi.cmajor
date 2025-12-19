@@ -55,7 +55,7 @@ namespace std::midi
         int32 getNoteNumber() const                         { return (this.message >> 8) & 0x7f; }
         float32 getPitch() const                            { return float32 (this.getNoteNumber()); }
         int32 getVelocity() const                           { return this.message & 0x7f; }
-        float32 getFloatVelocity() const                    { return float32 (this.message & 0x7f) * (1.0f / 127.0f); }
+        float32 getFloatVelocity() const                    { return this.getVelocity() * (1.0f / 127.0f); }
 
         bool isProgramChange() const                        { return (this.message & 0xf00000) == 0xc00000; }
         int32 getProgramChangeNumber() const                { return (this.message >> 8) & 0x7f; }
@@ -65,16 +65,17 @@ namespace std::midi
 
         bool isAftertouch() const                           { return (this.message & 0xf00000) == 0xa00000; }
         int32 getAfterTouchValue() const                    { return this.message & 0x7f; }
+        float32 getFloatAfterTouchValue() const             { return this.getAfterTouchValue() * (1.0f / 127.0f); }
 
         bool isChannelPressure() const                      { return (this.message & 0xf00000) == 0xd00000; }
         int32 getChannelPressureValue() const               { return (this.message >> 8) & 0x7f; }
-        float32 getFloatChannelPressureValue() const        { return float32 ((this.message >> 8) & 0x7f) * (1.0f / 127.0f); }
+        float32 getFloatChannelPressureValue() const        { return this.getChannelPressureValue() * (1.0f / 127.0f); }
 
         bool isController() const                           { return (this.message & 0xf00000) == 0xb00000; }
         bool isControllerNumber (int32 number) const        { return (this.message & 0xf0ff00) == (0xb00000 | (number << 8)); }
         int32 getControllerNumber() const                   { return (this.message >> 8) & 0x7f; }
         int32 getControllerValue() const                    { return this.message & 0x7f; }
-        float32 getFloatControllerValue() const             { return float32 (this.message & 0x7f) * (1.0f / 127.0f); }
+        float32 getFloatControllerValue() const             { return this.getControllerValue() * (1.0f / 127.0f); }
         bool isAllNotesOff() const                          { return this.isControllerNumber (123); }
         bool isAllSoundOff() const                          { return this.isControllerNumber (120); }
 
@@ -123,7 +124,9 @@ namespace std::midi
                       std::notes::PitchBend,
                       std::notes::Slide,
                       std::notes::Pressure,
-                      std::notes::Control) eventOut;
+                      std::notes::Aftertouch,
+                      std::notes::Control,
+                      std::notes::ProgramChange) eventOut;
 
         event parseMIDI (Message message)
         {
@@ -159,6 +162,18 @@ namespace std::midi
                                                      message.getControllerNumber(),
                                                      message.getFloatControllerValue());
             }
+            else if (message.isAftertouch())
+            {
+                eventOut <- notes::Aftertouch (message.getChannel0to15(),
+                                               message.getPitch(),
+                                               message.getFloatAfterTouchValue());
+
+            }
+            else if (message.isProgramChange())
+            {
+                eventOut <- notes::ProgramChange (message.getChannel0to15(),
+                                                  message.getProgramChangeNumber());
+            }
         }
     }
 
@@ -172,30 +187,35 @@ namespace std::midi
                      std::notes::PitchBend,
                      std::notes::Slide,
                      std::notes::Pressure,
-                     std::notes::Control) eventIn;
+                     std::notes::Aftertouch,
+                     std::notes::Control,
+                     std::notes::ProgramChange) eventIn;
 
         output event std::midi::Message midiOut;
-
-        event eventIn (std::notes::NoteOn e)
-        {
-            midiOut <- createMessage (0x90 + (e.channel & 0xf), int (e.pitch), clampFloatToByte (e.velocity));
-        }
 
         event eventIn (std::notes::NoteOff e)
         {
             midiOut <- createMessage (0x80 + (e.channel & 0xf), int (e.pitch), clampFloatToByte (e.velocity));
         }
 
-        event eventIn (std::notes::PitchBend e)
+        event eventIn (std::notes::NoteOn e)
         {
-            let clampedValue = clamp (e.bendSemitones, -semitoneBendRange, semitoneBendRange);
-            let value = int (8192.0f + (clampedValue * (8191.0f / semitoneBendRange)));
-            midiOut <- createMessage (0xe0 + (e.channel & 0xf), value, value >> 7);
+            midiOut <- createMessage (0x90 + (e.channel & 0xf), int (e.pitch), clampFloatToByte (e.velocity));
         }
 
-        event eventIn (std::notes::Pressure e)
+        event eventIn (std::notes::Aftertouch e)
         {
-            midiOut <- createMessage (0xd0 + (e.channel & 0xf), clampFloatToByte (e.pressure), 0);
+            midiOut <- createMessage (0xa0 + (e.channel & 0xf), int (e.pitch), clampFloatToByte (e.pressure));
+        }
+
+        event eventIn (std::notes::Control e)
+        {
+            midiOut <- createMessage (0xb0 + (e.channel & 0xf), e.control, clampFloatToByte (e.value));
+        }
+
+        event eventIn (std::notes::ProgramChange e)
+        {
+            midiOut <- createMessage (0xc0 + (e.channel & 0xf), e.program, 0);
         }
 
         event eventIn (std::notes::Slide e)
@@ -203,9 +223,16 @@ namespace std::midi
             midiOut <- createMessage (0xb0 + (e.channel & 0xf), slideController, clampFloatToByte (e.slide));
         }
 
-        event eventIn (std::notes::Control e)
+        event eventIn (std::notes::Pressure e)
         {
-            midiOut <- createMessage (0xb0 + (e.channel & 0xf), e.control, clampFloatToByte (e.value));
+            midiOut <- createMessage (0xd0 + (e.channel & 0xf), clampFloatToByte (e.pressure), 0);
+        }
+
+        event eventIn (std::notes::PitchBend e)
+        {
+            let clampedValue = clamp (e.bendSemitones, -semitoneBendRange, semitoneBendRange);
+            let value = int (8192.0f + (clampedValue * (8191.0f / semitoneBendRange)));
+            midiOut <- createMessage (0xe0 + (e.channel & 0xf), value, value >> 7);
         }
     }
 }

@@ -64,6 +64,20 @@ namespace std::notes
         float32 velocity;
     }
 
+    /// This message represents a per note aftertouch event (polyphonic aftertouch)
+    struct Aftertouch
+    {
+        /// This channel ID can be used to associate this event with the earlier
+        /// NoteOn to which it applies.
+        int32 channel;
+
+        /// The pitch of the note affected by this aftertouch
+        float32 pitch;
+
+        /// Key pressure in the range 0 to 1
+        float32 pressure;
+    }
+
     struct PitchBend
     {
         /// This channel ID can be used to associate this event with the earlier
@@ -74,6 +88,7 @@ namespace std::notes
         float32 bendSemitones;
     }
 
+    /// This message represents a per channel pressure event (channel aftertouch)
     struct Pressure
     {
         /// This channel ID can be used to associate this event with the earlier
@@ -109,6 +124,15 @@ namespace std::notes
 
         /// The normalised value of the controller, between 0 and 1
         float32 value;
+    }
+
+    struct ProgramChange
+    {
+        /// The channel affected by this change
+        int32 channel;
+
+        /// The new program selected on this channel
+        int32 program;
     }
 
     //==============================================================================

@@ -762,6 +762,9 @@ inline bool AudioMIDIPerformer::process (const choc::audio::AudioMIDIBlockDispat
                     for (uint32_t i = 0; i < length; ++i)
                         packedMIDI = (packedMIDI << 8) | static_cast<int32_t> (bytes[i]);
 
+                    if (length == 2)
+                        packedMIDI = (packedMIDI << 8);
+
                     for (auto& midiEndpoint : midiInputEndpoints)
                         performer.addInputEvent (midiEndpoint, 0, packedMIDI);
                 }
