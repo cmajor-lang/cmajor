@@ -3789,7 +3789,7 @@ graph test [[ main ]]
     connection subGraph.out[2] -> out;
 }
 
-## expectError ("7:27: error: Cannot connect m.eventOut (NoteOn, NoteOff, PitchBend, Slide, Pressure, Aftertouch, Control) to out (int32)")
+## expectError ("7:27: error: Cannot connect m.eventOut (NoteOn, NoteOff, PitchBend, Slide, Pressure, Aftertouch, Control, ProgramChange) to out (int32)")
 
 graph test [[ main ]]
 {
