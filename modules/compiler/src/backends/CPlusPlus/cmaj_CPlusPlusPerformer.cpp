@@ -24,6 +24,7 @@
 #include <sstream>
 #include <iostream>
 #include <filesystem>
+#include <mutex>
 
 #include "../../../include/cmaj_ErrorHandling.h"
 #include "choc/platform/choc_DynamicLibrary.h"
@@ -127,11 +128,18 @@ struct TemporaryCompiledDLL
         const auto extraLinkerArgs  = getOptionParameter ("extraLinkerArgs");
 
 #ifdef WIN32
-        build (getCompiler(),
-               getOptimisationFlag (buildSettings.getOptimisationLevel())
-               + " /I" + cmajorHeaderPath
-               + " /std:c++17 /Zc:__cplusplus " + extraCompileArgs,
-               extraLinkerArgs);
+        {
+            static std::mutex compileMutex;
+
+            // Only one compile at a time is supported in windows land
+            std::unique_lock lock (compileMutex);
+
+            build (getCompiler(),
+                getOptimisationFlag (buildSettings.getOptimisationLevel())
+                + " /I" + cmajorHeaderPath
+                + " /std:c++17 /Zc:__cplusplus /bigobj " + extraCompileArgs,
+                extraLinkerArgs);
+        }
 #else
         build (getCompiler(),
                getOptimisationFlag (buildSettings.getOptimisationLevel())
