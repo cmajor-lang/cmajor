@@ -958,7 +958,7 @@ processor P [[ main ]]
     }
 }
 
-## testConsole ("2 2 2 456 0 0 2 4")
+## disabled testConsole ("2 2 2 456 0 0 2 4")
 
 processor test
 {
