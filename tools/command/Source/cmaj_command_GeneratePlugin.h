@@ -154,6 +154,7 @@ inline void createJucePluginFiles (GeneratedFiles& generatedFiles,
     std::string projectName          = cmaj::makeSafeIdentifierName (cpp.mainClassName);
     std::string version              = loadParams.manifest.version;
     std::string productName          = cmaj::makeSafeIdentifierName (choc::text::replace (loadParams.manifest.name, " ", ""));
+    std::string pluginName           = loadParams.manifest.name;
     std::string icon                 = loadParams.manifest.manifest["icon"].toString();
     std::string pluginCode;
     std::string manufacturerCode;
@@ -323,6 +324,7 @@ juce_add_plugin(${productName}
     FORMATS ${pluginFormats}
     DESCRIPTION "${description}"
     PRODUCT_NAME "${productName}"
+    PLUGIN_NAME "${pluginName}"
     BUNDLE_ID "${ID}"
     PLUGIN_CODE "${pluginCode}"
     PLUGIN_MANUFACTURER_CODE "${manufacturerCode}"
@@ -377,6 +379,7 @@ endif()
 )cmake",
         "${projectName}", projectName,
         "${productName}", productName,
+        "${pluginName}", pluginName,
         "${version}", version,
         "${description}", manifest.description,
         "${ID}", manifest.ID,
