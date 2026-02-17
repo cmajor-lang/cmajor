@@ -2538,3 +2538,28 @@ namespace ns (int x = 4)
         output stream float32<2> out;
     }
 }
+
+## expectError ("10:20: error: Expected an assignable target on the left of the '=' operator")
+
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    node childNodes = Child[10];
+
+    void main()
+    {
+        childNodes[0] = 1;
+        advance();
+    }
+}
+
+processor Child
+{
+    output stream float out;
+
+    void main()
+    {
+        advance();
+    }
+}

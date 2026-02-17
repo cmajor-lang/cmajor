@@ -138,7 +138,7 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
         else
         {
             auto& getElement = replaceWithNewObject<AST::GetElement> (b);
-            getElement.parent.referTo (parent);
+            getElement.parent.createReferenceTo (parent);
             getElement.indexes.addReference (term.startIndex);
         }
     }
