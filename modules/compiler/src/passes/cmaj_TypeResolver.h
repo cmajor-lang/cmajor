@@ -102,22 +102,22 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
         }
 
         if (auto endpoint = AST::castToSkippingReferences<AST::EndpointInstance> (b.parent))
-            return replaceWithGetElementForNode (b, *endpoint);
+            return replaceWithGetElementForNode (b, *endpoint, false);
 
         if (auto endpointDeclaration = AST::castToSkippingReferences<AST::EndpointDeclaration> (b.parent))
         {
             auto& endpointInstance = b.allocateChild<AST::EndpointInstance>();
             endpointInstance.endpoint.createReferenceTo (*endpointDeclaration);
-            return replaceWithGetElementForNode (b, endpointInstance);
+            return replaceWithGetElementForNode (b, endpointInstance, false);
         }
 
         if (auto node = AST::castToSkippingReferences<AST::GraphNode> (b.parent))
-            return replaceWithGetElementForNode (b, *node);
+            return replaceWithGetElementForNode (b, *node, true);
 
         registerFailure();
     }
 
-    void replaceWithGetElementForNode (AST::BracketedSuffix& b, AST::Object& parent)
+    void replaceWithGetElementForNode (AST::BracketedSuffix& b, AST::Object& parent, bool createReference)
     {
         if (b.terms.empty())
             throwError (b, Errors::expectedArrayIndex());
@@ -138,7 +138,12 @@ struct TypeResolver  : public PassAvoidingGenericFunctionsAndModules
         else
         {
             auto& getElement = replaceWithNewObject<AST::GetElement> (b);
-            getElement.parent.createReferenceTo (parent);
+
+            if (createReference)
+                getElement.parent.createReferenceTo (parent);
+            else
+                getElement.parent.referTo (parent);
+
             getElement.indexes.addReference (term.startIndex);
         }
     }
