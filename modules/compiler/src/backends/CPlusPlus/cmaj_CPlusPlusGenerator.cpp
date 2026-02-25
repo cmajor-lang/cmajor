@@ -2103,6 +2103,7 @@ struct Slice
  #pragma clang diagnostic ignored "-Wunused-parameter"
  #pragma clang diagnostic ignored "-Wunused-label"
  #pragma clang diagnostic ignored "-Wtautological-compare"
+ #pragma clang diagnostic ignored "-Wunknown-warning-option"
 
  #if __clang_major__ >= 14
   #pragma clang diagnostic ignored "-Wunused-but-set-variable"
