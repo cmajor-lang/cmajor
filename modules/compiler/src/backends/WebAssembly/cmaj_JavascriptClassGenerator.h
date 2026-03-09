@@ -1072,7 +1072,7 @@ setInputStreamFrames_ENDPOINT (sourceChannelArrays, numFramesToWrite, sourceChan
             auto nativeBit = module.module.nativeTypeLayouts.get (baseType)->convertPackedByteToNativeBit (packedOffsetFromBase);
             auto address = addToValue (baseAddressVariable, nativeBit / 8);
             auto onMask = static_cast<uint8_t> (1u << (nativeBit & 7));
-            uint8_t offMask = ~onMask;
+            uint8_t offMask = static_cast<uint8_t> (~onMask);
 
             out << "memoryDataView.setUint8 (" << address << ", " << newValue
                 << " ? (" << onMask << " | memoryDataView.getUint8(" << address << "))"
