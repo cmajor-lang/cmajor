@@ -35,7 +35,7 @@ add_compile_definitions (
 )
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    set (EXTRA_LIBS "-pthread")
+    set (EXTRA_LIBS "-pthread" "-lasound")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Android")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
