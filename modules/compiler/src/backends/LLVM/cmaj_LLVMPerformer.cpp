@@ -102,16 +102,6 @@ struct LLJITHolder
             ::llvm::orc::LLJITBuilder builder;
             builder.setJITTargetMachineBuilder (machineBuilder.get());
 
-            // Avoid the special case ObjectLinkingLayer created by lljit when it's the wrong thing to do
-            if (targetTriple.isOSBinFormatMachO())
-            {
-                builder.setObjectLinkingLayerCreator ([](::llvm::orc::ExecutionSession &es, const ::llvm::Triple &) -> ::llvm::Expected<std::unique_ptr<::llvm::orc::ObjectLayer>>
-                                                      {
-                                                          auto memoryManager = []() { return std::make_unique<::llvm::SectionMemoryManager>(); };
-                                                          return std::make_unique<::llvm::orc::RTDyldObjectLinkingLayer>(es, std::move(memoryManager));
-                                                      });
-            }
-
             if (auto jit = builder.create())
             {
                 if (auto e = jit.takeError())
