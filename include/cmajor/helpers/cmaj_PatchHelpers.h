@@ -488,7 +488,8 @@ inline std::optional<float> PatchParameterProperties::toValueFromDiscreteOptionI
 {
     if (auto numDiscreteSteps = getNumDiscreteOptions(); numDiscreteSteps > 1)
     {
-        auto value = static_cast<float> (minValue + ((maxValue - minValue) * i) / (numDiscreteSteps - 1));
+        auto value = static_cast<float> (minValue + ((maxValue - minValue) * static_cast<float> (i))
+                        / static_cast<float> ((numDiscreteSteps - 1u)));
 
         return shouldRound ? std::round (value) : value;
     }

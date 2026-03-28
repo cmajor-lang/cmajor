@@ -197,7 +197,7 @@ struct RenderState
             if (midiEvent.message.isShortMessage())
             {
                 midiMessages.emplace_back (midiEvent.message);
-                midiMessageTimes.push_back (static_cast<uint32_t> (midiEvent.timeStamp * sampleRate - framesRendered));
+                midiMessageTimes.push_back (static_cast<uint32_t> (static_cast<uint64_t> (midiEvent.timeStamp * sampleRate) - framesRendered));
             }
         }
 

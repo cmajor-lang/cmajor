@@ -302,7 +302,7 @@ private:
             {
                 auto samplesPerQuarterNote = sampleRate / (currentBPM / 60.0);
                 auto quarterNotesPerBar = (4.0 * numerator) / denominator;
-                quarterNote = totalFramesRendered / samplesPerQuarterNote;
+                quarterNote = static_cast<double> (totalFramesRendered) / samplesPerQuarterNote;
                 auto barNumber = std::floor (quarterNote / quarterNotesPerBar);
                 barStartQuarterNote = barNumber * quarterNotesPerBar;
             }
