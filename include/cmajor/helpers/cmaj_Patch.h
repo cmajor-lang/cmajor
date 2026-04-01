@@ -2108,6 +2108,7 @@ inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, cons
 
 inline void Patch::unload()
 {
+    buildThread.reset();
     clientEventQueue->stop();
 
     if (renderer)
