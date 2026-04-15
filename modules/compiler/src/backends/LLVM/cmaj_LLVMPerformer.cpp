@@ -84,6 +84,7 @@ static void initialiseLLVM()
 
 #if CMAJ_ENABLE_PERFORMER_LLVM
 
+#ifdef __APPLE__
 //==============================================================================
 // A minimal in-process ExecutorProcessControl that provides dylib management
 // without using SelfExecutorProcessControl's UnwindInfoManager. This is required
@@ -178,6 +179,7 @@ private:
     }
 
 };
+#endif
 
 //==============================================================================
 struct LLJITHolder
@@ -199,6 +201,7 @@ struct LLJITHolder
             ::llvm::orc::LLJITBuilder builder;
             builder.setJITTargetMachineBuilder (machineBuilder.get());
 
+           #ifdef __APPLE__
             // Workaround an issue where registering multiple JIT instances in shared libraries
             // in the same process causes a jit failure
             if (targetTriple.isOSBinFormatMachO())
@@ -210,6 +213,7 @@ struct LLJITHolder
                     return std::make_unique<::llvm::orc::RTDyldObjectLinkingLayer> (ES, [] { return std::make_unique<::llvm::SectionMemoryManager>(); });
                 });
             }
+           #endif
 
             if (auto jit = builder.create())
             {
