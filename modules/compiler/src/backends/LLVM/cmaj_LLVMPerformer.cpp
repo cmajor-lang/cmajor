@@ -43,6 +43,7 @@
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 #include "llvm/ExecutionEngine/RTDyldMemoryManager.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/Support/Process.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
@@ -83,6 +84,102 @@ static void initialiseLLVM()
 
 #if CMAJ_ENABLE_PERFORMER_LLVM
 
+//==============================================================================
+// A minimal in-process ExecutorProcessControl that provides dylib management
+// without using SelfExecutorProcessControl's UnwindInfoManager. This is required
+// for MacOS to avoid issues if large numbers of libraries are registered in the
+// same process
+class SafeInProcessEPC  : public ::llvm::orc::ExecutorProcessControl
+{
+public:
+    SafeInProcessEPC (::llvm::Triple targetTriple)
+        : ExecutorProcessControl (std::make_shared<::llvm::orc::SymbolStringPool>(),
+                                  std::make_unique<::llvm::orc::InPlaceTaskDispatcher>())
+    {
+        this->TargetTriple            = std::move (targetTriple);
+        this->PageSize                = static_cast<unsigned> (::llvm::sys::Process::getPageSizeEstimate());
+        this->DylibMgr                = &dyLibManager;
+        this->JDI.JITDispatchFunction = ::llvm::orc::ExecutorAddr::fromPtr (&jitDispatchViaWrapperFunctionManager);
+        this->JDI.JITDispatchContext  = ::llvm::orc::ExecutorAddr::fromPtr (this);
+    }
+
+    ::llvm::Expected<int32_t> runAsMain (::llvm::orc::ExecutorAddr mainAddr, ::llvm::ArrayRef<std::string> args) override
+    {
+        return mainAddr.toPtr<int(*)(int, char *[])>()(static_cast<int> (args.size()), nullptr);
+    }
+
+    ::llvm::Expected<int32_t> runAsVoidFunction (::llvm::orc::ExecutorAddr addr) override
+    {
+        return addr.toPtr<int(*)()>()();
+    }
+
+    ::llvm::Expected<int32_t> runAsIntFunction (::llvm::orc::ExecutorAddr addr, int arg) override
+    {
+        return addr.toPtr<int(*)(int)>()(arg);
+    }
+
+    void callWrapperAsync (::llvm::orc::ExecutorAddr wrapperAddr, IncomingWFRHandler handler, ::llvm::ArrayRef<char> argBuffer) override
+    {
+        using WrapperFnTy = ::llvm::orc::shared::CWrapperFunctionResult(*)(const char *, size_t);
+        auto *fn = wrapperAddr.toPtr<WrapperFnTy>();
+        handler (fn (argBuffer.data(), argBuffer.size()));
+    }
+
+    ::llvm::Error disconnect() override { return ::llvm::Error::success(); }
+
+    class DylibManager : public ::llvm::orc::DylibManager
+    {
+        ::llvm::Expected<::llvm::orc::tpctypes::DylibHandle> loadDylib (const char* path) override
+        {
+            std::string errMsg;
+            auto dylib = ::llvm::sys::DynamicLibrary::getPermanentLibrary (path, &errMsg);
+
+            if (! dylib.isValid())
+                return ::llvm::make_error<::llvm::StringError> (std::move (errMsg), ::llvm::inconvertibleErrorCode());
+
+            return ::llvm::orc::ExecutorAddr::fromPtr (dylib.getOSSpecificHandle());
+        }
+
+        void lookupSymbolsAsync (::llvm::ArrayRef<::llvm::orc::DylibManager::LookupRequest> request, ::llvm::orc::DylibManager::SymbolLookupCompleteFn complete) override
+        {
+            std::vector<::llvm::orc::tpctypes::LookupResult> results;
+
+            for (const auto& req : request)
+            {
+                ::llvm::orc::tpctypes::LookupResult result;
+
+                for (const auto& kvp : req.Symbols)
+                {
+                    auto name = (*kvp.first).str();
+                    auto addr = ::llvm::sys::DynamicLibrary::SearchForAddressOfSymbol (name);
+
+                    if (! addr && kvp.second == ::llvm::orc::SymbolLookupFlags::RequiredSymbol)
+                    {
+                        complete (::llvm::make_error<::llvm::StringError> ("Symbol not found: " + name, ::llvm::inconvertibleErrorCode()));
+                        return;
+                    }
+
+                    result.push_back (::llvm::orc::ExecutorSymbolDef (::llvm::orc::ExecutorAddr::fromPtr (addr), ::llvm::JITSymbolFlags::Exported));
+                }
+
+                results.push_back (std::move (result));
+            }
+
+            complete (std::move (results));
+        }
+    };
+
+private:
+    DylibManager dyLibManager;
+
+    static ::llvm::orc::shared::CWrapperFunctionResult jitDispatchViaWrapperFunctionManager (void*, const void*, const char*, size_t)
+    {
+        return ::llvm::orc::shared::CWrapperFunctionResult();
+    }
+
+};
+
+//==============================================================================
 struct LLJITHolder
 {
     LLJITHolder (int optimisationLevel)
@@ -101,6 +198,18 @@ struct LLJITHolder
 
             ::llvm::orc::LLJITBuilder builder;
             builder.setJITTargetMachineBuilder (machineBuilder.get());
+
+            // Workaround an issue where registering multiple JIT instances in shared libraries
+            // in the same process causes a jit failure
+            if (targetTriple.isOSBinFormatMachO())
+            {
+                builder.setExecutorProcessControl (std::make_unique<SafeInProcessEPC> (targetTriple));
+
+                builder.setObjectLinkingLayerCreator ([] (::llvm::orc::ExecutionSession& ES, const ::llvm::Triple&) -> ::llvm::Expected<std::unique_ptr<::llvm::orc::ObjectLayer>>
+                {
+                    return std::make_unique<::llvm::orc::RTDyldObjectLinkingLayer> (ES, [] { return std::make_unique<::llvm::SectionMemoryManager>(); });
+                });
+            }
 
             if (auto jit = builder.create())
             {
