@@ -1,0 +1,230 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     (C)2024 Cmajor Software Ltd
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     https://cmajor.dev
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88
+//                                           ,88
+//                                        888P"
+//
+//  This code may be used under either a GPLv3 or commercial
+//  license: see LICENSE.md for more details.
+
+
+/// A tuner-style pitch detector that analyses incoming audio and reports the
+/// detected fundamental frequency and a clarity (confidence) value.
+///
+/// The detection algorithm is the McLeod Pitch Method (MPM), a time-domain
+/// approach that uses the Normalised Squared Difference Function (NSDF).
+/// MPM needs only two periods of the fundamental to lock on, handles harmonics
+/// gracefully, and provides a built-in clarity metric — all without an FFT.
+
+graph PitchDetector [[ main ]]
+{
+    input  stream float audioIn;
+    output stream float audioOut;
+
+    output event float detectedFrequency;
+    output event float detectedClarity;
+
+    input event float sensitivity [[ name: "Sensitivity", min: 0.1, max: 0.99, init: 0.25 ]];
+
+    node analyser = PitchAnalyser;
+
+    connection
+    {
+        sensitivity          -> analyser.sensitivity;
+        audioIn              -> analyser.audioIn;
+        analyser.frequencyOut -> detectedFrequency;
+        analyser.clarityOut  -> detectedClarity;
+
+        // Pass audio through unchanged so the patch can sit inline in a signal chain
+        audioIn -> audioOut;
+    }
+}
+
+
+//==============================================================================
+/// The core pitch-detection processor.
+///
+/// Incoming audio is collected into a circular buffer. Every `hopSize` samples
+/// we run the McLeod Pitch Method (MPM) analysis and emit the result as events.
+processor PitchAnalyser
+{
+    input  stream float audioIn;
+    output event float frequencyOut;
+    output event float clarityOut;
+
+    input event float sensitivity;
+
+    // --- Buffer constants ---
+    // 2048 samples at 44.1 kHz ≈ 46 ms, enough to capture two full periods
+    // down to ~43 Hz (covers bass guitar low E at ~41 Hz).
+    let bufferSize = 2048;
+
+    // We compute the NSDF for lags up to half the buffer length.
+    // Lags beyond this would leave too few samples for a reliable correlation.
+    let maxLag = bufferSize / 2;
+
+    let framesPerSecond = 20;
+
+    // --- State ---
+    float[bufferSize] sampleBuffer;
+    wrap<bufferSize>  writePosition;
+    float             clarityThreshold = 0.5f;
+
+    event sensitivity (float value)
+    {
+        // The user-facing "sensitivity" is inverted: high sensitivity means we
+        // accept weaker NSDF peaks (lower clarity threshold), and vice versa.
+        clarityThreshold = 1.0f - value;
+    }
+
+    void main()
+    {
+        loop
+        {
+            loop (int (processor.frequency / framesPerSecond))
+            {
+                sampleBuffer[writePosition++] = audioIn;
+                advance();
+            }
+
+            runAnalysis();
+        }
+    }
+
+    // --- The MPM analysis pipeline ---
+    void runAnalysis()
+    {
+        // --- Section 2: Compute NSDF (Normalised Squared Difference Function) ---
+        //
+        // For each candidate lag τ (tau), the NSDF measures how self-similar
+        // the signal is to a copy of itself shifted by τ samples.
+        //
+        //   NSDF(τ) = 2 * r(τ) / (m(τ))
+        //
+        // where:
+        //   r(τ) = Σ x[n] * x[n + τ]           (autocorrelation at lag τ)
+        //   m(τ) = Σ x[n]² + Σ x[n + τ]²       (sum of energies of both halves)
+        //
+        // A value near +1 means the signal repeats with period τ — i.e. τ is
+        // likely the fundamental period. Normalising by m(τ) keeps the metric
+        // in [-1, +1] regardless of signal amplitude.
+
+        float[maxLag] nsdf;
+
+        let analysisStart = writePosition;
+
+        float energy;
+
+        for (wrap<maxLag> i)
+            energy += 2.0f * sampleBuffer.at (analysisStart + i) * sampleBuffer.at (analysisStart + i);
+
+        for (wrap<maxLag> tau)
+        {
+            float autocorrelation = 0.0f;
+
+            var index1 = wrap<bufferSize> (analysisStart);
+            var index2 = wrap<bufferSize> (analysisStart + tau);
+
+            for (wrap<maxLag> n)
+            {
+                let sample1 = sampleBuffer[index1++];
+                let sample2 = sampleBuffer[index2++];
+
+                autocorrelation += sample1 * sample2;
+            }
+
+            // Guard against silence (energy ≈ 0) to avoid division by zero
+            if (energy > 0.0f)
+                nsdf[tau] = 2.0f * autocorrelation / energy;
+            else
+                nsdf[tau] = 0.0f;
+
+            energy -= sampleBuffer.at (analysisStart + tau) * sampleBuffer.at (analysisStart + tau);
+            energy += sampleBuffer.at (analysisStart + tau + maxLag) * sampleBuffer.at (analysisStart + tau + maxLag);
+        }
+
+        // --- Section 3: Peak Picking ---
+        //
+        // Walk the NSDF from low lag to high lag. We look for the first peak
+        // that rises above our clarity threshold. Choosing the *first* qualifying
+        // peak (shortest period = highest frequency) avoids octave errors —
+        // subharmonic peaks appear at integer multiples of the true period.
+        //
+        // We skip the initial region near lag 0 where the NSDF trivially starts
+        // near +1, and begin searching after the first zero crossing.
+
+        wrap<maxLag> bestLag;
+        float bestClarity = 0.0f;
+        bool  passedFirstZeroCrossing = false;
+
+        for (wrap<maxLag> tau = 1; tau < maxLag - 1; tau++)
+        {
+            // Wait until the NSDF has dipped below zero at least once —
+            // the region before the first zero crossing is not meaningful.
+            if (! passedFirstZeroCrossing)
+            {
+                if (nsdf.at (tau) < 0.0f)
+                    passedFirstZeroCrossing = true;
+
+                continue;
+            }
+
+            // A peak is a sample higher than both of its neighbours
+            bool isPeak = nsdf.at (tau) > nsdf.at (tau - 1)
+                       && nsdf.at (tau) > nsdf.at (tau + 1);
+
+            if (isPeak && nsdf.at (tau) > clarityThreshold)
+            {
+                bestLag     = tau;
+                bestClarity = nsdf.at (tau);
+                break;  // Accept the first qualifying peak to avoid octave errors
+            }
+        }
+
+        if (bestLag == 0)
+        {
+            // No confident pitch detected — emit zero frequency and low clarity
+            frequencyOut <- 0.0f;
+            clarityOut   <- 0.0f;
+            return;
+        }
+
+        // --- Section 4: Parabolic Interpolation ---
+        //
+        // The true peak usually falls between discrete samples. We fit a parabola
+        // through the peak and its two neighbours to estimate the sub-sample
+        // position, improving frequency accuracy significantly.
+        //
+        // Given three points y₋₁, y₀, y₁ at positions -1, 0, +1 relative to
+        // the peak, the parabola vertex offset is:
+        //   delta = (y₋₁ - y₁) / (2 * (y₋₁ - 2*y₀ + y₁))
+
+        let yMinus1 = nsdf.at (bestLag - 1);
+        let y0      = nsdf[bestLag];
+        let yPlus1  = nsdf.at (bestLag + 1);
+
+        let denominator = yMinus1 - 2.0f * y0 + yPlus1;
+
+        float refinedLag = float (bestLag);
+
+        // Only apply interpolation if the parabola is concave (denominator < 0).
+        // A non-negative denominator means the fit is degenerate — keep the
+        // integer lag in that case.
+        if (denominator < 0.0f)
+            refinedLag += (yMinus1 - yPlus1) / (2.0f * denominator);
+
+        // --- Section 5: Convert to Frequency ---
+        //
+        // The refined lag tells us the period of the fundamental in samples.
+        //   frequency = sampleRate / refinedLag
+
+        let frequency = float (processor.frequency) / refinedLag;
+
+        frequencyOut <- frequency;
+        clarityOut   <- bestClarity;
+    }
+}

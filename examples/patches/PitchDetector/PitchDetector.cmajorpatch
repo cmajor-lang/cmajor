@@ -1,0 +1,19 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.pitchdetector",
+    "version":          "1.0",
+    "name":             "Pitch Detector",
+    "description":      "A tuner-style pitch detector using the McLeod Pitch Method (MPM)",
+    "category":         "effect",
+    "manufacturer":     "Cmajor Software Ltd",
+    "isInstrument":     false,
+
+    "source":           "PitchDetector.cmajor",
+    "view":
+    {
+        "src": "ui/index.js",
+        "width": 400,
+        "height": 380,
+        "resizable": false
+    }
+}
