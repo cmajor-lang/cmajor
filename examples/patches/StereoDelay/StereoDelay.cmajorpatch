@@ -1,0 +1,12 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.stereodelay",
+    "version":          "1.0",
+    "name":             "Stereo Delay",
+    "description":      "A stereo delay effect with ping-pong mode, tempo sync, and analog-style damping",
+    "category":         "effect",
+    "manufacturer":     "Cmajor Software Ltd",
+    "isInstrument":     false,
+
+    "source":           "StereoDelay.cmajor"
+}

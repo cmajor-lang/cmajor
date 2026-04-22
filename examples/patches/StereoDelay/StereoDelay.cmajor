@@ -1,0 +1,217 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     (C)2024 Cmajor Software Ltd
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     https://cmajor.dev
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88
+//                                           ,88
+//                                        888P"
+//
+//  This code may be used under either a GPLv3 or commercial
+//  license: see LICENSE.md for more details.
+
+//==============================================================================
+/// The delay engine processes both stereo channels in a single processor so
+/// that the ping-pong cross-feedback can happen within the same sample.
+///
+/// Delay time changes use a dual-tap crossfade to avoid zipper noise: when
+/// the delay time changes, a second read tap jumps to the new position and
+/// the output crossfades smoothly from the old tap to the new one.
+processor DelayEngine [[ main ]]
+{
+    input  stream float<2> audioIn;
+    output stream float<2> audioOut;
+
+    // --- Parameters ---
+    input event float delayTimeMs    [[ name: "Delay Time",   min: 10,    max: 2000, init: 375,  unit: "ms" ]];
+    input event float feedback       [[ name: "Feedback",     min: 0,     max: 99,   init: 40,   unit: "%" ]];
+    input event float damping        [[ name: "Damping",      min: 1000,  max: 20000, init: 8000, unit: "Hz" ]];
+    input event float mix            [[ name: "Mix",          min: 0,     max: 100,  init: 35,   unit: "%" ]];
+    input event float pingPong       [[ name: "Ping Pong",    boolean ]];
+    input event float syncMode       [[ name: "Tempo Sync",   boolean ]];
+    input event float syncNoteValue  [[ name: "Note Value",   min: 0, max: 7, init: 2,
+                                        text: "1/16|1/8|Dotted 1/8|1/4|Dotted 1/4|1/2|3/4|1 Bar" ]];
+
+    // --- Timeline inputs for tempo sync ---
+    input event std::timeline::Tempo tempoIn;
+
+    // --- Buffer sizing: 2 seconds at the maximum sample rate ---
+    let maxDelaySamples = int (processor.maxFrequency * 2.0) + 1;
+
+    // Delay buffers for left and right channels
+    float<2>[maxDelaySamples] buffer;
+    wrap<maxDelaySamples> writePos;
+
+    // One-pole lowpass filters for feedback damping
+    std::filters (float<2>)::tpt::onepole::Implementation dampFilter;
+
+    // Smoothed parameter values to avoid clicks on changes
+    std::smoothing::SmoothedValue smoothFeedback, smoothMix;
+
+    // We maintain two delay taps (A and B). When the delay time changes, we
+    // configure delayTapB to the new delay time and crossfade across
+    // If a delay change is applied during a crossfade, we remember the target
+    // value and apply it when the crossfade is complete
+    int delayTapA, delayTapB;           // delay time in samples for each tap
+    float   crossfadePos;               // 0.0 = 100% tap A, 1.0 = 100% tap B
+    float   crossfadeInc;               // per-sample increment during crossfade
+    bool    crossfadeActive;            // true while a crossfade is in progress
+    int     nextTargetDelay;            // next value to target
+
+    // Note value durations in beats (quarter notes)
+    float[8] noteBeats = float[8] (0.25,     // 1/16
+                                    0.5,      // 1/8
+                                    0.75,     // Dotted 1/8
+                                    1.0,      // 1/4
+                                    1.5,      // Dotted 1/4
+                                    2.0,      // 1/2
+                                    3.0,      // 3/4
+                                    4.0);     // 1 Bar
+
+    float currentBPM        = 120.0f;
+    int   currentNoteIndex  = 2;
+    bool  isSyncEnabled     = false;
+    bool  isPingPong        = false;
+
+    let smoothingSteps = int (processor.frequency * 0.050);    // Smoothing ramp length (~50ms)
+    let crossfadeLength = int (processor.frequency * 0.030);   // Crossfade length in samples (~30ms)
+
+    /// Initiates a crossfade to a new delay time (in samples).
+    void setDelayTimeSamples (int newDelay)
+    {
+        // If a crossfade is active, remember the next target to apply once this
+        // crossfade is complete
+        if (crossfadeActive)
+        {
+            nextTargetDelay = newDelay;
+            return;
+        }
+
+        // Update tap B to point to the new target and start the crossfade
+        delayTapB = newDelay;
+        crossfadePos = 0.0f;
+        crossfadeInc = 1.0f / float (crossfadeLength);
+        crossfadeActive = true;
+    }
+
+    event delayTimeMs (float v)
+    {
+        if (! isSyncEnabled)
+            setDelayTimeSamples (int (v * processor.frequency / 1000.0));
+    }
+
+    event feedback (float v)        { smoothFeedback.setTarget (clamp (v, 0.0f, 95.0f) * 0.01f, smoothingSteps); }
+    event mix (float v)             { smoothMix.setTarget (clamp (v, 0.0f, 100.0f) * 0.01f, smoothingSteps); }
+    event pingPong (float v)        { isPingPong = v >= 0.5f; }
+
+    event damping (float v)
+    {
+        let freq = clamp (float64 (v), 1000.0, 20000.0);
+        dampFilter.setFrequency (processor.frequency, freq);
+    }
+
+    event syncMode (float v)
+    {
+        isSyncEnabled = v >= 0.5f;
+
+        if (isSyncEnabled)
+            updateSyncDelay();
+    }
+
+    event syncNoteValue (float v)
+    {
+        currentNoteIndex = clamp (int (v), 0, 7);
+
+        if (isSyncEnabled)
+            updateSyncDelay();
+    }
+
+    event tempoIn (std::timeline::Tempo t)
+    {
+        currentBPM = t.bpm;
+
+        if (isSyncEnabled)
+            updateSyncDelay();
+    }
+
+    /// Recalculates the delay time from the current tempo and note value.
+    void updateSyncDelay()
+    {
+        if (currentBPM > 0)
+        {
+            let beats = noteBeats.at (currentNoteIndex);
+            let delayMs = float64 (beats * 60000.0f / currentBPM);
+            setDelayTimeSamples (int (clamp (delayMs, 10.0, 2000.0) * processor.frequency / 1000.0));
+        }
+    }
+
+    // --- Main processing loop ---
+    void main()
+    {
+        // Initialise smoothed values
+        smoothFeedback.reset (0.4f);
+        smoothMix.reset (0.35f);
+
+        // Initialise both delay taps to the default delay time
+        let initDelaySamples = int (375.0 * processor.frequency / 1000.0);
+        delayTapA     = initDelaySamples;
+
+        // Initialise damping filters to lowpass at 8kHz
+        dampFilter = std::filters (float<2>)::tpt::onepole::create (std::filters::tpt::onepole::Mode::lowPass, processor.frequency, 8000.0);
+
+        loop
+        {
+            // Read the dry input
+            let dry = audioIn;
+
+            float<2> wet;
+
+            if (! crossfadeActive)
+            {
+                wet = buffer.at (writePos - delayTapA);
+            }
+            else
+            {
+                let tapA = buffer.at (writePos - delayTapA);
+                let tapB = buffer.at (writePos - delayTapB);
+
+                // Equal-power crossfade between taps using a cosine curve.
+                // pos=0 means 100% A, pos=1 means 100% B.
+                // cos gives 0dB at endpoints and -3dB at midpoint (equal power).
+                let angle = crossfadePos * float (pi * 0.5);
+                let gainA = cos (angle);
+                let gainB = sin (angle);
+                wet = tapA * gainA + tapB * gainB;
+
+                crossfadePos += crossfadeInc;
+
+                if (crossfadePos >= 1.0f)
+                {
+                    crossfadeActive = false;
+                    delayTapA = delayTapB;
+
+                    if (nextTargetDelay != 0.0f)
+                    {
+                        setDelayTimeSamples (nextTargetDelay);
+                        nextTargetDelay = 0.0f;
+                    }
+                }
+            }
+
+            // Apply damping (lowpass) to the delayed signal in the feedback path
+            let damped = dampFilter.process (wet);
+
+            let wetDry   = smoothMix.getNext();
+            let fb       = smoothFeedback.getNext();
+            let feedback = (isPingPong) ? float<2> (damped[1], damped[0]) * fb : damped * fb;
+
+            buffer[writePos++] = dry + feedback;
+
+            // Mix wet/dry and write to output
+            audioOut <- dry * (1.0f - wetDry) + float<2> (feedback * wetDry);
+
+            advance();
+        }
+    }
+}
