@@ -377,3 +377,74 @@ bool compare (const int[] a, const int[] b)
 
     return true;
 }
+
+## testFunction()
+
+bool negativeStartSubSliceSizeInBounds()
+{
+    int[4] arr = (10, 20, 30, 40);
+    int[] s = arr;
+
+    return s[0:].size == 4 && s[1:].size == 3 && s[2:].size == 2 && s[3:].size == 1 &&
+           s[-1:].size == 1 && s[-2:].size == 2 && s[-3:].size == 3 && s[-4:].size == 4;
+}
+
+bool negativeStartSubSliceReadsStayInBounds()
+{
+    int[4] arr = (10, 20, 30, 40);
+    int[] s = arr;
+    int[] ns = s[-2:];
+
+    return ns.size == 2 && ns[0] == 30 && ns[1] == 40;
+}
+
+bool negativeStartEndSubSliceReadsStayInBounds()
+{
+    int[4] arr = (10, 20, 30, 40);
+    int[] s = arr;
+    int[] ns = s[-3:-1];
+
+    return ns.size == 2 && ns[0] == 20 && ns[1] == 30;
+}
+
+bool largeNegativeStartSubSliceReadStaysInBounds()
+{
+    int[4] arr = (10, 20, 30, 40);
+    int[] s = arr;
+    int[] ns = s[-6:];
+
+    return ns.size == 4 && ns[0] == 10 && ns[1] == 20 && ns[2] == 30 && ns[3] == 40;
+}
+
+bool negativeStartSubSliceWritesStayInBounds()
+{
+    int[4] arr = (10, 20, 30, 40);
+    int[] s = arr;
+    int[] ns = s[-2:];
+
+    for (int i = 0; i < ns.size; i++)
+        ns[i] = i;
+
+    return ns.size == 2 && arr[0] == 10 && arr[1] == 20 && arr[2] == 0 && arr[3] == 1;
+}
+
+bool fixedArrayNegativeStartUnchanged()
+{
+    int[4] arr = (10, 20, 30, 40);
+    int[] ns = arr[-1:];
+    return ns.size == 1 && ns[0] == 40;
+}
+
+bool largeEndStillClamped()
+{
+    int[4] arr = (10, 20, 30, 40);
+    int[] s = arr;
+    return s[0:100].size == 4;
+}
+
+bool startPastSizeStillEmpty()
+{
+    int[4] arr = (10, 20, 30, 40);
+    int[] s = arr;
+    return s[999:].size == 0;
+}

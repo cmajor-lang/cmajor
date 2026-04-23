@@ -65,6 +65,8 @@ private:
     AST::Allocator& allocator;
     ptr<AST::ModuleBase> activeModule;
     const bool isParsingSystemModule, parsingComments;
+    uint32_t nestingDepth = 0;
+    static constexpr uint32_t maxNestingDepth = 100;
 
     template <typename Type, typename... Args>
     Type& allocate (Args&&... args) const    { return allocator.allocate<Type> (std::forward<Args> (args)...); }
@@ -84,6 +86,25 @@ private:
         t.makeRef = makeRef;
         return t;
     }
+
+    struct NestingChecker
+    {
+        NestingChecker (Parser* p) : parser (p)
+        {
+            parser->nestingDepth++;
+
+            if (parser->nestingDepth >= parser->maxNestingDepth)
+                parser->throwError (Errors::nestingTooDeep());
+        }
+
+        ~NestingChecker()
+        {
+            parser->nestingDepth--;
+        }
+
+    private:
+        Parser* parser;
+    };
 
     //==============================================================================
     template <typename Object> Object& matchEndOfStatement (Object& o)  { expectSemicolon();  return o; }
@@ -1290,6 +1311,8 @@ private:
 
     void parseAndAddStatement (AST::ScopeBlock& parentBlock)
     {
+        NestingChecker checker (this);
+
         parentBlock.statements.addChildObject (parseStatement (parentBlock));
     }
 
@@ -1457,6 +1480,8 @@ private:
     AST::Expression& parseExpression (bool giveErrorOnTrailingAssignment = true,
                                       bool giveErrorOnTrailingLeftArrow = true)
     {
+        NestingChecker checker (this);
+
         auto& lhs = parseTernaryOperator();
 
         if (matches (LexerToken::operator_plusEquals))                 return parseInPlaceOperator (giveErrorOnTrailingAssignment, lhs, AST::BinaryOpTypeEnum::Enum::add);
@@ -1598,6 +1623,8 @@ private:
 
     AST::Expression& parseUnary()
     {
+        NestingChecker checker (this);
+
         if (skipIf (LexerToken::operator_plusplus))    return parsePreIncDec (true);
         if (skipIf (LexerToken::operator_minusminus))  return parsePreIncDec (false);
 

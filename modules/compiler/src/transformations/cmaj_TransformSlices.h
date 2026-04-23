@@ -218,11 +218,61 @@ static inline void transformSlices (AST::Program& program)
                                                                                                       sliceSize)),
                                                             setEndToSize));
 
+            auto& convertNegativeEnd = mainBlock.allocateChild<AST::ScopeBlock>();
+            {
+                auto& adjusted = AST::createBinaryOp (convertNegativeEnd,
+                                                      AST::BinaryOpTypeEnum::Enum::add,
+                                                      sliceSize,
+                                                      endIndexParam);
+
+                auto& adjustedIsPositive = AST::createBinaryOp  (convertNegativeEnd,
+                                                                 AST::BinaryOpTypeEnum::Enum::greaterThan,
+                                                                 adjusted,
+                                                                 allocator.createConstantInt32 (0));
+
+                auto& clampedToZero = AST::createTernary (mainBlock.context, adjustedIsPositive,
+                                                          adjusted, allocator.createConstantInt32 (0));
+
+                convertNegativeEnd.addStatement (AST::createAssignment (mainBlock.context, endIndexParam, clampedToZero));
+            }
+
+            mainBlock.addStatement (AST::createIfStatement (mainBlock.context,
+                                                            AST::createBinaryOp (mainBlock,
+                                                                                 AST::BinaryOpTypeEnum::Enum::lessThan,
+                                                                                 endIndexParam,
+                                                                                 allocator.createConstantInt32 (0)),
+                                                            convertNegativeEnd));
+
+            auto& convertNegativeStart = mainBlock.allocateChild<AST::ScopeBlock>();
+            {
+                auto& adjusted = AST::createBinaryOp (convertNegativeStart,
+                                                      AST::BinaryOpTypeEnum::Enum::add,
+                                                      sliceSize,
+                                                      startIndexParam);
+
+                auto& adjustedIsPositive = AST::createBinaryOp (convertNegativeStart,
+                                                                 AST::BinaryOpTypeEnum::Enum::greaterThan,
+                                                                 adjusted,
+                                                                 allocator.createConstantInt32 (0));
+
+                auto& clampedToZero = AST::createTernary (mainBlock.context, adjustedIsPositive,
+                                                          adjusted, allocator.createConstantInt32 (0));
+
+                convertNegativeStart.addStatement (AST::createAssignment (mainBlock.context, startIndexParam, clampedToZero));
+            }
+
+            mainBlock.addStatement (AST::createIfStatement (mainBlock.context,
+                                                            AST::createBinaryOp (mainBlock,
+                                                                                 AST::BinaryOpTypeEnum::Enum::lessThan,
+                                                                                 startIndexParam,
+                                                                                 allocator.createConstantInt32 (0)),
+                                                            convertNegativeStart));
+
             mainBlock.addStatement (AST::createIfStatement (mainBlock.context,
                                                             AST::createBinaryOp (mainBlock,
                                                                                  AST::BinaryOpTypeEnum::Enum::greaterThanOrEqual,
                                                                                  startIndexParam,
-                                                                                 sliceSize),
+                                                                                 endIndexParam),
                                                             setSizeToZero));
 
             auto& resultSlice = mainBlock.allocateChild<AST::GetArrayOrVectorSlice>();

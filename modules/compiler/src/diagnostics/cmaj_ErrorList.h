@@ -42,6 +42,7 @@ DECL_COMPILE_ERROR (unimplementedFeature,                   "Language feature no
 
 // Low-level lexer errors
 DECL_COMPILE_ERROR (identifierTooLong,                      "Identifier too long")
+DECL_COMPILE_ERROR (nestingTooDeep,                         "Code nesting is too deep")
 DECL_COMPILE_ERROR (illegalCharacter,                       "Unexpected character '{0}' in source")
 DECL_COMPILE_ERROR (endOfInputInStringConstant,             "Unexpected end-of-input in string constant")
 DECL_COMPILE_ERROR (unterminatedComment,                    "Unterminated '/*' comment")
