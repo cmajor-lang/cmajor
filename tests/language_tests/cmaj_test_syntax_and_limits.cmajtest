@@ -2631,3 +2631,17 @@ processor DeepNestingTest [[ main ]]
         advance();
     }
 }
+
+## expectError ("9:12: error: Illegal vector size")
+
+T copyType<T> (T v)
+{
+    return T();
+}
+
+bool test()
+{
+    float< -1> v;
+    let r = copyType (v);
+    return true;
+}

@@ -698,8 +698,13 @@ static inline void sanityCheckType (const AST::TypeBase& t)
     else if (auto v = AST::castTo<AST::VectorType> (t))
     {
         if (auto numElements = AST::castTo<AST::ConstantValueBase> (v->numElements))
+        {
             if (! numElements->getResultType()->isPrimitiveInt())
                 throwError (v->numElements, Errors::nonIntegerArraySize());
+
+            if (v->getVectorSize() < 1 ||  v->getVectorSize() > AST::maxVectorSize)
+                throwError (v->numElements, Errors::illegalVectorSize());
+        }
 
         if (auto type = v->getArrayOrVectorElementType())
         {
