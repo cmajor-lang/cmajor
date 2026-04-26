@@ -141,10 +141,10 @@ void prepareForCodeGen (AST::Program& program,
     removeGenericAndParameterisedObjects (program);
     removeUnusedEndpoints (program, isEndpointActive);
     runResolutionPasses (program, allowTopLevelSlices);
-    convertComplexTypes (program);
     addFallbackIntrinsics (program, engineSupportsIntrinsic);
     canonicaliseLoopsAndBlocks (program);
     replaceWrapTypes (program);
+    convertComplexTypes (program);
     transformSlices (program);
     replaceMultidimensionalArrays (program);
     convertUnwrittenVariablesToConst (program);

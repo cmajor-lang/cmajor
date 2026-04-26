@@ -363,3 +363,38 @@ bool testComplexConversions()
 
     return d1.real == 1.0f && d2.real == 1.0 && d3[1].real == 1.0f && d4[2].real == 1.0;
 }
+
+## testFunction()
+
+bool testComplexVecNegativeIndexWraps()
+{
+    complex32<2> v;
+    for (wrap<2> i)
+        v[i] = float (int (i)) + 1.0fi;
+    let r = v * v;
+    return r[-1].real == 0.0f && r[0].imag == 0.0f;
+}
+
+## testFunction ({ failOnWarnings: false })
+
+bool testComplexVecRuntimeNegativeIndex()
+{
+    complex32<2> v;
+    v[0] = 1.0f + 0.0fi;
+    v[1] = 0.0f + 1.0fi;
+    let r = v * v;
+    int idx = -1;
+    return r[idx].real == r[1].real;
+}
+
+## testFunction ({ failOnWarnings: false })
+
+bool testComplexVecRuntimeOutOfBoundsIndex()
+{
+    complex32<3> v;
+    v[0] = 1.0f + 0.0fi;
+    v[1] = 2.0f + 0.0fi;
+    v[2] = 3.0f + 0.0fi;
+    int idx = 4;
+    return v[idx].real == v[1].real;
+}
