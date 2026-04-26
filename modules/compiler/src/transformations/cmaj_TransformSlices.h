@@ -90,7 +90,7 @@ static inline void transformSlices (AST::Program& program)
                     if (choc::text::startsWith (g.findParentFunction()->getName(), "_slice"))
                         return; // need to avoid modifying our generated functions
 
-                    if (! g.findParentOfType<AST::Assignment>())
+                    if (! g.findParentOfType<AST::Assignment>() || visitingAssignmentSource == true)
                     {
                         auto& readFn = getOrCreateReadSliceElementFunction (parentType);
                         g.replaceWith (AST::createFunctionCall (g, readFn, *parentValue, g.getSingleIndex()));
@@ -99,9 +99,15 @@ static inline void transformSlices (AST::Program& program)
             }
         }
 
+        bool visitingAssignmentSource = false;
+
         void visit (AST::Assignment& a) override
         {
-            super::visit (a);
+            visitingAssignmentSource = true;
+            super::visitProperty (a.source);
+
+            visitingAssignmentSource = false;
+            super::visitProperty (a.target);
 
             if (auto g = AST::castTo<AST::GetElement> (a.target))
             {
@@ -173,6 +179,8 @@ static inline void transformSlices (AST::Program& program)
                     }
                 }
             }
+
+            super::visit (o);
         }
 
         AST::Function& getOrCreateSliceOfSliceFunction (const AST::TypeBase& sliceType)

@@ -448,3 +448,15 @@ bool startPastSizeStillEmpty()
     int[] s = arr;
     return s[999:].size == 0;
 }
+
+bool outOfRangeRead()
+{
+    float[5] array;
+    float[] slice = array[1:3];
+
+    float acc = 0;
+    acc += slice[1000000];
+    acc = acc + slice[1000000];
+
+    return acc == 0;
+}
