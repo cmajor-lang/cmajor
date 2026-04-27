@@ -104,6 +104,14 @@ void f() { int[2.1] a; }
 
 ## expectError ("2:16: error: Array or vector size must be an integer")
 
+void f() { int[inf] a; }
+
+## expectError ("2:16: error: Array or vector size must be an integer")
+
+void f() { int<inf> a; }
+
+## expectError ("2:16: error: Array or vector size must be an integer")
+
 void f() { int<3.1> a; }
 
 ## expectError ("2:33: error: An array index must be an integer type")
@@ -1519,4 +1527,14 @@ processor Test [[ main ]]
 
         advance();
     }
+}
+
+## expectError ("4:9: error: Array or vector size must be an integer")
+
+bool vectorInf()
+{
+    int<inf> v;
+    for (wrap<8> i)
+        v[i] = i;
+    return v[1] == 1;
 }

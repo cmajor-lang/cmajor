@@ -99,8 +99,13 @@ struct ConstantFolder  : public PassAvoidingGenericFunctionsAndModules
 
         if (auto targetType = AST::castToTypeBase (c.targetType))
         {
-            if (targetType->isResolved() && targetType->isVoid())
-                throwError (c, Errors::targetCannotBeVoid());
+            if (targetType->isResolved())
+            {
+                if (targetType->isVoid())
+                    throwError (c, Errors::targetCannotBeVoid());
+
+                validation::sanityCheckType (*targetType);
+            }
 
             fold (c);
         }

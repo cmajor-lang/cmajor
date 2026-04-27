@@ -108,6 +108,7 @@ DECL_COMPILE_ERROR (recursiveReferences,                    "'{0}' and '{1}' ref
 DECL_COMPILE_ERROR (recursiveExpression,                    "This expression contains a recursive reference")
 DECL_COMPILE_ERROR (tooManyNamespaceInstances,              "Exceeded the maximum number of specialised namespace instances ({0}) - possible namespace recursion")
 DECL_COMPILE_ERROR (nodesCannotBeDeclaredWithinNamespaces,  "Nodes cannot be declared within namespaces")
+DECL_COMPILE_ERROR (compilationExceededMaxIterations,       "Code compilation has exceeded max iterations {0}")
 
 // Unresolved/duplicate/ambiguous name errors
 DECL_COMPILE_ERROR (nameInUse,                              "The name '{0}' is already in use")

@@ -65,6 +65,10 @@ namespace cmaj::transformations
 
 static void runResolutionPasses (AST::Program& program, bool throwOnErrors)
 {
+    constexpr size_t maxIterationsCounts = 1000;
+
+    size_t iterations = 0;
+
     for (;;)
     {
         passes::PassResult result;
@@ -81,6 +85,11 @@ static void runResolutionPasses (AST::Program& program, bool throwOnErrors)
 
         if (result.numChanges == 0)
             return;
+
+        iterations++;
+
+        if (iterations >= maxIterationsCounts)
+            throwError (Errors::compilationExceededMaxIterations (std::to_string (maxIterationsCounts)));
     }
 }
 

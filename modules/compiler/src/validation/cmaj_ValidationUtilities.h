@@ -693,7 +693,6 @@ static inline void sanityCheckType (const AST::TypeBase& t)
 
         if (type.isVoid())         throwError (a, Errors::arrayElementCannotBeVoid());
         if (type.isReference())    throwError (a, Errors::arrayTypeCannotBeReference());
-        if (type.isArray())        throwError (a, Errors::unimplementedFeature ("Nested multi-dimensional arrays"));
     }
     else if (auto v = AST::castTo<AST::VectorType> (t))
     {
