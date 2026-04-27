@@ -36,9 +36,17 @@ export class PatchConnection  extends EventListenerList
         super();
     }
 
-    /** Returns the current Cmajor version */
+    /** Subclasses must override this to send a message to the server.
+     *  @param {*} _msg
+     */
+    sendMessageToServer (_msg) {}
+
+    /** Returns the current Cmajor version
+     *  @returns {Promise<string>}
+     */
     async getCmajorVersion()
     {
+        // @ts-ignore - runtime path resolved by the server
         const version = await import ("/cmaj_api/cmaj-version.js");
         return version.getCmajorVersion();
     }
@@ -54,10 +62,12 @@ export class PatchConnection  extends EventListenerList
     /** Attaches a listener function that will be called whenever the patch's status changes.
      *  The function will be called with a parameter object containing many properties describing the status,
      *  including whether the patch is loaded, any errors, endpoint descriptions, its manifest, etc.
+     *  @param {Function} listener
      */
     addStatusListener (listener)                      { this.addEventListener    ("status", listener); }
 
     /** Removes a listener that was previously added with addStatusListener()
+     *  @param {Function} listener
      */
     removeStatusListener (listener)                   { this.removeEventListener ("status", listener); }
 
@@ -75,20 +85,28 @@ export class PatchConnection  extends EventListenerList
      *  The value parameter will be coerced to the type that is expected by the endpoint. So for
      *  examples, numbers will be converted to float or integer types, javascript objects and arrays
      *  will be converted into more complex types in as good a fashion is possible.
+     *  @param {string} endpointID
+     *  @param {*} value
+     *  @param {number} [rampFrames]
+     *  @param {number} [timeoutMillisecs]
      */
     sendEventOrValue (endpointID, value, rampFrames, timeoutMillisecs)  { this.sendMessageToServer ({ type: "send_value", id: endpointID, value, rampFrames, timeout: timeoutMillisecs }); }
 
     /** Sends a short MIDI message value to a MIDI endpoint.
      *  The value must be a number encoded with `(byte0 << 16) | (byte1 << 8) | byte2`.
+     *  @param {string} endpointID
+     *  @param {number} shortMIDICode
      */
     sendMIDIInputEvent (endpointID, shortMIDICode)    { this.sendEventOrValue (endpointID, { message: shortMIDICode }); }
 
     /** Tells the patch that a series of changes that constitute a gesture is about to take place
      *  for the given endpoint. Remember to call sendParameterGestureEnd() after they're done!
+     *  @param {string} endpointID
      */
     sendParameterGestureStart (endpointID)            { this.sendMessageToServer ({ type: "send_gesture_start", id: endpointID }); }
 
     /** Tells the patch that a gesture started by sendParameterGestureStart() has finished.
+     *  @param {string} endpointID
      */
     sendParameterGestureEnd (endpointID)              { this.sendMessageToServer ({ type: "send_gesture_end", id: endpointID }); }
 
@@ -113,20 +131,24 @@ export class PatchConnection  extends EventListenerList
 
     /** Attaches a listener function that will be called when any key-value pair in the stored state is changed.
      *  The listener function will receive a message parameter with properties 'key' and 'value'.
+     *  @param {Function} listener
      */
     addStoredStateValueListener (listener)            { this.addEventListener    ("state_key_value", listener); }
 
     /** Removes a listener that was previously added with addStoredStateValueListener().
+     *  @param {Function} listener
      */
     removeStoredStateValueListener (listener)         { this.removeEventListener ("state_key_value", listener); }
 
     /** Applies a complete stored state to the patch.
      *  To get the current complete state, use requestFullStoredState().
+     *  @param {Object} fullState
      */
     sendFullStoredState (fullState)                   { this.sendMessageToServer ({ type: "send_full_state", value: fullState }); }
 
     /** Asynchronously requests the full stored state of the patch.
      *  The listener function that is supplied will be called asynchronously with the state as its argument.
+     *  @param {Function} callback
      */
     requestFullStoredState (callback)
     {
@@ -150,8 +172,9 @@ export class PatchConnection  extends EventListenerList
      *  the optional granularity parameter.
      *
      *  @param {string} endpointID
-     *  @param {number} granularity - if defined, this specifies the number of frames per callback
-     *  @param {boolean} sendFullAudioData - if false, the listener will receive an argument object containing
+     *  @param {Function} listener
+     *  @param {number} [granularity] - if defined, this specifies the number of frames per callback
+     *  @param {boolean} [sendFullAudioData] - if false, the listener will receive an argument object containing
      *     two properties 'min' and 'max', which are each an array of values, one element per audio
      *     channel. This allows you to find the highest and lowest samples in that chunk for each channel.
      *     If sendFullAudioData is true, the listener's argument will have a property 'data' which is an
@@ -160,7 +183,8 @@ export class PatchConnection  extends EventListenerList
     addEndpointListener (endpointID, listener, granularity, sendFullAudioData)
     {
         const listenerID = "event_" + endpointID + "_" + (Math.floor (Math.random() * 100000000)).toString();
-        listener["cmaj_endpointListenerID_" + endpointID] = listenerID;
+        const anyListener = /** @type {Function & {[key: string]: string | undefined}} */ (listener);
+        anyListener["cmaj_endpointListenerID_" + endpointID] = listenerID;
         this.addEventListener (listenerID, listener);
         this.sendMessageToServer ({ type: "add_endpoint_listener", endpoint: endpointID, replyType: listenerID,
                                     granularity: granularity, fullAudioData: sendFullAudioData });
@@ -168,11 +192,13 @@ export class PatchConnection  extends EventListenerList
 
     /** Removes a listener that was previously added with addEndpointListener()
      *  @param {string} endpointID
-    */
+     *  @param {Function} listener
+     */
     removeEndpointListener (endpointID, listener)
     {
-        const listenerID = listener["cmaj_endpointListenerID_" + endpointID];
-        listener["cmaj_endpointListenerID_" + endpointID] = undefined;
+        const anyListener = /** @type {Function & {[key: string]: string | undefined}} */ (listener);
+        const listenerID = anyListener["cmaj_endpointListenerID_" + endpointID] ?? "";
+        anyListener["cmaj_endpointListenerID_" + endpointID] = undefined;
         this.removeEventListener (listenerID, listener);
         this.sendMessageToServer ({ type: "remove_endpoint_listener", endpoint: endpointID, replyType: listenerID });
     }
@@ -187,20 +213,24 @@ export class PatchConnection  extends EventListenerList
     /** Attaches a listener function which will be called whenever the value of a specific parameter changes.
      *  The listener function will be called with an argument which is the new value.
      *  @param {string} endpointID
+     *  @param {Function} listener
      */
     addParameterListener (endpointID, listener)         { this.addEventListener ("param_value_" + endpointID.toString(), listener); }
 
     /** Removes a listener that was previously added with addParameterListener()
      *  @param {string} endpointID
-    */
+     *  @param {Function} listener
+     */
     removeParameterListener (endpointID, listener)      { this.removeEventListener ("param_value_" + endpointID.toString(), listener); }
 
     /** Attaches a listener function which will be called whenever the value of any parameter changes in the patch.
      *  The listener function will be called with an argument object with the fields 'endpointID' and 'value'.
+     *  @param {Function} listener
      */
     addAllParameterListener (listener)                  { this.addEventListener ("param_value", listener); }
 
     /** Removes a listener that was previously added with addAllParameterListener()
+     *  @param {Function} listener
      */
     removeAllParameterListener (listener)               { this.removeEventListener ("param_value", listener); }
 
@@ -213,6 +243,7 @@ export class PatchConnection  extends EventListenerList
      *  than the root of your patch (e.g. if a single server is serving multiple patch GUIs).
      *
      *  @param {string} path
+     *  @returns {string}
      */
     getResourceAddress (path)                           { return path; }
 
@@ -235,13 +266,15 @@ export class PatchConnection  extends EventListenerList
     //==============================================================================
     // Private methods follow this point..
 
-    /** @private */
+    /** Called by the transport layer subclass when a message arrives from the server.
+     *  @param {*} msg
+     */
     deliverMessageFromServer (msg)
     {
         if (msg.type === "status")
             this.manifest = msg.message?.manifest;
 
-        if (msg.type == "param_value")
+        if (msg.type === "param_value")
             this.dispatchEvent ("param_value_" + msg.message.endpointID, msg.message.value);
 
         this.dispatchEvent (msg.type, msg.message);

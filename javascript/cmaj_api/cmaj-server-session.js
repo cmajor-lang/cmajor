@@ -45,8 +45,10 @@ export class ServerSession   extends EventListenerList
 
         this.sessionID = sessionID;
         this.activePatchConnections = new Set();
+        /** @type {StatusMessage} */
         this.status = { connected: false, loaded: false };
         this.lastServerMessageTime = Date.now();
+        /** @type {number | undefined} */
         this.checkForServerTimer = setInterval (() => this.checkServerStillExists(), 2000);
     }
 
@@ -68,24 +70,34 @@ export class ServerSession   extends EventListenerList
     /** Attaches a listener function which will be called when the session status changes.
      *  The listener will be called with an argument object containing lots of properties
      *  describing the state, including any errors, loaded patch manifest, etc.
+     *  @param {Function} listener
      */
     addStatusListener (listener)                        { this.addEventListener    ("session_status", listener); }
 
     /** Removes a listener that was previously added by `addStatusListener()`
+     *  @param {Function} listener
      */
     removeStatusListener (listener)                     { this.removeEventListener ("session_status", listener); }
+
+    /** Subclasses must override this to send a message to the server.
+     *  @param {*} _msg
+     */
+    sendMessageToServer (_msg) {}
 
     /** Asks the server to asynchronously send a status update message with the latest status.
      */
     requestSessionStatus()                              { this.sendMessageToServer ({ type: "req_session_status" }); }
 
-    /** Returns the session's last known status object. */
+    /** Returns the session's last known status object.
+     *  @returns {Object}
+     */
     getCurrentStatus()                                  { return this.status; }
 
     //==============================================================================
     // Patch loading:
 
     /** Asks the server to load the specified patch into our session.
+     *  @param {string} patchFileToLoad
      */
     loadPatch (patchFileToLoad)
     {
@@ -95,6 +107,7 @@ export class ServerSession   extends EventListenerList
 
     /** Asynchronously returns a list of patches that it has access to.
      *  The return value is an array of manifest objects describing each of the patches.
+     *  @returns {Promise<Object[]>}
      */
     async requestAvailablePatchList()
     {
@@ -103,14 +116,17 @@ export class ServerSession   extends EventListenerList
 
     /** Creates and returns a new PatchConnection object which can be used to control the
      *  patch that this session has loaded.
+     *  @returns {PatchConnection}
      */
     createPatchConnection()
     {
         class ServerPatchConnection  extends PatchConnection
         {
+            /** @param {ServerSession} session */
             constructor (session)
             {
                 super();
+                /** @type {ServerSession | undefined} */
                 this.session = session;
                 this.manifest = session.status?.manifest;
                 this.session.activePatchConnections.add (this);
@@ -118,19 +134,21 @@ export class ServerSession   extends EventListenerList
 
             dispose()
             {
-                this.session.activePatchConnections.delete (this);
+                this.session?.activePatchConnections.delete (this);
                 this.session = undefined;
             }
 
+            /** @override @param {*} message */
             sendMessageToServer (message)
             {
                 this.session?.sendMessageToServer (message);
             }
 
+            /** @override @param {string} path @returns {string} */
             getResourceAddress (path)
             {
                 if (! this.session?.status?.httpRootURL)
-                    return undefined;
+                    return path;
 
                 return this.session.status.httpRootURL
                         + (path.startsWith ("/") ? path.substr (1) : path);
@@ -151,7 +169,7 @@ export class ServerSession   extends EventListenerList
      *
      *  @param {Object} endpointID
      *  @param {boolean} shouldMute - if true, the endpoint will be muted
-     *  @param {Uint8Array | Array} fileDataToPlay - if this is some kind of array containing
+     *  @param {Uint8Array | number[]} fileDataToPlay - if this is some kind of array containing
      *  binary data that can be parsed as an audio file, then it will be sent across for the
      *  server to play as a looped input sample.
      */
@@ -161,10 +179,12 @@ export class ServerSession   extends EventListenerList
 
         if (fileDataToPlay)
         {
+            const byteLength = fileDataToPlay instanceof Uint8Array ? fileDataToPlay.byteLength : fileDataToPlay.length;
+
             this.registerFile (loopFile,
             {
-               size: fileDataToPlay.byteLength,
-               read: (start, length) => { return new Blob ([fileDataToPlay.slice (start, start + length)]); }
+               size: byteLength,
+               read: /** @param {number} start @param {number} length */ (start, length) => { return new Blob ([/** @type {BlobPart} */ (/** @type {unknown} */ (fileDataToPlay.slice (start, start + length)))]); }
             });
 
             this.sendMessageToServer ({ type: "set_custom_audio_input",
@@ -183,10 +203,15 @@ export class ServerSession   extends EventListenerList
 
     /** Attaches a listener function to be told when the input source for a particular
      *  endpoint is changed by a call to `setAudioInputSource()`.
+     *  @param {string} endpointID
+     *  @param {Function} listener
      */
     addAudioInputModeListener (endpointID, listener)    { this.addEventListener    ("audio_input_mode_" + endpointID, listener); }
 
-    /** Removes a listener previously added with `addAudioInputModeListener()` */
+    /** Removes a listener previously added with `addAudioInputModeListener()`
+     *  @param {string} endpointID
+     *  @param {Function} listener
+     */
     removeAudioInputModeListener (endpointID, listener) { this.removeEventListener ("audio_input_mode_" + endpointID, listener); }
 
     /** Asks the server to send an update with the latest status to any audio mode listeners that
@@ -207,6 +232,7 @@ export class ServerSession   extends EventListenerList
     /** Asks the server to apply a new set of audio device properties.
      *  The properties object uses the same format as the object that is passed to the listeners
      *  (see `addAudioDevicePropertiesListener()`).
+     *  @param {Object} newProperties
      */
     setAudioDeviceProperties (newProperties)            { this.sendMessageToServer ({ type: "set_audio_device_props", properties: newProperties }); }
 
@@ -215,12 +241,14 @@ export class ServerSession   extends EventListenerList
      *
      *  You can remove the listener when it's no longer needed with `removeAudioDevicePropertiesListener()`.
      *
-     *  @param listener - this callback will receive an argument object containing all the
+     *  @param {Function} listener - this callback will receive an argument object containing all the
      *                    details about the device.
      */
     addAudioDevicePropertiesListener (listener)         { this.addEventListener    ("audio_device_properties", listener); }
 
-    /** Removes a listener that was added with `addAudioDevicePropertiesListener()` */
+    /** Removes a listener that was added with `addAudioDevicePropertiesListener()`
+     *  @param {Function} listener
+     */
     removeAudioDevicePropertiesListener (listener)      { this.removeEventListener ("audio_device_properties", listener); }
 
     /** Causes an asynchronous callback to any audio device listeners that are registered. */
@@ -233,7 +261,7 @@ export class ServerSession   extends EventListenerList
      *                             status's `codeGenTargets` property. For example, "cpp"
      *                             would request a C++ version of the patch.
      *  @param {Object} [extraOptions] - this optionally provides target-specific properties.
-     *  @returns an object containing the code, errors and other metadata about the patch.
+     *  @returns {Promise<Object>} an object containing the code, errors and other metadata about the patch.
      */
     async requestGeneratedCode (codeType, extraOptions)
     {
@@ -249,10 +277,12 @@ export class ServerSession   extends EventListenerList
      *  patch. The function will be called with an object that gives rough details about the
      *  type of change, i.e. whether it's a manifest or asset file, or a cmajor file, but it
      *  won't provide any information about exactly which files are involved.
+     *  @param {Function} listener
      */
     addFileChangeListener (listener)                    { this.addEventListener    ("patch_source_changed", listener); }
 
     /** Removes a listener that was previously added with `addFileChangeListener()`.
+     *  @param {Function} listener
      */
     removeFileChangeListener (listener)                 { this.removeEventListener ("patch_source_changed", listener); }
 
@@ -262,34 +292,39 @@ export class ServerSession   extends EventListenerList
     /** Attaches a listener function which will be sent messages containing CPU info.
      *  To remove the listener, call `removeCPUListener()`. To change the rate of these
      *  messages, use `setCPULevelUpdateRate()`.
+     *  @param {Function} listener
      */
     addCPUListener (listener)                       { this.addEventListener    ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
-    /** Removes a listener that was previously attached with `addCPUListener()`. */
+    /** Removes a listener that was previously attached with `addCPUListener()`.
+     *  @param {Function} listener
+     */
     removeCPUListener (listener)                    { this.removeEventListener ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
 
-    /** Changes the frequency at which CPU level update messages are sent to listeners. */
+    /** Changes the frequency at which CPU level update messages are sent to listeners.
+     *  @param {number} framesPerUpdate
+     */
     setCPULevelUpdateRate (framesPerUpdate)         { this.cpuFramesPerUpdate = framesPerUpdate; this.updateCPULevelUpdateRate(); }
 
-    /** Attaches a listener to be told when a file change is detected in the currently-loaded
-     *  patch. The function will be called with an object that gives rough details about the
-     *  type of change, i.e. whether it's a manifest or asset file, or a cmajor file, but it
-     *  won't provide any information about exactly which files are involved.
+    /** Attaches a listener to be notified when an infinite loop is detected in the patch.
+     *  @param {Function} listener
      */
     addInfiniteLoopListener (listener)              { this.addEventListener    ("infinite_loop_detected", listener); }
 
-    /** Removes a listener that was previously added with `addFileChangeListener()`. */
+    /** Removes a listener that was previously added with `addInfiniteLoopListener()`.
+     *  @param {Function} listener
+     */
     removeInfiniteLoopListener (listener)           { this.removeEventListener ("infinite_loop_detected", listener); }
 
     //==============================================================================
     /** Registers a virtual file with the server, under the given name.
      *
      *  @param {string} filename - the full path name of the file
-     *  @param {Object} contentProvider - this object must have a property called `size` which is a
-     *            constant size in bytes for the file, and a method `read (offset, size)` which
-     *            returns an array (or UInt8Array) of bytes for the data in a given chunk of the file.
-     *            The server may repeatedly call this method at any time until `removeFile()` is
-     *            called to deregister the file.
+     *  @param {{size: number, read: Function}} contentProvider - this object must have a property
+     *            called `size` which is a constant size in bytes for the file, and a method
+     *            `read (offset, size)` which returns an array (or UInt8Array) of bytes for the
+     *            data in a given chunk of the file. The server may repeatedly call this method at
+     *            any time until `removeFile()` is called to deregister the file.
      */
     registerFile (filename, contentProvider)
     {
@@ -303,7 +338,9 @@ export class ServerSession   extends EventListenerList
                                     size: contentProvider.size });
     }
 
-    /** Removes a file that was previously registered with `registerFile()`. */
+    /** Removes a file that was previously registered with `registerFile()`.
+     *  @param {string} filename
+     */
     removeFile (filename)
     {
         this.sendMessageToServer ({ type: "remove_file",
@@ -314,9 +351,7 @@ export class ServerSession   extends EventListenerList
     //==============================================================================
     // Private methods from this point...
 
-    /** An implementation subclass must call this when the session first connects
-     *  @private
-     */
+    /** An implementation subclass must call this when the session first connects. */
     handleSessionConnection()
     {
         if (! this.status.connected)
@@ -332,8 +367,8 @@ export class ServerSession   extends EventListenerList
         }
     }
 
-    /** An implementation subclass must call this when a message arrives
-     *  @private
+    /** An implementation subclass must call this when a message arrives from the server.
+     *  @param {*} msg
      */
     handleMessageFromServer (msg)
     {
@@ -388,7 +423,7 @@ export class ServerSession   extends EventListenerList
             });
     }
 
-    /** @private */
+    /** @private @param {StatusMessage} newStatus */
     setNewStatus (newStatus)
     {
         this.status = newStatus;
@@ -404,19 +439,19 @@ export class ServerSession   extends EventListenerList
                                     framesPerCallback: rate });
     }
 
-    /** @private */
+    /** @private @param {*} request */
     handleFileReadRequest (request)
     {
         const contentProvider = this.files?.get (request?.file);
 
-        if (contentProvider && request.offset !== null && request.size != 0)
+        if (contentProvider && request.offset !== null && request.size !== 0)
         {
             const data = contentProvider.read (request.offset, request.size);
             const reader = new FileReader();
 
             reader.onloadend = (e) =>
             {
-                const base64 = e.target?.result?.split?.(",", 2)[1];
+                const base64 = (/** @type {string | undefined} */ (e.target?.result))?.split (",", 2)[1];
 
                 if (base64)
                     this.sendMessageToServer ({ type: "file_content",
@@ -429,10 +464,10 @@ export class ServerSession   extends EventListenerList
         }
     }
 
-    /** @private */
+    /** @private @param {*} message */
     sendMessageToServerWithReply (message)
     {
-        return new Promise ((resolve, reject) =>
+        return new Promise ((resolve, _reject) =>
         {
             const replyType = "reply_" + message.type + "_" + this.createRandomID();
             this.addSingleUseListener (replyType, resolve);

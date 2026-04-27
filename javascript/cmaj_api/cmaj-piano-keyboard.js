@@ -17,6 +17,7 @@
 //  DISCLAIMED.
 
 import * as midi from "./cmaj-midi-helpers.js"
+import { PatchConnection } from "./cmaj-patch-connection.js"
 
 /**
  *  An general-purpose on-screen piano keyboard component that allows clicks or
@@ -37,6 +38,7 @@ import * as midi from "./cmaj-midi-helpers.js"
  */
 export default class PianoKeyboard extends HTMLElement
 {
+    /** @param {{ naturalNoteWidth?: number, accidentalWidth?: number, accidentalPercentageHeight?: number, naturalNoteBorder?: string, accidentalNoteBorder?: string, pressedNoteColour?: string }} [options] */
     constructor ({ naturalNoteWidth,
                    accidentalWidth,
                    accidentalPercentageHeight,
@@ -55,21 +57,22 @@ export default class PianoKeyboard extends HTMLElement
 
         this.root = this.attachShadow({ mode: "open" });
 
-        this.root.addEventListener ("mousedown",   (event) => this.handleMouse (event, true, false) );
-        this.root.addEventListener ("mouseup",     (event) => this.handleMouse (event, false, true) );
-        this.root.addEventListener ("mousemove",   (event) => this.handleMouse (event, false, false) );
-        this.root.addEventListener ("mouseenter",  (event) => this.handleMouse (event, false, false) );
-        this.root.addEventListener ("mouseout",    (event) => this.handleMouse (event, false, false) );
+        this.root.addEventListener ("mousedown",   (event) => this.handleMouse (/** @type {MouseEvent} */ (event), true, false) );
+        this.root.addEventListener ("mouseup",     (event) => this.handleMouse (/** @type {MouseEvent} */ (event), false, true) );
+        this.root.addEventListener ("mousemove",   (event) => this.handleMouse (/** @type {MouseEvent} */ (event), false, false) );
+        this.root.addEventListener ("mouseenter",  (event) => this.handleMouse (/** @type {MouseEvent} */ (event), false, false) );
+        this.root.addEventListener ("mouseout",    (event) => this.handleMouse (/** @type {MouseEvent} */ (event), false, false) );
 
-        this.addEventListener ("keydown",  (event) => this.handleKey (event, true));
-        this.addEventListener ("keyup",    (event) => this.handleKey (event, false));
-        this.addEventListener ("focusout", (event) => this.allNotesOff());
+        this.addEventListener ("keydown",  (event) => this.handleKey (/** @type {KeyboardEvent} */ (event), true));
+        this.addEventListener ("keyup",    (event) => this.handleKey (/** @type {KeyboardEvent} */ (event), false));
+        this.addEventListener ("focusout", () => this.allNotesOff());
 
         this.currentDraggedNote = -1;
         this.currentExternalNotesOn = new Set();
         this.currentKeyboardNotes = new Set();
         this.currentPlayedNotes = new Set();
         this.currentDisplayedNotes = new Set();
+        /** @type {{note: number, element: HTMLElement | null}[]} */
         this.notes = [];
         this.modifierKeys = 0;
         this.currentTouches = new Map();
@@ -78,8 +81,8 @@ export default class PianoKeyboard extends HTMLElement
 
         for (let child of this.root.children)
         {
-            child.addEventListener ("touchstart", (event) => this.touchStart (event), {passive:false} );
-            child.addEventListener ("touchend",   (event) => this.touchEnd (event) );
+            child.addEventListener ("touchstart", (event) => this.touchStart (/** @type {TouchEvent} */ (event)), {passive:false} );
+            child.addEventListener ("touchend",   (event) => this.touchEnd (/** @type {TouchEvent} */ (event)) );
         }
     }
 
@@ -109,9 +112,9 @@ export default class PianoKeyboard extends HTMLElement
         const velocity = 100;
 
         const callbacks = {
-            noteDown: e => patchConnection.sendMIDIInputEvent (midiInputEndpointID, 0x900000 | (e.detail.note << 8) | velocity),
-            noteUp:   e => patchConnection.sendMIDIInputEvent (midiInputEndpointID, 0x800000 | (e.detail.note << 8) | velocity),
-            midiIn:   e => this.handleExternalMIDI (e.message),
+            noteDown: /** @type {EventListener} */ ((/** @type {CustomEvent<{note: number}>} */ e) => patchConnection.sendMIDIInputEvent (midiInputEndpointID, 0x900000 | (e.detail.note << 8) | velocity)),
+            noteUp:   /** @type {EventListener} */ ((/** @type {CustomEvent<{note: number}>} */ e) => patchConnection.sendMIDIInputEvent (midiInputEndpointID, 0x800000 | (e.detail.note << 8) | velocity)),
+            midiIn:   (/** @type {{message: number}} */ e) => this.handleExternalMIDI (e.message),
             midiInputEndpointID
         };
 
@@ -132,7 +135,7 @@ export default class PianoKeyboard extends HTMLElement
      */
     detachPatchConnection (patchConnection)
     {
-        const callbacks = this.callbacks.get (patchConnection);
+        const callbacks = this.callbacks?.get (patchConnection);
 
         if (callbacks)
         {
@@ -141,18 +144,21 @@ export default class PianoKeyboard extends HTMLElement
             patchConnection.removeEndpointListener (callbacks.midiInputEndpointID, callbacks.midiIn);
         }
 
-        this.callbacks[patchConnection] = undefined;
+        this.callbacks?.delete (patchConnection);
     }
 
     //==============================================================================
-    /** Can be overridden to return the color to use for a note index */
-    getNoteColour (note)    { return undefined; }
+    /** Can be overridden to return the color to use for a note index
+     *  @param {number} _note */
+    getNoteColour (_note)   { return undefined; }
 
-    /** Can be overridden to return the text label to draw on a note index */
-    getNoteLabel (note)     { return midi.getChromaticScaleIndex (note) == 0 ? midi.getNoteNameWithOctaveNumber (note) : ""; }
+    /** Can be overridden to return the text label to draw on a note index
+     *  @param {number} note */
+    getNoteLabel (note)     { return midi.getChromaticScaleIndex (note) === 0 ? midi.getNoteNameWithOctaveNumber (note) : ""; }
 
     /** Clients should call this to deliver a MIDI message, which the keyboard will use to
      *  highlight the notes that are currently playing.
+     *  @param {number} message
      */
     handleExternalMIDI (message)
     {
@@ -172,11 +178,13 @@ export default class PianoKeyboard extends HTMLElement
 
     /** This method will be called when the user plays a note. The default behaviour is
      *  to dispath an event, but you could override this if you needed to.
+     *  @param {number} note
     */
     sendNoteOn (note)   { this.dispatchEvent (new CustomEvent('note-down', { detail: { note: note }})); }
 
     /** This method will be called when the user releases a note. The default behaviour is
      *  to dispath an event, but you could override this if you needed to.
+     *  @param {number} note
     */
     sendNoteOff (note)  { this.dispatchEvent (new CustomEvent('note-up',   { detail: { note: note } })); }
 
@@ -193,9 +201,10 @@ export default class PianoKeyboard extends HTMLElement
         this.refreshActiveNoteElements();
     }
 
+    /** @param {number} newNote */
     setDraggedNote (newNote)
     {
-        if (newNote != this.currentDraggedNote)
+        if (newNote !== this.currentDraggedNote)
         {
             if (this.currentDraggedNote >= 0)
                 this.sendNoteOff (this.currentDraggedNote);
@@ -209,6 +218,7 @@ export default class PianoKeyboard extends HTMLElement
         }
     }
 
+    /** @param {number} note */
     addKeyboardNote (note)
     {
         if (! this.currentKeyboardNotes.has (note))
@@ -219,6 +229,7 @@ export default class PianoKeyboard extends HTMLElement
         }
     }
 
+    /** @param {number} note */
     removeKeyboardNote (note)
     {
         if (this.currentKeyboardNotes.has (note))
@@ -229,33 +240,35 @@ export default class PianoKeyboard extends HTMLElement
         }
     }
 
+    /** @param {number} note */
     isNoteActive (note)
     {
-        return note == this.currentDraggedNote
+        return note === this.currentDraggedNote
             || this.currentExternalNotesOn.has (note)
             || this.currentKeyboardNotes.has (note);
     }
 
     //==============================================================================
-    /** @private */
+    /** @private @param {TouchEvent} event */
     touchEnd (event)
     {
         for (const touch of event.changedTouches)
         {
             const note = this.currentTouches.get (touch.identifier);
             this.currentTouches.delete (touch.identifier);
-            this.removeKeyboardNote (note);
+            if (note !== undefined)
+                this.removeKeyboardNote (note);
         }
 
         event.preventDefault();
     }
 
-    /** @private */
+    /** @private @param {TouchEvent} event */
     touchStart (event)
     {
         for (const touch of event.changedTouches)
         {
-            const note = touch.target.id.substring (4);
+            const note = parseInt ((/** @type {HTMLElement} */ (touch.target)).id.substring (4));
             this.currentTouches.set (touch.identifier, note);
             this.addKeyboardNote (note);
         }
@@ -263,7 +276,7 @@ export default class PianoKeyboard extends HTMLElement
         event.preventDefault();
     }
 
-    /** @private */
+    /** @private @param {MouseEvent} event @param {boolean} isDown @param {boolean} isUp */
     handleMouse (event, isDown, isUp)
     {
         if (isDown)
@@ -273,12 +286,12 @@ export default class PianoKeyboard extends HTMLElement
         {
             let newActiveNote = -1;
 
-            if (event.buttons != 0 && event.type != "mouseout")
+            if (event.buttons !== 0 && event.type !== "mouseout")
             {
-                const note = event.target.id.substring (4);
+                const noteStr = (/** @type {HTMLElement | null} */ (event.target))?.id.substring (4);
 
-                if (note !== undefined)
-                    newActiveNote = parseInt (note);
+                if (noteStr !== undefined)
+                    newActiveNote = parseInt (noteStr);
             }
 
             this.setDraggedNote (newActiveNote);
@@ -291,16 +304,16 @@ export default class PianoKeyboard extends HTMLElement
             this.isDragging = false;
     }
 
-    /** @private */
+    /** @private @param {KeyboardEvent} event @param {boolean} isDown */
     handleKey (event, isDown)
     {
-        if (event.key == "Meta" || event.key == "Alt" || event.key == "Control" || event.key == "Shift")
+        if (event.key === "Meta" || event.key === "Alt" || event.key === "Control" || event.key === "Shift")
         {
             this.modifierKeys += isDown ? 1 : -1;
             return;
         }
 
-        if (this.modifierKeys != 0)
+        if (this.modifierKeys !== 0)
             return;
 
         const config = this.config;
@@ -326,11 +339,11 @@ export default class PianoKeyboard extends HTMLElement
 
         for (let i = 0; i < 128; ++i)
         {
-            const elem = this.shadowRoot.getElementById (`note${i.toString()}`);
+            const elem = this.root.getElementById (`note${i.toString()}`);
             this.notes.push ({ note: i, element: elem });
         }
 
-        this.style.maxWidth = window.getComputedStyle (this).scrollWidth;
+        this.style.maxWidth = String (this.scrollWidth);
     }
 
     /** @private */
@@ -348,13 +361,13 @@ export default class PianoKeyboard extends HTMLElement
         }
     }
 
-    /** @private */
+    /** @private @param {number} note */
     getAccidentalOffset (note)
     {
-        let index = midi.getChromaticScaleIndex (note);
+        const index = midi.getChromaticScaleIndex (note);
 
-        let negativeOffset = -this.accidentalWidth / 16;
-        let positiveOffset = 3 * this.accidentalWidth / 16;
+        const negativeOffset = -this.accidentalWidth / 16;
+        const positiveOffset = 3 * this.accidentalWidth / 16;
 
         const accOffset = this.naturalWidth - (this.accidentalWidth / 2);
         const offsets = [ 0, negativeOffset, 0, positiveOffset, 0, 0, negativeOffset, 0, 0, 0, positiveOffset, 0 ];
@@ -384,7 +397,7 @@ export default class PianoKeyboard extends HTMLElement
                 accidentals += `<div class="accidental-note note" id="note${note}" style="left: ${x + accidentalOffset}px"></div>`;
             }
 
-            if (midi.isNatural (note + 1) || i == config.numNotes - 1)
+            if (midi.isNatural (note + 1) || i === config.numNotes - 1)
                 x += this.naturalWidth;
         }
 

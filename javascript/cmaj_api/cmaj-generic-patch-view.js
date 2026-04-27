@@ -20,6 +20,8 @@
 //  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import * as Controls from "./cmaj-parameter-controls.js"
+import { PatchConnection } from "./cmaj-patch-connection.js"
+
 
 //==============================================================================
 /** A simple, generic view which can control any type of patch */
@@ -34,21 +36,23 @@ class GenericPatchView extends HTMLElement
 
         this.patchConnection = patchConnection;
 
-        this.statusListener = status =>
+        this.statusListener = /** @param {StatusMessage} status */ (status) =>
         {
             this.status = status;
             this.createControlElements();
         };
 
         this.attachShadow ({ mode: "open" });
-        this.shadowRoot.innerHTML = this.getHTML();
+        const root = /** @type {ShadowRoot} */ (this.shadowRoot);
+        root.innerHTML = this.createHTML();
 
-        this.titleElement      = this.shadowRoot.querySelector ("cmaj-generic-patch-title");
-        this.parametersElement = this.shadowRoot.querySelector ("cmaj-generic-patch-parameters");
+        this.titleElement      = /** @type {HTMLElement} */ (root.querySelector ("cmaj-generic-patch-title"));
+        this.parametersElement = /** @type {HTMLElement} */ (root.querySelector ("cmaj-generic-patch-parameters"));
     }
 
     /** This is picked up by some of our wrapper code to know whether it makes
      *  sense to put a title bar/logo above the GUI.
+     *  @returns {boolean}
      */
     hasOwnTitleBar()
     {
@@ -56,14 +60,12 @@ class GenericPatchView extends HTMLElement
     }
 
     //==============================================================================
-    /** @private */
     connectedCallback()
     {
         this.patchConnection.addStatusListener (this.statusListener);
         this.patchConnection.requestStatusUpdate();
     }
 
-    /** @private */
     disconnectedCallback()
     {
         this.patchConnection.removeStatusListener (this.statusListener);
@@ -72,6 +74,9 @@ class GenericPatchView extends HTMLElement
     /** @private */
     createControlElements()
     {
+        if (! this.parametersElement || ! this.titleElement)
+            return;
+
         this.parametersElement.innerHTML = "";
         this.titleElement.innerText = this.status?.manifest?.name ?? "Cmajor";
 
@@ -91,7 +96,7 @@ class GenericPatchView extends HTMLElement
     }
 
     /** @private */
-    getHTML()
+    createHTML()
     {
         const baseUrl = import.meta.url;
 
@@ -186,6 +191,7 @@ class GenericPatchView extends HTMLElement
 //==============================================================================
 /** Creates a generic view element which can be used to control any patch.
  *  @param {PatchConnection} patchConnection - the connection to the target patch
+ *  @returns {HTMLElement}
  */
 export default function createPatchView (patchConnection)
 {
@@ -194,5 +200,6 @@ export default function createPatchView (patchConnection)
     if (! window.customElements.get (genericPatchViewName))
         window.customElements.define (genericPatchViewName, GenericPatchView);
 
-    return new (window.customElements.get (genericPatchViewName)) (patchConnection);
+    const ctor = /** @type {any} */ (window.customElements.get (genericPatchViewName));
+    return /** @type {HTMLElement} */ (new ctor (patchConnection));
 }

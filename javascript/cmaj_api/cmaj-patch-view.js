@@ -23,6 +23,8 @@ import { PatchConnection } from "./cmaj-patch-connection.js"
 
 //==============================================================================
 /** Returns a list of types of view that can be created for this patch.
+ *  @param {PatchConnection} patchConnection
+ *  @returns {string[]}
  */
 export function getAvailableViewTypes (patchConnection)
 {
@@ -45,7 +47,7 @@ export function getAvailableViewTypes (patchConnection)
  *  @param {PatchConnection} patchConnection - the connection to use
  *  @param {string} preferredType - the name of the type of view to open, e.g. "generic"
  *                                  or the name of one of the views in the manifest
- *  @returns {HTMLElement} a HTMLElement that can be displayed as the patch GUI
+ *  @returns {Promise<HTMLElement | undefined>} a HTMLElement that can be displayed as the patch GUI
  */
 export async function createPatchView (patchConnection, preferredType)
 {
@@ -89,29 +91,30 @@ export async function createPatchView (patchConnection, preferredType)
  *  @param {HTMLElement} view - the patch view
  *  @param {HTMLElement} parentToScale - the patch view's direct parent element, to which
  *                                       the scale factor will be applied
- *  @param {HTMLElement} parentContainerToFitTo - an outer parent of the view, whose bounds
+ *  @param {HTMLElement | null} parentContainerToFitTo - an outer parent of the view, whose bounds
  *                                                the view will be made to fit
  */
 export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo)
 {
-    function getClientSize (view)
+    /** @param {HTMLElement} elem */
+    function getClientSize (elem)
     {
-        const clientStyle = getComputedStyle (view);
+        const clientStyle = getComputedStyle (elem);
 
         return {
-            width:  view.clientHeight - parseFloat (clientStyle.paddingTop)  - parseFloat (clientStyle.paddingBottom),
-            height: view.clientWidth  - parseFloat (clientStyle.paddingLeft) - parseFloat (clientStyle.paddingRight)
+            width:  elem.clientHeight - parseFloat (clientStyle.paddingTop)  - parseFloat (clientStyle.paddingBottom),
+            height: elem.clientWidth  - parseFloat (clientStyle.paddingLeft) - parseFloat (clientStyle.paddingRight)
         };
     }
 
-    const scaleLimits = view.getScaleFactorLimits?.();
+    const scaleLimits = (/** @type {any} */ (view)).getScaleFactorLimits?.();
 
     if (scaleLimits && (scaleLimits.minScale || scaleLimits.maxScale) && parentContainerToFitTo)
     {
         const minScale = scaleLimits.minScale || 0.25;
         const maxScale = scaleLimits.maxScale || 5.0;
 
-        const targetSize = getClientSize (parentContainerToFitTo);
+        const targetSize = getClientSize (/** @type {HTMLElement} */ (parentContainerToFitTo));
         const clientSize = getClientSize (view);
 
         const scaleW = targetSize.width / clientSize.width;
@@ -130,18 +133,20 @@ export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo
 //==============================================================================
 class PatchViewHolder extends HTMLElement
 {
+    /** @param {HTMLElement} view */
     constructor (view)
     {
         super();
         this.view = view;
-        this.style = `display: block; position: relative; width: 100%; height: 100%; overflow: visible; transform-origin: 0% 0%;`;
+        this.setAttribute ("style", "display: block; position: relative; width: 100%; height: 100%; overflow: visible; transform-origin: 0% 0%;");
     }
 
     connectedCallback()
     {
         this.appendChild (this.view);
         this.resizeObserver = new ResizeObserver (() => scalePatchViewToFit (this.view, this, this.parentElement));
-        this.resizeObserver.observe (this.parentElement);
+        if (this.parentElement)
+            this.resizeObserver.observe (this.parentElement);
         scalePatchViewToFit (this.view, this, this.parentElement);
     }
 
@@ -166,7 +171,7 @@ class PatchViewHolder extends HTMLElement
  *  @param {PatchConnection} patchConnection - the connection to use
  *  @param {string} preferredType - the name of the type of view to open, e.g. "generic"
  *                                  or the name of one of the views in the manifest
- *  @returns {HTMLElement} a HTMLElement that can be displayed as the patch GUI
+ *  @returns {Promise<HTMLElement | undefined>} a HTMLElement that can be displayed as the patch GUI
  */
 export async function createPatchViewHolder (patchConnection, preferredType)
 {
@@ -178,6 +183,9 @@ export async function createPatchViewHolder (patchConnection, preferredType)
 
         if (! window.customElements.get (patchViewHolderName)) window.customElements.define (patchViewHolderName, PatchViewHolder);
 
-        return new (window.customElements.get (patchViewHolderName)) (view);
+        const ctor = /** @type {any} */ (window.customElements.get (patchViewHolderName));
+        return /** @type {HTMLElement} */ (new ctor (view));
     }
+
+    return undefined;
 }

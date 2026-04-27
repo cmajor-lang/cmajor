@@ -27,6 +27,7 @@ export class EventListenerList
 {
     constructor()
     {
+        /** @type {Object.<string, Function[]>} */
         this.listenersPerType = {};
     }
 
@@ -35,7 +36,8 @@ export class EventListenerList
      *  Each call to addEventListener() must be paired with a removeventListener()
      *  call to remove it.
      *
-     *  @param {string} type
+     *  @param {string} type - the event type name
+     *  @param {Function} listener - the callback to invoke when the event fires
      */
     addEventListener (type, listener)
     {
@@ -51,7 +53,8 @@ export class EventListenerList
     }
 
     /** Removes a listener that was previously added for the given event type.
-     *  @param {string} type
+     *  @param {string} type - the event type name
+     *  @param {Function} listener - the callback that was previously registered
      */
     removeEventListener (type, listener)
     {
@@ -72,11 +75,12 @@ export class EventListenerList
     /** Attaches a callback function that will be automatically unregistered
      *  the first time it is invoked.
      *
-     *  @param {string} type
+     *  @param {string} type - the event type name
+     *  @param {Function} listener - the callback to invoke once
      */
     addSingleUseListener (type, listener)
     {
-        const l = message =>
+        const l = /** @param {*} message */ (message) =>
         {
             this.removeEventListener (type, l);
             listener?.(message);
@@ -88,7 +92,8 @@ export class EventListenerList
     /** Synchronously dispatches an event object to all listeners
      *  that are registered for the given type.
      *
-     *  @param {string} type
+     *  @param {string} type - the event type name
+     *  @param {*} event - the event value passed to each listener
      */
     dispatchEvent (type, event)
     {
@@ -102,7 +107,8 @@ export class EventListenerList
     /** Returns the number of listeners that are currently registered
      *  for the given type of event.
      *
-     *  @param {string} type
+     *  @param {string} type - the event type name
+     *  @returns {number}
      */
     getNumListenersForType (type)
     {

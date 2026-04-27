@@ -33,15 +33,15 @@ export class ParameterControlBase  extends HTMLElement
         super();
 
         // prevent any clicks from focusing on this element
-        this.onmousedown = e => e.stopPropagation();
+        this.onmousedown = (/** @type {MouseEvent} */ e) => e.stopPropagation();
     }
 
     /** Attaches the control to a given PatchConnection and endpoint.
      *
      * @param {PatchConnection} patchConnection - the connection to connect to, or pass
      *                                            undefined to disconnect the control.
-     * @param {Object} endpointInfo - the endpoint details, as provided by a PatchConnection
-     *                                in its status callback.
+     * @param {EndpointInfo} endpointInfo - the endpoint details, as provided by a PatchConnection
+     *                             in its status callback.
      */
     setEndpoint (patchConnection, endpointInfo)
     {
@@ -57,23 +57,27 @@ export class ParameterControlBase  extends HTMLElement
 
     /** Override this method in a child class, and it will be called when the parameter value changes,
      *  so you can update the GUI appropriately.
+     *  @param {number} _newValue
      */
-    valueChanged (newValue) {}
+    valueChanged (_newValue) {}
 
-    /** Your GUI can call this when it wants to change the parameter value. */
-    setValue (value)     { this.patchConnection?.sendEventOrValue (this.endpointInfo.endpointID, value); }
+    /** Your GUI can call this when it wants to change the parameter value.
+     *  @param {number} value
+     */
+    setValue (value)     { if (this.endpointInfo) this.patchConnection?.sendEventOrValue (this.endpointInfo.endpointID, value); }
 
     /** Call this before your GUI begins a modification gesture.
      *  You might for example call this if the user begins a mouse-drag operation.
      */
-    beginGesture()       { this.patchConnection?.sendParameterGestureStart (this.endpointInfo.endpointID); }
+    beginGesture()       { if (this.endpointInfo) this.patchConnection?.sendParameterGestureStart (this.endpointInfo.endpointID); }
 
     /** Call this after your GUI finishes a modification gesture */
-    endGesture()         { this.patchConnection?.sendParameterGestureEnd (this.endpointInfo.endpointID); }
+    endGesture()         { if (this.endpointInfo) this.patchConnection?.sendParameterGestureEnd (this.endpointInfo.endpointID); }
 
     /** This calls setValue(), but sandwiches it between some start/end gesture calls.
      *  You should use this to make sure a DAW correctly records automatiion for individual value changes
      *  that are not part of a gesture.
+     *  @param {number} value
      */
     setValueAsGesture (value)
     {
@@ -85,18 +89,16 @@ export class ParameterControlBase  extends HTMLElement
     /** Resets the parameter to its default value */
     resetToDefault()
     {
-        if (this.defaultValue !== null)
+        if (this.defaultValue != null)
             this.setValueAsGesture (this.defaultValue);
     }
 
     //==============================================================================
-    /** @private */
     connectedCallback()
     {
         this.attachListener();
     }
 
-    /** @protected */
     disconnectedCallback()
     {
         this.detachListener();
@@ -107,7 +109,7 @@ export class ParameterControlBase  extends HTMLElement
     {
         if (this.listener)
         {
-            this.patchConnection?.removeParameterListener?.(this.listener.endpointID, this.listener);
+            this.patchConnection?.removeParameterListener?.(/** @type {Function & {[key: string]: string}} */ (/** @type {unknown} */ (this.listener))["endpointID"], this.listener);
             this.listener = undefined;
         }
     }
@@ -119,8 +121,8 @@ export class ParameterControlBase  extends HTMLElement
         {
             this.detachListener();
 
-            this.listener = newValue => this.valueChanged (newValue);
-            this.listener.endpointID = this.endpointInfo.endpointID;
+            this.listener = (/** @type {number} */ newValue) => this.valueChanged (newValue);
+            (/** @type {Function & {[key: string]: string}} */ (/** @type {unknown} */ (this.listener)))["endpointID"] = this.endpointInfo.endpointID;
 
             this.patchConnection.addParameterListener (this.endpointInfo.endpointID, this.listener);
             this.patchConnection.requestParameterValue (this.endpointInfo.endpointID);
@@ -132,12 +134,14 @@ export class ParameterControlBase  extends HTMLElement
 /** A simple rotary parameter knob control. */
 export class Knob  extends ParameterControlBase
 {
+    /** @param {PatchConnection} patchConnection @param {EndpointInfo} endpointInfo */
     constructor (patchConnection, endpointInfo)
     {
         super();
         this.setEndpoint (patchConnection, endpointInfo);
     }
 
+    /** @param {PatchConnection} patchConnection @param {EndpointInfo} endpointInfo */
     setEndpoint (patchConnection, endpointInfo)
     {
         super.setEndpoint (patchConnection, endpointInfo);
@@ -148,7 +152,7 @@ export class Knob  extends ParameterControlBase
         const max = endpointInfo?.annotation?.max || 1;
         const mid = endpointInfo?.annotation?.mid || undefined;
 
-        const createSvgElement = tag => window.document.createElementNS ("http://www.w3.org/2000/svg", tag);
+        const createSvgElement = (/** @type {string} */ tag) => window.document.createElementNS ("http://www.w3.org/2000/svg", tag);
 
         const svg = createSvgElement ("svg");
         svg.setAttribute ("viewBox", "0 0 100 100");
@@ -162,13 +166,13 @@ export class Knob  extends ParameterControlBase
         const isBipolar = min + max === 0;
         const dashLength = isBipolar ? 251.5 : 184;
         const valueOffset = isBipolar ? 0 : 132;
-        this.getDashOffset = val => dashLength - 184 / (maxKnobRotation * 2) * (val + valueOffset);
+        this.getDashOffset = (/** @type {number} */ val) => dashLength - 184 / (maxKnobRotation * 2) * (val + valueOffset);
 
         this.trackValue = createSvgElement ("path");
 
         this.trackValue.setAttribute ("d", isBipolar ? "M50.01,10 A 40 40 0 1 1 50 10"
                                                      : "M20,76 A 40 40 0 1 1 80 76");
-        this.trackValue.setAttribute ("stroke-dasharray", dashLength);
+        this.trackValue.setAttribute ("stroke-dasharray", String (dashLength));
         this.trackValue.classList.add ("knob-path");
         this.trackValue.classList.add ("knob-track-value");
 
@@ -185,12 +189,12 @@ export class Knob  extends ParameterControlBase
         this.appendChild (svg);
         this.appendChild (this.dial);
 
-        const remap = (source, sourceFrom, sourceTo, targetFrom, targetTo) =>
+        const remap = (/** @type {number} */ source, /** @type {number} */ sourceFrom, /** @type {number} */ sourceTo, /** @type {number} */ targetFrom, /** @type {number} */ targetTo) =>
                         (targetFrom + (source - sourceFrom) * (targetTo - targetFrom) / (sourceTo - sourceFrom));
 
-        const toValue = (knobRotation) =>
+        const toValue = (/** @type {number} */ knobRotation) =>
         {
-            if (mid > min && mid < max)
+            if (mid !== undefined && mid > min && mid < max)
             {
                 const normalisedKnob = remap (knobRotation, -maxKnobRotation, maxKnobRotation, 0, 1);
                 const range = max - min;
@@ -204,9 +208,9 @@ export class Knob  extends ParameterControlBase
             }
         };
 
-        this.toRotation = (value) =>
+        this.toRotation = (/** @type {number} */ value) =>
         {
-            if (mid > min && mid < max)
+            if (mid !== undefined && mid > min && mid < max)
             {
                 const range = max - min;
                 const power = Math.log ((mid - min) / (range)) / Math.log (0.5);
@@ -221,30 +225,30 @@ export class Knob  extends ParameterControlBase
             }
         };
 
-        this.rotation = this.toRotation (this.defaultValue);
+        this.rotation = this.toRotation (this.defaultValue ?? 0);
         this.setRotation (this.rotation, true);
 
-        const onMouseMove = (event) =>
+        const onMouseMove = (/** @type {MouseEvent} */ event) =>
         {
             event.preventDefault(); // avoid scrolling whilst dragging
 
-            const nextRotation = (rotation, delta) =>
+            const nextRotation = (/** @type {number} */ rotation, /** @type {number} */ delta) =>
             {
-                const clamp = (v, min, max) => Math.min (Math.max (v, min), max);
+                const clamp = (/** @type {number} */ v, /** @type {number} */ min, /** @type {number} */ max) => Math.min (Math.max (v, min), max);
                 return clamp (rotation - delta, -maxKnobRotation, maxKnobRotation);
             };
 
             const workaroundBrowserIncorrectlyCalculatingMovementY = event.movementY === event.screenY;
-            const movementY = workaroundBrowserIncorrectlyCalculatingMovementY ? event.screenY - this.previousScreenY
+            const movementY = workaroundBrowserIncorrectlyCalculatingMovementY ? event.screenY - (this.previousScreenY ?? 0)
                                                                                : event.movementY;
             this.previousScreenY = event.screenY;
 
             const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
-            this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
+            this.accumulatedRotation = nextRotation (this.accumulatedRotation ?? 0, movementY * speedMultiplier);
             this.setValue (toValue (this.accumulatedRotation));
         };
 
-        const onMouseUp = (event) =>
+        const onMouseUp = (/** @type {MouseEvent} */ _event) =>
         {
             this.previousScreenY = undefined;
             this.accumulatedRotation = undefined;
@@ -253,7 +257,7 @@ export class Knob  extends ParameterControlBase
             this.endGesture();
         };
 
-        const onMouseDown = (event) =>
+        const onMouseDown = (/** @type {MouseEvent} */ event) =>
         {
             this.previousScreenY = event.screenY;
             this.accumulatedRotation = this.rotation;
@@ -263,7 +267,7 @@ export class Knob  extends ParameterControlBase
             event.preventDefault();
         };
 
-        const onTouchStart = (event) =>
+        const onTouchStart = (/** @type {TouchEvent} */ event) =>
         {
             this.previousClientY = event.changedTouches[0].clientY;
             this.accumulatedRotation = this.rotation;
@@ -274,29 +278,29 @@ export class Knob  extends ParameterControlBase
             event.preventDefault();
         };
 
-        const onTouchMove = (event) =>
+        const onTouchMove = (/** @type {TouchEvent} */ event) =>
         {
             for (const touch of event.changedTouches)
             {
-                if (touch.identifier == this.touchIdentifier)
+                if (touch.identifier === this.touchIdentifier)
                 {
-                    const nextRotation = (rotation, delta) =>
+                    const nextRotation = (/** @type {number} */ rotation, /** @type {number} */ delta) =>
                     {
-                        const clamp = (v, min, max) => Math.min (Math.max (v, min), max);
+                        const clamp = (/** @type {number} */ v, /** @type {number} */ min, /** @type {number} */ max) => Math.min (Math.max (v, min), max);
                         return clamp (rotation - delta, -maxKnobRotation, maxKnobRotation);
                     };
 
-                    const movementY = touch.clientY - this.previousClientY;
+                    const movementY = touch.clientY - (this.previousClientY ?? 0);
                     this.previousClientY = touch.clientY;
 
                     const speedMultiplier = event.shiftKey ? 0.25 : 1.5;
-                    this.accumulatedRotation = nextRotation (this.accumulatedRotation, movementY * speedMultiplier);
+                    this.accumulatedRotation = nextRotation (this.accumulatedRotation ?? 0, movementY * speedMultiplier);
                     this.setValue (toValue (this.accumulatedRotation));
                 }
             }
         };
 
-        const onTouchEnd = (event) =>
+        const onTouchEnd = (/** @type {TouchEvent} */ _event) =>
         {
             this.previousClientY = undefined;
             this.accumulatedRotation = undefined;
@@ -310,30 +314,34 @@ export class Knob  extends ParameterControlBase
         this.addEventListener ('touchstart', onTouchStart);
     }
 
-    /** Returns true if this type of control is suitable for the given endpoint info */
+    /** Returns true if this type of control is suitable for the given endpoint info
+     *  @param {EndpointInfo} endpointInfo */
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter";
     }
 
-    /** @override */
-    valueChanged (newValue)       { this.setRotation (this.toRotation (newValue), false); }
+    /** @override @param {number} newValue */
+    valueChanged (newValue)       { if (this.toRotation) this.setRotation (this.toRotation (newValue), false); }
 
-    /** Returns a string version of the given value */
+    /** Returns a string version of the given value
+     *  @param {number} v */
     getDisplayValue (v)           { return toFloatDisplayValueWithUnit (v, this.endpointInfo); }
 
-    /** @private */
+    /** @private @param {number} degrees @param {boolean} force */
     setRotation (degrees, force)
     {
         if (force || this.rotation !== degrees)
         {
             this.rotation = degrees;
-            this.trackValue.setAttribute ("stroke-dashoffset", this.getDashOffset (this.rotation));
-            this.dial.style.transform = `translate(-50%,-50%) rotate(${degrees}deg)`;
+            if (this.trackValue && this.getDashOffset)
+                this.trackValue.setAttribute ("stroke-dashoffset", String (this.getDashOffset (this.rotation)));
+            if (this.dial)
+                this.dial.style.transform = `translate(-50%,-50%) rotate(${degrees}deg)`;
         }
     }
 
-    /** @private */
+    /** @internal */
     static getCSS()
     {
         return `
@@ -396,12 +404,14 @@ export class Knob  extends ParameterControlBase
 /** A boolean switch control */
 export class Switch  extends ParameterControlBase
 {
+    /** @param {PatchConnection} patchConnection @param {EndpointInfo} endpointInfo */
     constructor (patchConnection, endpointInfo)
     {
         super();
         this.setEndpoint (patchConnection, endpointInfo);
     }
 
+    /** @param {PatchConnection} patchConnection @param {EndpointInfo} endpointInfo */
     setEndpoint (patchConnection, endpointInfo)
     {
         super.setEndpoint (patchConnection, endpointInfo);
@@ -413,8 +423,8 @@ export class Switch  extends ParameterControlBase
         inner.classList = "switch-thumb";
 
         this.innerHTML = "";
-        this.currentValue = this.defaultValue > 0.5;
-        this.valueChanged (this.currentValue);
+        this.currentValue = (this.defaultValue ?? 0) > 0.5;
+        this.valueChanged (this.defaultValue ?? 0);
         this.classList.add ("switch-container");
 
         outer.appendChild (inner);
@@ -422,14 +432,15 @@ export class Switch  extends ParameterControlBase
         this.addEventListener ("click", () => this.setValueAsGesture (this.currentValue ? 0 : 1.0));
     }
 
-    /** Returns true if this type of control is suitable for the given endpoint info */
+    /** Returns true if this type of control is suitable for the given endpoint info
+     *  @param {EndpointInfo} endpointInfo */
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter"
                 && endpointInfo.annotation?.boolean;
     }
 
-    /** @override */
+    /** @override @param {number} newValue */
     valueChanged (newValue)
     {
         const b = newValue > 0.5;
@@ -438,10 +449,11 @@ export class Switch  extends ParameterControlBase
         this.classList.add (b ? "switch-on" : "switch-off");
     }
 
-    /** Returns a string version of the given value */
+    /** Returns a string version of the given value
+     *  @param {number} v */
     getDisplayValue (v)   { return `${v > 0.5 ? "On" : "Off"}`; }
 
-    /** @private */
+    /** @internal */
     static getCSS()
     {
         return `
@@ -504,54 +516,62 @@ export class Switch  extends ParameterControlBase
 }
 
 //==============================================================================
+/**
+ * @param {number} v
+ * @param {EndpointInfo | undefined} endpointInfo
+ */
 function toFloatDisplayValueWithUnit (v, endpointInfo)
 {
-    return `${v.toFixed (2)} ${endpointInfo.annotation?.unit ?? ""}`;
+    return `${v.toFixed (2)} ${endpointInfo?.annotation?.unit ?? ""}`;
 }
 
 //==============================================================================
 /** A control that allows an item to be selected from a drop-down list of options */
 export class Options  extends ParameterControlBase
 {
+    /** @param {PatchConnection} patchConnection @param {EndpointInfo} endpointInfo */
     constructor (patchConnection, endpointInfo)
     {
         super();
         this.setEndpoint (patchConnection, endpointInfo);
     }
 
+    /** @param {PatchConnection} patchConnection @param {EndpointInfo} endpointInfo */
     setEndpoint (patchConnection, endpointInfo)
     {
         super.setEndpoint (patchConnection, endpointInfo);
 
-        const toValue = (min, step, index) => min + (step * index);
-        const toStepCount = count => count > 0 ? count - 1 : 1;
+        const toValue = (/** @type {number} */ min, /** @type {number} */ step, /** @type {number} */ index) => min + (step * index);
+        const toStepCount = (/** @type {number} */ count) => count > 0 ? count - 1 : 1;
 
         const { min, max, options } = (() =>
         {
             if (Options.hasTextOptions (endpointInfo))
             {
-                const optionList = endpointInfo.annotation.text.split ("|");
+                const annotation = /** @type {NonNullable<EndpointInfo["annotation"]>} */ (endpointInfo.annotation);
+                const optionList = /** @type {string} */ (annotation.text).split ("|");
                 const stepCount = toStepCount (optionList.length);
                 let min = 0, max = stepCount, step = 1;
 
-                if (endpointInfo.annotation.min != null && endpointInfo.annotation.max != null)
+                if (annotation.min != null && annotation.max != null)
                 {
-                    min = endpointInfo.annotation.min;
-                    max = endpointInfo.annotation.max;
+                    min = annotation.min;
+                    max = annotation.max;
                     step = (max - min) / stepCount;
                 }
 
-                const options = optionList.map ((text, index) => ({ value: toValue (min, step, index), text }));
+                const options = optionList.map ((/** @type {string} */ text, /** @type {number} */ index) => ({ value: toValue (min, step, index), text }));
 
                 return { min, max, options };
             }
 
             if (Options.isExplicitlyDiscrete (endpointInfo))
             {
-                const step = endpointInfo.annotation.step;
+                const annotation = /** @type {NonNullable<EndpointInfo["annotation"]>} */ (endpointInfo.annotation);
+                const step = /** @type {number} */ (annotation.step);
 
-                const min = endpointInfo.annotation?.min || 0;
-                const max = endpointInfo.annotation?.max || 1;
+                const min = annotation.min || 0;
+                const max = annotation.max || 1;
 
                 const numDiscreteOptions = (((max - min) / step) | 0) + 1;
 
@@ -564,13 +584,15 @@ export class Options  extends ParameterControlBase
 
                 return { min, max, options };
             }
+
+            throw new Error ("Unreachable: Options control used for unsupported endpoint type");
         })();
 
         this.options = options;
 
-        const stepCount = toStepCount (this.options.length);
-        const normalise = value => (value - min) / (max - min);
-        this.toIndex = value => Math.min (stepCount, normalise (value) * this.options.length) | 0;
+        const stepCount = toStepCount (options.length);
+        const normalise = (/** @type {number} */ value) => (value - min) / (max - min);
+        this.toIndex = (/** @type {number} */ value) => Math.min (stepCount, normalise (value) * options.length) | 0;
 
         this.innerHTML = "";
 
@@ -583,16 +605,17 @@ export class Options  extends ParameterControlBase
             this.select.appendChild (optionElement);
         }
 
-        this.selectedIndex = this.toIndex (this.defaultValue);
+        this.selectedIndex = this.toIndex (this.defaultValue ?? 0);
 
         this.select.addEventListener ("change", (e) =>
         {
-            const newIndex = e.target.selectedIndex;
+            const target = /** @type {HTMLSelectElement} */ (e.target);
+            const newIndex = target.selectedIndex;
 
             // prevent local state change. the caller will update us when the backend actually applies the update
-            e.target.selectedIndex = this.selectedIndex;
+            target.selectedIndex = this.selectedIndex ?? 0;
 
-            this.setValueAsGesture (this.options[newIndex].value)
+            this.setValueAsGesture (options[newIndex].value)
         });
 
         this.valueChanged (this.selectedIndex);
@@ -605,37 +628,40 @@ export class Options  extends ParameterControlBase
         this.appendChild (icon);
     }
 
-    /** Returns true if this type of control is suitable for the given endpoint info */
+    /** Returns true if this type of control is suitable for the given endpoint info
+     *  @param {EndpointInfo} endpointInfo */
     static canBeUsedFor (endpointInfo)
     {
         return endpointInfo.purpose === "parameter"
                 && (this.hasTextOptions (endpointInfo) || this.isExplicitlyDiscrete (endpointInfo));
     }
 
-    /** @override */
+    /** @override @param {number} newValue */
     valueChanged (newValue)
     {
-        const index = this.toIndex (newValue);
+        const index = this.toIndex ? this.toIndex (newValue) : 0;
         this.selectedIndex = index;
-        this.select.selectedIndex = index;
+        if (this.select)
+            this.select.selectedIndex = index;
     }
 
-    /** Returns a string version of the given value */
-    getDisplayValue (v)    { return this.options[this.toIndex(v)].text; }
+    /** Returns a string version of the given value
+     *  @param {number} v */
+    getDisplayValue (v)    { return (this.options ?? [])[this.toIndex ? this.toIndex (v) : 0]?.text ?? ""; }
 
-    /** @private */
+    /** @private @param {EndpointInfo} endpointInfo */
     static hasTextOptions (endpointInfo)
     {
-        return endpointInfo.annotation?.text?.split?.("|").length > 1
+        return (endpointInfo.annotation?.text?.split?.("|").length ?? 0) > 1
     }
 
-    /** @private */
+    /** @private @param {EndpointInfo} endpointInfo */
     static isExplicitlyDiscrete (endpointInfo)
     {
-        return endpointInfo.annotation?.discrete && endpointInfo.annotation?.step > 0;
+        return endpointInfo.annotation?.discrete && (endpointInfo.annotation?.step ?? 0) > 0;
     }
 
-    /** @private */
+    /** @internal */
     static getCSS()
     {
         return `
@@ -698,6 +724,7 @@ export class Options  extends ParameterControlBase
 /** A control which wraps a child control, adding a label and value display box below it */
 export class LabelledControlHolder  extends ParameterControlBase
 {
+    /** @param {PatchConnection} patchConnection @param {EndpointInfo} endpointInfo @param {any} childControl */
     constructor (patchConnection, endpointInfo, childControl)
     {
         super();
@@ -705,6 +732,7 @@ export class LabelledControlHolder  extends ParameterControlBase
         this.setEndpoint (patchConnection, endpointInfo);
     }
 
+    /** @param {PatchConnection} patchConnection @param {EndpointInfo} endpointInfo */
     setEndpoint (patchConnection, endpointInfo)
     {
         super.setEndpoint (patchConnection, endpointInfo);
@@ -734,13 +762,14 @@ export class LabelledControlHolder  extends ParameterControlBase
         this.appendChild (titleValueHoverContainer);
     }
 
-    /** @override */
+    /** @override @param {number} newValue */
     valueChanged (newValue)
     {
-        this.valueText.innerText = this.childControl?.getDisplayValue (newValue);
+        if (this.valueText)
+            this.valueText.innerText = this.childControl?.getDisplayValue (newValue);
     }
 
-    /** @private */
+    /** @internal */
     static getCSS()
     {
         return `
@@ -824,19 +853,19 @@ export function getAllCSS()
 /** Creates a suitable control for the given endpoint.
  *
  *  @param {PatchConnection} patchConnection - the connection to connect to
- *  @param {Object} endpointInfo - the endpoint details, as provided by a PatchConnection
- *                                 in its status callback.
+ *  @param {EndpointInfo} endpointInfo - the endpoint details, as provided by a PatchConnection
+ *                              in its status callback.
 */
 export function createControl (patchConnection, endpointInfo)
 {
     if (Switch.canBeUsedFor (endpointInfo))
-        return new (window.customElements.get ("cmaj-switch-control")) (patchConnection, endpointInfo);
+        return new (/** @type {any} */ (window.customElements.get ("cmaj-switch-control"))) (patchConnection, endpointInfo);
 
     if (Options.canBeUsedFor (endpointInfo))
-        return new (window.customElements.get ("cmaj-options-control")) (patchConnection, endpointInfo);
+        return new (/** @type {any} */ (window.customElements.get ("cmaj-options-control"))) (patchConnection, endpointInfo);
 
     if (Knob.canBeUsedFor (endpointInfo))
-        return new (window.customElements.get ("cmaj-knob-control")) (patchConnection, endpointInfo);
+        return new (/** @type {any} */ (window.customElements.get ("cmaj-knob-control"))) (patchConnection, endpointInfo);
 
     return undefined;
 }
@@ -845,15 +874,15 @@ export function createControl (patchConnection, endpointInfo)
 /** Creates a suitable labelled control for the given endpoint.
  *
  *  @param {PatchConnection} patchConnection - the connection to connect to
- *  @param {Object} endpointInfo - the endpoint details, as provided by a PatchConnection
- *                                 in its status callback.
+ *  @param {EndpointInfo} endpointInfo - the endpoint details, as provided by a PatchConnection
+ *                              in its status callback.
 */
 export function createLabelledControl (patchConnection, endpointInfo)
 {
     const control = createControl (patchConnection, endpointInfo);
 
     if (control)
-        return new (window.customElements.get ("cmaj-labelled-control-holder")) (patchConnection, endpointInfo, control);
+        return new (/** @type {any} */ (window.customElements.get ("cmaj-labelled-control-holder"))) (patchConnection, endpointInfo, control);
 
     return undefined;
 }
@@ -863,13 +892,13 @@ export function createLabelledControl (patchConnection, endpointInfo)
  *  a control for the given endpoint ID.
  *
  *  @param {PatchConnection} patchConnection - the connection to connect to
- *  @param {Object} status - the connection's current status
+ *  @param {any} status - the connection's current status
  *  @param {string} endpointID - the endpoint you'd like to control
  */
 export function createLabelledControlForEndpointID (patchConnection, status, endpointID)
 {
     for (const endpointInfo of status?.details?.inputs)
-        if (endpointInfo.endpointID == endpointID)
+        if (endpointInfo.endpointID === endpointID)
             return createLabelledControl (patchConnection, endpointInfo);
 
     return undefined;

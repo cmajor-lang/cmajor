@@ -21,9 +21,11 @@
 
 import { PatchConnection } from "./cmaj-patch-connection.js"
 
+
 //==============================================================================
 // N.B. code will be serialised to a string, so all `registerWorkletProcessor`s
 // dependencies must be self contained and not capture things in the outer scope
+/** @param {any} CmajorClass @param {string} workletName @param {string} hostDescription */
 async function serialiseWorkletProcessorFactoryToDataURI (CmajorClass, workletName, hostDescription)
 {
     const serialisedInvocation = `(${registerWorkletProcessor.toString()}) ("${workletName}", ${CmajorClass.toString()}, "${hostDescription}");`
@@ -34,8 +36,10 @@ async function serialiseWorkletProcessorFactoryToDataURI (CmajorClass, workletNa
     return await new Promise (res => { reader.onloadend = () => res (reader.result); });
 }
 
+/** @param {string} workletName @param {any} CmajorClass @param {string} hostDescription */
 function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
 {
+    /** @param {{wrapper: any, eventOutputs: any[], dispatchOutputEvent: any}} args */
     function makeConsumeOutputEvents ({ wrapper, eventOutputs, dispatchOutputEvent })
     {
         const outputEventHandlers = eventOutputs.map (({ endpointID }) =>
@@ -55,18 +59,20 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
             };
         });
 
-        return () => outputEventHandlers.forEach ((consume) => consume() );
+        return () => outputEventHandlers.forEach ((/** @param {() => void} consume */ consume) => consume() );
     }
 
+    /** @param {Object.<string, {initialise: () => void}>} parametersMap */
     function setInitialParameterValues (parametersMap)
     {
         for (const { initialise } of Object.values (parametersMap))
             initialise();
     }
 
+    /** @param {any} wrapper @param {any[]} endpoints @param {Object.<string, *>} initialValueOverrides */
     function makeEndpointMap (wrapper, endpoints, initialValueOverrides)
     {
-        const toKey = ({ endpointType, endpointID }) =>
+        const toKey = (/** @type {{endpointType: any, endpointID: any}} */ { endpointType, endpointID }) =>
         {
             switch (endpointType)
             {
@@ -77,14 +83,14 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
             throw "Unhandled endpoint type";
         };
 
-        const lookup = {};
+        const lookup = /** @type {Object.<string, any>} */ ({});
 
         for (const { endpointID, endpointType, annotation, purpose } of endpoints)
         {
             const key = toKey ({ endpointType, endpointID });
             const wrapperUpdate = wrapper[key]?.bind (wrapper);
 
-            const snapAndConstrainValue = (value) =>
+            const snapAndConstrainValue = (/** @type {number} */ value) =>
             {
                 if (annotation.step != null)
                     value = Math.round (value / annotation.step) * annotation.step;
@@ -95,7 +101,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                 return value;
             };
 
-            const update = (value, rampFrames) =>
+            const update = (/** @type {number} */ value, /** @type {number | undefined} */ rampFrames = undefined) =>
             {
                 // N.B. value clamping and rampFrames from annotations not currently applied
                 const entry = lookup[endpointID];
@@ -120,6 +126,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
         return lookup;
     }
 
+    /** @param {{wrapper: any, toEndpoints: any, wrapperMethodNamePrefix: any}} args */
     function makeStreamEndpointHandler ({ wrapper, toEndpoints, wrapperMethodNamePrefix })
     {
         const endpoints = toEndpoints (wrapper);
@@ -142,39 +149,44 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
             channelCount += endpoint.numAudioChannels;
         }
 
-        return (channels, blockSize) =>
+        return (/** @type {Float32Array[]} */ channels, /** @type {number} */ blockSize) =>
         {
             for (let i = 0; i < handlers.length; i++)
                 handlers[i] (channels, blockSize, targetChannels[i]);
         }
     }
 
+    /** @param {any} wrapper */
     function makeInputStreamEndpointHandler (wrapper)
     {
         return makeStreamEndpointHandler ({
             wrapper,
-            toEndpoints: wrapper => wrapper.getInputEndpoints().filter (({ purpose }) => purpose === "audio in"),
+            toEndpoints: (/** @type {any} */ w) => w.getInputEndpoints().filter ((/** @type {{purpose: any}} */ { purpose }) => purpose === "audio in"),
             wrapperMethodNamePrefix: "setInputStreamFrames",
         });
     }
 
+    /** @param {any} wrapper */
     function makeOutputStreamEndpointHandler (wrapper)
     {
         return makeStreamEndpointHandler ({
             wrapper,
-            toEndpoints: wrapper => wrapper.getOutputEndpoints().filter (({ purpose }) => purpose === "audio out"),
+            toEndpoints: (/** @type {any} */ w) => w.getOutputEndpoints().filter ((/** @type {{purpose: any}} */ { purpose }) => purpose === "audio out"),
             wrapperMethodNamePrefix: "getOutputFrames",
         });
     }
 
-    class WorkletProcessor extends AudioWorkletProcessor
+    // @ts-ignore - AudioWorkletProcessor is a global in the AudioWorklet context
+    const AudioWorkletProcessorBase = /** @type {any} */ (typeof AudioWorkletProcessor !== "undefined" ? AudioWorkletProcessor : class {});
+
+    class WorkletProcessor extends AudioWorkletProcessorBase
     {
         static get parameterDescriptors()
         {
             return [];
         }
 
-        constructor ({ processorOptions, ...options })
+        constructor (/** @type {any} */ { processorOptions, ...options })
         {
             super (options);
 
@@ -184,13 +196,15 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
             const { sessionID = Date.now() & 0x7fffffff, initialValueOverrides = {} } = processorOptions;
 
             const wrapper = new CmajorClass();
+            // @ts-ignore - sampleRate is a global in the AudioWorklet context
+            this.workletSampleRate = /** @type {number} */ (typeof sampleRate !== "undefined" ? sampleRate : 44100);
 
-            wrapper.initialise (sessionID, sampleRate)
+            wrapper.initialise (sessionID, this.workletSampleRate)
                 .then (() => this.initialisePatch (wrapper, initialValueOverrides))
-                .catch (error => { throw new Error (error)});
+                .catch ((/** @type {unknown} */ error) => { throw new Error (String (error))});
         }
 
-        process (inputs, outputs)
+        process (/** @type {Float32Array[][]} */ inputs, /** @type {Float32Array[][]} */ outputs)
         {
             const input = inputs[0];
             const output = outputs[0];
@@ -201,12 +215,12 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
             return true;
         }
 
-        sendPatchMessage (payload)
+        sendPatchMessage (/** @type {any} */ payload)
         {
             this.port.postMessage ({ type: "patch", payload });
         }
 
-        sendParameterValueChanged (endpointID, value)
+        sendParameterValueChanged (/** @type {string} */ endpointID, /** @type {any} */ value)
         {
             this.sendPatchMessage ({
                 type: "param_value",
@@ -214,19 +228,19 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
             });
         }
 
-        initialisePatch (wrapper, initialValueOverrides)
+        initialisePatch (/** @type {any} */ wrapper, /** @type {any} */ initialValueOverrides)
         {
             try
             {
-                const inputParameters = wrapper.getInputEndpoints().filter (({ purpose }) => purpose === "parameter");
+                const inputParameters = wrapper.getInputEndpoints().filter ((/** @type {{purpose: string}} */ { purpose }) => purpose === "parameter");
                 const parametersMap = makeEndpointMap (wrapper, inputParameters, initialValueOverrides);
 
                 setInitialParameterValues (parametersMap);
 
-                const toParameterValuesWithKey = (endpointKey, parametersMap) =>
+                const toParameterValuesWithKey = (/** @type {string} */ endpointKey, /** @type {Object.<string, *>} */ paramsMap) =>
                 {
-                    const toValue = ([endpoint, { cachedValue }]) => ({ [endpointKey]: endpoint, value: cachedValue });
-                    return Object.entries (parametersMap).map (toValue);
+                    const toValue = (/** @type {any} */ [endpoint, { cachedValue }]) => ({ [endpointKey]: endpoint, value: cachedValue });
+                    return Object.entries (paramsMap).map (toValue);
                 };
 
                 const initialValues = toParameterValuesWithKey ("endpointID", parametersMap);
@@ -240,17 +254,17 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                     setInitialParameterValues (parametersMap);
                 };
 
-                const isNonAudioOrParameterEndpoint = ({ purpose }) => ! ["audio in", "parameter"].includes (purpose);
+                const isNonAudioOrParameterEndpoint = (/** @type {{purpose: string}} */ { purpose }) => ! ["audio in", "parameter"].includes (purpose);
                 const otherInputs = wrapper.getInputEndpoints().filter (isNonAudioOrParameterEndpoint);
                 const otherInputEndpointsMap = makeEndpointMap (wrapper, otherInputs, initialValueOverrides);
 
-                const isEvent = ({ endpointType }) => endpointType === "event";
+                const isEvent = (/** @type {{endpointType: string}} */ { endpointType }) => endpointType === "event";
                 const eventInputs = wrapper.getInputEndpoints().filter (isEvent);
                 const eventOutputs = wrapper.getOutputEndpoints().filter (isEvent);
 
-                const makeEndpointListenerMap = (eventEndpoints) =>
+                const makeEndpointListenerMap = (/** @type {any[]} */ eventEndpoints) =>
                 {
-                    const listeners = {};
+                    const listeners = /** @type {Object.<string, any[]>} */ ({});
 
                     for (const { endpointID } of eventEndpoints)
                         listeners[endpointID] = [];
@@ -264,7 +278,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                 this.consumeOutputEvents = makeConsumeOutputEvents ({
                     eventOutputs,
                     wrapper,
-                    dispatchOutputEvent: (endpointID, event) =>
+                    dispatchOutputEvent: (/** @type {string} */ endpointID, /** @type {any} */ event) =>
                     {
                         for (const { replyType } of outputEventListeners[endpointID] ?? [])
                         {
@@ -280,7 +294,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                 const prepareInputFrames = makeInputStreamEndpointHandler (wrapper);
                 const processOutputFrames = makeOutputStreamEndpointHandler (wrapper);
 
-                this.processImpl = (input, output) =>
+                this.processImpl = (/** @type {Float32Array[]} */ input, /** @type {Float32Array[]} */ output) =>
                 {
                     prepareInputFrames (input, blockSize);
                     wrapper.advance (blockSize);
@@ -291,7 +305,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                 // so, we aren't doing ourselves any favours. we probably ought to marshal raw bytes over to the gui in
                 // a pre-allocated lock-free message queue (using `SharedArrayBuffer` + `Atomic`s) and transform the raw
                 // messages there.
-                this.port.addEventListener ("message", e =>
+                this.port.addEventListener ("message", (/** @type {MessageEvent} */ e) =>
                 {
                     if (e.data.type !== "patch")
                         return;
@@ -309,7 +323,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                                         inputs: wrapper.getInputEndpoints(),
                                         outputs: wrapper.getOutputEndpoints(),
                                     },
-                                    sampleRate,
+                                    sampleRate: this.workletSampleRate,
                                     host: hostDescription ? hostDescription : "WebAudio"
                                 },
                             });
@@ -319,7 +333,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                         case "req_reset":
                         {
                             resetState();
-                            initialValues.forEach (v => this.sendParameterValueChanged (v.endpointID, v.value));
+                            initialValues.forEach ((v) => this.sendParameterValueChanged (/** @type {string} */ (v["endpointID"]), v.value));
                             break;
                         }
 
@@ -386,7 +400,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
 
                             for (const [endpointID, parameter] of Object.entries (parametersMap))
                             {
-                                const namedNextValue = parameters.find (({ name }) => name === endpointID);
+                                const namedNextValue = parameters.find ((/** @type {{name: string}} */ { name }) => name === endpointID);
 
                                 if (namedNextValue)
                                     parameter.update (namedNextValue.value);
@@ -400,7 +414,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
 
                         case "add_endpoint_listener":
                         {
-                            const insertIfValidEndpoint = (lookup, msg) =>
+                            const insertIfValidEndpoint = (/** @type {Object.<string, any[]>} */ lookup, /** @type {any} */ msg) =>
                             {
                                 const endpointID = msg?.endpoint;
                                 const listeners = lookup[endpointID]
@@ -419,7 +433,7 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
 
                         case "remove_endpoint_listener":
                         {
-                            const removeIfValidReplyType = (lookup, msg) =>
+                            const removeIfValidReplyType = (/** @type {Object.<string, any[]>} */ lookup, /** @type {any} */ msg) =>
                             {
                                 const endpointID = msg?.endpoint;
                                 const listeners = lookup[endpointID];
@@ -451,16 +465,17 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
             }
             catch (e)
             {
-                this.port.postMessage (e.toString());
+                this.port.postMessage (String (e));
             }
         }
     }
 
+    // @ts-ignore - registerProcessor is a global in the AudioWorklet context
     registerProcessor (workletName, WorkletProcessor);
 }
 
 //==============================================================================
-async function connectToAudioIn (audioContext, node)
+async function connectToAudioIn (/** @type {AudioContext} */ audioContext, /** @type {AudioWorkletNode} */ node)
 {
     try
     {
@@ -487,7 +502,7 @@ async function connectToAudioIn (audioContext, node)
     }
 }
 
-async function connectToMIDI (connection, midiEndpointID)
+async function connectToMIDI (/** @type {AudioWorkletPatchConnection} */ connection, /** @type {string} */ midiEndpointID)
 {
     try
     {
@@ -499,7 +514,10 @@ async function connectToMIDI (connection, midiEndpointID)
         for (const input of midiAccess.inputs.values())
         {
             input.onmidimessage = ({ data }) =>
-                connection.sendMIDIInputEvent (midiEndpointID, data[2] | (data[1] << 8) | (data[0] << 16));
+            {
+                if (data)
+                    connection.sendMIDIInputEvent (midiEndpointID, data[2] | (data[1] << 8) | (data[0] << 16));
+            };
         }
     }
     catch (e)
@@ -515,11 +533,13 @@ async function connectToMIDI (connection, midiEndpointID)
  */
 export class AudioWorkletPatchConnection extends PatchConnection
 {
+    /** @param {PatchManifest} manifest - the patch manifest object */
     constructor (manifest)
     {
         super();
 
         this.manifest = manifest;
+        /** @type {Record<string, any>} */
         this.cachedState = {};
     }
 
@@ -527,7 +547,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
     /**  Initialises this connection to load and control the given Cmajor class.
      *
      *   @param {Object} parameters - the parameters to use
-     *   @param {Object} parameters.CmajorClass - the generated Cmajor class
+     *   @param {any} parameters.CmajorClass - the generated Cmajor class
      *   @param {AudioContext} parameters.audioContext - a web audio AudioContext object
      *   @param {string} parameters.workletName - the name to give the new worklet that is created
      *   @param {string} parameters.hostDescription - a description of the host that is using the patch
@@ -554,7 +574,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
         }
         else
         {
-            const getBaseUrl = (relativeURL) =>
+            const getBaseUrl = (/** @type {URL} */ relativeURL) =>
             {
                 const baseURL = relativeURL.href.substring(0, relativeURL.href.lastIndexOf('/'));
                 return baseURL;
@@ -572,14 +592,14 @@ export class AudioWorkletPatchConnection extends PatchConnection
         this.inputEndpoints = CmajorClass.prototype.getInputEndpoints();
         this.outputEndpoints = CmajorClass.prototype.getOutputEndpoints();
 
-        const audioInputEndpoints  = this.inputEndpoints.filter (({ purpose }) => purpose === "audio in");
-        const audioOutputEndpoints = this.outputEndpoints.filter (({ purpose }) => purpose === "audio out");
+        const audioInputEndpoints  = this.inputEndpoints.filter ((/** @type {{purpose: string}} */ { purpose }) => purpose === "audio in");
+        const audioOutputEndpoints = this.outputEndpoints.filter ((/** @type {{purpose: string}} */ { purpose }) => purpose === "audio out");
 
         let inputChannelCount = 0;
         let outputChannelCount = 0;
 
-        audioInputEndpoints.forEach  ((endpoint) => { inputChannelCount = inputChannelCount + endpoint.numAudioChannels; });
-        audioOutputEndpoints.forEach ((endpoint) => { outputChannelCount = outputChannelCount + endpoint.numAudioChannels; });
+        audioInputEndpoints.forEach  ((/** @type {EndpointInfo} */ endpoint) => { inputChannelCount = inputChannelCount + (endpoint.numAudioChannels ?? 0); });
+        audioOutputEndpoints.forEach ((/** @type {EndpointInfo} */ endpoint) => { outputChannelCount = outputChannelCount + (endpoint.numAudioChannels ?? 0); });
 
         const hasInput = inputChannelCount > 0;
         const hasOutput = outputChannelCount > 0;
@@ -600,9 +620,9 @@ export class AudioWorkletPatchConnection extends PatchConnection
 
         const waitUntilWorkletInitialised = async () =>
         {
-            return new Promise ((resolve) =>
+            return new Promise ((/** @type {(value: void) => void} */ resolve) =>
             {
-                const filterForInitialised = (e) =>
+                const filterForInitialised = (/** @type {MessageEvent} */ e) =>
                 {
                     if (e.data.type === "initialised")
                     {
@@ -648,7 +668,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
         if (! this.audioNode)
             throw new Error ("AudioWorkletPatchConnection.initialise() must have been successfully completed before calling connectDefaultAudioAndMIDI()");
 
-        const getInputWithPurpose = (purpose) =>
+        const getInputWithPurpose = (/** @type {string} */ purpose) =>
         {
             for (const i of this.inputEndpoints)
                 if (i.purpose === purpose)
@@ -667,19 +687,22 @@ export class AudioWorkletPatchConnection extends PatchConnection
     }
 
     //==============================================================================
+    /** @override @param {*} msg */
     sendMessageToServer (msg)
     {
-        this.audioNode.port.postMessage ({ type: "patch", payload: msg });
+        this.audioNode?.port.postMessage ({ type: "patch", payload: msg });
     }
 
+    /** @override @param {string} key */
     requestStoredStateValue (key)
     {
         this.dispatchEvent ("state_key_value", { key, value: this.cachedState[key] });
     }
 
+    /** @override @param {string} key @param {any} newValue */
     sendStoredStateValue (key, newValue)
     {
-        const changed = this.cachedState[key] != newValue;
+        const changed = this.cachedState[key] !== newValue;
 
         if (changed)
         {
@@ -696,11 +719,12 @@ export class AudioWorkletPatchConnection extends PatchConnection
         }
     }
 
+    /** @override @param {any} fullState */
     sendFullStoredState (fullState)
     {
         const currentStateCleared = (() =>
         {
-            const out = {};
+            const out = /** @type {Record<string, any>} */ ({});
             Object.keys (this.cachedState).forEach (k => out[k] = undefined);
             return out;
         })();
@@ -714,28 +738,38 @@ export class AudioWorkletPatchConnection extends PatchConnection
         super.sendFullStoredState (fullState);
     }
 
+    /** @override @param {(state: any) => void} callback */
     requestFullStoredState (callback)
     {
         // N.B. the worklet only handles the `parameters` part, so we patch the key-value state in here
-        super.requestFullStoredState (msg => callback ({ values: { ...this.cachedState }, ...msg }));
+        super.requestFullStoredState ((/** @type {any} */ msg) => callback ({ values: { ...this.cachedState }, ...msg }));
     }
 
+    /** @override @param {string} path @returns {string} */
     getResourceAddress (path)
     {
         return this.rootResourcePath + path;
     }
 
+    /** Fetches a resource file from within the patch bundle.
+     *  @param {string} path - path relative to the patch bundle root
+     *  @returns {Promise<Response>}
+     */
     async readResource (path)
     {
         return fetch (path);
     }
 
+    /** Fetches an audio file from the patch bundle and decodes it into raw sample data.
+     *  @param {string} path - path relative to the patch bundle root
+     *  @returns {Promise<{frames: number[][], sampleRate: number}>}
+     */
     async readResourceAsAudioData (path)
     {
         const response = await this.readResource (path);
-        const buffer = await this.audioContext.decodeAudioData (await response.arrayBuffer());
+        const buffer = await (/** @type {AudioContext} */ (this.audioContext)).decodeAudioData (await response.arrayBuffer());
 
-        let frames = [];
+        let frames = /** @type {number[][]} */ ([]);
 
         for (let i = 0; i < buffer.length; ++i)
             frames.push ([]);
@@ -755,7 +789,7 @@ export class AudioWorkletPatchConnection extends PatchConnection
     /** @private */
     async startPatchWorker()
     {
-        if (this.manifest.worker?.length > 0)
+        if (this.manifest.worker && this.manifest.worker.length > 0)
         {
             const module = await import (this.getResourceAddress (this.manifest.worker));
             module.default (this);
