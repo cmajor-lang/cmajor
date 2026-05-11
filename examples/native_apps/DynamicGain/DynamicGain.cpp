@@ -131,7 +131,7 @@ int main ()
         {
             // Set the gain to framesDone / totalFramesToRender, so it will be a multiplier between 0 and 1,
             // being sent once per framesPerBlock
-            auto newGain = float (framesDone) / totalFramesToRender;
+            auto newGain = static_cast<float> (framesDone) / static_cast<float> (totalFramesToRender);
 
             // Since the leftMultiplier is a value, we use the setInputValue method
             // This doesn't specify a type index (since values can only have one type) but it
