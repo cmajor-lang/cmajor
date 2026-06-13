@@ -858,6 +858,24 @@ struct Dependencies
             addDependencies (ref->getTarget());
         }
 
+        // Follow the result type of constant values. When an external variable is
+        // resolved to a compile-time constant — e.g. inlined by the C++ backend
+        // rather than kept in runtime storage — it becomes a ConstantAggregate
+        // whose struct element types can be otherwise unreachable from the
+        // function body. Without this they never enter `structs`, and the emitted
+        // C++ references an undeclared type. (The LLVM backend is unaffected: it
+        // builds its types lazily.)
+        if (auto cv = o.getAsConstantValueBase())
+            if (auto t = cv->getResultType())
+                addDependencies (*t);
+
+        // Follow the types referenced by any type (array/vector element, struct
+        // members, alias target) so that reaching a type pulls in everything it
+        // structurally depends on.
+        if (auto type = o.getAsTypeBase())
+            for (auto& referenced : type->getResolvedReferencedTypes())
+                addDependencies (referenced);
+
         const_cast<AST::Object&> (o).visitObjectsInScope ([this] (Object& s)
         {
             addDependencies (s);
