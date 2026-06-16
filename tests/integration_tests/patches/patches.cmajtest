@@ -1,0 +1,88 @@
+//
+//     ,ad888ba,                              88
+//    d8"'    "8b
+//   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+//   Y8,           88    88    88  88     88  88
+//    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+//     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+//                                           ,88
+//                                        888P"
+//
+//  The Cmajor project is subject to commercial or open-source licensing.
+//  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+//  visit https://cmajor.dev to learn about our commercial licence options.
+//
+//  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+//  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+//  DISCLAIMED.
+
+## testPatch ("../../../examples/patches/808/808.cmajorpatch")
+
+## testPatch ("../../../examples/patches/CompuFart/CompuFartSynth.cmajorpatch")
+
+## testPatch ("../../../examples/patches/ConvolutionReverb/reverb.cmajorpatch")
+
+## testPatch ("../../../examples/patches/CustomGUI/Freeverb_CustomGUI.cmajorpatch")
+
+## testPatch ("../../../examples/patches/ElectricPiano/ElectricPiano.cmajorpatch")
+
+## disabled testPatch ("../../../examples/patches/FaustFM/FaustFM.cmajorpatch")
+
+## testPatch ("../../../examples/patches/Filter/Filter.cmajorpatch")
+
+## testPatch ("../../../examples/patches/FilterBank/FilterBank.cmajorpatch")
+
+## testPatch ("../../../examples/patches/Freeverb/Freeverb.cmajorpatch")
+
+## testPatch ("../../../examples/patches/GuitarLSTM/GuitarLSTM.cmajorpatch")
+
+## testPatch ("../../../examples/patches/HelloWorld/HelloWorld.cmajorpatch")
+
+## testPatch ("../../../examples/patches/HelloWorldMidi/HelloWorldMidi.cmajorpatch")
+
+## testPatch ("../../../examples/patches/MidiEcho/MidiEcho.cmajorpatch")
+
+## testPatch ("../../../examples/patches/PatchWorker/PatchWorker.cmajorpatch")
+
+## testPatch ("../../../examples/patches/Piano/Piano.cmajorpatch")
+
+## testPatch ("../../../examples/patches/PitchDetector/PitchDetector.cmajorpatch")
+
+## testPatch ("../../../examples/patches/Pro54/Pro54.cmajorpatch")
+
+## testPatch ("../../../examples/patches/RingMod/RingMod.cmajorpatch")
+
+## testPatch ("../../../examples/patches/SineSynth/SineSynth.cmajorpatch")
+
+## testPatch ("../../../examples/patches/StereoDelay/StereoDelay.cmajorpatch")
+
+## testPatch ("../../../examples/patches/SubtractOne/SubtractOne.cmajorpatch")
+
+## testPatch ("../../../examples/patches/TimelineTester/TimelineTester.cmajorpatch")
+
+## testPatch ("../../../examples/patches/Tremolo/Tremolo.cmajorpatch")
+
+## testPatch ("../../../examples/patches/TX81Z/TX81Z.cmajorpatch")
+
+## testPatch ("../../../examples/patches/ValueEcho/ValueEcho.cmajorpatch")
+
+## testPatch ("../../../examples/patches/ZitaReverb/ZitaReverb.cmajorpatch")
+
+
+## testPatch ("invalidJSON/ClassicRingtone.cmajorpatch", "ClassicRingtone.cmajorpatch:12:1: error: Expected a name")
+
+## testPatch ("BinaryModuleMergeNamespaces/BinaryModuleMergeNamespaces.cmajorpatch")
+
+## testPatch ("External/External.cmajorpatch")
+
+## runScript ({ frequency:2000, blockSize:64, samplesToRender:7000, subDir:"HelloWorldMidi", patch: "../../../examples/patches/HelloWorldMidi/HelloWorldMidi.cmajorpatch" })
+
+## runScript ({ frequency:2000, blockSize:64, samplesToRender:7000, maxDiffDb:-80, subDir:"Piano", patch: "../../../examples/patches/Piano/Piano.cmajorpatch" })
+
+## runScript ({ frequency:2000, blockSize:64, samplesToRender:7000, maxDiffDb:-70, subDir:"ElectricPiano", patch: "../../../examples/patches/ElectricPiano/ElectricPiano.cmajorpatch", skipMissingInputs: true })
+
+## runScript ({ frequency:2000, blockSize:64, samplesToRender:7000, maxDiffDb:-70, subDir:"SubtractOne", patch: "../../../examples/patches/SubtractOne/SubtractOne.cmajorpatch", skipMissing: true })
+
+## runScript ({ frequency:2000, blockSize:64, samplesToRender:7000, maxDiffDb:-60, subDir:"Pro54", patch: "../../../examples/patches/Pro54/Pro54.cmajorpatch", skipMissingInputs: true })
+
+## disabled runScript ({ frequency:2000, blockSize:64, samplesToRender:7000, maxDiffDb:-70, subDir:"FaustFM", patch: "../../../examples/patches/FaustFM/FaustFM.cmajorpatch", skipMissingInputs: true })

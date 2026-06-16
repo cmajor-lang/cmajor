@@ -1,0 +1,33 @@
+namespace demo
+{
+    struct Inner { float[4] data; }
+    struct Outer { Inner[2] items; int32 tag; }   // Inner appears only via the array member
+    external Outer[2] table;
+}
+
+processor Voice (int slot)                         // specialised: `slot` is compile-time
+{
+    input value float idx;
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            let j = clamp (int (idx), 0, 1);
+            // table.at(slot) folds to a constant Outer value (slot is compile-time),
+            // dropping the variable reference. .items.at(j) member-accesses that
+            // constant at a runtime index, so Inner survives only as a constant's type.
+            out <- demo::table.at (slot).items.at (j).data[0];
+            advance();
+        }
+    }
+}
+
+graph Main [[ main ]]
+{
+    output stream float out;
+    node a = Voice(0);
+    node b = Voice(1);
+    connection { a.out -> out;  b.out -> out; }
+}

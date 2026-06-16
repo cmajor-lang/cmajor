@@ -1,0 +1,17 @@
+processor Test [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- a::constant;
+            advance();
+        }
+    }
+}
+
+namespace a
+{
+}

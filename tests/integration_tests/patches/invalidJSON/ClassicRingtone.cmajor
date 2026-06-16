@@ -1,0 +1,42 @@
+
+processor HelloWorld
+{
+    output stream float out;
+
+    struct Note
+    {
+        int pitch, length;
+
+        void play() const
+        {
+            let numFrames = this.length * framesPerQuarterNote;
+            let frequency  = std::notes::noteToFrequency (this.pitch);
+            let phaseDelta = float (frequency * processor.period * twoPi);
+
+            loop (numFrames)
+            {
+                out <- volume * sin (phase);
+                phase = addModulo2Pi (phase, phaseDelta);
+                advance();
+            }
+        }
+    }
+
+    void playMelody<NoteList> (const NoteList& melody)
+    {
+        for (wrap<melody.size> i)
+            melody[i].play();
+    }
+
+    void main()
+    {
+        playMelody (Note[] ( (76, 1),  (74, 1),  (66, 2),  (68, 2),
+                             (73, 1),  (71, 1),  (62, 2),  (64, 2),
+                             (71, 1),  (69, 1),  (61, 2),  (64, 2),
+                             (69, 4) ));
+    }
+
+    let volume = 0.15f;
+    let framesPerQuarterNote = int (processor.frequency / 7);
+    float phase;
+}

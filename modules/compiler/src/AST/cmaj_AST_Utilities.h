@@ -857,6 +857,10 @@ struct Dependencies
         {
             addDependencies (ref->getTarget());
         }
+        else if (auto cv = o.getAsConstantValueBase())
+        {
+            addDependencies (*cv->getResultType());
+        }
 
         const_cast<AST::Object&> (o).visitObjectsInScope ([this] (Object& s)
         {

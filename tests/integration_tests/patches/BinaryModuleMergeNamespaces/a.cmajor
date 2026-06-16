@@ -1,0 +1,4 @@
+namespace a
+{
+    let constant = 0.0f;
+}

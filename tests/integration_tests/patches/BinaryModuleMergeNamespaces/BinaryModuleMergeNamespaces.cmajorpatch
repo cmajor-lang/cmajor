@@ -1,0 +1,11 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.test",
+    "version":          "1.0",
+    "name":             "BinaryModuleMergeNamespaces",
+    "description":      "Test that a binary module can be combined with other sources",
+    "manufacturer":     "Cmajor Software Ltd",
+    "category":         "generator",
+    "isInstrument":     false,
+    "source":           [ "a.cmajor", "./compiled/b.cmajor.bin" ]
+}
