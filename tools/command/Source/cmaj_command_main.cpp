@@ -175,6 +175,9 @@ static cmaj::BuildSettings parseBuildArgs (choc::ArgumentList& args)
     if (auto maxFrequency = args.removeIntValue<uint32_t> ("--maxFrequency"))
         buildSettings.setMaxFrequency (*maxFrequency);
 
+    if (auto maxStackSize = args.removeIntValue<uint32_t> ("--maxStackSize"))
+        buildSettings.setMaxStackSize (*maxStackSize);
+
     return buildSettings;
 }
 
