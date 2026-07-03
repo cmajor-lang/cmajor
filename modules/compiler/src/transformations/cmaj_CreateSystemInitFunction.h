@@ -32,7 +32,7 @@ inline void createSystemInitFunctions (AST::Program& program,
         CreateSystemInitFunctions (AST::Program& program,
                                    ptr<AST::VariableDeclaration> s,
                                    ptr<AST::VariableDeclaration> f)
-            : super (program.allocator), sessionIDVariable (s), frequencyVariable (f)
+            : super (program.allocator), sessionIDVariable (s), frequencyVariable (f), mainProcessor (program.getMainProcessor())
         {
             // Ensure the main processor always has an init function as it's required by the runtime
             getOrCreateSystemInitFunction (program.getMainProcessor());
@@ -59,31 +59,39 @@ inline void createSystemInitFunctions (AST::Program& program,
                 if (auto initialiser = AST::castToValue (v.initialValue))
                 {
                     if (auto parent = v.findParentProcessor())
+                        addVariableToInit (*parent, v, *initialiser);
+                    else
                     {
-                        auto& systemInitBlock = *getOrCreateSystemInitFunction (*parent).getMainBlock();
-                        size_t insertIndex = 0;
-
-                        while (insertIndex < systemInitBlock.statements.size())
-                        {
-                            if (AST::castTo<AST::Assignment> (systemInitBlock.statements[insertIndex]) != nullptr)
-                                ++insertIndex;
-                            else
-                                break;
-                        }
-
-                        AST::addAssignment (systemInitBlock,
-                                            AST::createVariableReference (systemInitBlock.context, v),
-                                            *initialiser,
-                                            static_cast<int> (insertIndex));
-
-                        if (v.declaredType == nullptr)
-                            v.declaredType.referTo (*v.getType());
-
-                        v.initialValue.reset();
-                        v.isInitialisedInInit = true;
+                        addVariableToInit (mainProcessor, v, *initialiser);
+                        v.isConstant = false;
                     }
                 }
             }
+        }
+
+        void addVariableToInit (AST::ProcessorBase& processor, AST::VariableDeclaration& v, AST::ValueBase& initialiser)
+        {
+            auto& systemInitBlock = *getOrCreateSystemInitFunction (processor).getMainBlock();
+            size_t insertIndex = 0;
+
+            while (insertIndex < systemInitBlock.statements.size())
+            {
+                if (AST::castTo<AST::Assignment> (systemInitBlock.statements[insertIndex]) != nullptr)
+                    ++insertIndex;
+                else
+                    break;
+            }
+
+            AST::addAssignment (systemInitBlock,
+                                AST::createVariableReference (systemInitBlock.context, v),
+                                initialiser,
+                                static_cast<int> (insertIndex));
+
+            if (v.declaredType == nullptr)
+                v.declaredType.referTo (*v.getType());
+
+            v.initialValue.reset();
+            v.isInitialisedInInit = true;
         }
 
         AST::Function& getOrCreateSystemInitFunction (AST::ProcessorBase& p)
@@ -122,6 +130,8 @@ inline void createSystemInitFunctions (AST::Program& program,
         }
 
         ptr<AST::VariableDeclaration> sessionIDVariable, frequencyVariable;
+
+        AST::ProcessorBase& mainProcessor;
     };
 
     CreateSystemInitFunctions (program, sessionIDStateVariable, frequencyStateVariable).visitObject (program.rootNamespace);

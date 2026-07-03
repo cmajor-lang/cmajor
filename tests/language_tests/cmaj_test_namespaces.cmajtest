@@ -145,3 +145,18 @@ namespace ns::std
         return ::std::intrinsics::fmod (args[0], 1.0f);
 	}
 }
+
+
+## testFunction()
+
+namespace test
+{
+    // Test initialisation of a namespace constant via a complex function which can't be folded at compile time
+    const float gain = std::levels::dBtoGain(1.0f);
+}
+
+bool testNamespaceConstant()
+{
+    return (test::gain == std::levels::dBtoGain(1.0f));
+}
+

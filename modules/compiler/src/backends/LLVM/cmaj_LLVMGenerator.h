@@ -771,7 +771,7 @@ struct LLVMCodeGenerator
             initialiser = createNullConstant (llvmType);
         }
 
-        auto global = new ::llvm::GlobalVariable (*targetModule, llvmType, v.isCompileTimeConstant(),
+        auto global = new ::llvm::GlobalVariable (*targetModule, llvmType, v.isCompileTimeConstant() && v.hasConstInitialiser(),
                                                   ::llvm::GlobalValue::LinkageTypes::PrivateLinkage,
                                                   initialiser, std::string (name));
 
