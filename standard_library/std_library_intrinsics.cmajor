@@ -67,9 +67,10 @@ namespace intrinsics
 
     //==============================================================================
     /// Returns a value which has been clamped to fit within the given range (inclusive of the top).
-    T clamp<T> (T value, T minimum, T maximum)      { static_assert (value.isScalar, "clamp() requires scalar arguments"); return value > maximum ? maximum : (value < minimum ? minimum : value); }
+    T clamp<T> (T value, T minimum, T maximum)      { static_assert (value.isScalar, "clamp() requires scalar arguments"); if const (value.isVector) return internal::vec_clamp (value, minimum, maximum); else return value > maximum ? maximum : (value < minimum ? minimum : value); }
+
     /// Wraps a value to fit within a range, using a negative-aware modulo operation, and returning zero if the size is zero.
-    T wrap<T> (T value, T size)                     { static_assert (value.isScalar, "wrap() requires scalar arguments");  if (size == 0) return 0; let n = value % size; if (n < 0) return n + size; return n; }
+    T wrap<T> (T value, T size)                     { static_assert (value.isScalar, "wrap() requires scalar arguments");  if const (value.isVector) { return internal::vec_wrap (value, size); } else { if (size == 0) return 0; let n = value % size; if (n < 0) return n + size; return n; }}
     /// Wraps a value to fit within a range, using a negative-aware modulo operation, and returning zero if the size is zero.
     int32 wrap (int32 value, int32 size)            { if (size == 0) return 0; let n = value % size; if (n < 0) return n + size; return n; }
 
