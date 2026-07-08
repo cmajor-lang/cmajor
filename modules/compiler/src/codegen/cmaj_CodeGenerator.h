@@ -863,13 +863,11 @@ private:
                                      const AST::TypeBase& inputType,
                                      const AST::ValueBase& input)
     {
-        auto& vectorType = AST::castToRef<AST::VectorType> (inputType);
-        auto& elementType = vectorType.getElementType();
-        auto numElements = vectorType.resolveSize();
-
+        auto& vectorType     = AST::castToRef<AST::VectorType> (inputType);
+        auto& elementType    = vectorType.getElementType();
+        auto numElements     = vectorType.resolveSize();
         auto tempVariableRef = createTempVariableReference (vectorType, {}, false);
-
-        auto inputReader = createValueReader (input);
+        auto inputReader     = createTempVariableReader (vectorType, createValueReader (input), false);
 
         createLoopOrUnrolledList (static_cast<int32_t> (numElements), [&] (ValueReader index)
         {
@@ -1198,14 +1196,15 @@ private:
     {
         auto tempVariableRef = createTempVariableReference (targetType, {}, false);
 
-        auto numElements = targetType.getFixedSizeAggregateNumElements();
-        auto& destElementType = *targetType.getArrayOrVectorElementType();
+        auto numElements        = targetType.getFixedSizeAggregateNumElements();
+        auto& destElementType   = *targetType.getArrayOrVectorElementType();
         auto& sourceElementType = *sourceType.getArrayOrVectorElementType();
+        auto sourceReader       = createTempVariableReader (sourceType, sourceValue, false);
 
         createLoopOrUnrolledList (static_cast<int32_t> (numElements), [&] (ValueReader index)
         {
             auto source = createCastIfNeeded (destElementType, sourceElementType,
-                                              createElementReader (sourceType, sourceValue, index));
+                                              createElementReader (sourceType, sourceReader, index));
             emitWriteToElement (tempVariableRef, index, source);
         });
 
@@ -1260,16 +1259,17 @@ private:
                                           createValueReference (c.argument, false));
     }
 
-    ValueReader createTupleReader (const AST::StructType& structType, ValueReader object,
-                                   ValueReader index, const AST::StructType& tupleType)
+    ValueReader createTupleReader (const AST::StructType& structType, ValueReader object, ValueReader index, const AST::StructType& tupleType)
     {
+        auto objectReader = createTempVariableReader (structType, object, false);
+
         AST::ObjectRefVector<const AST::TypeBase> types;
         choc::SmallVector<ValueReader, 4> values;
 
         for (size_t i = 0; i < tupleType.memberTypes.size(); ++i)
         {
             types.push_back (AST::castToTypeBaseRef (tupleType.memberTypes[i]));
-            auto sourceArray = builder.createStructMemberReader (structType, object, structType.getMemberName(i),
+            auto sourceArray = builder.createStructMemberReader (structType, objectReader, structType.getMemberName(i),
                                                                  static_cast<int64_t> (i));
             values.push_back (createElementReader (structType.getMemberType(i), sourceArray, index));
         }

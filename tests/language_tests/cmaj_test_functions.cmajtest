@@ -1126,3 +1126,40 @@ processor Test [[ main ]]
         advance();
     }
 }
+
+
+## testFunction()
+
+complex<1> getNext (int& i)
+{
+    i++;
+    return complex<1> (i);
+}
+
+bool test()
+{
+    int i = 0;
+
+    let c1 = float (getNext (i)[0].real);
+
+    return i == 1;
+}
+
+
+## testFunction()
+
+float64<2> getNext (int& i)
+{
+    i++;
+    return 0;
+}
+
+bool test()
+{
+    int i = 0;
+
+    let v = float<2>(getNext (i));
+
+    return i == 1;
+}
+
