@@ -540,19 +540,15 @@ inline void convertComplexTypes (AST::Program& program)
                     {
                         VectorSizeAndDepth sourceSizeAndDepth (argType);
 
-                        if (sourceSizeAndDepth.vectorSize == destSizeAndDepth.vectorSize)
+                        if (sourceSizeAndDepth.vectorSize <= 1)
                         {
-                            if (sourceSizeAndDepth.is64Bit != destSizeAndDepth.is64Bit)
-                            {
-                                // numeric cast
-                                auto& real = AST::createCast (elementType, AST::createGetStructMember (cast, arg, "real"));
-                                auto& imag = AST::createCast (elementType, AST::createGetStructMember (cast, arg, "imag"));
+                            auto& real = AST::createCast (elementType, AST::createGetStructMember (cast, arg, "real"));
+                            auto& imag = AST::createCast (elementType, AST::createGetStructMember (cast, arg, "imag"));
 
-                                cast.arguments.reset();
-                                cast.arguments.addReference (real);
-                                cast.arguments.addReference (imag);
-                                return;
-                            }
+                            cast.arguments.reset();
+                            cast.arguments.addReference (real);
+                            cast.arguments.addReference (imag);
+                            return;
                         }
                     }
 

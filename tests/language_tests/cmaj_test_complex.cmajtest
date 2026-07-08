@@ -398,3 +398,19 @@ bool testComplexVecRuntimeOutOfBoundsIndex()
     int idx = 4;
     return v[idx].real == v[1].real;
 }
+
+bool testComplexVector1Cast()
+{
+    complex<1> complexBefore = 1.0f + 2.0fi;
+    complex complexAfter = complex(complexBefore);
+
+    return complexAfter == 1.0f + 2.0fi;
+}
+
+bool testComplexVector1CastDirect()
+{
+    complex<1> complexBefore = 1.0f + 2.0fi;
+    complex complexAfter = complexBefore;
+
+    return complexAfter == 1.0f + 2.0fi;
+}
