@@ -5661,3 +5661,214 @@ processor Target
         advance();
     }
 }
+
+## testProcessor()
+
+processor Source
+{
+    output stream int out;
+
+    void main()
+    {
+        out <- 1;
+        loop { advance(); out <- -1; }
+    }
+}
+
+processor PassThrough
+{
+    input stream int in;
+    output stream int out;
+
+    void main()
+    {
+        loop { out <- in; advance(); }
+    }
+}
+
+graph TestSingleConnection [[ main ]]
+{
+    output stream int out;
+
+    node
+    {
+        source = Source;
+        passThroughArray = PassThrough[2];
+    }
+
+    connection
+    {
+        source.out -> passThroughArray[1].in;
+        passThroughArray[1].out -> out;
+    }
+}
+
+## testProcessor()
+
+processor Source
+{
+    output stream int out;
+
+    void main()
+    {
+        out <- 1;
+        loop { advance(); out <- -1; }
+    }
+}
+
+processor PassThrough
+{
+    input stream int in;
+    output stream int out;
+
+    void main()
+    {
+        loop { out <- in; advance(); }
+    }
+}
+
+graph TestSeriesConnection [[ main ]]
+{
+    output stream int out;
+
+    node
+    {
+        source = Source;
+        passThroughArray0 = PassThrough;
+        passThroughArray1 = PassThrough;
+    }
+
+    connection
+    {
+        source.out -> passThroughArray0.in;
+        passThroughArray0.out -> passThroughArray1.in;
+        passThroughArray1.out -> out;
+    }
+}
+
+## testProcessor()
+
+processor Source
+{
+    output stream int out;
+
+    void main()
+    {
+        out <- 1;
+        loop { advance(); out <- -1; }
+    }
+}
+
+processor PassThrough
+{
+    input stream int in;
+    output stream int out;
+
+    void main()
+    {
+        loop { out <- in; advance(); }
+    }
+}
+
+graph TestSeriesConnection [[ main ]]
+{
+    output stream int out;
+
+    node
+    {
+        source = Source;
+        passThroughArray = PassThrough[2];
+    }
+
+    connection
+    {
+        source.out -> passThroughArray[0].in;
+        passThroughArray[0].out -> passThroughArray[1].in;
+        passThroughArray[1].out -> out;
+    }
+}
+
+## testProcessor()
+
+processor SourceNeutral
+{
+    output event int out;
+
+    void main()
+    {
+        loop { out <- 1; advance(); }
+    }
+}
+
+processor SourceFail
+{
+    output event int out;
+
+    void main()
+    {
+        out <- 0;
+        loop { advance(); out <- -1; }
+    }
+}
+
+processor PassThrough
+{
+    input event int in;
+    output event int out;
+
+    event in (int e)
+    {
+        out <- e;
+    }
+}
+
+graph TestParallelConnection [[ main ]]
+{
+    output event int out;
+
+    node
+    {
+        sourceNeutral    = SourceNeutral;
+        sourceFail       = SourceFail;
+        passThroughArray = PassThrough[2];
+    }
+
+    connection
+    {
+        sourceNeutral.out -> passThroughArray[0].in;
+        sourceFail.out -> passThroughArray[1].in;
+        passThroughArray[0].out -> out;
+    }
+}
+
+
+## expectError ("23:31: error: Feedback cycle in graph: passThroughArray0 -> passThroughArray1 -> passThroughArray2 -> passThroughArray0")
+
+processor PassThrough
+{
+    input event int in;
+    output event int out;
+
+    event in (int e)
+    {
+        out <- e;
+    }
+}
+
+graph TestArrayLoop [[ main ]]
+{
+    output event int out;
+
+    node passThroughArray0 = PassThrough;
+    node passThroughArray1 = PassThrough;
+    node passThroughArray2 = PassThrough;
+
+    connection
+    {
+        passThroughArray0.out -> passThroughArray1.in;
+        passThroughArray1.out -> passThroughArray2.in;
+        passThroughArray2.out -> passThroughArray0.in;
+    }
+}
+
+

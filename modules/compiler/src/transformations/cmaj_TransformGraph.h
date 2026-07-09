@@ -216,9 +216,16 @@ struct FlattenGraph
 
             if (source.getEndpoint (true)->isEvent())
             {
-                auto compatibleTypes = findTypeIntersection (source, dest);
-
+                auto compatibleTypes       = findTypeIntersection (source, dest);
                 bool sourceEndpointIsArray = source.getEndpoint (true)->isArray();
+
+                // When the source is a single element of a node-array (e.g. array[0].out), its element index is embedded in the endpoint
+                // instance rather than being passed as an explicit source index.
+                auto effectiveSourceIndex = sourceIndex;
+
+                if (effectiveSourceIndex == nullptr && ! source.isParentEndpoint() && ! sourceEndpointIsArray)
+                    if (auto nodeIndex = getNodeIndex (source))
+                        effectiveSourceIndex = source.context.allocator.createConstant (*nodeIndex);
 
                 for (auto type : compatibleTypes)
                 {
@@ -227,9 +234,9 @@ struct FlattenGraph
                         auto& eventHandlerFn = getOrCreateEventHandlerFunction (graph, source, type, sourceEndpointIsArray);
 
                         if (dest.isParentEndpoint())
-                            addWriteToEventEndpoint (eventHandlerFn, sourceIndex, dest, destIndex);
+                            addWriteToEventEndpoint (eventHandlerFn, effectiveSourceIndex, dest, destIndex);
                         else
-                            addCallToEventHandlerIfPresent (eventHandlerFn, sourceIndex, dest, destIndex, type);
+                            addCallToEventHandlerIfPresent (eventHandlerFn, effectiveSourceIndex, dest, destIndex, type);
                     }
                     else
                     {
@@ -243,9 +250,9 @@ struct FlattenGraph
                             EventHandlerUtilities::addUpcastCall (*fn, targetFn, sourceEndpointIsArray || nodeIsArray);
 
                             if (dest.isParentEndpoint())
-                                addWriteToEventEndpoint (targetFn, sourceIndex, dest, destIndex);
+                                addWriteToEventEndpoint (targetFn, effectiveSourceIndex, dest, destIndex);
                             else
-                                addCallToEventHandlerIfPresent (targetFn, sourceIndex, dest, destIndex, type);
+                                addCallToEventHandlerIfPresent (targetFn, effectiveSourceIndex, dest, destIndex, type);
                         }
                     }
                 }
@@ -255,7 +262,12 @@ struct FlattenGraph
                 if (! dest.isParentEndpoint())
                 {
                     auto& instanceInfo = getInfoForNode (dest.getNode());
-                    writeTo (instanceInfo.steps, dest, destIndex, source, sourceIndex);
+
+                    AST::ObjectRefVector<const AST::EndpointInstance> sourceInstances;
+                    sourceInstances.push_back (source);
+                    recordIntraArrayDependencies (instanceInfo, dest, destIndex, sourceInstances);
+
+                    writeTo (getStepsBlock (instanceInfo, dest, destIndex), dest, destIndex, source, sourceIndex);
                 }
                 else
                 {
@@ -271,7 +283,12 @@ struct FlattenGraph
             {
                 auto& instanceInfo = getInfoForNode (dest.getNode());
                 instanceInfo.addDependencies (source);
-                writeTo (instanceInfo.steps, dest, destIndex, source, sourceIndex);
+
+                if (auto value = AST::castToSkippingReferences<AST::ValueBase> (source))
+                    recordIntraArrayDependencies (instanceInfo, dest, destIndex,
+                                                  GraphConnectivityModel::getUsedEndpointInstances (*value));
+
+                writeTo (getStepsBlock (instanceInfo, dest, destIndex), dest, destIndex, source, sourceIndex);
             }
             else
             {
@@ -312,6 +329,11 @@ struct FlattenGraph
             AST::ObjectRefVector<const AST::GraphNode> delayDependencies;
             bool hasBeenRun = false;
 
+            bool hasIntraArrayDependency = false;
+            std::map<int, ptr<AST::ScopeBlock>> perElementSteps;
+            std::map<int, std::vector<int>> intraArrayDependencies;
+            std::vector<bool> elementRendered;
+
             void addDependencies (AST::Expression& source)
             {
                 if (auto expr = AST::castToSkippingReferences<AST::ValueBase> (source))
@@ -330,6 +352,78 @@ struct FlattenGraph
             auto i = nodeInstanceInfoMap.find (std::addressof (node));
             CMAJ_ASSERT (i != nodeInstanceInfoMap.end());
             return *i->second;
+        }
+
+        ptr<AST::ScopeBlock> getStepsBlock (InstanceInfo& instanceInfo, AST::EndpointInstance& dest, ptr<AST::ConstantValueBase> destIndex)
+        {
+            if (! dest.isParentEndpoint() && dest.getNode().isArray())
+                if (auto destElement = getDestElementIndex (dest, destIndex))
+                    return getPerElementStepsBlock (instanceInfo, *destElement);
+
+            return instanceInfo.steps;
+        }
+
+        ptr<AST::ScopeBlock> getPerElementStepsBlock (InstanceInfo& instanceInfo, int element)
+        {
+            auto existing = instanceInfo.perElementSteps.find (element);
+
+            if (existing != instanceInfo.perElementSteps.end())
+                return existing->second;
+
+            ptr<AST::ScopeBlock> block = mainFunction->context.allocate<AST::ScopeBlock>();
+            instanceInfo.perElementSteps[element] = block;
+            return block;
+        }
+
+        // Detects connections that wire one element of a node-array to another element of the same array (e.g. array[0].out -> array[1].in)
+        void recordIntraArrayDependencies (InstanceInfo& instanceInfo,
+                                            AST::EndpointInstance& dest,
+                                            ptr<AST::ConstantValueBase> destIndex,
+                                            const AST::ObjectRefVector<const AST::EndpointInstance>& sourceInstances)
+        {
+            if (dest.isParentEndpoint() || ! dest.getNode().isArray())
+                return;
+
+            auto destElement = getDestElementIndex (dest, destIndex);
+
+            if (! destElement)
+                return;
+
+            for (auto& source : sourceInstances)
+            {
+                if (source->isParentEndpoint())
+                    continue;
+
+                if (std::addressof (source->getNode()) != std::addressof (dest.getNode()))
+                    continue;
+
+                if (auto sourceElement = getEndpointElementIndex (source.get()))
+                {
+                    instanceInfo.intraArrayDependencies[*destElement].push_back (*sourceElement);
+                    instanceInfo.hasIntraArrayDependency = true;
+                }
+            }
+        }
+
+        static std::optional<int> getEndpointElementIndex (const AST::EndpointInstance& endpointInstance)
+        {
+            if (auto index = endpointInstance.getNodeIndex())
+                if (auto constant = AST::getAsFoldedConstant (*index))
+                    return constant->getAsInt32();
+
+            return {};
+        }
+
+        static std::optional<int> getDestElementIndex (const AST::EndpointInstance& dest,
+                                                       ptr<AST::ConstantValueBase> destIndex)
+        {
+            if (auto embedded = getEndpointElementIndex (dest))
+                return embedded;
+
+            if (destIndex != nullptr)
+                return destIndex->getAsInt32();
+
+            return {};
         }
 
     private:
@@ -606,9 +700,54 @@ struct FlattenGraph
             for (auto& dependency : instanceInfo.dependencies)
                 ensureNodeIsRendered (dependency);
 
-            mainFunction->getMainBlock()->addStatement (*instanceInfo.steps);
+            auto& mainBlock = *mainFunction->getMainBlock();
 
-            addRunCall (*mainFunction->getMainBlock(), node);
+            // Whole-array / shared input steps are always emitted first
+            mainBlock.addStatement (*instanceInfo.steps);
+
+            // If the instance has intra array dependencies, fill and run each element
+            // in dependency order, otherwise process the nodes in a block
+            if (instanceInfo.hasIntraArrayDependency)
+            {
+                auto arraySize = node.getArraySize().value_or (0);
+                instanceInfo.elementRendered.assign (static_cast<size_t> (arraySize), false);
+
+                for (int element = 0; element < arraySize; ++element)
+                    ensureArrayElementIsRendered (node, instanceInfo, element);
+            }
+            else
+            {
+                for (auto& perElement : instanceInfo.perElementSteps)
+                    mainBlock.addStatement (*perElement.second);
+
+                addRunCall (mainBlock, node);
+            }
+        }
+
+        void ensureArrayElementIsRendered (const AST::GraphNode& node, InstanceInfo& instanceInfo, int element)
+        {
+            if (instanceInfo.elementRendered[static_cast<size_t> (element)])
+                return;
+
+            instanceInfo.elementRendered[static_cast<size_t> (element)] = true;
+
+            // Render any sibling elements this one reads from first (a cyclic dependency
+            // falls back to using the previous frame's value, like graph feedback).
+            auto dependency = instanceInfo.intraArrayDependencies.find (element);
+
+            if (dependency != instanceInfo.intraArrayDependencies.end())
+                for (auto sourceElement : dependency->second)
+                    if (sourceElement >= 0 && sourceElement < static_cast<int> (instanceInfo.elementRendered.size()))
+                        ensureArrayElementIsRendered (node, instanceInfo, sourceElement);
+
+            auto& mainBlock = *mainFunction->getMainBlock();
+
+            auto steps = instanceInfo.perElementSteps.find (element);
+
+            if (steps != instanceInfo.perElementSteps.end())
+                mainBlock.addStatement (*steps->second);
+
+            addRunCallForElement (mainBlock, node, element);
         }
 
         AST::ValueBase& getStructMember (ptr<AST::ScopeBlock> block,
@@ -843,6 +982,18 @@ struct FlattenGraph
         {
             auto& functionCall = AST::createFunctionCall (block, *mainFunction, stateVariable, ioVariable);
             block->addStatement (functionCall);
+        }
+
+        void addRunCallForElement (ptr<AST::ScopeBlock> block, const AST::GraphNode& node, int element)
+        {
+            if (auto processorMainFunction = node.getProcessorType()->findMainFunction())
+            {
+                auto& instanceInfo = getInfoForNode (node);
+
+                addRunCall (block, processorMainFunction,
+                            AST::createGetElement (block, instanceInfo.stateVariable, element),
+                            AST::createGetElement (block, instanceInfo.ioVariable, element));
+            }
         }
 
         static ptr<AST::TypeBase> getStateStruct (AST::ProcessorBase& processor, std::optional<int> arraySize)
