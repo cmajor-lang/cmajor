@@ -5841,18 +5841,15 @@ graph TestParallelConnection [[ main ]]
     }
 }
 
+## expectError ("21:31: error: Feedback cycle in graph: passThroughArray0 -> passThroughArray1 -> passThroughArray2 -> passThroughArray0")
 
-## expectError ("23:31: error: Feedback cycle in graph: passThroughArray0 -> passThroughArray1 -> passThroughArray2 -> passThroughArray0")
-
-processor PassThrough
+graph PassThrough
 {
     input event int in;
     output event int out;
 
-    event in (int e)
-    {
-        out <- e;
-    }
+    connection
+        in -> out;
 }
 
 graph TestArrayLoop [[ main ]]
@@ -5871,4 +5868,80 @@ graph TestArrayLoop [[ main ]]
     }
 }
 
+## expectError ("19:33: error: Feedback cycle in graph: passThroughArray[0] -> passThroughArray[1] -> passThroughArray[2] -> passThroughArray[0]")
 
+graph PassThrough
+{
+    input event int in;
+    output event int out;
+
+    connection
+        in -> out;
+}
+
+graph TestArrayLoop [[ main ]]
+{
+    output event int out;
+
+    node passThroughArray = PassThrough[3];
+
+    connection
+    {
+        passThroughArray[0].out -> passThroughArray[1].in;
+        passThroughArray[1].out -> passThroughArray[2].in;
+        passThroughArray[2].out -> passThroughArray[0].in;
+    }
+}
+
+
+## expectError ("19:33: error: Feedback cycle in graph: passThroughArray[0] -> passThroughArray[1] -> passThroughArray[2] -> passThroughArray[0]")
+
+graph PassThrough
+{
+    input stream int in;
+    output stream int out;
+
+    connection
+        in -> out;
+}
+
+graph TestArrayLoop [[ main ]]
+{
+    output stream int out;
+
+    node passThroughArray = PassThrough[3];
+
+    connection
+    {
+        passThroughArray[0].out -> passThroughArray[1].in;
+        passThroughArray[1].out -> passThroughArray[2].in;
+        passThroughArray[2].out -> passThroughArray[0].in;
+    }
+}
+
+## expectError ("20:33: error: Feedback cycle in graph: passThroughArray[0] -> passThroughArray[1] -> passThroughArray[2] -> passThrough -> passThroughArray[0]")
+
+graph PassThrough
+{
+    input stream int in;
+    output stream int out;
+
+    connection
+        in -> out;
+}
+
+graph TestArrayLoop [[ main ]]
+{
+    output stream int out;
+
+    node passThroughArray = PassThrough[3];
+    node passThrough = PassThrough;
+
+    connection
+    {
+        passThroughArray[0].out -> passThroughArray[1].in;
+        passThroughArray[1].out -> passThroughArray[2].in;
+        passThroughArray[2].out -> passThrough.in;
+        passThrough.out -> passThroughArray[0].in;
+    }
+}

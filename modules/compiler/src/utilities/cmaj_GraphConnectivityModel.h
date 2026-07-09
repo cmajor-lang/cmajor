@@ -178,6 +178,11 @@ struct GraphConnectivityModel
                         destEndpoint = AST::castToSkippingReferences<AST::EndpointInstance> (dest);
 
                     auto destNode = AST::castToSkippingReferences<AST::GraphNode> (destEndpoint->node);
+
+                    if (destNode == nullptr)
+                        if (auto element = AST::castToSkippingReferences<AST::GetElement> (destEndpoint->node))
+                            destNode = AST::castToSkippingReferences<AST::GraphNode> (element->parent);
+
                     addConnection (c, sourceNode, destNode, sourceEndpoint, *destEndpoint);
                 }
             }
@@ -210,12 +215,12 @@ struct GraphConnectivityModel
 
     void checkAndThrowErrorIfCycleFound() const
     {
-        std::vector<const Node*> visited;
+        std::vector<VisitedNode> visited;
         visited.reserve (nodes.size());
 
         for (auto& node : nodes)
         {
-            followConnections ({}, node, visited);
+            followConnections ({}, node, {}, visited);
             CMAJ_ASSERT (visited.empty());
         }
     }
@@ -238,7 +243,7 @@ struct GraphConnectivityModel
     }
 
 private:
-    //==============================================================================
+
     ptr<Node> findNode (ptr<const AST::GraphNode> node)
     {
         if (node)
@@ -256,28 +261,70 @@ private:
         return *n;
     }
 
-    static std::string getCycleNameList (choc::span<const Node*> visited)
+    struct VisitedNode
+    {
+        const Node* node;
+        std::optional<int> element;
+
+        bool operator== (const VisitedNode& other) const
+        {
+            return node == other.node && element == other.element;
+        }
+    };
+
+    static std::optional<int> getElementIndex (const AST::EndpointInstance& endpointInstance)
+    {
+        if (auto index = endpointInstance.getNodeIndex())
+            if (auto folded = AST::getAsFoldedConstant (*index))
+                return folded->getAsInt32();
+
+        return {};
+    }
+
+    static std::string getCycleNameList (const std::vector<VisitedNode>& cycle)
     {
         std::vector<std::string> names;
 
-        for (auto& node : visited)
-            names.push_back (std::string (node->node.getOriginalName()));
+        for (auto& node : cycle)
+        {
+            auto name = std::string (node.node->node.getOriginalName());
+
+            if (node.element)
+                name += "[" + std::to_string (*node.element) + "]";
+
+            names.push_back (name);
+        }
 
         names.push_back (names.front());
         std::reverse (names.begin(), names.end());
         return choc::text::joinStrings (names, " -> ");
     }
 
-    static void followConnections (ptr<const AST::Connection> connection, const Node& node, std::vector<const Node*>& visited)
+    static void followConnections (ptr<const AST::Connection> connection, const Node& node,
+                                   std::optional<int> element, std::vector<VisitedNode>& visited)
     {
-        if (std::find (visited.begin(), visited.end(), std::addressof (node)) != visited.end())
-            throwError (*connection, Errors::feedbackInGraph (getCycleNameList (visited)));
+        VisitedNode state { std::addressof (node), element };
 
-        visited.push_back (std::addressof (node));
+        auto existing = std::find (visited.begin(), visited.end(), state);
+
+        if (existing != visited.end())
+            throwError (*connection, Errors::feedbackInGraph (getCycleNameList (std::vector<VisitedNode> (existing, visited.end()))));
+
+        visited.push_back (state);
 
         for (auto& source : node.sources)
+        {
             if (source.node)
-                followConnections (source.connection, *source.node, visited);
+            {
+                auto destElement = getElementIndex (source.destEndpointInstance);
+
+                if (element && destElement && *element != *destElement)
+                    continue;
+
+                followConnections (source.connection, *source.node,
+                                   getElementIndex (source.sourceEndpointInstance), visited);
+            }
+        }
 
         visited.pop_back();
     }
