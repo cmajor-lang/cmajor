@@ -546,3 +546,25 @@ processor P
         advance();
     }
 }
+
+## testProcessor()
+
+processor TestSkippedVariable
+{
+    output stream float out;
+
+    var filter = std::filters(float)::tpt::onepole::create(std::filters::tpt::onepole::Mode::lowPass, processor.frequency, 100.0f);
+
+    std::smoothing::SmoothedValue blend;
+
+    void main()
+    {
+        loop
+        {
+            const float outputSignal = lerp(filter.process(1.f), 1.f, blend.currentValue());
+            out <- outputSignal;
+            advance();
+            blend.getNext();
+        }
+    }
+}

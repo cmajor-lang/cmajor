@@ -1713,7 +1713,10 @@ struct EndpointInfo
                 {
                     auto tempName = "_tempArg_" + std::to_string (tempVariableIndex++);
 
-                    functionOut << "auto " << tempName << " = "
+                    functionLocalVariables << getTypeName (arg.paramType.skipConstAndRefModifiers(), true)
+                                           << " " << tempName << ";" << newLine;
+
+                    functionOut << tempName << " = "
                                 << arg.valueReader.getWithoutParens()
                                 << ";" << newLine;
 
