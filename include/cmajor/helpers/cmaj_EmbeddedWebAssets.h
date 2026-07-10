@@ -3286,7 +3286,7 @@ struct EmbeddedWebAssets
         "            this.notes.push ({ note: i, element: elem });\n"
         "        }\n"
         "\n"
-        "        this.style.maxWidth = String (this.scrollWidth);\n"
+        "        this.style.maxWidth = window.getComputedStyle (this).scrollWidth;\n"
         "    }\n"
         "\n"
         "    /** @private */\n"
@@ -4003,7 +4003,7 @@ struct EmbeddedWebAssets
         File { "cmaj-parameter-controls.js", std::string_view (cmajparametercontrols_js, 33858) },
         File { "cmaj-patch-connection.js", std::string_view (cmajpatchconnection_js, 14421) },
         File { "cmaj-patch-view.js", std::string_view (cmajpatchview_js, 7782) },
-        File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 16937) },
+        File { "cmaj-piano-keyboard.js", std::string_view (cmajpianokeyboard_js, 16954) },
         File { "cmaj-server-session.js", std::string_view (cmajserversession_js, 19841) },
         File { "cmaj-types.d.ts", std::string_view (cmajtypes_d_ts, 1822) },
         File { "jsconfig.json", std::string_view (jsconfig_json, 360) },

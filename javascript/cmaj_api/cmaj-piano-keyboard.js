@@ -343,7 +343,7 @@ export default class PianoKeyboard extends HTMLElement
             this.notes.push ({ note: i, element: elem });
         }
 
-        this.style.maxWidth = String (this.scrollWidth);
+        this.style.maxWidth = window.getComputedStyle (this).scrollWidth;
     }
 
     /** @private */
