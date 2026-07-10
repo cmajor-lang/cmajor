@@ -155,7 +155,8 @@ private:
     choc::fifo::VariableSizeFIFO inputQueue, outputQueue;
     OutputEventsReadyFn outputEventsReadyHandler;
     std::vector<std::pair<choc::midi::ShortMessage, uint32_t>> midiOutputMessages;
-    choc::buffer::InterleavingScratchBuffer<float> audioInputScratchBuffer;
+    choc::buffer::InterleavingScratchBuffer<float> audioInputScratchBufferFloat32;
+    choc::buffer::InterleavingScratchBuffer<double> audioInputScratchBufferFloat64;
     std::vector<uint8_t> audioOutputScratchSpace;
 
     uint64_t numFramesProcessed = 0;
@@ -236,7 +237,8 @@ inline AudioMIDIPerformer::Builder::Builder (cmaj::Engine e, uint32_t eventFIFOS
 
 inline void AudioMIDIPerformer::Builder::ensureInputScratchBufferChannelCount (uint32_t channelsNeeded)
 {
-    [[maybe_unused]] auto resized = result->audioInputScratchBuffer.getInterleavedBuffer ({ channelsNeeded, maxFramesPerBlock });
+    [[maybe_unused]] auto resized32 = result->audioInputScratchBufferFloat32.getInterleavedBuffer ({ channelsNeeded, maxFramesPerBlock });
+    [[maybe_unused]] auto resized64 = result->audioInputScratchBufferFloat64.getInterleavedBuffer ({ channelsNeeded, maxFramesPerBlock });
 }
 
 inline bool AudioMIDIPerformer::Builder::connectAudioInputTo (const std::vector<uint32_t>& inputChannels,
@@ -251,22 +253,44 @@ inline bool AudioMIDIPerformer::Builder::connectAudioInputTo (const std::vector<
         ensureInputScratchBufferChannelCount (numChannelsInEndpoint);
         auto endpointHandle = result->engine.getEndpointHandle (endpoint.endpointID);
 
-        result->preRenderFunctions.push_back ([amp = result.get(), endpointHandle, numChannelsInEndpoint,
-                                               endpointChannels, inputChannels, listener]
-                                              (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+        if (isFloat32 (endpoint.dataTypes.front()))
         {
-            auto numFrames = block.audioInput.getNumFrames();
-            auto interleavedBuffer = amp->audioInputScratchBuffer.getInterleavedBuffer ({ numChannelsInEndpoint, numFrames });
+            result->preRenderFunctions.push_back ([amp = result.get(), endpointHandle, numChannelsInEndpoint,
+                                                   endpointChannels, inputChannels, listener]
+                                                  (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+            {
+                auto numFrames = block.audioInput.getNumFrames();
+                auto interleavedBuffer = amp->audioInputScratchBufferFloat32.getInterleavedBuffer ({ numChannelsInEndpoint, numFrames });
 
-            for (uint32_t i = 0; i < inputChannels.size(); i++)
-                copy (interleavedBuffer.getChannel (endpointChannels[i]),
-                        block.audioInput.getChannel (inputChannels[i]));
+                for (uint32_t i = 0; i < inputChannels.size(); i++)
+                    copy (interleavedBuffer.getChannel (endpointChannels[i]),
+                          block.audioInput.getChannel (inputChannels[i]));
 
-            if (listener)
-                listener->process (interleavedBuffer);
+                if (listener)
+                    listener->process (interleavedBuffer);
 
-            amp->performer.setInputFrames (endpointHandle, interleavedBuffer.data.data, numFrames);
-        });
+                amp->performer.setInputFrames (endpointHandle, interleavedBuffer.data.data, numFrames);
+            });
+        }
+        else
+        {
+            result->preRenderFunctions.push_back ([amp = result.get(), endpointHandle, numChannelsInEndpoint,
+                                                   endpointChannels, inputChannels, listener]
+                                                  (const choc::audio::AudioMIDIBlockDispatcher::Block& block)
+            {
+                auto numFrames = block.audioInput.getNumFrames();
+                auto interleavedBuffer = amp->audioInputScratchBufferFloat64.getInterleavedBuffer ({ numChannelsInEndpoint, numFrames });
+
+                for (uint32_t i = 0; i < inputChannels.size(); i++)
+                    copy (interleavedBuffer.getChannel (endpointChannels[i]),
+                          block.audioInput.getChannel (inputChannels[i]));
+
+                if (listener)
+                    listener->process (interleavedBuffer);
+
+                amp->performer.setInputFrames (endpointHandle, interleavedBuffer.data.data, numFrames);
+            });
+        }
 
         return true;
     }
