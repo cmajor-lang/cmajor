@@ -1163,7 +1163,7 @@ public:
             unloadButton.setVisible (plugin.patch->isLoaded());
             messageBox.setVisible (! plugin.patch->isPlayable());
 
-           #if JUCE_MAJOR_VERSION == 8
+           #if JUCE_MAJOR_VERSION >= 8
             juce::Font f (juce::FontOptions (18.0f));
            #else
             juce::Font f (18.0f);
