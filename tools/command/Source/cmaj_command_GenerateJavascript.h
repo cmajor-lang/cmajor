@@ -392,7 +392,7 @@ class CmajNode extends CompositeAudioNode
     super (context, options);
   }
 
-  setup (patchConnection, paramManagerNode)
+  async setup (patchConnection, paramManagerNode)
   {
     this.patchConnection = patchConnection;
 
@@ -413,10 +413,20 @@ class CmajNode extends CompositeAudioNode
 
     if (midiEndpointID)
     {
-      this._wamNode.addEventListener('wam-midi', ({ detail }) =>
+      // If possible, the worklet takes its MIDI directly from the WAM processor on the audio
+      // thread. Forwarding events via the main thread adds latency, and doesn't work at all
+      // when rendering with an OfflineAudioContext, where the main thread's event loop isn't
+      // interleaved with the render.
+      const handledOnAudioThread = await this.patchConnection.connectWamEventHandler ({ moduleId: this.moduleId,
+                                                                                       instanceId: this.instanceId });
+
+      if (! handledOnAudioThread)
       {
-        this.patchConnection.sendMIDIInputEvent (midiEndpointID, detail.data.bytes[2] | (detail.data.bytes[1] << 8) | (detail.data.bytes[0] << 16));
-      });
+        this._wamNode.addEventListener('wam-midi', ({ detail }) =>
+        {
+          this.patchConnection.sendMIDIInputEvent (midiEndpointID, detail.data.bytes[2] | (detail.data.bytes[1] << 8) | (detail.data.bytes[0] << 16));
+        });
+      }
     }
   }
 
@@ -445,7 +455,7 @@ export default class CmajModule extends WebAudioModule
     const parameterList = this.buildParameterList();
     const paramMgrNode = await ParamMgrFactory.create(this, { internalParamsConfig: parameterList } );
 
-    node.setup (this.patchConnection, paramMgrNode);
+    await node.setup (this.patchConnection, paramMgrNode);
 
     return node;
   }
