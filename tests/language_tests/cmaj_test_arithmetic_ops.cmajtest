@@ -1554,3 +1554,34 @@ processor Test [[ main ]]
         advance();
     }
 }
+
+
+## testConsole ("5 -344845 -695185 -325039 ")
+
+processor WrapTest [[ main ]]
+{
+    output stream float64 out;
+
+    float64[16] table;
+
+    void init()
+    {
+        int32 seed;
+        for (int32 i = 0; i < 16; ++i)
+        {
+            seed = 1103515245 * seed + 12345;
+            table.at(i) = 4.656612875245797e-10 * float64(seed);
+        }
+    }
+
+    void main()
+    {
+        int32 idx;
+        loop (4)
+        {
+            console <- int32 (table.at(idx) * 1000000.0) <- " ";
+            idx = (idx + 1) % 16;
+            advance();
+        }
+    }
+}

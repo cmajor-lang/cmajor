@@ -144,7 +144,7 @@ struct TemporaryCompiledDLL
         build (getCompiler(),
                getOptimisationFlag (buildSettings.getOptimisationLevel())
                + " -I" + cmajorHeaderPath
-               + " -std=c++17 -fPIC -Wno-#pragma-messages -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare -Werror -Wall -Wextra " + extraCompileArgs,
+               + " -std=c++17 -fPIC -Wno-#pragma-messages -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare -fwrapv -Werror -Wall -Wextra " + extraCompileArgs,
                extraLinkerArgs);
 #endif
     }
