@@ -1,0 +1,13 @@
+{
+	"name": "@cmajor/types",
+	"version": "0.1.0",
+	"types": "dist/index.d.ts",
+	"type": "module",
+	"license": "GPL-3.0-or-later",
+	"files": [
+		"."
+	],
+	"devDependencies": {
+		"typescript": "^5.3.3"
+	}
+}
