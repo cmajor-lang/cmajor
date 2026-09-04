@@ -176,6 +176,52 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
         });
     }
 
+    /** Attempts to attach a handler to the WAM ParamMgr processor that is running in this same
+     *  AudioWorkletGlobalScope, so that WAM events can be delivered to the patch on the audio
+     *  thread.
+     *
+     *  Without this, a WAM wrapper has to listen for events on its main-thread node and post them
+     *  back to this worklet, which adds a couple of thread hops of latency, and fails completely
+     *  when rendering with an OfflineAudioContext, where the main thread's event loop isn't
+     *  interleaved with the render.
+     *
+     *  @param {string} moduleId - the WAM module ID
+     *  @param {string} instanceId - the WAM instance ID
+     *  @param {(packedMIDIMessage: number) => void} handleMIDIMessage
+     *  @returns {boolean} true if a handler is now in place
+     */
+    function attachWamEventHandler (moduleId, instanceId, handleMIDIMessage)
+    {
+        if (! moduleId || ! instanceId)
+            return false;
+
+        // N.B. the WAM SDK registers each ParamMgr processor in its module scope, which is how a
+        // processor that isn't itself a WamProcessor can get hold of the events being dispatched.
+        const webAudioModules = /** @type {any} */ (globalThis).webAudioModules;
+        const paramMgrProcessor = webAudioModules?.getModuleScope?.(moduleId)?.paramMgrProcessors?.[instanceId];
+
+        if (! paramMgrProcessor)
+            return false;
+
+        if (paramMgrProcessor.handleEvent)
+            return paramMgrProcessor.handleEvent.isCmajorEventHandler === true;
+
+        const handleEvent = /** @type {any} */ ((/** @type {any} */ event) =>
+        {
+            if (event?.type === "wam-midi")
+            {
+                const bytes = event.data?.bytes;
+
+                if (bytes)
+                    handleMIDIMessage (bytes[2] | (bytes[1] << 8) | (bytes[0] << 16));
+            }
+        });
+
+        handleEvent.isCmajorEventHandler = true;
+        paramMgrProcessor.handleEvent = handleEvent;
+        return true;
+    }
+
     // @ts-ignore - AudioWorkletProcessor is a global in the AudioWorklet context
     const AudioWorkletProcessorBase = /** @type {any} */ (typeof AudioWorkletProcessor !== "undefined" ? AudioWorkletProcessor : class {});
 
@@ -257,6 +303,16 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
                 const isNonAudioOrParameterEndpoint = (/** @type {{purpose: string}} */ { purpose }) => ! ["audio in", "parameter"].includes (purpose);
                 const otherInputs = wrapper.getInputEndpoints().filter (isNonAudioOrParameterEndpoint);
                 const otherInputEndpointsMap = makeEndpointMap (wrapper, otherInputs, initialValueOverrides);
+
+                const midiInputEndpointIDs = wrapper.getInputEndpoints()
+                    .filter ((/** @type {{purpose: string}} */ { purpose }) => purpose === "midi in")
+                    .map ((/** @type {{endpointID: string}} */ { endpointID }) => endpointID);
+
+                const sendMIDIMessage = (/** @type {number} */ packedMIDIMessage) =>
+                {
+                    for (const endpointID of midiInputEndpointIDs)
+                        otherInputEndpointsMap[endpointID]?.update ({ message: packedMIDIMessage });
+                };
 
                 const isEvent = (/** @type {{endpointType: string}} */ { endpointType }) => endpointType === "event";
                 const eventInputs = wrapper.getInputEndpoints().filter (isEvent);
@@ -384,6 +440,16 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
 
                         case "send_gesture_start": break;
                         case "send_gesture_end": break;
+
+                        case "setup_wam_event_handler":
+                        {
+                            const installed = attachWamEventHandler (msg.moduleId, msg.instanceId, sendMIDIMessage);
+
+                            if (msg.replyType)
+                                this.sendPatchMessage ({ type: msg.replyType, message: { installed } });
+
+                            break;
+                        }
 
                         case "req_full_state":
                             this.sendPatchMessage ({
@@ -684,6 +750,48 @@ export class AudioWorkletPatchConnection extends PatchConnection
             connectToAudioIn (audioContext, this.audioNode);
 
         this.audioNode.connect (audioContext.destination);
+    }
+
+    //==============================================================================
+    /**  Asks the worklet to receive WAM events directly on the audio thread, from the WAM
+     *   ParamMgr processor with the given IDs.
+     *
+     *   A WAM wrapper would otherwise have to listen for events on its main-thread node and send
+     *   them back to the worklet, which adds latency, and doesn't work at all when rendering with
+     *   an OfflineAudioContext, as the main thread's event loop isn't interleaved with the render.
+     *
+     *   If this returns false, the caller should fall back to forwarding events from the main
+     *   thread. This must only be called once initialise() has completed successfully, and after
+     *   the WAM's ParamMgr node has been created.
+     *
+     *   @param {Object} args
+     *   @param {string} args.moduleId - the WAM module ID
+     *   @param {string} args.instanceId - the WAM instance ID
+     *   @param {number} [args.timeoutMillisecs] - how long to wait for the worklet to reply
+     *   @returns {Promise<boolean>} true if the worklet is now handling events on the audio thread
+     */
+    async connectWamEventHandler ({ moduleId, instanceId, timeoutMillisecs = 5000 })
+    {
+        const replyType = "wam_handler_response_" + (Math.floor (Math.random() * 100000000)).toString();
+
+        return new Promise ((/** @type {(value: boolean) => void} */ resolve) =>
+        {
+            let finished = false;
+
+            const finish = (/** @type {boolean} */ installed) =>
+            {
+                if (! finished)
+                {
+                    finished = true;
+                    resolve (installed);
+                }
+            };
+
+            this.addSingleUseListener (replyType, (/** @type {any} */ message) => finish (message?.installed === true));
+            this.sendMessageToServer ({ type: "setup_wam_event_handler", moduleId, instanceId, replyType });
+
+            setTimeout (() => finish (false), timeoutMillisecs);
+        });
     }
 
     //==============================================================================
