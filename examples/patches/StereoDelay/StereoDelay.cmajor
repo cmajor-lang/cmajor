@@ -209,7 +209,7 @@ processor DelayEngine [[ main ]]
             buffer[writePos++] = dry + feedback;
 
             // Mix wet/dry and write to output
-            audioOut <- dry * (1.0f - wetDry) + float<2> (feedback * wetDry);
+            audioOut <- dry * (1.0f - wetDry) + wet * wetDry;
 
             advance();
         }
