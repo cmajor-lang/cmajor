@@ -96,6 +96,15 @@ cmaj play file [opts]       Plays a .cmajorpatch, or executes a .js javascript f
                             any errors that are found, and exits
     --rate=<rate>           Use the specified sample rate
     --block-size=<size>     Request the given block size
+    --audio-device-type=<t> Use the given audio API, e.g. "CoreAudio", "ALSA", "Jack",
+                            "WASAPI", "ASIO", "DirectSound" (defaults to the first one
+                            that the platform provides)
+    --output-device=<dev>   Use the audio output device with the given ID or name
+    --input-device=<dev>    Use the audio input device with the given ID or name
+    --outputs=<num>         Open at most this many output channels
+    --inputs=<num>          Open at most this many input channels. Use --inputs=0 to
+                            avoid opening an audio input at all, which can help with
+                            devices that refuse to be opened for full-duplex use
 
 cmaj server [opts] dir      Run cmaj as an http service, serving the patches within the given
                             directory. Connect to the server using a browser to the http address
@@ -103,6 +112,8 @@ cmaj server [opts] dir      Run cmaj as an http service, serving the patches wit
 
     --address=<addr>:<port> Serve from the specified address, defaults to 127.0.0.1:51000
     --timeoutMs=<ms>        Alters the client timeout time, defaults to 5000ms
+
+    The audio device options listed above for "play" can also be used here.
 
 cmaj test [opts] <files>    Runs one or more .cmajtest scripts, and print the aggregate results
                             for the tests. See the documentation for writing tests for more info.

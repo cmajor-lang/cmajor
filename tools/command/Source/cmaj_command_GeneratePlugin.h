@@ -624,6 +624,11 @@ endif()
 inline void generatePluginProject (choc::ArgumentList& args, std::string outputFile, cmaj::Patch& patch,
                                    const cmaj::Patch::LoadParams& loadParams, bool isCLAP)
 {
+    // This must be checked before generating anything, as the steps below will write
+    // files into this folder as they go
+    if (outputFile.empty())
+        throw std::runtime_error ("Expected an argument --output=<target folder>");
+
     std::string cmajorIncludePath;
     auto includePath = args.removeValueFor ("--cmajorIncludePath");
 
@@ -648,7 +653,7 @@ inline void generatePluginProject (choc::ArgumentList& args, std::string outputF
         createJucePluginFiles (generatedFiles, patch, loadParams, cmajorIncludePath, getLibraryPath ("--jucePath"), args.getValueFor ("--juceFormats", true));
 
     if (! includePath)
-        unzipCmajorHeaders (outputFile + "/include");
+        unzipCmajorHeaders (std::filesystem::path (outputFile) / "include");
 
     generatedFiles.writeToOutputFolder (outputFile);
 }
