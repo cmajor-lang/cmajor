@@ -1522,17 +1522,21 @@ struct EndpointInfo
 
     void addAddValueToInteger (ValueReference target, int32_t delta)
     {
-        if (delta == 1)
-            functionOut << "++" << target.getWithParensIfNeeded() << ";" << newLine;
-        else if (delta == -1)
-            functionOut << "--" << target.getWithParensIfNeeded() << ";" << newLine;
-        else
-            functionOut << target.getWithParensIfNeeded() << " += " << std::to_string (delta) << ";" << newLine;
+        functionOut << "intrinsics::addTo (" << target.getWithoutParens()
+                    << ", " << std::to_string (delta) << ");" << newLine;
+    }
+
+    static std::string formatInt64Literal (int64_t v)
+    {
+        if (v == std::numeric_limits<int64_t>::min())
+            return "std::numeric_limits<int64_t>::min()";
+
+        return ProgramPrinter::formatInt64 (v, "L");
     }
 
     //==============================================================================
     ValueReader createConstantInt32   (int32_t v)           { return createReaderNoParensNeeded (std::string ("int32_t {") + ProgramPrinter::formatInt32 (v) + "}", program.allocator.int32Type); }
-    ValueReader createConstantInt64   (int64_t v)           { return createReaderNoParensNeeded (std::string ("int64_t {") + ProgramPrinter::formatInt64 (v, "L}"), program.allocator.int64Type); }
+    ValueReader createConstantInt64   (int64_t v)           { return createReaderNoParensNeeded (std::string ("int64_t {") + formatInt64Literal (v) + "}", program.allocator.int64Type); }
     ValueReader createConstantFloat32 (float v)             { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v), program.allocator.float32Type); }
     ValueReader createConstantFloat64 (double v)            { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v), program.allocator.float64Type); }
     ValueReader createConstantBool    (bool b)              { return createReaderNoParensNeeded (b ? std::string_view ("true") : std::string_view ("false"), program.allocator.boolType); }
@@ -1765,8 +1769,46 @@ struct EndpointInfo
         return createCall (std::string (functionName), argValues, AST::castToTypeBaseRef (fn.returnType));
     }
 
+    static bool needsWrappingHelper (AST::UnaryOpTypeEnum::Enum opType, const AST::TypeBase& operandType)
+    {
+        return opType == AST::UnaryOpTypeEnum::Enum::negate && isScalarInt (operandType);
+    }
+
+    static bool needsWrappingHelper (AST::BinaryOpTypeEnum::Enum opType, const AST::TypeBase& operandType)
+    {
+        if (! isScalarInt (operandType))
+            return false;
+
+        return opType == AST::BinaryOpTypeEnum::Enum::add
+            || opType == AST::BinaryOpTypeEnum::Enum::subtract
+            || opType == AST::BinaryOpTypeEnum::Enum::multiply
+            || opType == AST::BinaryOpTypeEnum::Enum::leftShift;
+    }
+
+    static bool isScalarInt (const AST::TypeBase& type)
+    {
+        if (type.isVector())
+            return type.isVectorSize1() && type.getArrayOrVectorElementType()->isPrimitiveInt();
+
+        return type.isPrimitiveInt();
+    }
+
+    static std::string_view getWrappingHelperName (AST::BinaryOpTypeEnum::Enum opType)
+    {
+        if (opType == AST::BinaryOpTypeEnum::Enum::add)         return "add";
+        if (opType == AST::BinaryOpTypeEnum::Enum::subtract)    return "subtract";
+        if (opType == AST::BinaryOpTypeEnum::Enum::multiply)    return "multiply";
+        if (opType == AST::BinaryOpTypeEnum::Enum::leftShift)   return "leftShift";
+
+        CMAJ_ASSERT_FALSE;
+        return {};
+    }
+
     ValueReader createUnaryOp (AST::UnaryOpTypeEnum::Enum opType, const AST::TypeBase& type, ValueReader input)
     {
+        if (needsWrappingHelper (opType, type))
+            return createReaderNoParensNeeded ("intrinsics::negate (" + input.getWithoutParens() + ")", type);
+
         return createReaderParensNeeded (std::string (AST::UnaryOperator::getSymbolForOperator (opType))
                                             + " " + input.getWithParensIfNeeded(), type);
     }
@@ -1789,6 +1831,11 @@ struct EndpointInfo
 
         if (opType == AST::BinaryOpTypeEnum::Enum::modulo && ! opTypes.operandType.isVector())
             return createReaderNoParensNeeded ("intrinsics::modulo (" + lhs.getWithoutParens()
+                                                 + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
+
+        if (needsWrappingHelper (opType, opTypes.operandType))
+            return createReaderNoParensNeeded ("intrinsics::" + std::string (getWrappingHelperName (opType))
+                                                 + " (" + lhs.getWithoutParens()
                                                  + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
 
         return createReaderParensNeeded (lhs.getWithParensIfNeeded()
@@ -1867,6 +1914,8 @@ struct EndpointInfo
 #include <cstring>
 #include <array>
 #include <stdexcept>
+#include <type_traits>
+#include <limits>
 
 //==============================================================================
 /// Auto-generated C++ class for the 'NAME' processor
@@ -2004,16 +2053,16 @@ struct Vector  : public Array<ElementType, numElements>
 
     constexpr auto operator!() const noexcept     { return performUnaryOp ([] (ElementType n) { return ! n; }); }
     constexpr auto operator~() const noexcept     { return performUnaryOp ([] (ElementType n) { return ~n; }); }
-    constexpr auto operator-() const noexcept     { return performUnaryOp ([] (ElementType n) { return -n; }); }
+    constexpr auto operator-() const noexcept     { return performUnaryOp ([] (ElementType n) { return intrinsics::negate (n); }); }
 
-    constexpr auto operator+ (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a + b; }); }
-    constexpr auto operator- (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a - b; }); }
-    constexpr auto operator* (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a * b; }); }
+    constexpr auto operator+ (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return intrinsics::add (a, b); }); }
+    constexpr auto operator- (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return intrinsics::subtract (a, b); }); }
+    constexpr auto operator* (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return intrinsics::multiply (a, b); }); }
     constexpr auto operator/ (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a / b; }); }
     constexpr auto operator% (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return intrinsics::modulo (a, b); }); }
     constexpr auto operator& (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a & b; }); }
     constexpr auto operator| (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a | b; }); }
-    constexpr auto operator<< (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a << b; }); }
+    constexpr auto operator<< (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return intrinsics::leftShift (a, b); }); }
     constexpr auto operator>> (const Vector& rhs) const noexcept   { return performBinaryOp (rhs, [] (ElementType a, ElementType b) { return a >> b; }); }
 
     constexpr auto operator== (const Vector& rhs) const noexcept  { return performComparison (rhs, [] (ElementType a, ElementType b) { return a == b; }); }
@@ -2148,6 +2197,54 @@ struct Slice
         return R"CPPGEN(
 struct intrinsics
 {
+    template <typename T> static constexpr bool isIntType()     { return std::is_integral<T>::value && ! std::is_same<T, bool>::value; }
+    template <typename T> using UnsignedVersion = typename std::make_unsigned<T>::type;
+
+    template <typename T> static constexpr T add (T a, T b)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) + static_cast<UnsignedVersion<T>> (b));
+        else
+            return a + b;
+    }
+
+    template <typename T> static constexpr T subtract (T a, T b)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) - static_cast<UnsignedVersion<T>> (b));
+        else
+            return a - b;
+    }
+
+    template <typename T> static constexpr T multiply (T a, T b)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) * static_cast<UnsignedVersion<T>> (b));
+        else
+            return a * b;
+    }
+
+    template <typename T> static constexpr T leftShift (T a, T b)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) << b);
+        else
+            return a << b;
+    }
+
+    template <typename T> static constexpr void addTo (T& a, int32_t b)
+    {
+        a = add (a, static_cast<T> (b));
+    }
+
+    template <typename T> static constexpr T negate (T a)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (0) - static_cast<UnsignedVersion<T>> (a));
+        else
+            return -a;
+    }
+
     template <typename T> static T modulo (T a, T b)
     {
         if constexpr (std::is_floating_point<T>::value)

@@ -1585,3 +1585,119 @@ processor WrapTest [[ main ]]
         }
     }
 }
+
+## testConsole ("5 -344845 -695185 -325039 ")
+
+processor WrapTest [[ main ]]
+{
+    output stream float64 out;
+
+    float64[16] table;
+
+    void init()
+    {
+        int32<1> seed;
+        for (int32 i = 0; i < 16; ++i)
+        {
+            seed = 1103515245 * seed + 12345;
+            table.at(i) = 4.656612875245797e-10 * float64(seed[0]);
+        }
+    }
+
+    void main()
+    {
+        int32 idx;
+        loop (4)
+        {
+            console <- int32 (table.at(idx) * 1000000.0) <- " ";
+            idx = (idx + 1) % 16;
+            advance();
+        }
+    }
+}
+
+## testFunction()
+
+bool testInt32OverflowWraps()
+{
+    int32 v = 1;
+    loop (31) v = v * 2;
+
+    let minInt = -2147483647 - 1;
+
+    if (v != minInt)                return false;
+
+    int32 maxInt = v - 1;
+
+    if (maxInt + 1 != minInt)       return false;
+    if (minInt - 1 != maxInt)       return false;
+    if (-minInt != minInt)          return false;
+    if (minInt * -1 != minInt)      return false;
+    if (maxInt * maxInt != 1)       return false;
+
+    int32 shifted = 1;
+    loop (31) shifted = shifted << 1;
+
+    if (shifted != minInt)          return false;
+
+    ++maxInt;
+    if (maxInt != minInt)           return false;
+    --maxInt;
+    if (maxInt != v - 1)            return false;
+
+    maxInt += 2;
+    if (maxInt != minInt + 1)       return false;
+
+    return true;
+}
+
+bool testInt64OverflowWraps()
+{
+    int64 v = 1;
+    loop (63) v = v * 2;
+
+    let minInt = -9223372036854775808L;
+
+    if (v != minInt)                return false;
+
+    int64 maxInt = v - 1;
+
+    if (maxInt + 1 != minInt)       return false;
+    if (minInt - 1 != maxInt)       return false;
+    if (-minInt != minInt)          return false;
+    if (maxInt * maxInt != 1)       return false;
+
+    int64 shifted = 1;
+    loop (63) shifted = shifted << 1;
+
+    if (shifted != minInt)          return false;
+
+    return true;
+}
+
+bool testVectorOverflowWraps()
+{
+    let minInt = -2147483648;
+
+    int32<2> v = (1, 2);
+    loop (31) v = v * 2;
+
+    if (v[0] != minInt)             return false;
+    if (v[1] != 0)                  return false;
+
+    int32<2> w = (v[0] - 1, v[0] - 1);  // the maximum int32 value
+    w = w + 1;
+
+    if (w[0] != minInt)             return false;
+
+    w = -w;
+
+    if (w[0] != minInt)             return false;
+
+    int32<2> s = (1, 1);
+    loop (31) s = s << 1;
+
+    if (s[0] != minInt)             return false;
+
+    return true;
+}
