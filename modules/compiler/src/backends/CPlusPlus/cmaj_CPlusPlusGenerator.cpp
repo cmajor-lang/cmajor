@@ -177,8 +177,6 @@ struct CPlusPlusCodeGenerator
             printGlobalConstants();
 
             out << sectionBreak
-                << choc::text::trim (getIntrinsicFunctions())
-                << sectionBreak
                 << choc::text::trim (getWarningReenableFlags())
                 << newLine;
 
@@ -1887,7 +1885,145 @@ struct EndpointInfo
     static std::string_view getHelperClassDefinitions()
     {
         return R"CPPGEN(
-struct intrinsics;
+struct intrinsics
+{
+    template <typename T> static constexpr bool isIntType()     { return std::is_integral<T>::value && ! std::is_same<T, bool>::value; }
+    template <typename T> using UnsignedVersion = typename std::make_unsigned<T>::type;
+
+    template <typename T> static constexpr T add (T a, T b)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) + static_cast<UnsignedVersion<T>> (b));
+        else
+            return a + b;
+    }
+
+    template <typename T> static constexpr T subtract (T a, T b)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) - static_cast<UnsignedVersion<T>> (b));
+        else
+            return a - b;
+    }
+
+    template <typename T> static constexpr T multiply (T a, T b)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) * static_cast<UnsignedVersion<T>> (b));
+        else
+            return a * b;
+    }
+
+    template <typename T> static constexpr T leftShift (T a, T b)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) << b);
+        else
+            return a << b;
+    }
+
+    template <typename T> static constexpr void addTo (T& a, int32_t b)
+    {
+        a = add (a, static_cast<T> (b));
+    }
+
+    template <typename T> static constexpr T negate (T a)
+    {
+        if constexpr (isIntType<T>())
+            return static_cast<T> (static_cast<UnsignedVersion<T>> (0) - static_cast<UnsignedVersion<T>> (a));
+        else
+            return -a;
+    }
+
+    template <typename T> static T modulo (T a, T b)
+    {
+        if constexpr (std::is_floating_point<T>::value)
+            return std::fmod (a, b);
+        else
+            return a % b;
+    }
+
+    template <typename T> static T addModulo2Pi (T a, T b)
+    {
+        constexpr auto twoPi = static_cast<T> (3.141592653589793238 * 2);
+        auto n = a + b;
+        return n >= twoPi ? std::remainder (n, twoPi) : n;
+    }
+
+    template <typename T> static T abs           (T a)              { return std::abs (a); }
+    template <typename T> static T min           (T a, T b)         { return std::min (a, b); }
+    template <typename T> static T max           (T a, T b)         { return std::max (a, b); }
+    template <typename T> static T clamp         (T a, T b, T c)    { return a < b ? b : (a > c ? c : a); }
+    template <typename T> static T wrap          (T a, T b)         { if (b == 0) return 0; auto n = modulo (a, b); if (n < 0) n += b; return n; }
+    template <typename T> static T fmod          (T a, T b)         { return b != 0 ? std::fmod (a, b) : 0; }
+    template <typename T> static T remainder     (T a, T b)         { return b != 0 ? std::remainder (a, b) : 0; }
+    template <typename T> static T floor         (T a)              { return std::floor (a); }
+    template <typename T> static T ceil          (T a)              { return std::ceil (a); }
+    template <typename T> static T rint          (T a)              { return std::rint (a); }
+    template <typename T> static T sqrt          (T a)              { return std::sqrt (a); }
+    template <typename T> static T pow           (T a, T b)         { return std::pow (a, b); }
+    template <typename T> static T exp           (T a)              { return std::exp (a); }
+    template <typename T> static T log           (T a)              { return std::log (a); }
+    template <typename T> static T log10         (T a)              { return std::log10 (a); }
+    template <typename T> static T sin           (T a)              { return std::sin (a); }
+    template <typename T> static T cos           (T a)              { return std::cos (a); }
+    template <typename T> static T tan           (T a)              { return std::tan (a); }
+    template <typename T> static T sinh          (T a)              { return std::sinh (a); }
+    template <typename T> static T cosh          (T a)              { return std::cosh (a); }
+    template <typename T> static T tanh          (T a)              { return std::tanh (a); }
+    template <typename T> static T asinh         (T a)              { return std::asinh (a); }
+    template <typename T> static T acosh         (T a)              { return std::acosh (a); }
+    template <typename T> static T atanh         (T a)              { return std::atanh (a); }
+    template <typename T> static T asin          (T a)              { return std::asin (a); }
+    template <typename T> static T acos          (T a)              { return std::acos (a); }
+    template <typename T> static T atan          (T a)              { return std::atan (a); }
+    template <typename T> static T atan2         (T a, T b)         { return std::atan2 (a, b); }
+    template <typename T> static T isnan         (T a)              { return std::isnan (a) ? 1 : 0; }
+    template <typename T> static T isinf         (T a)              { return std::isinf (a) ? 1 : 0; }
+    template <typename T> static T select        (bool c, T a, T b) { return c ? a : b; }
+
+    static int32_t reinterpretFloatToInt (float   a)                { int32_t i; memcpy (std::addressof(i), std::addressof(a), sizeof(i)); return i; }
+    static int64_t reinterpretFloatToInt (double  a)                { int64_t i; memcpy (std::addressof(i), std::addressof(a), sizeof(i)); return i; }
+    static float   reinterpretIntToFloat (int32_t a)                { float   f; memcpy (std::addressof(f), std::addressof(a), sizeof(f)); return f; }
+    static double  reinterpretIntToFloat (int64_t a)                { double  f; memcpy (std::addressof(f), std::addressof(a), sizeof(f)); return f; }
+
+    static int32_t rightShiftUnsigned (int32_t a, int32_t b)        { return static_cast<int32_t> (static_cast<uint32_t> (a) >> b); }
+    static int64_t rightShiftUnsigned (int64_t a, int64_t b)        { return static_cast<int64_t> (static_cast<uint64_t> (a) >> b); }
+
+    struct VectorOps
+    {
+        template <typename Vec> static Vec abs     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::abs (x); }); }
+        template <typename Vec> static Vec min     (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::min (x, y); }); }
+        template <typename Vec> static Vec max     (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::max (x, y); }); }
+        template <typename Vec> static Vec sqrt    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::sqrt (x); }); }
+        template <typename Vec> static Vec log     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::log (x); }); }
+        template <typename Vec> static Vec log10   (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::log10 (x); }); }
+        template <typename Vec> static Vec sin     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::sin (x); }); }
+        template <typename Vec> static Vec cos     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::cos (x); }); }
+        template <typename Vec> static Vec tan     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::tan (x); }); }
+        template <typename Vec> static Vec sinh    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::sinh (x); }); }
+        template <typename Vec> static Vec cosh    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::cosh (x); }); }
+        template <typename Vec> static Vec tanh    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::tanh (x); }); }
+        template <typename Vec> static Vec asinh   (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::asinh (x); }); }
+        template <typename Vec> static Vec acosh   (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::acosh (x); }); }
+        template <typename Vec> static Vec atanh   (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::atanh (x); }); }
+        template <typename Vec> static Vec asin    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::asin (x); }); }
+        template <typename Vec> static Vec acos    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::acos (x); }); }
+        template <typename Vec> static Vec atan    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::atan (x); }); }
+        template <typename Vec> static Vec atan2   (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::atan2 (x, y); }); }
+        template <typename Vec> static Vec pow     (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::pow (x, y); }); }
+        template <typename Vec> static Vec exp     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::exp (x); }); }
+
+        template <typename Vec> static Vec rightShiftUnsigned (Vec a, Vec b) { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::rightShiftUnsigned (x, y); }); }
+    };
+};
+
+static constexpr float  _inf32  =  std::numeric_limits<float>::infinity();
+static constexpr double _inf64  =  std::numeric_limits<double>::infinity();
+static constexpr float  _ninf32 = -std::numeric_limits<float>::infinity();
+static constexpr double _ninf64 = -std::numeric_limits<double>::infinity();
+static constexpr float  _nan32  =  std::numeric_limits<float>::quiet_NaN();
+static constexpr double _nan64  =  std::numeric_limits<double>::quiet_NaN();
 
 using SizeType = int32_t;
 using IndexType = int32_t;
@@ -2145,151 +2281,6 @@ struct Slice
 #else
  #pragma warning (pop)
 #endif
-)CPPGEN";
-    }
-
-    static std::string_view getIntrinsicFunctions()
-    {
-        return R"CPPGEN(
-struct intrinsics
-{
-    template <typename T> static constexpr bool isIntType()     { return std::is_integral<T>::value && ! std::is_same<T, bool>::value; }
-    template <typename T> using UnsignedVersion = typename std::make_unsigned<T>::type;
-
-    template <typename T> static constexpr T add (T a, T b)
-    {
-        if constexpr (isIntType<T>())
-            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) + static_cast<UnsignedVersion<T>> (b));
-        else
-            return a + b;
-    }
-
-    template <typename T> static constexpr T subtract (T a, T b)
-    {
-        if constexpr (isIntType<T>())
-            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) - static_cast<UnsignedVersion<T>> (b));
-        else
-            return a - b;
-    }
-
-    template <typename T> static constexpr T multiply (T a, T b)
-    {
-        if constexpr (isIntType<T>())
-            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) * static_cast<UnsignedVersion<T>> (b));
-        else
-            return a * b;
-    }
-
-    template <typename T> static constexpr T leftShift (T a, T b)
-    {
-        if constexpr (isIntType<T>())
-            return static_cast<T> (static_cast<UnsignedVersion<T>> (a) << b);
-        else
-            return a << b;
-    }
-
-    template <typename T> static constexpr void addTo (T& a, int32_t b)
-    {
-        a = add (a, static_cast<T> (b));
-    }
-
-    template <typename T> static constexpr T negate (T a)
-    {
-        if constexpr (isIntType<T>())
-            return static_cast<T> (static_cast<UnsignedVersion<T>> (0) - static_cast<UnsignedVersion<T>> (a));
-        else
-            return -a;
-    }
-
-    template <typename T> static T modulo (T a, T b)
-    {
-        if constexpr (std::is_floating_point<T>::value)
-            return std::fmod (a, b);
-        else
-            return a % b;
-    }
-
-    template <typename T> static T addModulo2Pi (T a, T b)
-    {
-        constexpr auto twoPi = static_cast<T> (3.141592653589793238 * 2);
-        auto n = a + b;
-        return n >= twoPi ? std::remainder (n, twoPi) : n;
-    }
-
-    template <typename T> static T abs           (T a)              { return std::abs (a); }
-    template <typename T> static T min           (T a, T b)         { return std::min (a, b); }
-    template <typename T> static T max           (T a, T b)         { return std::max (a, b); }
-    template <typename T> static T clamp         (T a, T b, T c)    { return a < b ? b : (a > c ? c : a); }
-    template <typename T> static T wrap          (T a, T b)         { if (b == 0) return 0; auto n = modulo (a, b); if (n < 0) n += b; return n; }
-    template <typename T> static T fmod          (T a, T b)         { return b != 0 ? std::fmod (a, b) : 0; }
-    template <typename T> static T remainder     (T a, T b)         { return b != 0 ? std::remainder (a, b) : 0; }
-    template <typename T> static T floor         (T a)              { return std::floor (a); }
-    template <typename T> static T ceil          (T a)              { return std::ceil (a); }
-    template <typename T> static T rint          (T a)              { return std::rint (a); }
-    template <typename T> static T sqrt          (T a)              { return std::sqrt (a); }
-    template <typename T> static T pow           (T a, T b)         { return std::pow (a, b); }
-    template <typename T> static T exp           (T a)              { return std::exp (a); }
-    template <typename T> static T log           (T a)              { return std::log (a); }
-    template <typename T> static T log10         (T a)              { return std::log10 (a); }
-    template <typename T> static T sin           (T a)              { return std::sin (a); }
-    template <typename T> static T cos           (T a)              { return std::cos (a); }
-    template <typename T> static T tan           (T a)              { return std::tan (a); }
-    template <typename T> static T sinh          (T a)              { return std::sinh (a); }
-    template <typename T> static T cosh          (T a)              { return std::cosh (a); }
-    template <typename T> static T tanh          (T a)              { return std::tanh (a); }
-    template <typename T> static T asinh         (T a)              { return std::asinh (a); }
-    template <typename T> static T acosh         (T a)              { return std::acosh (a); }
-    template <typename T> static T atanh         (T a)              { return std::atanh (a); }
-    template <typename T> static T asin          (T a)              { return std::asin (a); }
-    template <typename T> static T acos          (T a)              { return std::acos (a); }
-    template <typename T> static T atan          (T a)              { return std::atan (a); }
-    template <typename T> static T atan2         (T a, T b)         { return std::atan2 (a, b); }
-    template <typename T> static T isnan         (T a)              { return std::isnan (a) ? 1 : 0; }
-    template <typename T> static T isinf         (T a)              { return std::isinf (a) ? 1 : 0; }
-    template <typename T> static T select        (bool c, T a, T b) { return c ? a : b; }
-
-    static int32_t reinterpretFloatToInt (float   a)                { int32_t i; memcpy (std::addressof(i), std::addressof(a), sizeof(i)); return i; }
-    static int64_t reinterpretFloatToInt (double  a)                { int64_t i; memcpy (std::addressof(i), std::addressof(a), sizeof(i)); return i; }
-    static float   reinterpretIntToFloat (int32_t a)                { float   f; memcpy (std::addressof(f), std::addressof(a), sizeof(f)); return f; }
-    static double  reinterpretIntToFloat (int64_t a)                { double  f; memcpy (std::addressof(f), std::addressof(a), sizeof(f)); return f; }
-
-    static int32_t rightShiftUnsigned (int32_t a, int32_t b)        { return static_cast<int32_t> (static_cast<uint32_t> (a) >> b); }
-    static int64_t rightShiftUnsigned (int64_t a, int64_t b)        { return static_cast<int64_t> (static_cast<uint64_t> (a) >> b); }
-
-    struct VectorOps
-    {
-        template <typename Vec> static Vec abs     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::abs (x); }); }
-        template <typename Vec> static Vec min     (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::min (x, y); }); }
-        template <typename Vec> static Vec max     (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::max (x, y); }); }
-        template <typename Vec> static Vec sqrt    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::sqrt (x); }); }
-        template <typename Vec> static Vec log     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::log (x); }); }
-        template <typename Vec> static Vec log10   (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::log10 (x); }); }
-        template <typename Vec> static Vec sin     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::sin (x); }); }
-        template <typename Vec> static Vec cos     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::cos (x); }); }
-        template <typename Vec> static Vec tan     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::tan (x); }); }
-        template <typename Vec> static Vec sinh    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::sinh (x); }); }
-        template <typename Vec> static Vec cosh    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::cosh (x); }); }
-        template <typename Vec> static Vec tanh    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::tanh (x); }); }
-        template <typename Vec> static Vec asinh   (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::asinh (x); }); }
-        template <typename Vec> static Vec acosh   (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::acosh (x); }); }
-        template <typename Vec> static Vec atanh   (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::atanh (x); }); }
-        template <typename Vec> static Vec asin    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::asin (x); }); }
-        template <typename Vec> static Vec acos    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::acos (x); }); }
-        template <typename Vec> static Vec atan    (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::atan (x); }); }
-        template <typename Vec> static Vec atan2   (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::atan2 (x, y); }); }
-        template <typename Vec> static Vec pow     (Vec a, Vec b)     { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::pow (x, y); }); }
-        template <typename Vec> static Vec exp     (Vec a)            { return a.performUnaryOp ([] (auto x) { return intrinsics::exp (x); }); }
-
-        template <typename Vec> static Vec rightShiftUnsigned (Vec a, Vec b) { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::rightShiftUnsigned (x, y); }); }
-    };
-};
-
-static constexpr float  _inf32  =  std::numeric_limits<float>::infinity();
-static constexpr double _inf64  =  std::numeric_limits<double>::infinity();
-static constexpr float  _ninf32 = -std::numeric_limits<float>::infinity();
-static constexpr double _ninf64 = -std::numeric_limits<double>::infinity();
-static constexpr float  _nan32  =  std::numeric_limits<float>::quiet_NaN();
-static constexpr double _nan64  =  std::numeric_limits<double>::quiet_NaN();
 )CPPGEN";
     }
 };
