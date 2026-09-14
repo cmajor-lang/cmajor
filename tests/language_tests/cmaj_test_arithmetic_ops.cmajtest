@@ -1623,7 +1623,7 @@ bool testInt32OverflowWraps()
     int32 v = 1;
     loop (31) v = v * 2;
 
-    let minInt = -2147483647 - 1;
+    let minInt = -2147483648;
 
     if (v != minInt)                return false;
 

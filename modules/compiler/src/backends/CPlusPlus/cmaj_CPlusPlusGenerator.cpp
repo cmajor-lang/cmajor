@@ -1532,8 +1532,16 @@ struct EndpointInfo
         return ProgramPrinter::formatInt64 (v, "L");
     }
 
+    static std::string formatInt32Literal (int32_t v)
+    {
+        if (v == std::numeric_limits<int32_t>::min())
+            return "std::numeric_limits<int32_t>::min()";
+
+        return ProgramPrinter::formatInt32 (v);
+    }
+
     //==============================================================================
-    ValueReader createConstantInt32   (int32_t v)           { return createReaderNoParensNeeded (std::string ("int32_t {") + ProgramPrinter::formatInt32 (v) + "}", program.allocator.int32Type); }
+    ValueReader createConstantInt32   (int32_t v)           { return createReaderNoParensNeeded (std::string ("int32_t {") + formatInt32Literal (v) + "}", program.allocator.int32Type); }
     ValueReader createConstantInt64   (int64_t v)           { return createReaderNoParensNeeded (std::string ("int64_t {") + formatInt64Literal (v) + "}", program.allocator.int64Type); }
     ValueReader createConstantFloat32 (float v)             { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v), program.allocator.float32Type); }
     ValueReader createConstantFloat64 (double v)            { return createReaderNoParensNeeded (ProgramPrinter::formatFloat (v), program.allocator.float64Type); }
