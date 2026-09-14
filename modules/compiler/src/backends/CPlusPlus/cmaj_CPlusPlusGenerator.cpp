@@ -154,6 +154,8 @@ struct CPlusPlusCodeGenerator
             printEndpointProperties();
 
             out << sectionBreak
+                << choc::text::trim (getIntrinsicsDefinitions())
+                << sectionBreak
                 << choc::text::trim (getHelperClassDefinitions())
                 << sectionBreak
                 << choc::text::trim (getWarningDisableFlags())
@@ -1882,7 +1884,7 @@ struct EndpointInfo
 )CPPGEN";
     }
 
-    static std::string_view getHelperClassDefinitions()
+    static std::string_view getIntrinsicsDefinitions()
     {
         return R"CPPGEN(
 struct intrinsics
@@ -2017,7 +2019,12 @@ struct intrinsics
         template <typename Vec> static Vec rightShiftUnsigned (Vec a, Vec b) { return a.performBinaryOp (b, [] (auto x, auto y) { return intrinsics::rightShiftUnsigned (x, y); }); }
     };
 };
+)CPPGEN";
+    }
 
+    static std::string_view getHelperClassDefinitions()
+    {
+        return R"CPPGEN(
 static constexpr float  _inf32  =  std::numeric_limits<float>::infinity();
 static constexpr double _inf64  =  std::numeric_limits<double>::infinity();
 static constexpr float  _ninf32 = -std::numeric_limits<float>::infinity();
