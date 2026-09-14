@@ -567,6 +567,168 @@ bool test_ifconst5()
     return v.test_ifconst5_const() && v.test_ifconst5_nonconst();
 }
 
+
+## testFunction()
+
+float inc (float& f)    { return ++f; }
+
+bool evaluation_order1()
+{
+    float x = 0;
+    let a = inc (x);
+    let b = inc (x);
+    return a == 1 && b == 2;
+}
+
+bool evaluation_order2()
+{
+    float x = 0;
+    let a = inc(x) - inc(x);
+    return a == -1;
+}
+
+bool evaluation_order3()
+{
+    float x = 2;
+    return findMax (inc(x) + inc(x), inc(x), inc(x)) == 7;
+}
+
+float findMax (float a, float b, float c)   { return max (a, max (b, c)); }
+
+bool evaluation_order4()
+{
+    float x = 1;
+    return inc(x) * (inc(x) - inc(x)) == -2;
+}
+
+float get (float& n) { return ++n; }
+float getConstRef (const float& n)  { return n; }
+
+float getNext (float& i)    { i++; return i; }
+
+bool evaluation_order5()
+{
+    float n = 0;
+    float<2> i = getNext (n);
+    return (i[0] == 1 && i[1] == 1);
+}
+
+bool testTernary1()
+{
+    float n = 1;
+    let x = (n == 1) ? get(n) : getConstRef (get(n)) + get(n);
+    return x == 2 && n == 2;
+}
+
+bool testTernary2()
+{
+    float n = 1;
+    let x = (n != 1) ? getConstRef (get(n)) + get(n) : get(n) + getConstRef (get(n));
+    return x == 5 && n == 3;
+}
+
+bool testShortCircuit1()
+{
+    float n = 1;
+    bool b = getConstRef (get(n)) == 2 || getConstRef (get(n)) == 3;
+    return b && n == 2;
+}
+
+bool testShortCircuit2()
+{
+    float n = 1;
+    bool b = getConstRef (get(n)) == 2 && getConstRef (get(n)) == 3;
+    return b && n == 3;
+}
+
+bool testShortCircuit3()
+{
+    float n = 1;
+    bool b = getConstRef (get(n)) == 3 || getConstRef (get(n)) == 3;
+    return b && n == 3;
+}
+
+bool testShortCircuit4()
+{
+    float n = 1;
+    bool b = getConstRef (get(n)) == 3 && getConstRef (get(n)) == 3;
+    return ! b && n == 2;
+}
+
+float returnI (float& i)        { ++i; return i; }
+
+bool testShortCircuit5()
+{
+    float i;
+    let b = returnI (i) == 1 ? returnI (i) : returnI (i) + 10;
+    return (i == 2);
+}
+
+let globalConst = true;
+
+bool test_ifconst1()
+{
+    if const (! globalConst)
+        return false;
+
+    return true;
+}
+
+bool test_ifconst2()
+{
+    if const (globalConst)
+        return true;
+    else
+        junkhere();
+
+    return false;
+}
+
+bool test_ifconst3()
+{
+    return element0 (6.0f) == 6 && element0 (float[] (3.0f, 4.0f, 5.0f)) == 3;
+}
+
+float element0<T> (T t)
+{
+    if const (T.isScalar)
+        return t;
+    else
+        return t[0];
+}
+
+float test_ifconst4<T> (T t)
+{
+    if const (T.isVector)
+    {
+        if const (T.size < 8)
+            return 1;
+        else
+            return 2;
+    }
+    else
+    {
+        return 3;
+    }
+}
+
+bool test_ifconst4()
+{
+    return test_ifconst4 (float<3>())  == 1
+        && test_ifconst4 (float<10>()) == 2
+        && test_ifconst4 (float[4]())  == 3;
+
+}
+
+bool test_ifconst5_const<T> (T v)    { bool x; if const (v.isVector) x = true; return x; }
+bool test_ifconst5_nonconst<T> (T v) { bool x; if       (v.isVector) x = true; return x; }
+
+bool test_ifconst5()
+{
+    float<4> v;
+    return v.test_ifconst5_const() && v.test_ifconst5_nonconst();
+}
+
 ## expectError ("2:36: error: Expected a constant value")
 
 bool f()  { var x = 1; if const (x == 1) return true; return false; }

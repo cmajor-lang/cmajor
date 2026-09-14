@@ -1353,6 +1353,9 @@ struct LLVMCodeGenerator
     static bool canPerformVectorUnaryOp()    { return true; }
     static bool canPerformVectorBinaryOp()   { return true; }
 
+    /// The instructions emitted are evaluated in the order in which they're created
+    static bool evaluatesOperandsInOrder()   { return true; }
+
     ValueReader createUnaryOp (AST::UnaryOpTypeEnum::Enum opType, const AST::TypeBase&, ValueReader input)
     {
         auto& b = getBlockBuilder();

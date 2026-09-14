@@ -880,6 +880,65 @@ private:
         return builder.createReaderForReference (tempVariableRef);
     }
 
+    static bool mayHaveSideEffects (const AST::ValueBase& value)
+    {
+        AST::SideEffects sideEffects;
+        sideEffects.add (value);
+
+        return sideEffects.modifiesLocalVariables
+            || sideEffects.modifiesStateVariables;
+    }
+
+    /// Cmajor guarantees that the operands of an expression are evaluated from left to
+    /// right, but some targets emit code whose evaluation order is decided by a compiler
+    /// that we don't control, so when anything involved could have a side-effect, the
+    /// values which come first need to be evaluated into temporary variables before the
+    /// ones which follow them are created.
+    bool mustEvaluateLHSBeforeRHS (const AST::ValueBase& lhs, const AST::ValueBase& rhs)
+    {
+        // (if either side is a constant then there's nothing whose order could matter)
+        if (builder.evaluatesOperandsInOrder()
+             || lhs.constantFold() != nullptr
+             || rhs.constantFold() != nullptr)
+            return false;
+
+        return mayHaveSideEffects (lhs) || mayHaveSideEffects (rhs);
+    }
+
+    /// Returns the index of the last argument which needs to be evaluated into a temporary
+    /// variable to keep the arguments in order, which is the last one that's followed by
+    /// another value whose result it could affect (see mustEvaluateLHSBeforeRHS)
+    std::optional<size_t> getLastArgumentNeedingOrderedEvaluation (const AST::FunctionCall& call)
+    {
+        auto numArgs = call.arguments.size();
+
+        if (builder.evaluatesOperandsInOrder() || numArgs < 2)
+            return {};
+
+        // (constants can't be affected by the order in which anything else is evaluated)
+        size_t lastNonConstantArg = 0;
+
+        for (size_t i = 0; i < numArgs; ++i)
+            if (AST::castToValueRef (call.arguments[i]).constantFold() == nullptr)
+                lastNonConstantArg = i;
+
+        for (auto i = numArgs; i > 0; --i)
+        {
+            if (mayHaveSideEffects (AST::castToValueRef (call.arguments[i - 1])))
+            {
+                // everything up to (and including) the last argument with a side-effect needs
+                // a temporary, but nothing needs one if there are no values left after it
+                if (lastNonConstantArg == 0)
+                    return {};
+
+                auto lastIndex = i - 1;
+                return lastIndex < lastNonConstantArg ? lastIndex : lastNonConstantArg - 1;
+            }
+        }
+
+        return {};
+    }
+
     ValueReader createBinaryOp (AST::BinaryOpTypeEnum::Enum opType,
                                 const AST::ValueBase& lhs, const AST::ValueBase& rhs)
     {
@@ -908,6 +967,10 @@ private:
             }
 
             auto lhsValue = createCastIfNeeded (opTypes.operandType, typeA, lhs);
+
+            if (mustEvaluateLHSBeforeRHS (lhs, rhs))
+                lhsValue = createTempVariableReader (opTypes.operandType, std::move (lhsValue), false);
+
             auto rhsValue = createCastIfNeeded (opTypes.operandType, typeB, rhs);
 
             // should have already been turned into a call
@@ -1309,6 +1372,8 @@ private:
 
         CMAJ_ASSERT (call.arguments.size() == paramTypes.size());
 
+        auto lastArgNeedingOrderedEvaluation = getLastArgumentNeedingOrderedEvaluation (call);
+
         for (size_t i = 0; i < call.arguments.size(); ++i)
         {
             auto& paramType = paramTypes[i].get();
@@ -1338,6 +1403,12 @@ private:
             else
             {
                 argEntry.valueReader = createCastIfNeeded (paramType, argType, arg);
+
+                // this argument must be evaluated before the ones which follow it are created
+                if (lastArgNeedingOrderedEvaluation && i <= *lastArgNeedingOrderedEvaluation
+                     && arg.constantFold() == nullptr)
+                    argEntry.valueReader = createTempVariableReader (paramType.skipConstAndRefModifiers(),
+                                                                     std::move (argEntry.valueReader), false);
             }
         }
 

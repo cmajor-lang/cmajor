@@ -97,7 +97,6 @@ struct CPlusPlusCodeGenerator
     ptr<const AST::LoopStatement> currentLoop;
     size_t functionBlockIndentDepth = 0,
            breakLabelIndex = 0,
-           tempVariableIndex = 0,
            branchIndex = 0,
            numActiveForwardBranches = 0,
            constantAggregateIndex = 0;
@@ -1293,7 +1292,6 @@ struct EndpointInfo
     void beginFunction (const AST::Function& fn, std::string_view name, const AST::TypeBase& returnType)
     {
         breakLabelIndex = 0;
-        tempVariableIndex = 0;
         branchIndex = 0;
         functionBlockIndentDepth = 0;
         functionOut.reset();
@@ -1667,71 +1665,11 @@ struct EndpointInfo
     {
         choc::SmallVector<std::string, 8> args;
 
-        if (! argValues.empty())
-        {
-            choc::SmallVector<std::string, 8> argText;
-
-            for (auto& arg : argValues)
-                argText.push_back (arg.valueReader ? arg.valueReader.getWithoutParens()
-                                                   : arg.valueReference.getWithoutParens());
-
-            auto seemsToBeFunctionCall = [] (const std::string& code)
-            {
-                // this is a bit of a bodge which will have false positives,
-                // but should catch all the cases we care about..
-                return code.find ('(') != std::string::npos;
-            };
-
-            // This is an ugly workaround to enforce left-to-right order of arg evaluation.
-            // If there's more than one arg which seems to be a function call, stash some of them
-            // into temp variables..
-            size_t numArgsWithPossibleSideEffects = 0;
-            std::vector<bool> shouldUseTempVariable;
-            shouldUseTempVariable.resize (argText.size());
-
-            for (size_t i = 0; i < argValues.size(); ++i)
-                if (argValues[i].valueReader && seemsToBeFunctionCall (argText[i]))
-                    ++numArgsWithPossibleSideEffects;
-
-            if (numArgsWithPossibleSideEffects > 1)
-            {
-                size_t numUsingTempVariable = 0;
-
-                for (size_t i = 0; i < argValues.size(); ++i)
-                {
-                    if (argValues[i].valueReader && seemsToBeFunctionCall (argText[i]))
-                    {
-                        shouldUseTempVariable[i] = true;
-
-                        if (++numUsingTempVariable == numArgsWithPossibleSideEffects - 1)
-                            break; // (no need to use a temp for the last expression)
-                    }
-                }
-            }
-
-            for (size_t i = 0; i < argValues.size(); ++i)
-            {
-                auto& arg = argValues[i];
-
-                if (shouldUseTempVariable[i])
-                {
-                    auto tempName = "_tempArg_" + std::to_string (tempVariableIndex++);
-
-                    functionLocalVariables << getTypeName (arg.paramType.skipConstAndRefModifiers(), true)
-                                           << " " << tempName << ";" << newLine;
-
-                    functionOut << tempName << " = "
-                                << arg.valueReader.getWithoutParens()
-                                << ";" << newLine;
-
-                    args.push_back (tempName);
-                }
-                else
-                {
-                    args.push_back (argText[i]);
-                }
-            }
-        }
+        // (the code generator has already stashed any arguments which need to be evaluated
+        // in a particular order into temporary variables - see evaluatesOperandsInOrder())
+        for (auto& arg : argValues)
+            args.push_back (arg.valueReader ? arg.valueReader.getWithoutParens()
+                                            : arg.valueReference.getWithoutParens());
 
         return createReaderNoParensNeeded (functionName + ProgramPrinter::createParenthesisedList (args), returnType);
     }
@@ -1767,6 +1705,21 @@ struct EndpointInfo
     ValueReader createFunctionCall (const AST::Function& fn, std::string_view functionName, const ArgValueList& argValues)
     {
         return createCall (std::string (functionName), argValues, AST::castToTypeBaseRef (fn.returnType));
+    }
+
+    ValueReader createIntrinsicHelperCall (std::string_view helperName, const AST::TypeBase& resultType,
+                                           ValueReader lhs, ValueReader rhs)
+    {
+        return createReaderNoParensNeeded ("intrinsics::" + std::string (helperName)
+                                             + " (" + lhs.getWithoutParens()
+                                             + ", " + rhs.getWithoutParens() + ")", resultType);
+    }
+
+    ValueReader createIntrinsicHelperCall (std::string_view helperName, const AST::TypeBase& resultType,
+                                           ValueReader input)
+    {
+        return createReaderNoParensNeeded ("intrinsics::" + std::string (helperName)
+                                             + " (" + input.getWithoutParens() + ")", resultType);
     }
 
     static bool needsWrappingHelper (AST::UnaryOpTypeEnum::Enum opType, const AST::TypeBase& operandType)
@@ -1807,7 +1760,7 @@ struct EndpointInfo
     ValueReader createUnaryOp (AST::UnaryOpTypeEnum::Enum opType, const AST::TypeBase& type, ValueReader input)
     {
         if (needsWrappingHelper (opType, type))
-            return createReaderNoParensNeeded ("intrinsics::negate (" + input.getWithoutParens() + ")", type);
+            return createIntrinsicHelperCall ("negate", type, input);
 
         return createReaderParensNeeded (std::string (AST::UnaryOperator::getSymbolForOperator (opType))
                                             + " " + input.getWithParensIfNeeded(), type);
@@ -1815,6 +1768,11 @@ struct EndpointInfo
 
     static bool canPerformVectorUnaryOp()   { return true; }
     static bool canPerformVectorBinaryOp()  { return true; }
+
+    /// The order in which a C++ compiler evaluates the operands of an expression is up to
+    /// the compiler, so the code generator needs to use temporaries to enforce the
+    /// left-to-right order that Cmajor guarantees
+    static bool evaluatesOperandsInOrder()  { return false; }
 
     ValueReader createAddInt32 (ValueReader lhs, int32_t rhs)
     {
@@ -1826,17 +1784,15 @@ struct EndpointInfo
                                 ValueReader lhs, ValueReader rhs)
     {
         if (opType == AST::BinaryOpTypeEnum::Enum::rightShiftUnsigned)
-            return createReaderNoParensNeeded ("intrinsics::" + std::string (lhs.type->isVector() && ! lhs.type->isVectorSize1() ? "VectorOps::" : "")
-                                                + "rightShiftUnsigned (" + lhs.getWithoutParens() + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
+            return createIntrinsicHelperCall (lhs.type->isVector() && ! lhs.type->isVectorSize1() ? "VectorOps::rightShiftUnsigned"
+                                                                                                  : "rightShiftUnsigned",
+                                              opTypes.resultType, lhs, rhs);
 
         if (opType == AST::BinaryOpTypeEnum::Enum::modulo && ! opTypes.operandType.isVector())
-            return createReaderNoParensNeeded ("intrinsics::modulo (" + lhs.getWithoutParens()
-                                                 + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
+            return createIntrinsicHelperCall ("modulo", opTypes.resultType, lhs, rhs);
 
         if (needsWrappingHelper (opType, opTypes.operandType))
-            return createReaderNoParensNeeded ("intrinsics::" + std::string (getWrappingHelperName (opType))
-                                                 + " (" + lhs.getWithoutParens()
-                                                 + ", " + rhs.getWithoutParens() + ")", opTypes.resultType);
+            return createIntrinsicHelperCall (getWrappingHelperName (opType), opTypes.resultType, lhs, rhs);
 
         return createReaderParensNeeded (lhs.getWithParensIfNeeded()
                                          + " " + std::string (AST::BinaryOperator::getSymbolForOperator (opType))
