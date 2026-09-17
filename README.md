@@ -24,7 +24,13 @@ If you want to learn about the nitty-gritty of the Cmajor language, the [languag
 
 To build Cmajor requires a host with suitable compilers, and with support for Cmake. For MacOS, a recent XCode is required, whilst Windows requires VS2019. Linux builds have been successfully built using both clang and gcc v8 and above.
 
-When cloning the Cmajor repository, you need to ensure you have also pulled the submodules, as there are a number for third party libraries and some pre-built LLVM libraries.
+When cloning the Cmajor repository, you need to ensure you have also pulled the submodules, as there are a number for third party libraries.
+
+### Use of CPM
+
+The pre-built LLVM libraries have been recently moved to using cpm (https://github.com/cpm-cmake/cpm.cmake), and so you can take advantage of this by caching a local copy of the LLVM libraries by configuring the CPM_SOURCE_CACHE environment variable to point to a suitable cache directory. Please read the documentation to find out how to do this.
+
+We will likely move away from using sub modules and using CPM for our dependencies as this is beneficial to people using worktrees.
 
 ### Building on MacOS
 
