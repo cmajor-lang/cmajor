@@ -26,6 +26,7 @@ OPTION (BUILD_PLUGIN        "Whether to build the plugin" OFF)
 OPTION (BUILD_EXAMPLES      "Whether to build the examples" ON)
 OPTION (WEBKIT2_GTK_VERSION "Which version of webkit to use")
 
+include(3rdParty/dependencies.cmake)
 include(tools/scripts/cmake_warning_flags)
 
 if (NOT CMAJ_VERSION)

@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 3.16..3.22)
 
 set_property (GLOBAL PROPERTY CMAJ_MODULE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set_property (GLOBAL PROPERTY CMAJ_VERSION ${CMAJ_VERSION})
+set_property (GLOBAL PROPERTY llvm_SOURCE_DIR ${llvm_SOURCE_DIR})
 
 # Add choc library once (must be called before any MAKE_CMAJ_LIBRARY calls)
 if (NOT TARGET choc::choc)
@@ -20,6 +21,7 @@ function (MAKE_CMAJ_LIBRARY)
 
     get_property (CMAJ_MODULE_DIR GLOBAL PROPERTY CMAJ_MODULE_DIR)
     get_property (CMAJ_VERSION GLOBAL PROPERTY CMAJ_VERSION)
+    get_property (llvm_SOURCE_DIR GLOBAL PROPERTY llvm_SOURCE_DIR)
 
     # -------------------------------------------------------------------
     # Parse arguments to determine options
@@ -60,7 +62,7 @@ function (MAKE_CMAJ_LIBRARY)
     # -------------------------------------------------------------------
     # LLVM Stuff
 
-    set (LLVM_RELEASE_DIR ${CMAJ_MODULE_DIR}/../3rdParty/llvm/release)
+    set (LLVM_RELEASE_DIR ${llvm_SOURCE_DIR}/release)
     set (LLVM_LIBRARY_DIR "lib")
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
