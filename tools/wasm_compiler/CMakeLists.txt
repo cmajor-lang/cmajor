@@ -21,6 +21,7 @@ target_sources(cmajor_compiler
 
 set_target_properties(cmajor_compiler PROPERTIES OUTPUT_NAME "cmaj-compiler-wasm")
 
+include(../../3rdParty/dependencies.cmake)
 include (../scripts/cmake_warning_flags)
 
 target_compile_features(cmajor_compiler PRIVATE ${CMAJ_TARGET_COMPILER})
@@ -155,7 +156,7 @@ target_link_options(cmajor_compiler
 target_include_directories(cmajor_compiler
     PRIVATE
         ../../3rdParty
-        ../../3rdParty/llvm/release/wasm/wasm32/include
+        ${llvm_SOURCE_DIR}/release/wasm/wasm32/include
         ../../include/choc
         ../../include
 )
@@ -167,5 +168,5 @@ target_link_libraries (cmajor_compiler
 
 target_link_directories (cmajor_compiler
     PUBLIC
-        ../../3rdParty/llvm/release/wasm/wasm32/lib
+        ${llvm_SOURCE_DIR}/release/wasm/wasm32/lib
 )
