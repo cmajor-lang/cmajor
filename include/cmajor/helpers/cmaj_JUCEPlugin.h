@@ -882,10 +882,10 @@ protected:
             if (parameters.empty())
                 createParameterTree();
         }
-        else
-        {
-            ensureNumParameters (params.size());
-        }
+
+        // A JIT-compiled patch can be rebuilt (e.g. after its source files are edited) with
+        // more parameters than the ones we're already holding, so top-up the list if needed
+        ensureNumParameters (params.size());
 
         for (size_t i = 0; i < params.size(); ++i)
             changed = parameters[i]->setPatchParam (params[i]) || changed;
