@@ -10,6 +10,12 @@ function testCompileTime (options)
         return;
     }
 
+    if (getBuildType() == "coverage" || getBuildType() == "sanitize")
+    {
+        testSection.reportUnsupported ("build type " + getBuildType() + " not supported");
+        return;
+    }
+
     let timingInfo = {};
     let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
 

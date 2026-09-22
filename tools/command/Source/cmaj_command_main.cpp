@@ -242,6 +242,9 @@ static choc::value::Value parseEngineArgs (choc::ArgumentList& args)
     if (auto cmajorIncludePath = args.removeValueFor ("--cmajorIncludePath"))
         engineOptions.addMember ("cmajorIncludePath", *cmajorIncludePath);
 
+    if (auto buildType = args.removeValueFor ("--buildType"))
+        engineOptions.addMember ("buildType", *buildType);
+
     return engineOptions;
 }
 

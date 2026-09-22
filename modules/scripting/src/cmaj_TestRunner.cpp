@@ -561,6 +561,7 @@ namespace cmaj::test
             CMAJ_JAVASCRIPT_BINDING_METHOD (getCurrentTestSection)
             CMAJ_JAVASCRIPT_BINDING_METHOD (getDefaultEngineOptions)
             CMAJ_JAVASCRIPT_BINDING_METHOD (getEngineName)
+            CMAJ_JAVASCRIPT_BINDING_METHOD (getBuildType)
             CMAJ_JAVASCRIPT_BINDING_METHOD (testReportFail)
             CMAJ_JAVASCRIPT_BINDING_METHOD (testReportSuccess)
             CMAJ_JAVASCRIPT_BINDING_METHOD (testReportDisabled)
@@ -676,6 +677,14 @@ namespace cmaj::test
         choc::value::Value getEngineName (choc::javascript::ArgumentList)
         {
             return choc::value::createString (javascriptEngine->getEngineTypeName());
+        }
+
+        choc::value::Value getBuildType (choc::javascript::ArgumentList)
+        {
+            if (defaultEngineOptions.hasObjectMember ("buildType"))
+                return choc::value::createString (defaultEngineOptions["buildType"].toString());
+
+            return choc::value::createString ("");
         }
 
         std::string getErrorString (choc::javascript::ArgumentList args, size_t index)
@@ -1054,6 +1063,7 @@ function TestSection (ts)
 function getCurrentTestSection()                     { return new TestSection (_getCurrentTestSection()); }
 function getDefaultEngineOptions()                   { return _getDefaultEngineOptions(); }
 function getEngineName()                             { return _getEngineName(); }
+function getBuildType()                              { return _getBuildType(); }
 )WRAPPER_SCRIPT";
         }
 
@@ -1082,8 +1092,10 @@ function getEngineName()                             { return _getEngineName(); 
 
     //==============================================================================
     inline void TestSuite::runTests (std::ostream& console,
-                                     const cmaj::BuildSettings& buildSettings, std::optional<int> testToRun,
-                                     bool runDisabled, const choc::value::Value& engineOptions,
+                                     const cmaj::BuildSettings& buildSettings,
+                                     std::optional<int> testToRun,
+                                     bool runDisabled,
+                                     const choc::value::Value& engineOptions,
                                      std::string testScriptPath)
     {
         if (!testToRun || testToRun.value() == 1)
