@@ -853,6 +853,19 @@ struct LLVMCodeGenerator
         return paramTypes;
     }
 
+    ::llvm::Type* getPointerParameterContentType (const AST::TypeBase& paramType)
+    {
+        if (auto mcr = paramType.getAsMakeConstOrRef())
+            return getLLVMType (*mcr->getSource());
+
+        return getLLVMType (paramType);
+    }
+
+    static bool parameterNeedsByValAttribute (const AST::TypeBase& paramType, ::llvm::Type* llvmParamType)
+    {
+        return llvmParamType->isPointerTy() && ! paramType.isReference();
+    }
+
     ::llvm::FunctionCallee getOrAddFunction (const AST::Function& f)
     {
         auto found = functions.find (std::addressof (f));
@@ -932,12 +945,9 @@ struct LLVMCodeGenerator
             {
                 ::llvm::AttrBuilder ab (functionStartBlock->getContext());
 
-                auto llvmType = getLLVMType (paramType);
+                auto llvmType = getPointerParameterContentType (paramType);
 
-                if (auto mcr = paramType.getAsMakeConstOrRef())
-                    llvmType = getLLVMType (*mcr->getSource());
-
-                if (! isReference)
+                if (parameterNeedsByValAttribute (paramType, paramVariable->getType()))
                     ab.addByValAttr (llvmType);
 
                 ab.addDereferenceableAttr (getTypeSize (llvmType))
@@ -1668,6 +1678,10 @@ struct LLVMCodeGenerator
         auto callee = getOrAddFunction (fn);
         auto destParam = callee.getFunctionType()->param_begin();
 
+        auto paramTypes = getParameterTypesAddingRefsWhereNeeded (fn);
+        size_t paramIndex = 0;
+
+        ::llvm::SmallVector<std::pair<unsigned, ::llvm::Type*>, 32> byValArgs;
         ::llvm::Value* returnValue = nullptr;
 
         if (functionShouldReturnTypeAsArgument (AST::castToTypeBaseRef (fn.returnType)))
@@ -1679,12 +1693,20 @@ struct LLVMCodeGenerator
 
         for (auto& arg : argValues)
         {
-            if ((*destParam++)->isPointerTy())
+            CMAJ_ASSERT (paramIndex < paramTypes.size());
+            auto& paramType = paramTypes[paramIndex++].get();
+            auto destParamType = *destParam++;
+
+            if (destParamType->isPointerTy())
             {
                 if (arg.valueReference)
                     args.push_back (getPointer (arg.valueReference));
                 else
                     args.push_back (getPointer (arg.valueReader));
+
+                if (parameterNeedsByValAttribute (paramType, destParamType))
+                    byValArgs.push_back ({ static_cast<unsigned> (args.size() - 1),
+                                           getPointerParameterContentType (paramType) });
             }
             else
             {
@@ -1692,9 +1714,19 @@ struct LLVMCodeGenerator
             }
         }
 
+        auto createCall = [&]
+        {
+            auto call = getBlockBuilder().CreateCall (callee, args);
+
+            for (auto& byValArg : byValArgs)
+                call->addParamAttr (byValArg.first, ::llvm::Attribute::getWithByValType (*context, byValArg.second));
+
+            return call;
+        };
+
         if (returnValue != nullptr)
         {
-            getBlockBuilder().CreateCall (callee, args);
+            createCall();
 
             auto& returnTypeRef = fn.context.allocate<AST::MakeConstOrRef>();
             returnTypeRef.source.referTo (AST::castToTypeBaseRef (fn.returnType));
@@ -1703,8 +1735,7 @@ struct LLVMCodeGenerator
             return makeReader (returnValue, returnTypeRef);
         }
 
-        return makeReader (getBlockBuilder().CreateCall (callee, args),
-                           AST::castToTypeBaseRef (fn.returnType));
+        return makeReader (createCall(), AST::castToTypeBaseRef (fn.returnType));
     }
 
     ValueReader createVariableReader (const AST::VariableDeclaration& v)

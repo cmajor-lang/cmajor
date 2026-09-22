@@ -361,3 +361,49 @@ void passConstToNonConstRef()
     S s = (1, 2);
     incrementValue (s.i);
 }
+
+
+## testConsole ("caller 60\ncallee 60\ncallee 60\n")
+
+namespace byval
+{
+    struct S
+    {
+        int x;
+        float[34] pad;
+    }
+
+    struct Holder { S data; int64 id; }
+}
+
+processor test [[ main ]]
+{
+    output stream float out;
+
+    byval::Holder stored;
+
+    byval::Holder wrap (byval::S& s)
+    {
+        byval::Holder h;
+        h.data = s;
+        h.id = 1;
+        return h;
+    }
+
+    void readsParameter (byval::S s)
+    {
+        console <- "callee " <- s.x <- "\n";
+        byval::S copy = s;
+        stored = wrap (copy);
+    }
+
+    void main()
+    {
+        byval::S s;
+        s.x = 60;
+        console <- "caller " <- s.x <- "\n";
+        readsParameter (s);
+        readsParameter (s);
+        loop advance();
+    }
+}
