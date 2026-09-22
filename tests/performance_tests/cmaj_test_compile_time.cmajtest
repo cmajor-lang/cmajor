@@ -4,6 +4,12 @@ function testCompileTime (options)
 {
     let testSection = getCurrentTestSection();
 
+    if (getEngineName() == "cpp")
+    {
+        testSection.reportUnsupported ("engine type " + getEngineName() + " not supported");
+        return;
+    }
+
     let timingInfo = {};
     let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
 
