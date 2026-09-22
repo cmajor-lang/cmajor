@@ -1,0 +1,340 @@
+
+
+function testCompileTime (options)
+{
+    let testSection = getCurrentTestSection();
+
+    let timingInfo = {};
+    let engine = buildEngineWithLoadedProgram (testSection, options, timingInfo);
+
+    if (isError (engine, options))
+    {
+        testSection.reportFail (engine);
+        return;
+    }
+
+    if (engine.getBuildSettings().optimisationLevel == 0)
+    {
+        testSection.reportUnsupported ("Test disabled for --O0 as it will take too long");
+        return;
+    }
+
+    let inputEndpoints = engine.getInputEndpoints();
+
+    for (let i = 0; i < inputEndpoints.length; i++)
+        inputEndpoints[i].handle = engine.getEndpointHandle (inputEndpoints[i].endpointID);
+
+    let outputEndpoints = engine.getOutputEndpoints();
+
+    for (let i = 0; i < outputEndpoints.length; i++)
+        outputEndpoints[i].handle = engine.getEndpointHandle (outputEndpoints[i].endpointID);
+
+    timingInfo.linkTime = engine.link ();
+
+    if (isError (timingInfo.linkTime, options))
+    {
+        reportFailOrUnsupported (testSection, timingInfo.linkTime);
+        return;
+    }
+
+    let totalTime = timingInfo.loadTime  + timingInfo.linkTime;
+
+    if (timingInfo.parseTime != undefined)
+    {
+        totalTime += timingInfo.parseTime;
+        testSection.logMessage ("Parse time: " + Math.round (timingInfo.parseTime * 1000) + " ms");
+    }
+
+    testSection.logMessage ("Load time : " + Math.round (timingInfo.loadTime * 1000) + " ms");
+    testSection.logMessage ("Link time : " + Math.round (timingInfo.linkTime * 1000) + " ms");
+    testSection.logMessage ("Total     : " + Math.round (totalTime * 1000) + " ms");
+
+    if (Math.round (totalTime * 1000) > 1000)
+        testSection.reportFail ("Compile took too long - took " + Math.round (totalTime * 1000) + " ms")
+    else
+        testSection.reportSuccess();
+}
+
+## testCompileTime()
+
+processor LongCompileTile
+{
+    output stream float out;
+
+    int leaf (int x)   { return x + 1; }
+
+    int level1 (int x)
+    {
+        int s = 0;
+        s += leaf (x + 0);
+        s += leaf (x + 1);
+        s += leaf (x + 2);
+        s += leaf (x + 3);
+        s += leaf (x + 4);
+        s += leaf (x + 5);
+        s += leaf (x + 6);
+        s += leaf (x + 7);
+        s += leaf (x + 8);
+        s += leaf (x + 9);
+        s += leaf (x + 10);
+        s += leaf (x + 11);
+        s += leaf (x + 12);
+        s += leaf (x + 13);
+        s += leaf (x + 14);
+        s += leaf (x + 15);
+        s += leaf (x + 16);
+        s += leaf (x + 17);
+        s += leaf (x + 18);
+        s += leaf (x + 19);
+        s += leaf (x + 20);
+        s += leaf (x + 21);
+        s += leaf (x + 22);
+        s += leaf (x + 23);
+        s += leaf (x + 24);
+        s += leaf (x + 25);
+        s += leaf (x + 26);
+        s += leaf (x + 27);
+        s += leaf (x + 28);
+        s += leaf (x + 29);
+        s += leaf (x + 30);
+        s += leaf (x + 31);
+        s += leaf (x + 32);
+        s += leaf (x + 33);
+        s += leaf (x + 34);
+        s += leaf (x + 35);
+        s += leaf (x + 36);
+        s += leaf (x + 37);
+        s += leaf (x + 38);
+        s += leaf (x + 39);
+        s += leaf (x + 40);
+        s += leaf (x + 41);
+        s += leaf (x + 42);
+        s += leaf (x + 43);
+        s += leaf (x + 44);
+        s += leaf (x + 45);
+        s += leaf (x + 46);
+        s += leaf (x + 47);
+        s += leaf (x + 48);
+        s += leaf (x + 49);
+        s += leaf (x + 50);
+        s += leaf (x + 51);
+        s += leaf (x + 52);
+        s += leaf (x + 53);
+        s += leaf (x + 54);
+        s += leaf (x + 55);
+        s += leaf (x + 56);
+        s += leaf (x + 57);
+        s += leaf (x + 58);
+        s += leaf (x + 59);
+        s += leaf (x + 60);
+        s += leaf (x + 61);
+        s += leaf (x + 62);
+        s += leaf (x + 63);
+        s += leaf (x + 64);
+        s += leaf (x + 65);
+        s += leaf (x + 66);
+        s += leaf (x + 67);
+        s += leaf (x + 68);
+        s += leaf (x + 69);
+        s += leaf (x + 70);
+        s += leaf (x + 71);
+        s += leaf (x + 72);
+        s += leaf (x + 73);
+        s += leaf (x + 74);
+        s += leaf (x + 75);
+        s += leaf (x + 76);
+        s += leaf (x + 77);
+        s += leaf (x + 78);
+        s += leaf (x + 79);
+        return s;
+    }
+
+    int level2 (int x)
+    {
+        int s = 0;
+        s += level1 (x + 0);
+        s += level1 (x + 1);
+        s += level1 (x + 2);
+        s += level1 (x + 3);
+        s += level1 (x + 4);
+        s += level1 (x + 5);
+        s += level1 (x + 6);
+        s += level1 (x + 7);
+        s += level1 (x + 8);
+        s += level1 (x + 9);
+        s += level1 (x + 10);
+        s += level1 (x + 11);
+        s += level1 (x + 12);
+        s += level1 (x + 13);
+        s += level1 (x + 14);
+        s += level1 (x + 15);
+        s += level1 (x + 16);
+        s += level1 (x + 17);
+        s += level1 (x + 18);
+        s += level1 (x + 19);
+        s += level1 (x + 20);
+        s += level1 (x + 21);
+        s += level1 (x + 22);
+        s += level1 (x + 23);
+        s += level1 (x + 24);
+        s += level1 (x + 25);
+        s += level1 (x + 26);
+        s += level1 (x + 27);
+        s += level1 (x + 28);
+        s += level1 (x + 29);
+        s += level1 (x + 30);
+        s += level1 (x + 31);
+        s += level1 (x + 32);
+        s += level1 (x + 33);
+        s += level1 (x + 34);
+        s += level1 (x + 35);
+        s += level1 (x + 36);
+        s += level1 (x + 37);
+        s += level1 (x + 38);
+        s += level1 (x + 39);
+        s += level1 (x + 40);
+        s += level1 (x + 41);
+        s += level1 (x + 42);
+        s += level1 (x + 43);
+        s += level1 (x + 44);
+        s += level1 (x + 45);
+        s += level1 (x + 46);
+        s += level1 (x + 47);
+        s += level1 (x + 48);
+        s += level1 (x + 49);
+        s += level1 (x + 50);
+        s += level1 (x + 51);
+        s += level1 (x + 52);
+        s += level1 (x + 53);
+        s += level1 (x + 54);
+        s += level1 (x + 55);
+        s += level1 (x + 56);
+        s += level1 (x + 57);
+        s += level1 (x + 58);
+        s += level1 (x + 59);
+        s += level1 (x + 60);
+        s += level1 (x + 61);
+        s += level1 (x + 62);
+        s += level1 (x + 63);
+        s += level1 (x + 64);
+        s += level1 (x + 65);
+        s += level1 (x + 66);
+        s += level1 (x + 67);
+        s += level1 (x + 68);
+        s += level1 (x + 69);
+        s += level1 (x + 70);
+        s += level1 (x + 71);
+        s += level1 (x + 72);
+        s += level1 (x + 73);
+        s += level1 (x + 74);
+        s += level1 (x + 75);
+        s += level1 (x + 76);
+        s += level1 (x + 77);
+        s += level1 (x + 78);
+        s += level1 (x + 79);
+        return s;
+    }
+
+    int level3 (int x)
+    {
+        int s = 0;
+        s += level2 (x + 0);
+        s += level2 (x + 1);
+        s += level2 (x + 2);
+        s += level2 (x + 3);
+        s += level2 (x + 4);
+        s += level2 (x + 5);
+        s += level2 (x + 6);
+        s += level2 (x + 7);
+        s += level2 (x + 8);
+        s += level2 (x + 9);
+        s += level2 (x + 10);
+        s += level2 (x + 11);
+        s += level2 (x + 12);
+        s += level2 (x + 13);
+        s += level2 (x + 14);
+        s += level2 (x + 15);
+        s += level2 (x + 16);
+        s += level2 (x + 17);
+        s += level2 (x + 18);
+        s += level2 (x + 19);
+        s += level2 (x + 20);
+        s += level2 (x + 21);
+        s += level2 (x + 22);
+        s += level2 (x + 23);
+        s += level2 (x + 24);
+        s += level2 (x + 25);
+        s += level2 (x + 26);
+        s += level2 (x + 27);
+        s += level2 (x + 28);
+        s += level2 (x + 29);
+        s += level2 (x + 30);
+        s += level2 (x + 31);
+        s += level2 (x + 32);
+        s += level2 (x + 33);
+        s += level2 (x + 34);
+        s += level2 (x + 35);
+        s += level2 (x + 36);
+        s += level2 (x + 37);
+        s += level2 (x + 38);
+        s += level2 (x + 39);
+        s += level2 (x + 40);
+        s += level2 (x + 41);
+        s += level2 (x + 42);
+        s += level2 (x + 43);
+        s += level2 (x + 44);
+        s += level2 (x + 45);
+        s += level2 (x + 46);
+        s += level2 (x + 47);
+        s += level2 (x + 48);
+        s += level2 (x + 49);
+        s += level2 (x + 50);
+        s += level2 (x + 51);
+        s += level2 (x + 52);
+        s += level2 (x + 53);
+        s += level2 (x + 54);
+        s += level2 (x + 55);
+        s += level2 (x + 56);
+        s += level2 (x + 57);
+        s += level2 (x + 58);
+        s += level2 (x + 59);
+        s += level2 (x + 60);
+        s += level2 (x + 61);
+        s += level2 (x + 62);
+        s += level2 (x + 63);
+        s += level2 (x + 64);
+        s += level2 (x + 65);
+        s += level2 (x + 66);
+        s += level2 (x + 67);
+        s += level2 (x + 68);
+        s += level2 (x + 69);
+        s += level2 (x + 70);
+        s += level2 (x + 71);
+        s += level2 (x + 72);
+        s += level2 (x + 73);
+        s += level2 (x + 74);
+        s += level2 (x + 75);
+        s += level2 (x + 76);
+        s += level2 (x + 77);
+        s += level2 (x + 78);
+        s += level2 (x + 79);
+        return s;
+    }
+
+    int level4 (int x)
+    {
+        int s = 0;
+        s += level3 (x + 0);
+        s += level3 (x + 1);
+        return s;
+    }
+
+    void main()
+    {
+        loop
+        {
+            out <- float (level4 (1)) * 1e-9f;
+            advance();
+        }
+    }
+}

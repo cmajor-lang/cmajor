@@ -547,13 +547,29 @@ struct FunctionInfoGenerator
     {
         functionInfoHolder.clear();
         program.visitAllFunctions (true, [this] (Function& f) { f.tempStorage = createInfoHolder(); });
-        program.visitAllFunctions (true, [this] (Function& f) { iterateCallSequences (f, nullptr, 0, {}); });
+        program.visitAllFunctions (true, [this] (Function& f) { analyse (f, nullptr); });
+        program.visitAllFunctions (true, [this] (Function& f)
+        {
+            if (f.isGenericOrParameterised())
+                return;
+
+            if (f.isMainFunction())      markCalledFrom (f, &FunctionInfo::calledFromMain);
+            if (f.isUserInitFunction())  markCalledFrom (f, &FunctionInfo::calledFromInit);
+            if (f.isEventHandler)        markCalledFrom (f, &FunctionInfo::calledFromEvent);
+        });
+
+        program.visitAllFunctions (true, [] (Function& f) { getInfo (f).callees.clear(); });
     }
 
     //==============================================================================
     struct FunctionInfo
     {
         uint64_t localStackSize = 0;
+
+        enum class State { unvisited, inProgress, done };
+        State state = State::unvisited;
+        uint64_t stackSizeFromHere = 0;
+        ObjectRefVector<Function> callees;
 
         bool calledFromMain   = false;
         bool calledFromEvent  = false;
@@ -648,14 +664,7 @@ private:
     struct CallStack
     {
         CallStack* previous;
-        ptr<const FunctionCall> call;
         const Function& function;
-
-        bool contains (Function& f) const
-        {
-            return std::addressof (f) == std::addressof (function)
-                    || (previous != nullptr && previous->contains (f));
-        }
 
         void buildCallSequence (const Function& lastFunction, ObjectRefVector<const Function>& sequence) const
         {
@@ -666,50 +675,63 @@ private:
         }
     };
 
-    void iterateCallSequences (Function& f, CallStack* previous, uint64_t stackSize, const FunctionInfo& callerInfo)
+    void analyse (Function& f, CallStack* previous)
     {
         if (f.isGenericOrParameterised())
             return;
 
-        if (previous != nullptr && previous->contains (f))
+        auto& info = getInfo (f);
+
+        if (info.state == FunctionInfo::State::done)
+            return;
+
+        if (info.state == FunctionInfo::State::inProgress)
         {
-            if (recursiveCallSequence.empty())
+            if (recursiveCallSequence.empty() && previous != nullptr)
                 previous->buildCallSequence (f, recursiveCallSequence);
 
             return;
         }
 
-        stackSize += perCallStackOverhead + getLocalVariableStackSize (f);
-        maximumStackSize = std::max (maximumStackSize, stackSize);
+        info.state = FunctionInfo::State::inProgress;
 
-        auto& info = getInfo (f);
+        CallStack stack { previous, f };
+        auto stackAddr = std::addressof (stack);
+        uint64_t deepestCallee = 0;
 
-        info.calledFromEvent = info.calledFromEvent || callerInfo.calledFromEvent  || f.isEventHandler;
-        info.calledFromMain   = info.calledFromMain   || callerInfo.calledFromMain    || f.isMainFunction();
-        info.calledFromInit  = info.calledFromInit  || callerInfo.calledFromInit   || f.isUserInitFunction();
-
-        CallStack newStack { previous, nullptr, f };
-        auto newStackAddr = std::addressof (newStack);
-
-        f.visitObjectsInScope ([this, previous, newStackAddr, stackSize, &info] (const Object& s)
+        f.visitObjectsInScope ([this, stackAddr, &info, &deepestCallee] (const Object& s)
         {
             if (auto fc = s.getAsFunctionCall())
             {
                 if (auto targetFn = fc->getTargetFunction())
                 {
-                    newStackAddr->call = *fc;
-                    iterateCallSequences (*targetFn, newStackAddr, stackSize, info);
+                    if (targetFn->isGenericOrParameterised())
+                        return;
+
+                    analyse (*targetFn, stackAddr);
+
+                    auto& target = getInfo (*targetFn);
+
+                    if (target.state != FunctionInfo::State::done)  // a recursive call, recorded above
+                        return;
+
+                    if (! info.callees.contains (*targetFn))
+                        info.callees.push_back (*targetFn);
+
+                    deepestCallee = std::max (deepestCallee, target.stackSizeFromHere);
+
+                    if (target.advanceCall != nullptr)      info.setAdvanceCall (*fc);
+                    if (target.writeEventCall != nullptr)   info.setWriteEventCall (*fc);
+                    if (target.writeStreamCall != nullptr)  info.setWriteStreamCall (*fc);
+                    if (target.writeValueCall != nullptr)   info.setWriteValueCall (*fc);
+                    if (target.readStreamCall != nullptr)   info.setReadStreamCall (*fc);
+                    if (target.readValueCall != nullptr)    info.setReadValueCall (*fc);
                 }
             }
             else if (auto a = s.getAsAdvance())
             {
                 if (! a->hasNode())
-                {
                     info.setAdvanceCall (*a);
-
-                    for (auto prev = previous; prev != nullptr; prev = prev->previous)
-                        getInfo (prev->function).setAdvanceCall (*prev->call);
-                }
             }
             else if (auto w = s.getAsWriteToEndpoint())
             {
@@ -717,27 +739,9 @@ private:
                 {
                     auto endpoint = w->getEndpoint();
 
-                    if (endpoint->isEvent())
-                    {
-                        info.setWriteEventCall (*w);
-
-                        for (auto prev = previous; prev != nullptr; prev = prev->previous)
-                            getInfo (prev->function).setWriteEventCall (*prev->call);
-                    }
-                    else if (endpoint->isStream())
-                    {
-                        info.setWriteStreamCall (*w);
-
-                        for (auto prev = previous; prev != nullptr; prev = prev->previous)
-                            getInfo (prev->function).setWriteStreamCall (*prev->call);
-                    }
-                    else
-                    {
-                        info.setWriteValueCall (*w);
-
-                        for (auto prev = previous; prev != nullptr; prev = prev->previous)
-                            getInfo (prev->function).setWriteValueCall (*prev->call);
-                    }
+                    if (endpoint->isEvent())            info.setWriteEventCall (*w);
+                    else if (endpoint->isStream())      info.setWriteStreamCall (*w);
+                    else                                info.setWriteValueCall (*w);
                 }
             }
             else if (auto r = s.getAsReadFromEndpoint())
@@ -747,26 +751,31 @@ private:
                     auto& endpoint = *r->getEndpointDeclaration();
 
                     if (endpoint.isEvent())
-                    {
                         CMAJ_ASSERT_FALSE;  // Can't read from events
-                    }
                     else if (endpoint.isStream())
-                    {
                         info.setReadStreamCall (*r);
-
-                        for (auto prev = previous; prev != nullptr; prev = prev->previous)
-                            getInfo (prev->function).setReadStreamCall (*prev->call);
-                    }
                     else
-                    {
                         info.setReadValueCall (*r);
-
-                        for (auto prev = previous; prev != nullptr; prev = prev->previous)
-                            getInfo (prev->function).setReadValueCall (*prev->call);
-                    }
                 }
             }
         });
+
+        info.stackSizeFromHere = perCallStackOverhead + getLocalVariableStackSize (f) + deepestCallee;
+        maximumStackSize = std::max (maximumStackSize, info.stackSizeFromHere);
+        info.state = FunctionInfo::State::done;
+    }
+
+    void markCalledFrom (Function& f, bool FunctionInfo::* flag)
+    {
+        auto& info = getInfo (f);
+
+        if (info.*flag)
+            return;
+
+        info.*flag = true;
+
+        for (auto& callee : info.callees)
+            markCalledFrom (callee, flag);
     }
 
     static uint64_t getLocalVariableStackSize (Function& f)

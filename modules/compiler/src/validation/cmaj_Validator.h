@@ -1823,11 +1823,11 @@ namespace cmaj::validation
             if (stackSizeLimit == 0)
                 stackSizeLimit = defaultMaxStackSize;
 
+            functionInfo.throwErrorIfRecursive();
+
             if (functionInfo.maximumStackSize > stackSizeLimit)
                 cmaj::throwError (Errors::maximumStackSizeExceeded (choc::text::getByteSizeDescription (functionInfo.maximumStackSize),
                                                                     choc::text::getByteSizeDescription (stackSizeLimit)));
-
-            functionInfo.throwErrorIfRecursive();
 
             program.visitAllFunctions (true, [] (AST::Function& f)
             {
