@@ -889,7 +889,6 @@ struct LLVMCodeGenerator
 
         if (! isExported)
         {
-            currentFunction->setOnlyAccessesArgMemory();
             currentFunction->addFnAttr (::llvm::Attribute::AttrKind::NoUnwind);
             currentFunction->setLinkage (::llvm::GlobalValue::LinkageTypes::PrivateLinkage);
         }

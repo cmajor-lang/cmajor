@@ -475,3 +475,13 @@ bool outOfRangeWrite()
 
     return (array[1] + array[2] + array[3]) == 29999 + 29998 + 29997;
 }
+
+bool testUpdateSlice32()
+{
+    int[32] a;
+    int[] b = a[:];
+
+    b[0] = 10;
+
+    return a[0] == 10;
+}
