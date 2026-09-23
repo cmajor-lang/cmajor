@@ -20,6 +20,7 @@
 
 #include <unordered_map>
 #include <condition_variable>
+#include <iostream>
 #include "../../compiler/include/cmaj_ErrorHandling.h"
 #include "../../../include/cmajor/helpers/cmaj_PatchManifest.h"
 
@@ -29,12 +30,18 @@ namespace cmaj
 template <typename Session>
 struct LocalFileCache
 {
-    LocalFileCache (Session& s) : session (s) {}
+    LocalFileCache (Session& s, std::ostream& outputStream = std::cout)
+        : session (s), output (outputStream) {}
 
     void clear()
     {
-        for (auto& f : files)
-            removeFile (f.first);
+        auto oldFiles = std::move (files);
+        files.clear();
+
+        for (auto& f : oldFiles)
+            f->cancelRequests();
+
+        dumpStatus();
     }
 
     void registerFile (const std::filesystem::path& filename, uint64_t size)
@@ -217,14 +224,14 @@ struct LocalFileCache
 
     void dumpStatus()
     {
-        std::cout << "================================" << std::endl
+        output << "================================" << std::endl
                     << "Files: " << files.size() << std::endl
                     << std::endl;
 
         for (auto& f : files)
-            std::cout << f->filename.generic_string() << ", " << choc::text::getByteSizeDescription (f->size) << std::endl;
+            output << f->filename.generic_string() << ", " << choc::text::getByteSizeDescription (f->size) << std::endl;
 
-        std::cout << std::endl;
+        output << std::endl;
     }
 
 private:
@@ -321,12 +328,19 @@ private:
 
         std::vector<FileRegion> getBlocksNeededForRequest (FileRegion region)
         {
+            if (region.size() == 0)
+                return {};
+
+            auto lastBlock = getBlockIndex (region.end - 1);
+
+            if (lastBlock >= chunks.size())
+                return {};
+
             std::vector<FileRegion> result;
 
-            if (region.size() != 0)
-                for (auto i = getBlockIndex (region.start); i <= getBlockIndex (region.end - 1); ++i)
-                    if (! chunks[i].isLoaded())
-                        result.push_back (chunks[i].region);
+            for (auto i = getBlockIndex (region.start); i <= lastBlock; ++i)
+                if (! chunks[i].isLoaded())
+                    result.push_back (chunks[i].region);
 
             return result;
         }
@@ -411,7 +425,10 @@ private:
 
         void cancelRequests()
         {
-            for (auto& r : pendingRequests)
+            auto requestsToCancel = std::move (pendingRequests);
+            pendingRequests.clear();
+
+            for (auto& r : requestsToCancel)
                 r->callback (nullptr, 0);
         }
 
@@ -469,7 +486,7 @@ private:
                 else if (dir == std::ios_base::cur)
                     position += static_cast<pos_type> (off);
                 else if (dir == std::ios_base::end)
-                    position = static_cast<pos_type> (static_cast<off_type> (file->size) - off);
+                    position = static_cast<pos_type> (static_cast<off_type> (file->size) + off);
 
                 return position;
             }
@@ -529,7 +546,10 @@ private:
                                    callback);
 
                 if (condition.wait (5000))
+                {
+                    position += static_cast<off_type> (result);
                     return result;
+                }
 
                 callback.reset();
                 return 0;
@@ -544,6 +564,7 @@ private:
 
     //==============================================================================
     Session& session;
+    std::ostream& output;
     std::vector<std::shared_ptr<File>> files;
 
     File* getFile (const std::filesystem::path& filename) const

@@ -26,6 +26,7 @@
 #include "unit_tests/cmaj_PatchHelperUnitTests.h"
 #include "unit_tests/cmaj_GraphvizUnitTests.h"
 #include "unit_tests/cmaj_CLAPPluginUnitTests.h"
+#include "unit_tests/cmaj_LocalFileCacheUnitTests.h"
 
 //==============================================================================
 static void runAllTests (choc::test::TestProgress& progress)
@@ -36,6 +37,7 @@ static void runAllTests (choc::test::TestProgress& progress)
     cmaj::patch_helper_tests::runUnitTests (progress);
     cmaj::graphviz_tests::runUnitTests (progress);
     cmaj::plugin::clap::test::runUnitTests (progress);
+    cmaj::local_file_cache_tests::runUnitTests (progress);
     cmaj::runServerUnitTests (progress);
 }
 
