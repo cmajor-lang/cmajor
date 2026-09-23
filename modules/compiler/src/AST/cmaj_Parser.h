@@ -1518,30 +1518,22 @@ private:
         return {};
     }
 
-    bool tryToParseChevronSuffixExpression (AST::ObjectRefVector<AST::Expression>& terms)
+    bool tryToParseChevronSuffixExpression (AST::ObjectRefVector<AST::Expression>& terms, bool supportMultipleTerms)
     {
-        const bool supportMultipleTerms = false;
-
         try
         {
             DiagnosticMessageHandler handler;
             terms.push_back (parseShiftOperator());
-        }
-        catch (DiagnosticMessageHandler::IgnoredErrorException)
-        {
-            return false;
-        }
 
-        if (! supportMultipleTerms)
+            if (supportMultipleTerms)
+                while (skipIf (LexerToken::operator_comma))
+                    terms.push_back (parseShiftOperator());
+
             return true;
-
-        for (;;)
-        {
-            if (! skipIf (LexerToken::operator_comma))
-                return true;
-
-            terms.push_back (parseShiftOperator());
         }
+        catch (DiagnosticMessageHandler::IgnoredErrorException) {}
+
+        return false;
     }
 
     //==============================================================================
@@ -2071,7 +2063,7 @@ private:
             return parseExpressionSuffixes (cc);
         }
 
-        if (matches (LexerToken::operator_lessThan))    return parseVectorOrArrayTypeSuffixes (false, expression);
+        if (matches (LexerToken::operator_lessThan))    return parseVectorOrArrayTypeSuffixes (false, false, expression);
         if (skipIf (LexerToken::operator_openBracket))  return parseSubscriptWithBrackets (expression);
         if (skipIf (LexerToken::operator_plusplus))     return parsePostIncDec (expression, true);
         if (skipIf (LexerToken::operator_minusminus))   return parsePostIncDec (expression, false);
@@ -2088,7 +2080,7 @@ private:
         return expression;
     }
 
-    AST::Expression& parseVectorOrArrayTypeSuffixes (bool typesCanBeFollowedByIdentifier, AST::Expression& outerType)
+    AST::Expression& parseVectorOrArrayTypeSuffixes (bool typesCanBeFollowedByIdentifier, bool isKnownToBeType, AST::Expression& outerType)
     {
         auto startPos = getLexerPosition();
         auto startContext = getContext();
@@ -2097,7 +2089,7 @@ private:
         {
             AST::ObjectRefVector<AST::Expression> terms;
 
-            if (tryToParseChevronSuffixExpression (terms))
+            if (tryToParseChevronSuffixExpression (terms, isKnownToBeType))
             {
                 if (skipIf (LexerToken::operator_greaterThan))
                 {
@@ -2153,7 +2145,7 @@ private:
 
     AST::Expression& parseType (bool typesCanBeFollowedByIdentifier)
     {
-        auto type = tryToParseType (typesCanBeFollowedByIdentifier);
+        auto type = tryToParseType (typesCanBeFollowedByIdentifier, true);
 
         if (type == nullptr)
             throwError (Errors::expectedType());
@@ -2164,21 +2156,22 @@ private:
         return *type;
     }
 
-    ptr<AST::Expression> tryToParseType (bool typesCanBeFollowedByIdentifier)
+    ptr<AST::Expression> tryToParseType (bool typesCanBeFollowedByIdentifier, bool isMandatoryType = false)
     {
         auto c = getContext();
 
-        if (skipIf (LexerToken::keyword_void))       return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::void_));
-        if (skipIf (LexerToken::keyword_int))        return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::int32));
-        if (skipIf (LexerToken::keyword_int32))      return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::int32));
-        if (skipIf (LexerToken::keyword_int64))      return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::int64));
-        if (skipIf (LexerToken::keyword_float))      return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::float32));
-        if (skipIf (LexerToken::keyword_float32))    return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::float32));
-        if (skipIf (LexerToken::keyword_float64))    return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::float64));
-        if (skipIf (LexerToken::keyword_bool))       return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::boolean));
-        if (skipIf (LexerToken::keyword_complex))    return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::complex32));
-        if (skipIf (LexerToken::keyword_complex32))  return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::complex32));
-        if (skipIf (LexerToken::keyword_complex64))  return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::complex64));
+        // A primitive type keyword is never a value, so "int<1, 2>" can't be a pair of comparisons
+        if (skipIf (LexerToken::keyword_void))       return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::void_));
+        if (skipIf (LexerToken::keyword_int))        return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::int32));
+        if (skipIf (LexerToken::keyword_int32))      return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::int32));
+        if (skipIf (LexerToken::keyword_int64))      return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::int64));
+        if (skipIf (LexerToken::keyword_float))      return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::float32));
+        if (skipIf (LexerToken::keyword_float32))    return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::float32));
+        if (skipIf (LexerToken::keyword_float64))    return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::float64));
+        if (skipIf (LexerToken::keyword_bool))       return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::boolean));
+        if (skipIf (LexerToken::keyword_complex))    return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::complex32));
+        if (skipIf (LexerToken::keyword_complex32))  return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::complex32));
+        if (skipIf (LexerToken::keyword_complex64))  return parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, true, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::complex64));
         if (skipIf (LexerToken::keyword_string))     return parseArrayTypeSuffixes         (typesCanBeFollowedByIdentifier, allocate<AST::PrimitiveType> (c, AST::PrimitiveTypeEnum::Enum::string));
 
         if (skipIf (LexerToken::keyword_const))
@@ -2194,7 +2187,7 @@ private:
 
         if (matches (LexerToken::identifier))
         {
-            auto& type = parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, parseQualifiedIdentifier());
+            auto& type = parseVectorOrArrayTypeSuffixes (typesCanBeFollowedByIdentifier, typesCanBeFollowedByIdentifier || isMandatoryType, parseQualifiedIdentifier());
 
             if (matchesAny (LexerToken::operator_dot, LexerToken::operator_openParen))
                 return parseExpressionSuffixes (type);

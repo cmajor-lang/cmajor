@@ -1182,3 +1182,18 @@ bool test()
     return i == 1;
 }
 
+
+## testFunction()
+
+bool and (bool a, bool b)
+{
+    return a && b;
+}
+
+bool testAmbiguousChevronParsingProblem()
+{
+    int a = 0;
+    int b = 3;
+
+    return and (a < 1, b > 2);
+}
