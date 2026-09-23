@@ -1210,6 +1210,7 @@ private:
         fn.name = name;
         fn.returnType.setChildObject (returnType);
         fn.comment.referTo (comment);
+        fn.isExternal = hasExternalKeyword;
 
         parseGenericFunctionWildcards (fn);
 
@@ -1243,8 +1244,6 @@ private:
 
         if (hasExternalKeyword)
         {
-            fn.isExternal = true;
-
             if (! skipIf (LexerToken::operator_semicolon))
                 throwError (Errors::externalFunctionCannotHaveBody());
         }

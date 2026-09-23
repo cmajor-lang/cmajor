@@ -279,6 +279,25 @@ external void f (int[4] x);
 struct S {}
 external S f (int a, float b);
 
+## expectError ("2:17: error: An external function cannot use generics")
+
+external bool f<T> (T t);
+
+## expectError ("6:21: error: An external function cannot use generics")
+
+processor P
+{
+    output event float out;
+
+    external bool f<T> (T t);
+
+    void main()
+    {
+        f (1);
+        advance();
+    }
+}
+
 ## expectError ("2:15: error: Found \";\" when expecting \"{\"")
 
 bool f (int i);
