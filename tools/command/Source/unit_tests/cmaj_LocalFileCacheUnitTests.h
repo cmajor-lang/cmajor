@@ -230,19 +230,19 @@ static void testFileRegions (choc::test::TestProgress& progress)
 {
     CHOC_TEST (FileRegions)
 
-    FileRegion empty { 10, 10 }, small { 10, 20 }, large { 0, 100 };
+    FileRegion empty { 10, 10 }, smallRegion { 10, 20 }, largeRegion { 0, 100 };
 
     CHOC_EXPECT_EQ (empty.size(), static_cast<size_t> (0));
-    CHOC_EXPECT_EQ (small.size(), static_cast<size_t> (10));
-    CHOC_EXPECT_EQ (large.size(), static_cast<size_t> (100));
+    CHOC_EXPECT_EQ (smallRegion.size(), static_cast<size_t> (10));
+    CHOC_EXPECT_EQ (largeRegion.size(), static_cast<size_t> (100));
 
-    CHOC_EXPECT_TRUE (large.contains (small));
-    CHOC_EXPECT_TRUE (large.contains (large));
-    CHOC_EXPECT_TRUE (small.contains (small));
-    CHOC_EXPECT_TRUE (small.contains (FileRegion { 12, 18 }));
-    CHOC_EXPECT_FALSE (small.contains (large));
-    CHOC_EXPECT_FALSE (small.contains (FileRegion { 5, 15 }));
-    CHOC_EXPECT_FALSE (small.contains (FileRegion { 15, 25 }));
+    CHOC_EXPECT_TRUE (largeRegion.contains (smallRegion));
+    CHOC_EXPECT_TRUE (largeRegion.contains (largeRegion));
+    CHOC_EXPECT_TRUE (smallRegion.contains (smallRegion));
+    CHOC_EXPECT_TRUE (smallRegion.contains (FileRegion { 12, 18 }));
+    CHOC_EXPECT_FALSE (smallRegion.contains (largeRegion));
+    CHOC_EXPECT_FALSE (smallRegion.contains (FileRegion { 5, 15 }));
+    CHOC_EXPECT_FALSE (smallRegion.contains (FileRegion { 15, 25 }));
 }
 
 //==============================================================================
