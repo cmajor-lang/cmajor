@@ -2464,23 +2464,36 @@ inline const std::unordered_map<std::string, choc::value::Value>& Patch::getStor
 
 inline void Patch::setStoredStateValue (const std::string& key, const choc::value::ValueView& newValue)
 {
-    auto& v = storedState[key];
+    auto existing = storedState.find (key);
 
-    if (v != newValue)
+    if (newValue.isVoid())
     {
-        if (newValue.isVoid())
-            storedState.erase (key);
-        else
-            v = std::move (newValue);
+        if (existing == storedState.end())
+            return;
 
-        sendStoredStateValueToViews (key);
+        storedState.erase (existing);
     }
+    else
+    {
+        if (existing != storedState.end() && existing->second == newValue)
+            return;
+
+        storedState[key] = newValue;
+    }
+
+    sendStoredStateValueToViews (key);
 }
 
 inline void Patch::clearAllStoredStateValues()
 {
-    for (auto &state : storedState)
-        setStoredStateValue (state.first, {});
+    std::vector<std::string> keys;
+    keys.reserve (storedState.size());
+
+    for (auto& state : storedState)
+        keys.push_back (state.first);
+
+    for (auto& key : keys)
+        setStoredStateValue (key, {});
 }
 
 inline choc::value::Value Patch::getFullStoredState() const
