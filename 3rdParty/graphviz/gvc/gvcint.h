@@ -146,6 +146,9 @@
 
     /* whether to mangle font names (at least in SVG), usually false */
     int fontrenaming;
+
+    /* Counter used to give each anchor in an HTML-like label a unique id */
+    int anchorId;
     };
 
 GVCINT_API GVC_t* gvCloneGVC (GVC_t *);

@@ -374,7 +374,6 @@ initAnchor(GVJ_t * job, htmlenv_t * env, htmldata_t * data, boxf b,
     obj_state_t *obj = job->obj;
     int changed;
     char *id;
-    static int anchorId;
     int internalId = 0;
     agxbuf xb;
     char buf[SMALLBUF];
@@ -391,7 +390,7 @@ initAnchor(GVJ_t * job, htmlenv_t * env, htmldata_t * data, boxf b,
 	    env->objid = gv_strdup(getObjId(job, obj->u.n, &xb));
 	    env->objid_set = true;
 	}
-	agxbprint(&xb, "%s_%d", env->objid, anchorId++);
+	agxbprint(&xb, "%s_%d", env->objid, job->gvc->anchorId++);
 	id = agxbuse(&xb);
 	internalId = 1;
     }

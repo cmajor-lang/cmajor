@@ -248,11 +248,42 @@ processor GainProcessor
         }
     }
 
+    /// Graphviz holds some of its state in process-global variables, so rendering the
+    /// same graph more than once in a single process must still produce byte-identical
+    /// output. (The internally-generated anchor ids used by HTML-table labels are the
+    /// ones most likely to regress here.)
+    static void checkRepeatedRendersAreIdentical (choc::test::TestProgress& progress)
+    {
+        CHOC_TEST (checkRepeatedRendersAreIdentical);
+
+        const auto sourceDOT = R"(
+            digraph
+            {
+                rankdir=LR;
+                node_0[ shape = none label=<<TABLE BORDER="0"><TR><TD HREF="javascript:openSourceFile('test:1:1:');" PORT="in" BORDER="1">in</TD></TR></TABLE>> ]
+                node_1[ shape = none label=<<TABLE BORDER="0"><TR><TD HREF="javascript:openSourceFile('test:2:1:');" PORT="out" BORDER="1">out</TD></TR></TABLE>> ]
+                node_0:in -> node_1:out
+            }
+        )";
+
+        auto first = convertDOTtoSVG (sourceDOT);
+        auto second = convertDOTtoSVG (sourceDOT);
+
+        CHOC_EXPECT_FALSE (first.empty());
+
+        // if this fails then the graph didn't exercise the anchor-generating code path
+        CHOC_EXPECT_TRUE (first.find ("<a xlink:href=") != std::string::npos);
+
+        if (first != second)
+            CHOC_FAIL ("Rendering the same graph twice gave different results!");
+    }
+
     void runUnitTests (choc::test::TestProgress& progress)
     {
         CHOC_CATEGORY (Graphviz);
 
         checkSVGOutput (progress);
         checkPatchSVGOutput (progress);
+        checkRepeatedRendersAreIdentical (progress);
     }
 }
