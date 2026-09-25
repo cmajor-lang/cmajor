@@ -515,10 +515,11 @@ static void runPatchStateTests (choc::test::TestProgress& progress)
     {
         CHOC_TEST (UnloadResetsEverything)
 
+        uint32_t numPatchChanges = 0, numStops = 0, numStarts = 0;
+
         Patch patch;
         initTestPatch (patch);
 
-        uint32_t numPatchChanges = 0, numStops = 0, numStarts = 0;
         patch.patchChanged  = [&] { ++numPatchChanges; };
         patch.stopPlayback  = [&] { ++numStops; };
         patch.startPlayback = [&] { ++numStarts; };
@@ -585,10 +586,11 @@ static void runPatchStateTests (choc::test::TestProgress& progress)
             }
         )";
 
+        Patch::Status lastStatus;
+
         Patch patch;
         initTestPatch (patch);
 
-        Patch::Status lastStatus;
         patch.statusChanged = [&] (const Patch::Status& s) { lastStatus = s; };
 
         CHOC_EXPECT_FALSE (loadTestPatch (patch, createBasicManifest(), brokenSource, 4, 4, 0, 1));
@@ -657,6 +659,8 @@ static void runPatchStateTests (choc::test::TestProgress& progress)
         auto manifestFile = temp.createFile ("Test.cmajorpatch", createBasicManifest());
         temp.createFile ("Test.cmajor", passThroughPatchSource);
 
+        Patch::Status lastStatus;
+
         Patch patch;
         initTestPatch (patch);
         patch.setAutoRebuildOnFileChange (true);
@@ -678,7 +682,6 @@ static void runPatchStateTests (choc::test::TestProgress& progress)
         patch.unload();
 
         // a patch file which isn't there should fail cleanly
-        Patch::Status lastStatus;
         patch.statusChanged = [&] (const Patch::Status& s) { lastStatus = s; };
 
         CHOC_EXPECT_FALSE (patch.loadPatchFromFile ((temp.folder / "DoesNotExist.cmajorpatch").string(), true));
@@ -692,6 +695,8 @@ static void runPatchStateTests (choc::test::TestProgress& progress)
         TempPatchFolder temp;
         auto manifestFile = temp.createFile ("Test.cmajorpatch", createBasicManifest());
         temp.createFile ("Test.cmajor", passThroughPatchSource);
+
+        Patch::Status lastStatus;
 
         Patch patch;
         initTestPatch (patch);
@@ -713,7 +718,6 @@ static void runPatchStateTests (choc::test::TestProgress& progress)
         // a manifest containing invalid JSON should be reported rather than thrown
         auto brokenFile = temp.createFile ("Broken.cmajorpatch", "{ this is not json");
 
-        Patch::Status lastStatus;
         patch.statusChanged = [&] (const Patch::Status& s) { lastStatus = s; };
 
         PatchManifest brokenManifest;
@@ -1018,6 +1022,9 @@ static void runPatchParameterTests (choc::test::TestProgress& progress)
     {
         CHOC_TEST (ParameterSetValue)
 
+        uint32_t numValueChanges = 0;
+        float lastValueSeen = -1.0f;
+
         Patch patch;
 
         if (! initAndLoadTestPatch (patch, gainPatchSource, 4, 4, 1, 1))
@@ -1034,8 +1041,6 @@ static void runPatchParameterTests (choc::test::TestProgress& progress)
             return;
         }
 
-        uint32_t numValueChanges = 0;
-        float lastValueSeen = -1.0f;
         gain->valueChanged = [&] (float v) { ++numValueChanges; lastValueSeen = v; };
 
         CHOC_EXPECT_TRUE (gain->setValue (0.5f, false, -1, 0));
@@ -1069,6 +1074,8 @@ static void runPatchParameterTests (choc::test::TestProgress& progress)
     {
         CHOC_TEST (ParameterGestures)
 
+        uint32_t numStarts = 0, numEnds = 0;
+
         Patch patch;
 
         if (! initAndLoadTestPatch (patch, gainPatchSource, 4, 4, 1, 1))
@@ -1086,7 +1093,6 @@ static void runPatchParameterTests (choc::test::TestProgress& progress)
             return;
         }
 
-        uint32_t numStarts = 0, numEnds = 0;
         gain->gestureStart = [&] { ++numStarts; };
         gain->gestureEnd   = [&] { ++numEnds; };
 
@@ -2183,7 +2189,6 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         CHOC_EXPECT_NEAR (buffer[3], 0.5f, 0.0001f);
     }
 
-    // N.B. verifies messages can be dispatched without crashing, doesn't verify any side effects
     const auto runBasicClientMessageDispatchTests = [&] (bool shouldCompile)
     {
         const auto manifestSource = R"({
@@ -2832,7 +2837,11 @@ static bool runUnitTests (choc::test::TestProgress& progress)
         auto inputs = choc::buffer::createChannelArrayView (inputBuffers.data(), static_cast<uint32_t> (inputBuffers.size()), params.blockSize);
         auto outputs = choc::buffer::createChannelArrayView (outputBuffers.data(), static_cast<uint32_t> (outputBuffers.size()), params.blockSize);
 
-        const auto block = choc::audio::AudioMIDIBlockDispatcher::Block { inputs, outputs, {}, {} };
+        // NB: Block holds its MIDI-output callback by reference, so the functor it refers to
+        // must be kept alive - passing a temporary `{}` here would leave a dangling reference
+        const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn noMIDIOutput = [] (auto&&...) {};
+
+        const auto block = choc::audio::AudioMIDIBlockDispatcher::Block { inputs, outputs, {}, noMIDIOutput };
         const auto replaceOutput = true;
         patch.process (block, replaceOutput);
 
