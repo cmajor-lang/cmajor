@@ -67,6 +67,16 @@ struct PatchPlayerServer
         httpServer.close();
     }
 
+    /// Returns true if the server started up and is listening for connections.
+    bool isOpen() const                     { return httpServer.isOpen(); }
+
+    /// Returns the port that the server is actually listening on. Note that this may
+    /// not be the port that was requested, as it falls back to the next one available.
+    uint16_t getPort() const                { return httpServer.getPort(); }
+
+    /// Returns the address that the server is actually listening on, e.g. "http://127.0.0.1:8081"
+    std::string getHTTPAddress() const      { return httpServer.getHTTPAddress(); }
+
     void handleServerError (const std::string& errorMessage)
     {
         if (choc::text::contains (errorMessage, "Socket is not connected"))
@@ -1241,20 +1251,30 @@ namespace
         serverOptions.address = "127.0.0.1";
         serverOptions.port    = 8081;
 
-        std::string url = "http://127.0.0.1:8081/";
-
         PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions,
                                   [&] (const choc::audio::io::AudioDeviceOptions& options)
                                   {
                                       return std::make_unique<StubAudioMidiPlayer> (callHistory, options);
                                   });
 
+        if (! server.isOpen())
+        {
+            CHOC_FAIL ("Failed to start the server");
+            return;
+        }
+
+        // NB: the server falls back to the next free port if the one we asked for is taken,
+        // so the clients must connect to the port it actually got - otherwise they'd silently
+        // connect to whatever else happens to be listening, and then hang
+        auto serverPort = server.getPort();
+        auto url = server.getHTTPAddress() + "/";
+
         auto t = std::thread ([&]
         {
             try
             {
-                TestClient client1 (serverOptions.address, serverOptions.port, "client1");
-                TestClient client2 (serverOptions.address, serverOptions.port, "client2");
+                TestClient client1 (serverOptions.address, serverPort, "client1");
+                TestClient client2 (serverOptions.address, serverPort, "client2");
 
                 choc::value::Value response;
 
