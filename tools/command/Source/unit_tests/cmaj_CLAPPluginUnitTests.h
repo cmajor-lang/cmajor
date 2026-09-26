@@ -55,6 +55,19 @@ clap_input_events_t toInputEventQueue (Context& ctx)
     };
 }
 
+/// A host must always give clap_process_t a non-null out_events queue, so this provides one
+/// for the tests which don't care about the events that the plugin sends back.
+inline const clap_output_events_t& getDiscardingOutputEventQueue()
+{
+    static const clap_output_events_t queue
+    {
+        nullptr,
+        [] (const clap_output_events_t*, const clap_event_header_t*) -> bool { return true; }
+    };
+
+    return queue;
+}
+
 inline clap_event_param_value_t makeParameterEvent (uint32_t sampleOffset, clap_id id, float value)
 {
     clap_event_param_value_t clapEvent {};
@@ -979,7 +992,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */1,
                 /*.audio_outputs_count = */1,
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -1084,7 +1097,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */1,
                 /*.audio_outputs_count = */1,
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -1216,7 +1229,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */0,
                 /*.audio_outputs_count = */1,
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -1351,7 +1364,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */0,
                 /*.audio_outputs_count = */1,
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -1490,7 +1503,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */0,
                 /*.audio_outputs_count = */1,
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2154,7 +2167,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */1,
                 /*.audio_outputs_count = */1,
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2283,7 +2296,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */static_cast<uint32_t> (inputs.size()),
                 /*.audio_outputs_count = */static_cast<uint32_t> (outputs.size()),
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2404,7 +2417,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */static_cast<uint32_t> (inputs.size()),
                 /*.audio_outputs_count = */static_cast<uint32_t> (outputs.size()),
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2523,7 +2536,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */static_cast<uint32_t> (inputs.size()),
                 /*.audio_outputs_count = */static_cast<uint32_t> (outputs.size()),
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2656,7 +2669,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */0,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2700,7 +2713,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */1,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2744,7 +2757,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */1,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2788,7 +2801,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */1,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2832,7 +2845,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */1,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2876,7 +2889,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */1,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -2920,7 +2933,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */1,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3081,7 +3094,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */0,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3151,7 +3164,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */0,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3220,7 +3233,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */0,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3290,7 +3303,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */0,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3362,7 +3375,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */0,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3429,7 +3442,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */0,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3498,7 +3511,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */0,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3703,7 +3716,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                 /*.audio_inputs_count = */1,
                 /*.audio_outputs_count = */1,
                 /*.in_events = */std::addressof (inputEventQueue),
-                /*.out_events = */nullptr
+                /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
             };
 
             CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3845,7 +3858,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */1,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);
@@ -3954,7 +3967,7 @@ inline void runUnitTests (choc::test::TestProgress& progress)
                     /*.audio_inputs_count = */1,
                     /*.audio_outputs_count = */1,
                     /*.in_events = */std::addressof (inputEventQueue),
-                    /*.out_events = */nullptr
+                    /*.out_events = */std::addressof (getDiscardingOutputEventQueue())
                 };
 
                 CHOC_EXPECT_EQ (plugin->process (plugin.get(), std::addressof (process)), CLAP_PROCESS_CONTINUE);

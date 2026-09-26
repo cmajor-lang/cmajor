@@ -627,7 +627,11 @@ void graph_init(graph_t * g, bool use_rankdir)
     static char *rankname[] = { (char*) "local", (char*) "global", (char*) "none", NULL };
     static int rankcode[] = { LOCAL, GLOBAL, NOCLUST, LOCAL };
     static char *fontnamenames[] = {(char*) "gd", (char*) "ps", (char*) "svg", NULL};
-    static int fontnamecodes[] = {NATIVEFONTS,PSFONTS,SVGFONTS,-1};
+    /* NB: the last entry is the value used when the attribute is absent or unrecognised.
+       It must be a valid fontname_kind, as storing -1 in the enum makes it undefined
+       behaviour to read it back. NATIVEFONTS matches what the renderers already treat
+       as their default, so this keeps the existing behaviour. */
+    static int fontnamecodes[] = {NATIVEFONTS,PSFONTS,SVGFONTS,NATIVEFONTS};
     int rankdir;
     GD_drawing(g) = NEW(layout_t);
 
