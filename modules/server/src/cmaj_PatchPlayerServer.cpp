@@ -1183,7 +1183,9 @@ namespace
             {
                 threadShouldExit = true;
                 ioc.stop();
-                ws.close (boost::beast::websocket::close_code::normal);
+
+                if (! connectionClosed)
+                    ws.close (boost::beast::websocket::close_code::normal);
             }
             catch (std::exception const& e)
             {
@@ -1191,6 +1193,23 @@ namespace
             }
 
             connection.join();
+        }
+
+        /// Waits for the server to close our end of the websocket, returning false if
+        /// that doesn't happen within a few seconds
+        bool waitForConnectionToClose()
+        {
+            auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds (5);
+
+            while (! connectionClosed)
+            {
+                if (std::chrono::steady_clock::now() >= deadline)
+                    return false;
+
+                std::this_thread::sleep_for (std::chrono::milliseconds (1));
+            }
+
+            return true;
         }
 
         choc::value::Value sendRequest (std::string text)
@@ -1212,10 +1231,19 @@ namespace
 
         std::thread connection;
         std::atomic<bool> threadShouldExit { false };
+        std::atomic<bool> connectionClosed { false };
+        boost::beast::error_code closeError;
 
         void readMessage (boost::beast::error_code ec, std::size_t numBytes)
         {
-            if (numBytes > 0 && ! ec)
+            if (ec)
+            {
+                closeError = ec;       // NB: written before the flag that publishes it
+                connectionClosed = true;
+                return;
+            }
+
+            if (numBytes > 0)
             {
                 std::unique_lock<std::mutex> lock (mutex);
                 messageText = (boost::beast::buffers_to_string (destBuffer.data()));
@@ -1356,12 +1384,172 @@ namespace
 
         t.join();
     }
+
+    /// Checks that a server which is shut down while clients are still connected closes
+    /// their websockets cleanly instead of abandoning them - pending operations which are
+    /// left dangling keep their session (and everything it owns) alive forever
+    void testServerShutdownWithLiveClients (choc::test::TestProgress& progress)
+    {
+        CHOC_TEST (shutdownWithLiveClients);
+
+        choc::value::Value engineOptions;
+        cmaj::BuildSettings buildSettings;
+        choc::audio::io::AudioDeviceOptions audioOptions;
+
+        CallHistory callHistory;
+
+        cmaj::ServerOptions serverOptions;
+
+        serverOptions.address = "127.0.0.1";
+        serverOptions.port    = 8081;
+
+        std::optional<PatchPlayerServer> server;
+
+        server.emplace (serverOptions, engineOptions, buildSettings, audioOptions,
+                        [&] (const choc::audio::io::AudioDeviceOptions& options)
+                        {
+                            return std::make_unique<StubAudioMidiPlayer> (callHistory, options);
+                        });
+
+        if (! server->isOpen())
+        {
+            CHOC_FAIL ("Failed to start the server");
+            return;
+        }
+
+        auto serverPort = server->getPort();
+
+        // NB: unlike the test above, these clients are deliberately kept connected
+        // while the server is shut down
+        std::unique_ptr<TestClient> client1, client2;
+
+        auto t = std::thread ([&]
+        {
+            try
+            {
+                client1 = std::make_unique<TestClient> (serverOptions.address, serverPort, "client1");
+                client2 = std::make_unique<TestClient> (serverOptions.address, serverPort, "client2");
+
+                // make sure both clients are fully up and running before the server goes away
+                auto response = client1->sendRequest ("{ \"type\": \"req_session_status\" }");
+                CHOC_EXPECT_EQ (response["type"].toString(), "session_status");
+
+                response = client2->sendRequest ("{ \"type\": \"req_session_status\" }");
+                CHOC_EXPECT_EQ (response["type"].toString(), "session_status");
+            }
+            catch (boost::system::system_error&)
+            {
+                CHOC_FAIL ("Failed to connect to server");
+            }
+            catch (choc::value::Error&)
+            {
+                CHOC_FAIL ("Invalid choc value");
+            }
+
+            choc::messageloop::stop();
+        });
+
+        choc::messageloop::run();
+
+        t.join();
+
+        if (client1 == nullptr || client2 == nullptr)
+            return;
+
+        // Keep weak references to the sessions that the clients are using: if their websockets
+        // are abandoned instead of being closed, the pending operations on them will keep their
+        // client handlers - and hence these sessions - alive for ever
+        std::weak_ptr<PatchPlayerServer::Session> session1 = server->findSession ("client1");
+        std::weak_ptr<PatchPlayerServer::Session> session2 = server->findSession ("client2");
+
+        CHOC_EXPECT_FALSE (session1.expired());
+        CHOC_EXPECT_FALSE (session2.expired());
+
+        auto start = std::chrono::steady_clock::now();
+        server.reset();
+        auto timeTaken = std::chrono::steady_clock::now() - start;
+
+        // Nothing should be left holding onto the sessions once the server has gone
+        CHOC_EXPECT_TRUE (session1.expired());
+        CHOC_EXPECT_TRUE (session2.expired());
+
+        // The closing handshakes should all complete, so this must not have needed to fall
+        // back on forcibly aborting the connections after a timeout
+        CHOC_EXPECT_TRUE (timeTaken < choc::network::gracefulShutdownTimeout);
+
+        // ..and rather than just having their sockets vanish, both clients should have been
+        // sent a websocket close frame to tell them that the server was going away
+        CHOC_EXPECT_TRUE (client1->waitForConnectionToClose());
+        CHOC_EXPECT_TRUE (client2->waitForConnectionToClose());
+        CHOC_EXPECT_TRUE (client1->closeError == boost::beast::websocket::error::closed);
+        CHOC_EXPECT_TRUE (client2->closeError == boost::beast::websocket::error::closed);
+    }
+
+    /// Checks that closing a server releases all of the state it was holding. Its pending
+    /// asynchronous operations hold shared references back to the server itself, so if any of
+    /// them are abandoned rather than being allowed to complete, the server, its io_context,
+    /// its thread pool and all of its client sessions are leaked along with them.
+    void testServerShutdownReleasesResources (choc::test::TestProgress& progress)
+    {
+        CHOC_TEST (shutdownReleasesResources);
+
+        struct TestInstance  : public choc::network::HTTPServer::ClientInstance
+        {
+            TestInstance (std::atomic<bool>& flag) : websocketOpen (flag) {}
+
+            choc::network::HTTPContent getHTTPContent (const choc::network::HTTPRequest&) override  { return {}; }
+            void upgradedToWebSocket (std::string_view) override    { websocketOpen = true; }
+            void handleWebSocketMessage (std::string_view) override  {}
+
+            std::atomic<bool>& websocketOpen;
+        };
+
+        std::atomic<bool> websocketOpen { false };
+
+        // This is owned by the function object which the server holds internally, so it stays
+        // alive for exactly as long as the server's internal state does
+        auto sentinel = std::make_shared<int> (0);
+        std::weak_ptr<int> serverState = sentinel;
+
+        choc::network::HTTPServer server;
+
+        if (! server.open ("127.0.0.1", 0, 0,
+                           [&websocketOpen, keepAlive = std::move (sentinel)]
+                           {
+                               return std::make_shared<TestInstance> (websocketOpen);
+                           },
+                           {}))
+        {
+            CHOC_FAIL ("Failed to start the server");
+            return;
+        }
+
+        CHOC_EXPECT_FALSE (serverState.expired());
+
+        {
+            // Connect a client and leave its websocket open while the server is closed
+            TestClient client (server.getHost(), server.getPort(), "test");
+
+            auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds (5);
+
+            while (! websocketOpen && std::chrono::steady_clock::now() < deadline)
+                std::this_thread::sleep_for (std::chrono::milliseconds (1));
+
+            CHOC_EXPECT_TRUE (websocketOpen);
+
+            server.close();
+
+            CHOC_EXPECT_TRUE (serverState.expired());
+        }
+    }
 }
 
 void runServerUnitTests (choc::test::TestProgress& progress)
 {
     CHOC_CATEGORY (Server);
     testServer (progress);
+    testServerShutdownWithLiveClients (progress);
+    testServerShutdownReleasesResources (progress);
 }
 
 } // namespace cmaj
