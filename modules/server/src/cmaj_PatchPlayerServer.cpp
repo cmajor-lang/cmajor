@@ -1246,7 +1246,8 @@ namespace
             if (numBytes > 0)
             {
                 std::unique_lock<std::mutex> lock (mutex);
-                messageText = (boost::beast::buffers_to_string (destBuffer.data()));
+
+                auto text = (boost::beast::buffers_to_string (destBuffer.data()));
 
                 destBuffer.clear();
 
@@ -1254,7 +1255,13 @@ namespace
                 ws.async_read (destBuffer,
                             [this] (auto code, auto bytes) { readMessage (code, bytes); });
 
-                condition.notify_all();
+                // Discard ping messages as these are from a timer and will otherwise mess with the
+                // expected messages
+                if (text != "{\"type\": \"ping\"}")
+                {
+                    messageText = text;
+                    condition.notify_all();
+                }
             }
         }
 
