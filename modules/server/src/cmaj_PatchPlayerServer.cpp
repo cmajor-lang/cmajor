@@ -1212,14 +1212,15 @@ namespace
             return true;
         }
 
-        choc::value::Value sendRequest (std::string text)
+        choc::value::Value sendRequest (std::string text, uint32_t timeoutMs = 500)
         {
             messageText.clear();
 
             ws.write (boost::asio::buffer (text));
 
             std::unique_lock<std::mutex> lock (mutex);
-            condition.wait_for (lock, std::chrono::milliseconds (100));
+            if (! condition.wait_for (lock, std::chrono::milliseconds (timeoutMs), [&] { return ! messageText.empty(); }))
+                return {};
 
             return choc::json::parse (messageText);
         }
