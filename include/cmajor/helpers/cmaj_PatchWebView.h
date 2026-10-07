@@ -49,8 +49,19 @@ struct PatchWebView  : public PatchView
     /// it will be called first, falling back to the default implementation if an empty result is returned.
     std::function<std::string(std::string_view extension)> getMIMETypeForExtension;
 
+    /// A handler that can intercept a resource request before the default handling.
+    /// Returning a resource serves it in place of the normal content; returning
+    /// std::nullopt falls through to the default behaviour.
+    using RequestInterceptor = std::function<std::optional<choc::ui::WebView::Options::Resource>(const std::string& path)>;
+
+    /// A process-wide factory which, if set, is called as each PatchWebView is constructed,
+    /// and can return a RequestInterceptor for that view to use for every resource it fetches.
+    /// Because it's created per-view, the interceptor can hold whatever per-view state it needs.
+    static std::function<RequestInterceptor(PatchWebView&)>& getRequestInterceptorFactory();
+
 private:
     std::unique_ptr<choc::ui::WebView> webview;
+    RequestInterceptor requestInterceptor;
     std::optional<choc::ui::WebView::Options::Resource> onRequest (const std::string&);
     void createBindings();
 };
@@ -83,6 +94,9 @@ inline PatchWebView::PatchWebView (Patch& p, const PatchManifest::View& view)
     options.transparentBackground = true;
     options.acceptsFirstMouseClick = true;
     options.fetchResource = [this] (const auto& path) { return onRequest (path); };
+
+    if (auto& createInterceptor = getRequestInterceptorFactory())
+        requestInterceptor = createInterceptor (*this);
 
     options.webviewIsReady = [this] (choc::ui::WebView& w)
     {
@@ -250,8 +264,18 @@ initialisePatch();
 </html>
 )";
 
+inline std::function<PatchWebView::RequestInterceptor(PatchWebView&)>& PatchWebView::getRequestInterceptorFactory()
+{
+    static std::function<RequestInterceptor(PatchWebView&)> factory;
+    return factory;
+}
+
 inline std::optional<choc::ui::WebView::Options::Resource> PatchWebView::onRequest (const std::string& path)
 {
+    if (requestInterceptor)
+        if (auto resource = requestInterceptor (path))
+            return resource;
+
     const auto toMimeType = [this] (const auto& extension)
     {
         if (getMIMETypeForExtension)
