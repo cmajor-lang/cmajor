@@ -152,6 +152,22 @@ struct Plugin::Impl
             updateParameterInfoCachesFromLoadedPatch();
             updateAudioPortInfoCachesFromLoadedPatch();
         }
+        else if (! lastRequestedManifestPath.empty())
+        {
+            // Hosts query the audio ports and parameters before activating the plugin, so a JIT
+            // patch needs its endpoints to be known now. Preloading parses the patch and resolves
+            // its endpoints without the cost of JIT-compiling it - that happens in activate().
+            try
+            {
+                if (patch.preload (environment.makePatchManifest (lastRequestedManifestPath)))
+                {
+                    updateParameterInfoCachesFromLoadedPatch();
+                    updateAudioPortInfoCachesFromLoadedPatch (true);
+                    updateNotePortInfoCachesFromLoadedPatch();
+                }
+            }
+            catch (const std::exception&) {} // any errors will be reported when the patch is loaded in activate()
+        }
     }
 
     Impl (const Impl&) = delete;
@@ -223,7 +239,7 @@ struct Plugin::Impl
 private:
     //==============================================================================
     void updateParameterInfoCachesFromLoadedPatch();
-    void updateAudioPortInfoCachesFromLoadedPatch();
+    void updateAudioPortInfoCachesFromLoadedPatch (bool hostHasNotYetSeenPorts = false);
     void updateNotePortInfoCachesFromLoadedPatch();
 
     void resetIfRequestIsPending();
@@ -281,6 +297,9 @@ private:
 
     std::vector<const float*> flattenedInputChannelsScratchBuffer;
     std::vector<float*> flattenedOutputChannelsScratchBuffer;
+
+    // Stand-ins for any channels the host doesn't provide a buffer for
+    std::vector<float> silentInputChannel, discardedOutputChannel;
 
     double frequency = 0;
     uint32_t maxBlockSize = 0;
@@ -424,6 +443,9 @@ private:
         flattenedInputChannelsScratchBuffer.resize (sumTotalChannelsAcrossAudioEndpoints (patch.getInputEndpoints()));
         flattenedOutputChannelsScratchBuffer.resize (sumTotalChannelsAcrossAudioEndpoints (patch.getOutputEndpoints()));
 
+        silentInputChannel.assign (frequencyAndBlockSize.maxBlockSize, 0.0f);
+        discardedOutputChannel.resize (frequencyAndBlockSize.maxBlockSize);
+
         return true;
     }
 };
@@ -493,24 +515,33 @@ inline bool Plugin::Impl::clapPlugin_activate (double frequencyToUse, uint32_t, 
 
 inline void Plugin::Impl::updateParameterInfoCachesFromLoadedPatch()
 {
+    // Stepped CLAP parameters must take integer values, so these are exposed as an index into the
+    // options. The conversions use the same rules as the patch itself, so that the value reported
+    // to the host is always the option that the patch will actually use.
     const auto createDiscreteParameterMappingFunctions = [] (const auto& properties)
     {
-        struct FloatRange
+        const auto maxIndex = static_cast<float> (properties.getNumDiscreteOptions() - 1);
+        const auto range = properties.maxValue - properties.minValue;
+
+        // Snapping gives the value of the option that the patch will use, which is then
+        // exactly one of the evenly-spaced option values between minValue and maxValue
+        const auto toClapValue = [properties, maxIndex, range] (float v)
         {
-            float min;
-            float max;
+            if (maxIndex <= 0 || range == 0)
+                return 0.0f;
+
+            const auto snapped = properties.snapAndConstrainValue (v);
+            return std::clamp (std::round ((snapped - properties.minValue) * maxIndex / range), 0.0f, maxIndex);
         };
 
-        const auto clapRange = FloatRange { 0.0f, static_cast<float> (properties.getNumDiscreteOptions() - 1) };
-        const auto performerRange = FloatRange { properties.minValue, properties.maxValue };
-
-        const auto remap = [] (auto v, const auto& from, const auto& to)
+        const auto fromClapValue = [properties, maxIndex, range] (float v)
         {
-            return to.min + (v - from.min) * (to.max - to.min) / (from.max - from.min);
-        };
+            if (maxIndex <= 0)
+                return properties.snapAndConstrainValue (properties.defaultValue);
 
-        const auto toClapValue = [=] (auto v) { return remap (v, performerRange, clapRange); };
-        const auto fromClapValue = [=] (auto v) { return remap (v, clapRange, performerRange); };
+            const auto index = std::clamp (std::round (v), 0.0f, maxIndex);
+            return properties.snapAndConstrainValue (properties.minValue + range * index / maxIndex);
+        };
 
         return MappingFunctions { toClapValue, fromClapValue };
     };
@@ -643,11 +674,8 @@ inline void Plugin::Impl::updateParameterInfoCachesFromLoadedPatch()
     });
 }
 
-inline void Plugin::Impl::updateAudioPortInfoCachesFromLoadedPatch()
+inline void Plugin::Impl::updateAudioPortInfoCachesFromLoadedPatch (bool hostHasNotYetSeenPorts)
 {
-    infoForInputAudioPorts.clear();
-    infoForOutputAudioPorts.clear();
-
     const auto mapEndpointsToPorts = [] (const auto& endpoints, auto& infoForPortsToAppendTo)
     {
         const auto toPortType = [] (uint32_t count) -> const char*
@@ -696,14 +724,17 @@ inline void Plugin::Impl::updateAudioPortInfoCachesFromLoadedPatch()
         return false;
     };
 
-    if (environment.engineType == Environment::EngineType::AOT || hostSupportsChangingPortList())
+    // If the host has already been told about a set of ports and can't be asked to rescan them,
+    // keep reporting those: process() copes with any mismatch against the loaded patch's channels.
+    if (hostHasNotYetSeenPorts
+         || environment.engineType == Environment::EngineType::AOT
+         || hostSupportsChangingPortList())
     {
+        infoForInputAudioPorts.clear();
+        infoForOutputAudioPorts.clear();
+
         mapEndpointsToPorts (patch.getInputEndpoints(), infoForInputAudioPorts);
         mapEndpointsToPorts (patch.getOutputEndpoints(), infoForOutputAudioPorts);
-    }
-    else
-    {
-        // TODO: in the JIT case we need to fall back to stereo or something
     }
 }
 
@@ -832,9 +863,7 @@ inline clap_process_status Plugin::Impl::clapPlugin_process (const clap_process_
     {
         const auto& inputQueue = *state.in_events;
         auto& outputQueue = *state.out_events;
-        auto* inputs = state.audio_inputs;
-        auto* outputs = state.audio_outputs;
-        const auto count = state.frames_count;
+        const auto count = std::min (state.frames_count, static_cast<uint32_t> (silentInputChannel.size()));
 
         const auto shouldConsumeEvent = [] (const auto& e) -> bool
         {
@@ -845,30 +874,50 @@ inline clap_process_status Plugin::Impl::clapPlugin_process (const clap_process_
                 ||  e.type == CLAP_EVENT_PARAM_VALUE);
         };
 
-        const auto toChannelArrayView = [] (auto& scratch, const auto& portInfos, auto* clapBuffers, auto blockSize)
+        // Flattens the host's port buffers into one list of channels for the patch. The host may
+        // provide fewer ports or channels than the patch has (e.g. if the port list changed in a
+        // way it couldn't rescan), so any channel without a buffer gets the given stand-in.
+        // Currently only single precision (data32) is handled: no 64-bit flags are set on the ports.
+        const auto toChannelArrayView = [count] (auto& scratch, const auto& portInfos,
+                                                 const clap_audio_buffer_t* clapBuffers, uint32_t numClapBuffers,
+                                                 auto* standInChannel)
         {
-            // currently only handling single precision, i.e. data32. when setting up the audio ports we don't set any 64 bit flags.
-            const auto populateFlattenedChannelsScatchBuffer = [] (auto& flattened, const auto& info, auto* buffers)
+            size_t flattenedChannelsIndex = 0;
+
+            for (size_t port = 0; port < portInfos.size(); ++port)
             {
-                size_t flattenedChannelsIndex = 0;
-
-                for (size_t i = 0; i < info.size(); ++i)
+                for (uint32_t channel = 0; channel < portInfos[port].channel_count; ++channel)
                 {
-                    const auto& buffer = buffers[i];
-                    const auto channelCount = info[i].channel_count;
+                    if (flattenedChannelsIndex == scratch.size())
+                        break;
 
-                    for (uint32_t channel = 0; channel < channelCount; ++channel)
-                        flattened[flattenedChannelsIndex++] = buffer.data32[channel];
+                    auto* channelData = standInChannel;
+
+                    if (clapBuffers != nullptr && port < numClapBuffers)
+                    {
+                        const auto& buffer = clapBuffers[port];
+
+                        if (buffer.data32 != nullptr && channel < buffer.channel_count && buffer.data32[channel] != nullptr)
+                            channelData = buffer.data32[channel];
+                    }
+
+                    scratch[flattenedChannelsIndex++] = channelData;
                 }
-            };
+            }
 
-            populateFlattenedChannelsScatchBuffer (scratch, portInfos, clapBuffers);
+            while (flattenedChannelsIndex < scratch.size())
+                scratch[flattenedChannelsIndex++] = standInChannel;
 
-            return choc::buffer::createChannelArrayView (scratch.data(), static_cast<uint32_t> (scratch.size()), blockSize);
+            return choc::buffer::createChannelArrayView (scratch.data(), static_cast<uint32_t> (scratch.size()), count);
         };
 
-        auto inputChannels = toChannelArrayView (flattenedInputChannelsScratchBuffer, infoForInputAudioPorts, inputs, count);
-        auto outputChannels = toChannelArrayView (flattenedOutputChannelsScratchBuffer, infoForOutputAudioPorts, outputs, count);
+        auto inputChannels = toChannelArrayView (flattenedInputChannelsScratchBuffer, infoForInputAudioPorts,
+                                                 state.audio_inputs, state.audio_inputs_count,
+                                                 static_cast<const float*> (silentInputChannel.data()));
+
+        auto outputChannels = toChannelArrayView (flattenedOutputChannelsScratchBuffer, infoForOutputAudioPorts,
+                                                  state.audio_outputs, state.audio_outputs_count,
+                                                  discardedOutputChannel.data());
 
         forEachFilteredEventRange ({ 0, count },
                                    inputQueue,
@@ -1002,6 +1051,10 @@ inline void Plugin::Impl::dispatchEvent (const clap_event_header_t& eventHeader)
 
         patch.sendMIDIInputEvent (inputNotePortEndpointIds[static_cast<size_t> (portIndex)], msg, 0);
     };
+
+    // Event types are only meaningful within the core namespace: other IDs belong to extensions
+    if (eventHeader.space_id != CLAP_CORE_EVENT_SPACE_ID)
+        return;
 
     switch (eventHeader.type)
     {
@@ -1264,13 +1317,19 @@ inline bool Plugin::Impl::clapState_load (const clap_istream_t* stream)
         const auto state = choc::json::parse ({ reinterpret_cast<const char*> (serialised.data()), serialised.size() });
         const auto activated = patch.isPlayable();
 
-        if (! activated)
-        {
-            pendingStateToApplyWhenActivated = { serialised, state };
-            return true;
-        }
-
+        // If not yet activated, this applies the state to the preloaded patch (if there is one) so
+        // that the host sees the restored parameter values straight away. Loading the patch in
+        // activate() carries those values over, and then the full state (including non-parameter
+        // values) gets re-applied.
         patch.setFullStoredState (state);
+
+        if (! activated)
+            pendingStateToApplyWhenActivated = { serialised, state };
+
+        // The host must be told that parameter values have changed
+        if (const auto* hostParameters = getExtension<clap_host_params_t> (host, CLAP_EXT_PARAMS))
+            hostParameters->rescan (std::addressof (host), CLAP_PARAM_RESCAN_VALUES);
+
         return true;
     }
     catch (...) {}

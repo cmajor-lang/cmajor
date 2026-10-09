@@ -1735,7 +1735,9 @@ inline void runUnitTests (choc::test::TestProgress& progress)
     }
 
     {
-        CHOC_TEST (InactiveJITPluginHasNoNotePortsForPatchWithMidiInput)
+        // Hosts query the ports before activating, so a JIT plugin must preload enough of
+        // the patch to report them before it has been activated
+        CHOC_TEST (InactiveJITPluginHasNotePortsForPatchWithMidiInput)
 
         // setup
         StubHost host {};
@@ -1782,11 +1784,12 @@ inline void runUnitTests (choc::test::TestProgress& progress)
 
         const auto& notePortExtension = *reinterpret_cast<const clap_plugin_note_ports_t*> (maybeNotePortExtension);
 
-        CHOC_EXPECT_EQ (notePortExtension.count (plugin.get(), true), static_cast<uint32_t> (0));
+        CHOC_EXPECT_EQ (notePortExtension.count (plugin.get(), true), static_cast<uint32_t> (1));
         CHOC_EXPECT_EQ (notePortExtension.count (plugin.get(), false), static_cast<uint32_t> (0));
 
         clap_note_port_info_t out {};
-        CHOC_EXPECT_FALSE (notePortExtension.get (plugin.get(), 0, true, std::addressof (out)));
+        CHOC_EXPECT_TRUE (notePortExtension.get (plugin.get(), 0, true, std::addressof (out)));
+        CHOC_EXPECT_EQ (std::string (out.name), std::string ("midiInput"));
         CHOC_EXPECT_FALSE (notePortExtension.get (plugin.get(), 0, false, std::addressof (out)));
     }
 
