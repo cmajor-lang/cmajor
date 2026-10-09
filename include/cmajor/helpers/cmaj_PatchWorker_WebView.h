@@ -23,6 +23,8 @@
 #include "../../choc/choc/javascript/choc_javascript_Console.h"
 #include "../../choc/choc/gui/choc_WebView.h"
 #include "../../choc/choc/network/choc_MIMETypes.h"
+#include <mutex>
+#include <memory>
 
 
 namespace cmaj
@@ -40,18 +42,53 @@ inline void enableWebViewPatchWorker (Patch& p)
 
         ~Worker() override
         {
+            // The webview's callbacks can still be called until it has been deleted, so
+            // they must no longer reach this worker (or the patch that owns it).
+            {
+                std::lock_guard<std::recursive_mutex> lock (connection->lock);
+                connection->worker = nullptr;
+            }
+
             // Delete the webivew on the msg thread
             choc::messageloop::postMessage ([p = webview.release()]() { delete p; });
+        }
+
+        /// The webview's callbacks reach the worker via this, as the webview is deleted
+        /// asynchronously and may outlive it.
+        struct Connection
+        {
+            // Recursive, because a callback can cause the worker to be deleted
+            std::recursive_mutex lock;
+            Worker* worker = nullptr;
+        };
+
+        std::shared_ptr<Connection> connection = std::make_shared<Connection>();
+
+        /// Calls fn (worker) if the worker still exists, keeping it alive while doing so
+        static void callIfAlive (Connection& c, const std::function<void(Worker&)>& fn)
+        {
+            std::lock_guard<std::recursive_mutex> lock (c.lock);
+
+            if (c.worker != nullptr)
+                fn (*c.worker);
         }
 
         void initialise (std::function<void(const choc::value::ValueView&)> sendMessageToPatch,
                          std::function<void(const std::string&)> reportError) override
         {
+            connection->worker = this;
+
             choc::ui::WebView::Options opts;
             opts.enableDebugMode = true;
-            opts.fetchResource = [this] (const std::string& path) { return fetchResource (path); };
 
-            opts.webviewIsReady = [&p = patch,
+            opts.fetchResource = [c = connection] (const std::string& path)
+            {
+                std::optional<choc::ui::WebView::Options::Resource> result;
+                callIfAlive (*c, [&] (Worker& w) { result = w.fetchResource (path); });
+                return result;
+            };
+
+            opts.webviewIsReady = [c = connection,
                                    send2 = std::move (sendMessageToPatch),
                                    reportError2 = std::move (reportError)] (choc::ui::WebView& w)
             {
@@ -79,24 +116,26 @@ inline void enableWebViewPatchWorker (Patch& p)
                     return {};
                 });
 
-                w.bind ("cmaj_sendMessageToServer", [send = std::move (send2)] (const choc::value::ValueView& args) -> choc::value::Value
+                w.bind ("cmaj_sendMessageToServer", [c, send = std::move (send2)] (const choc::value::ValueView& args) -> choc::value::Value
                 {
                     if (args.isArray() && args.size() != 0)
-                        send (args[0]);
+                        callIfAlive (*c, [&] (Worker&) { send (args[0]); });
 
                     return {};
                 });
 
-                w.bind ("cmaj_reportError", [reportErrorFn = std::move (reportError2)] (const choc::value::ValueView& args) -> choc::value::Value
+                w.bind ("cmaj_reportError", [c, reportErrorFn = std::move (reportError2)] (const choc::value::ValueView& args) -> choc::value::Value
                 {
                     if (args.isArray() && args.size() != 0)
-                        reportErrorFn (args[0].toString());
+                        callIfAlive (*c, [&] (Worker&) { reportErrorFn (args[0].toString()); });
 
                     return {};
                 });
 
-                w.bind ("_internalReadResourceAsAudioData", [&p] (const choc::value::ValueView& args) -> choc::value::Value
+                w.bind ("_internalReadResourceAsAudioData", [c] (const choc::value::ValueView& args) -> choc::value::Value
                 {
+                    choc::value::Value result;
+
                     try
                     {
                         if (args.isArray() && args.size() != 0)
@@ -108,15 +147,18 @@ inline void enableWebViewPatchWorker (Patch& p)
                                 if (args.size() > 1)
                                     annotation = args[1];
 
-                                if (auto manifest = p.getManifest())
-                                    return readManifestResourceAsAudioData (*manifest, path, annotation);
+                                callIfAlive (*c, [&] (Worker& worker)
+                                {
+                                    if (auto manifest = worker.patch.getManifest())
+                                        result = readManifestResourceAsAudioData (*manifest, path, annotation);
+                                });
                             }
                         }
                     }
                     catch (...)
                     {}
 
-                    return {};
+                    return result;
                 });
 
                 w.navigate ({});
@@ -138,10 +180,10 @@ inline void enableWebViewPatchWorker (Patch& p)
         void sendMessage (const std::string& msg, std::function<void(const std::string&)> reportError) override
         {
             webview->evaluateJavascript ("window.currentView?.deliverMessageFromServer (" + msg + ");",
-                                         [reportErrorFn = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
+                                         [c = connection, reportErrorFn = std::move (reportError)] (const std::string& error, const choc::value::ValueView&)
             {
                 if (! error.empty())
-                    reportErrorFn (error);
+                    callIfAlive (*c, [&] (Worker&) { reportErrorFn (error); });
             });
         }
 
