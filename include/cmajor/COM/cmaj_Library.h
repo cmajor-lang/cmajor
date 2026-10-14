@@ -18,8 +18,13 @@
 
 #pragma once
 
-#include "../../choc/choc/platform/choc_DynamicLibrary.h"
-#include "../../choc/choc/platform/choc_Platform.h"
+#if __has_include("choc/platform/choc_Platform.h")
+ #include "choc/platform/choc_DynamicLibrary.h"
+ #include "choc/platform/choc_Platform.h"
+#else
+ #include "../../choc/choc/platform/choc_DynamicLibrary.h"
+ #include "../../choc/choc/platform/choc_Platform.h"
+#endif
 #include "cmaj_EngineFactoryInterface.h"
 #include <memory>
 

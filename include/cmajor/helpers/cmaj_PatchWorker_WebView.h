@@ -19,10 +19,17 @@
 #pragma once
 
 #include "cmaj_Patch.h"
-#include "../../choc/choc/javascript/choc_javascript.h"
-#include "../../choc/choc/javascript/choc_javascript_Console.h"
-#include "../../choc/choc/gui/choc_WebView.h"
-#include "../../choc/choc/network/choc_MIMETypes.h"
+#if __has_include("choc/platform/choc_Platform.h")
+ #include "choc/javascript/choc_javascript.h"
+ #include "choc/javascript/choc_javascript_Console.h"
+ #include "choc/gui/choc_WebView.h"
+ #include "choc/network/choc_MIMETypes.h"
+#else
+ #include "../../choc/choc/javascript/choc_javascript.h"
+ #include "../../choc/choc/javascript/choc_javascript_Console.h"
+ #include "../../choc/choc/gui/choc_WebView.h"
+ #include "../../choc/choc/network/choc_MIMETypes.h"
+#endif
 #include <mutex>
 #include <memory>
 

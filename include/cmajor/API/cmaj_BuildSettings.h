@@ -18,7 +18,11 @@
 
 #pragma once
 
-#include "../../choc/choc/text/choc_JSON.h"
+#if __has_include("choc/platform/choc_Platform.h")
+ #include "choc/text/choc_JSON.h"
+#else
+ #include "../../choc/choc/text/choc_JSON.h"
+#endif
 
 
 namespace cmaj

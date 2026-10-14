@@ -185,6 +185,7 @@ target_sources(RenderPatchSharedLib
 
 target_link_libraries(RenderPatchSharedLib
     PRIVATE
+        choc::choc
         ${CMAKE_DL_LIBS}
         $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
         ${EXTRA_LIBS}

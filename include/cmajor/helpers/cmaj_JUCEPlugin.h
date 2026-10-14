@@ -32,7 +32,11 @@
 
 #include <optional>
 #include <utility>
-#include "../../choc/choc/memory/choc_xxHash.h"
+#if __has_include("choc/platform/choc_Platform.h")
+ #include "choc/memory/choc_xxHash.h"
+#else
+ #include "../../choc/choc/memory/choc_xxHash.h"
+#endif
 #include "cmaj_PatchWebView.h"
 #include "cmaj_GeneratedCppEngine.h"
 

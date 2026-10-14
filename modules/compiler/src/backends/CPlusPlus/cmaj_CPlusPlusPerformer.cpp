@@ -137,6 +137,7 @@ struct TemporaryCompiledDLL
             build (getCompiler(),
                 getOptimisationFlag (buildSettings.getOptimisationLevel())
                 + " /I" + cmajorHeaderPath
+                + " /I" + cmajorHeaderPath + "/choc"
                 + " /std:c++17 /Zc:__cplusplus /bigobj " + extraCompileArgs,
                 extraLinkerArgs);
         }
@@ -144,6 +145,7 @@ struct TemporaryCompiledDLL
         build (getCompiler(),
                getOptimisationFlag (buildSettings.getOptimisationLevel())
                + " -I" + cmajorHeaderPath
+               + " -I" + cmajorHeaderPath + "/choc"
                + " -std=c++17 -fPIC -Wno-#pragma-messages -Wno-parentheses-equality -Wno-deprecated-declarations -Wno-tautological-compare -Werror -Wall -Wextra " + extraCompileArgs,
                extraLinkerArgs);
 #endif

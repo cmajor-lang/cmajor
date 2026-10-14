@@ -18,10 +18,17 @@
 
 #pragma once
 
-#include "../../choc/choc/containers/choc_SmallVector.h"
-#include "../../choc/choc/containers/choc_COM.h"
-#include "../../choc/choc/text/choc_JSON.h"
-#include "../../choc/choc/audio/choc_MIDI.h"
+#if __has_include("choc/platform/choc_Platform.h")
+ #include "choc/containers/choc_SmallVector.h"
+ #include "choc/containers/choc_COM.h"
+ #include "choc/text/choc_JSON.h"
+ #include "choc/audio/choc_MIDI.h"
+#else
+ #include "../../choc/choc/containers/choc_SmallVector.h"
+ #include "../../choc/choc/containers/choc_COM.h"
+ #include "../../choc/choc/text/choc_JSON.h"
+ #include "../../choc/choc/audio/choc_MIDI.h"
+#endif
 
 
 namespace cmaj

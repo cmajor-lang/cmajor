@@ -18,7 +18,11 @@
 
 #pragma once
 
-#include "../../choc/choc/containers/choc_COM.h"
+#if __has_include("choc/platform/choc_Platform.h")
+ #include "choc/containers/choc_COM.h"
+#else
+ #include "../../choc/choc/containers/choc_COM.h"
+#endif
 
 #ifdef __clang__
  #pragma clang diagnostic push

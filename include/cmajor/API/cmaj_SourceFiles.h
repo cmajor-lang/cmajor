@@ -18,8 +18,13 @@
 
 #pragma once
 
-#include "../../choc/choc/text/choc_UTF8.h"
-#include "../../choc/choc/containers/choc_Value.h"
+#if __has_include("choc/platform/choc_Platform.h")
+ #include "choc/text/choc_UTF8.h"
+ #include "choc/containers/choc_Value.h"
+#else
+ #include "../../choc/choc/text/choc_UTF8.h"
+ #include "../../choc/choc/containers/choc_Value.h"
+#endif
 
 #ifndef CMAJ_ASSERT
  #define CMAJ_ASSERT(x) CHOC_ASSERT(x)
