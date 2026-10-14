@@ -30,6 +30,7 @@
  #undef Status
 #endif
 
+#include <optional>
 #include <utility>
 #include "../../choc/choc/memory/choc_xxHash.h"
 #include "cmaj_PatchWebView.h"
@@ -445,11 +446,33 @@ protected:
         changes.nonParameterStateChanged = true;
 
         setLatencySamples (newLatency);
+        forgetEditorSizeIfManifestViewSizeChanged();
         notifyEditorPatchChanged();
         updateHostDisplay (changes);
 
         if (patchChangeCallback)
             patchChangeCallback (static_cast<DerivedType&> (*this));
+    }
+
+    /// The editor remembers the size it was last given, and that wins over the manifest's
+    /// view size. But if the manifest's own size has changed since the patch was last
+    /// built, the patch has been edited to ask for a new size, so the remembered one is
+    /// dropped and the editor takes the manifest's.
+    void forgetEditorSizeIfManifestViewSizeChanged()
+    {
+        std::optional<std::pair<uint32_t, uint32_t>> newSize;
+
+        if (auto manifest = patch->getManifest())
+            if (auto view = manifest->findDefaultView())
+                newSize = std::make_pair (view->getWidth(), view->getHeight());
+
+        if (manifestViewSize.has_value() && manifestViewSize != newSize)
+        {
+            lastEditorWidth = 0;
+            lastEditorHeight = 0;
+        }
+
+        manifestViewSize = newSize;
     }
 
     void setStatusMessage (const std::string& newMessage, bool isError)
@@ -567,6 +590,10 @@ protected:
             lastEditorWidth = 0;
             lastEditorHeight = 0;
         }
+
+        // The editor size has just been restored, so the next build should only record the
+        // manifest's view size, not treat a difference from the previous patch as a change
+        manifestViewSize.reset();
 
         if (auto state = newState.getChildWithName (ids.STATE); state.isValid())
         {
@@ -1143,6 +1170,7 @@ protected:
     };
 
     int lastEditorWidth = 0, lastEditorHeight = 0;
+    std::optional<std::pair<uint32_t, uint32_t>> manifestViewSize;
 
     //==============================================================================
     struct IDs

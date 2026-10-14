@@ -208,8 +208,28 @@ $EXTRA_SETUP_CODE$
 window.setStatusMessage = (newMessage) =>
 {
     isViewActive = false;
-    container.innerHTML = `<pre id="cmaj-error-text">${newMessage}</pre>`;
+
+    // The message is plain text (compiler output, an exception message), which can
+    // contain '<' or '&', so it mustn't be parsed as HTML
+    const text = document.createElement ("pre");
+    text.id = "cmaj-error-text";
+    text.textContent = newMessage;
+    container.replaceChildren (text);
 };
+
+function describeViewError (error)
+{
+    const text = String (error);
+    const stack = error?.stack ?? "";
+
+    // V8 starts the stack with the message line, WebKit lists only the frames
+    const frames = (stack.startsWith (text) ? stack.substring (text.length) : stack).replace (/^\n+/, "").trimEnd();
+
+    // WebKit gives the place a module failed to parse in non-standard properties
+    const location = error?.sourceURL ? error.sourceURL + (error.line ? ":" + error.line : "") : "";
+
+    return [text, frames || location].filter (s => s.length > 0).join ("\n\n");
+}
 
 async function createViewIfNeeded (patchConnection)
 {
@@ -218,9 +238,22 @@ async function createViewIfNeeded (patchConnection)
 
     container.innerHTML = "";
 
-    await initialiseContainer();
+    let view;
 
-    const view = await createPatchViewHolder (patchConnection, viewInfo);
+    // If the view's module fails to load (a syntax error, a missing import) or its
+    // factory function throws, say so - otherwise the window just stays empty
+    try
+    {
+        await initialiseContainer();
+        view = await createPatchViewHolder (patchConnection, viewInfo);
+    }
+    catch (error)
+    {
+        const file = viewInfo?.src ? " '" + viewInfo.src + "'" : "";
+        const name = patchManifest?.name ? " for '" + patchManifest.name + "'" : "";
+        window.setStatusMessage ("Error loading the view" + file + name + ":\n\n" + describeViewError (error));
+        return;
+    }
 
     if (view)
     {
