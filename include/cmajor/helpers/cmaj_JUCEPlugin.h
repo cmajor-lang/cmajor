@@ -91,7 +91,10 @@ public:
             executeOrDeferToMessageThread ([this] { handlePatchChange(); });
         };
 
-        patch->statusChanged = [this] (const auto& s) { setStatusMessage (s.statusMessage, s.messageList.hasErrors()); };
+        patch->statusChanged = [this] (const auto& s)
+        {
+            setStatusMessage (addUnexposedParameterWarning (s.statusMessage), s.messageList.hasErrors());
+        };
 
         patch->handleOutputEvent = [this] (uint64_t frame, std::string_view endpointID, const choc::value::ValueView& v)
         {
@@ -734,6 +737,16 @@ protected:
             return true;
         }
 
+        bool clearPatchParam()
+        {
+            if (patchParam == nullptr)
+                return false;
+
+            detach();
+            patchParam = nullptr;
+            return true;
+        }
+
         void detach()
         {
             if (patchParam != nullptr)
@@ -809,11 +822,18 @@ protected:
         const juce::String paramID;
     };
 
+    /// For a fixed patch, this builds the hosted parameter tree from the patch's current
+    /// parameter list. Hosts cache the parameter objects as soon as they see them, so the
+    /// tree is only ever created once, and should be created in the constructor if possible.
     void createParameterTree()
     {
-        // for a precompiled plugin, we can build a complete group structure
         if constexpr (DerivedType::isPrecompiled || DerivedType::isFixedPatch)
         {
+            if (hasCreatedParameterTree)
+                return;
+
+            hasCreatedParameterTree = true;
+
             struct ParameterTreeBuilder
             {
                 Parameter* add (const PatchParameterPtr& param)
@@ -874,23 +894,92 @@ protected:
 
     bool updateParameters()
     {
-        bool changed = false;
         auto params = patch->getParameterList();
 
         if constexpr (DerivedType::isPrecompiled || DerivedType::isFixedPatch)
         {
-            if (parameters.empty())
+            // While a new build is being swapped in (or after an unload or failed build), the
+            // patch reports an empty parameter list. Ignore that state entirely, so the tree
+            // isn't locked in empty, and the existing bindings survive until a real build arrives
+            if (params.empty())
+                return false;
+
+            if (! hasCreatedParameterTree)
                 createParameterTree();
+
+            return rebindParametersByID (params);
+        }
+        else
+        {
+            // The JIT loader's parameters are a pool of generic slots, so they're re-used in
+            // order, and the list is topped-up if a new patch has more parameters
+            ensureNumParameters (params.size());
+
+            bool changed = false;
+
+            for (size_t i = 0; i < params.size(); ++i)
+                changed = parameters[i]->setPatchParam (params[i]) || changed;
+
+            return changed;
+        }
+    }
+
+    /// A fixed patch can be rebuilt (e.g. after its source files are edited) with parameters
+    /// added, removed or reordered. The host identifies our parameters by their endpoint IDs
+    /// and has cached the parameter objects, so these can't be replaced or added to - instead,
+    /// each one is re-bound to the endpoint with the same ID in the new build. A parameter
+    /// whose endpoint has gone becomes inert, and a new endpoint can't be exposed to the host
+    /// until the plugin is re-instantiated.
+    bool rebindParametersByID (choc::span<PatchParameterPtr> params)
+    {
+        bool changed = false;
+
+        for (auto* parameter : parameters)
+        {
+            if (auto newParam = findPatchParameter (params, parameter->paramID))
+                changed = parameter->setPatchParam (std::move (newParam)) || changed;
+            else
+                changed = parameter->clearPatchParam() || changed;
         }
 
-        // A JIT-compiled patch can be rebuilt (e.g. after its source files are edited) with
-        // more parameters than the ones we're already holding, so top-up the list if needed
-        ensureNumParameters (params.size());
-
-        for (size_t i = 0; i < params.size(); ++i)
-            changed = parameters[i]->setPatchParam (params[i]) || changed;
-
         return changed;
+    }
+
+    static PatchParameterPtr findPatchParameter (choc::span<PatchParameterPtr> params, const juce::String& endpointID)
+    {
+        for (auto& p : params)
+            if (endpointID == juce::String (p->properties.endpointID))
+                return p;
+
+        return {};
+    }
+
+    /// Appends a warning to a status message if the patch has parameters that the hosted
+    /// parameter tree can't expose, because they were added by a rebuild.
+    std::string addUnexposedParameterWarning (std::string message) const
+    {
+        if constexpr (DerivedType::isPrecompiled || DerivedType::isFixedPatch)
+        {
+            if (! hasCreatedParameterTree || message.empty())
+                return message;
+
+            std::vector<std::string> unexposedNames;
+
+            for (auto& p : patch->getParameterList())
+            {
+                auto isExposed = std::any_of (parameters.begin(), parameters.end(),
+                                              [&] (const Parameter* hosted) { return hosted->paramID == juce::String (p->properties.endpointID); });
+
+                if (! isExposed)
+                    unexposedNames.push_back (p->properties.name);
+            }
+
+            if (! unexposedNames.empty())
+                message += "\n\nNew parameters (" + choc::text::joinStrings (unexposedNames, ", ")
+                             + ") will not be visible to the host until the plugin is reloaded";
+        }
+
+        return message;
     }
 
     void ensureNumParameters (size_t num)
@@ -904,6 +993,7 @@ protected:
     }
 
     std::vector<Parameter*> parameters;
+    bool hasCreatedParameterTree = false;
 
     //==============================================================================
     //==============================================================================
@@ -1245,6 +1335,9 @@ public:
         : JUCEPluginBase<SinglePatchJITPlugin> (patchToUse, preloadBusLayout (*patchToUse, manifestLocationToUse)),
           manifestLocation (std::move (manifestLocationToUse))
     {
+        // The preload has already found the patch's parameters, so build the tree now, before
+        // a host can see it. If the preload failed, the tree will be empty and stay that way.
+        createParameterTree();
         setNewStateAsync (createEmptyState (manifestLocation));
     }
 
@@ -1294,6 +1387,10 @@ public:
 
         this->applyRateAndBlockSize (44100, 128);
         super::setNewState (this->createEmptyState ({}));
+
+        // If the patch-change notification was deferred to the message thread, the tree
+        // won't have been created yet, so do it here, before a host can see it
+        this->createParameterTree();
     }
 
     bool prepareManifest (Patch::LoadParams& loadParams, const juce::ValueTree& newState) override
