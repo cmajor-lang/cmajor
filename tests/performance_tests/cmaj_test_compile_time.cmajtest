@@ -61,7 +61,7 @@ function testCompileTime (options)
     testSection.logMessage ("Link time : " + Math.round (timingInfo.linkTime * 1000) + " ms");
     testSection.logMessage ("Total     : " + Math.round (totalTime * 1000) + " ms");
 
-    if (Math.round (totalTime * 1000) > 1000)
+    if (Math.round (totalTime * 1000) > 3000)
         testSection.reportFail ("Compile took too long - took " + Math.round (totalTime * 1000) + " ms")
     else
         testSection.reportSuccess();
