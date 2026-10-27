@@ -650,7 +650,7 @@ inline void Plugin::Impl::updateParameterInfoCachesFromLoadedPatch()
     // thread, so that we can avoid dispatching it again via the gui.
     const auto toEditorUpdateBlockingFunction = [this] (const auto& fn)
     {
-        return [=] (auto&&... args)
+        return [=, this] (auto&&... args)
         {
             blockEditorDispatch = true;
             fn (std::forward<decltype (args)> (args)...);
