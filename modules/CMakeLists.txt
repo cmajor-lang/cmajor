@@ -383,7 +383,6 @@ function (MAKE_CMAJ_LIBRARY)
     )
 
     if(CMAKE_CXX_STANDARD EQUAL 23)
-        # add_compile_options(-Wno-deprecated-declarations)
         target_compile_options (${CMAJ_LIBRARY_NAME} PRIVATE -Wno-deprecated-declarations)
     endif()
 
