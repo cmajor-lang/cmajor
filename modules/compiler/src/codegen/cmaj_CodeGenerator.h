@@ -545,8 +545,13 @@ private:
 
     void emitContinue (const AST::ContinueStatement& c)
     {
-        auto& loop = AST::castToRef<AST::LoopStatement> (c.targetBlock);
-        emitBreak (AST::castToRef<AST::Statement> (loop.body));
+        if (auto loop = AST::castTo<AST::LoopStatement> (c.targetBlock))
+        {
+            emitBreak (AST::castToRef<AST::Statement> (loop->body));
+            return;
+        }
+
+        emitBreak (AST::castToRef<AST::Statement> (c.targetBlock));
     }
 
     void emitBreak (const AST::BreakStatement& b)

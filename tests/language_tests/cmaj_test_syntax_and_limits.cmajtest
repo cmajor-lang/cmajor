@@ -2645,3 +2645,20 @@ bool test()
     let r = copyType (v);
     return true;
 }
+
+
+## testCompile ()
+
+processor advance  [[ main ]] { output stream int out; void main() { advance(); }}
+
+## testCompile ()
+
+processor template  [[ main ]] { output stream int out; void main() { advance(); }}
+
+## testCompile ()
+
+processor post  [[ main ]] { output stream int out; void main() { advance(); }}
+
+## testCompile ()
+
+processor pre  [[ main ]] { output stream int out; void main() { advance(); }}

@@ -166,11 +166,14 @@ namespace cmaj::cpp_utils
             "compl", "concept", "const", "consteval", "constexpr", "constinit", "const_cast", "continue", "co_await", "co_return",
             "co_yield", "decltype", "default", "delete", "do", "double", "dynamic_cast", "else", "enum", "explicit", "export",
             "extern", "false", "final", "float", "for", "friend", "goto", "if", "import", "inline", "int", "long", "module",
-            "mutable", "namespace", "new", "noexcept", "not", "not_eq", "nullptr", "operator", "or", "or_eq", "override",
-            "private", "protected", "public", "reflexpr", "register", "reinterpret_cast", "requires", "return", "short",
+            "mutable", "namespace", "new", "noexcept", "not", "not_eq", "nullptr", "operator", "or", "or_eq", "override", "post",
+            "pre", "private", "protected", "public", "reflexpr", "register", "reinterpret_cast", "requires", "return", "short",
             "signed", "sizeof", "static", "static_assert", "static_cast", "std", "struct", "switch", "synchronized", "template",
             "this", "thread_local", "throw", "transaction_safe", "transaction_safe_dynamic", "true", "try", "typedef", "typeid",
             "typename", "union", "unsigned", "using", "virtual", "void", "volatile", "wchar_t", "while", "xor", "xor_eq",
+
+            // Cmajor reserved identifiers which can cause problems
+            "advance",
 
             // these are used in the generated boilerplate
             "name", "numInputEndpoints", "numOutputEndpoints", "numAudioInputChannels", "numAudioOutputChannels",
