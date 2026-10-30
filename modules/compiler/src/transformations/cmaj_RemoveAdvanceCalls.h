@@ -205,9 +205,18 @@ struct RemoveAdvanceCalls  : public AST::NonParameterisedObjectVisitor
                         setResumeIndexToValue (block, resumeIndexRef, advanceIndex, insertIndex++);
                         block.setStatement (static_cast<size_t> (insertIndex), block.allocateChild<AST::ReturnStatement>()); // replace advance call
 
-                        auto& resumeBlock = createResumeBlock (AST::castToRef<AST::ScopeBlock> (parentLoop->getParentScopeRef()), advanceIndex++);
+                        auto& loopParent = AST::castToRef<AST::ScopeBlock> (parentLoop->getParentScopeRef());
+                        auto loopIndex = loopParent.findIndexOfStatementContaining (*parentLoop);
+                        CMAJ_ASSERT (loopIndex >= 0);
+
+                        auto& resumeBlock = createResumeBlock (loopParent, advanceIndex++);
                         forwardBranchStatement.targetBlocks.addReference (resumeBlock);
-                        parentLoop->replaceWith (resumeBlock);
+
+                        // This must only replace the loop's slot in its parent block: calling
+                        // Object::replaceWith() would re-point *every* reference to the loop at the
+                        // new block, including the targetBlock of any break or continue statements
+                        // inside it, which would silently change their meaning
+                        loopParent.setStatement (static_cast<size_t> (loopIndex), resumeBlock);
                         resumeBlock.addStatement (*parentLoop);
                         continue;
                     }

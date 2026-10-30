@@ -601,7 +601,7 @@ function testConsole (expectedConsoleMsg, options)
     let performer = engine.createPerformer();
 
     let framesToRender = 1024;
-    let framesPerBlock = 64;
+    let framesPerBlock = 8;
     let consoleMsg = "";
 
     while (framesToRender > 0)
