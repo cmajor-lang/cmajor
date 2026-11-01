@@ -790,11 +790,13 @@ struct ConstantAggregate  : public ConstantValueBase
         {
             auto& elementType = vec->getElementType();
 
-            if (elementType.isPrimitiveInt32())    return toVectorValue<int32_t> (numResultElements);
-            if (elementType.isPrimitiveInt64())    return toVectorValue<int64_t> (numResultElements);
-            if (elementType.isPrimitiveFloat32())  return toVectorValue<float>   (numResultElements);
-            if (elementType.isPrimitiveFloat64())  return toVectorValue<double>  (numResultElements);
-            if (elementType.isPrimitiveBool())     return toVectorValue<bool>    (numResultElements);
+            if (elementType.isPrimitiveInt32())      return toVectorValue<int32_t>       (numResultElements);
+            if (elementType.isPrimitiveInt64())      return toVectorValue<int64_t>       (numResultElements);
+            if (elementType.isPrimitiveFloat32())    return toVectorValue<float>         (numResultElements);
+            if (elementType.isPrimitiveFloat64())    return toVectorValue<double>        (numResultElements);
+            if (elementType.isPrimitiveBool())       return toVectorValue<bool>          (numResultElements);
+            if (elementType.isPrimitiveComplex32())  return toComplexVectorValue<float>  ("complex32", numResultElements);
+            if (elementType.isPrimitiveComplex64())  return toComplexVectorValue<double> ("complex64", numResultElements);
 
             CMAJ_ASSERT_FALSE;
         }
@@ -833,6 +835,43 @@ struct ConstantAggregate  : public ConstantValueBase
         {
             return static_cast<ElementType> (getElement (i < values.size() ? i : 0).toValue (nullptr));
         });
+    }
+
+    template <typename ElementType>
+    choc::value::Value toComplexVectorValue (std::string_view className, uint32_t numElements) const
+    {
+        auto createComponentVector = [this, numElements] (bool isReal)
+        {
+            if (values.empty())
+                return choc::value::createVector (numElements, [] (uint32_t) { return ElementType(); });
+
+            return choc::value::createVector (numElements, [this, isReal] (uint32_t i)
+            {
+                return getComplexComponent<ElementType> (getElementValueRef (i), isReal);
+            });
+        };
+
+        return choc::value::createObject (className,
+                                          "real", createComponentVector (true),
+                                          "imag", createComponentVector (false));
+    }
+
+    template <typename ElementType>
+    static ElementType getComplexComponent (const ConstantValueBase& value, bool isReal)
+    {
+        if constexpr (std::is_same_v<ElementType, float>)
+        {
+            if (auto c = value.getAsComplex32())
+                return isReal ? c->real() : c->imag();
+        }
+        else
+        {
+            if (auto c = value.getAsComplex64())
+                return isReal ? c->real() : c->imag();
+        }
+
+        CMAJ_ASSERT_FALSE;
+        return {};
     }
 
     bool setFromValue (const choc::value::ValueView& v) override
