@@ -41,6 +41,12 @@ T vec_remainder<T>   (T v1, T v2) { T r; for (wrap<T.size> i) r[i] = remainder (
 T vec_abs<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = abs        (n[i]);  return r; }
 T vec_sqrt<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = sqrt       (n[i]);  return r; }
 T vec_exp<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = exp        (n[i]);  return r; }
+T vec_sinh<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = sinh       (n[i]);  return r; }
+T vec_cosh<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = cosh       (n[i]);  return r; }
+T vec_tanh<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = tanh       (n[i]);  return r; }
+T vec_asinh<T>       (T n) { T r;  for (wrap<T.size> i) r[i] = asinh      (n[i]);  return r; }
+T vec_acosh<T>       (T n) { T r;  for (wrap<T.size> i) r[i] = acosh      (n[i]);  return r; }
+T vec_atanh<T>       (T n) { T r;  for (wrap<T.size> i) r[i] = atanh      (n[i]);  return r; }
 T vec_log<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = log        (n[i]);  return r; }
 T vec_log10<T>       (T n) { T r;  for (wrap<T.size> i) r[i] = log10      (n[i]);  return r; }
 T vec_sin<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = sin        (n[i]);  return r; }
@@ -682,6 +688,160 @@ float64 log10 (float64 x)
 }
 
 //==============================================================================
+float32 log1p (float32 x)
+{
+    const float32 ln2_hi = 6.9313812256e-01f,
+                  ln2_lo = 9.0580006145e-06f,
+                  Lg1 = 0.66666662693f,
+                  Lg2 = 0.40000972152f,
+                  Lg3 = 0.28498786688f,
+                  Lg4 = 0.24279078841f;
+
+    // the comparisons below treat the whole word as unsigned, so keep it in an int64
+    let ix = int64 (reinterpretFloatToInt (x)) & 0xffffffff_i64;
+
+    float32 c = 0;
+    float32 f = 0;
+    int32 k = 1;
+
+    if (ix < 0x3ed413d0_i64 || (ix >> 31) != 0)
+    {
+        if (ix >= 0xbf800000_i64)
+        {
+            if (x == -1.0f)
+                return -inf;
+
+            return nan;
+        }
+
+        if ((ix << 1) < 0x67000000_i64)
+            return x;
+
+        if (ix <= 0xbe95f619_i64)
+        {
+            k = 0;
+            c = 0;
+            f = x;
+        }
+    }
+    else if (ix >= 0x7f800000_i64)
+    {
+        return x;
+    }
+
+    if (k != 0)
+    {
+        let u = 1.0f + x;
+        var iu = int64 (reinterpretFloatToInt (u)) & 0xffffffff_i64;
+        iu += 0x3f800000_i64 - 0x3f3504f3_i64;
+        k = int32 (iu >> 23) - 0x7f;
+
+        if (k < 25)
+        {
+            c = k >= 2 ? 1.0f - (u - x) : x - (u - 1.0f);
+            c /= u;
+        }
+        else
+        {
+            c = 0;
+        }
+
+        iu = (iu & 0x007fffff_i64) + 0x3f3504f3_i64;
+        f = reinterpretIntToFloat (int32 (iu)) - 1.0f;
+    }
+
+    float32 s = f / (2.0f + f);
+    float32 z = s * s;
+    float32 w = z * z;
+    float32 t1 = w * (Lg2 + w * Lg4);
+    float32 t2 = z * (Lg1 + w * Lg3);
+    float32 R = t2 + t1;
+    float32 hfsq = 0.5f * f * f;
+    let dk = float32 (k);
+
+    return s * (hfsq + R) + (dk * ln2_lo + c) - hfsq + f + dk * ln2_hi;
+}
+
+//==============================================================================
+float64 log1p (float64 x)
+{
+    const float64 ln2_hi = 6.93147180369123816490e-01,
+                  ln2_lo = 1.90821492927058770002e-10,
+                  Lg1 = 6.666666666666735130e-01,
+                  Lg2 = 3.999999999940941908e-01,
+                  Lg3 = 2.857142874366239149e-01,
+                  Lg4 = 2.222219843214978396e-01,
+                  Lg5 = 1.818357216161805012e-01,
+                  Lg6 = 1.531383769920937332e-01,
+                  Lg7 = 1.479819860511658591e-01;
+
+    // the comparisons below treat the high word as unsigned, so keep it in an int64
+    let hx = (reinterpretFloatToInt (x) >>> 32) & 0xffffffff_i64;
+
+    float64 c = 0;
+    float64 f = 0;
+    int32 k = 1;
+
+    if (hx < 0x3fda827a_i64 || (hx >> 31) != 0)
+    {
+        if (hx >= 0xbff00000_i64)
+        {
+            if (x == -1.0)
+                return -inf;
+
+            return nan;
+        }
+
+        if ((hx << 1) < 0x79400000_i64)
+            return x;
+
+        if (hx <= 0xbfd2bec4_i64)
+        {
+            k = 0;
+            c = 0;
+            f = x;
+        }
+    }
+    else if (hx >= 0x7ff00000_i64)
+    {
+        return x;
+    }
+
+    if (k != 0)
+    {
+        let u = 1.0 + x;
+        let ubits = reinterpretFloatToInt (u);
+        var hu = (ubits >>> 32) & 0xffffffff_i64;
+        hu += 0x3ff00000_i64 - 0x3fe6a09e_i64;
+        k = int32 (hu >> 20) - 0x3ff;
+
+        if (k < 54)
+        {
+            c = k >= 2 ? 1.0 - (u - x) : x - (u - 1.0);
+            c /= u;
+        }
+        else
+        {
+            c = 0;
+        }
+
+        hu = (hu & 0x000fffff_i64) + 0x3fe6a09e_i64;
+        f = reinterpretIntToFloat ((hu << 32) | (ubits & 0xffffffff_i64)) - 1.0;
+    }
+
+    float64 hfsq = 0.5 * f * f;
+    float64 s = f / (2.0 + f);
+    float64 z = s * s;
+    float64 w = z * z;
+    float64 t1 = w * (Lg2 + w * (Lg4 + w * Lg6));
+    float64 t2 = z * (Lg1 + w * (Lg3 + w * (Lg5 + w * Lg7)));
+    float64 R = t2 + t1;
+    float64 dk = k;
+
+    return s * (hfsq + R) + (dk * ln2_lo + c) - hfsq + f + dk * ln2_hi;
+}
+
+//==============================================================================
 float32 exp (float32 x)
 {
     const float32 ln2hi = 6.9314575195e-1f,
@@ -794,6 +954,563 @@ float64 exp (float64 x)
     float64 y = 1 + (x * c / (2 - c) - lo + hi);
 
     return k == 0 ? y : helpers::scalbn (y, k);
+}
+
+//==============================================================================
+float32 expm1 (float32 x)
+{
+    const float32 ln2_hi = 6.9313812256e-01f,
+                  ln2_lo = 9.0580006145e-06f,
+                  invln2 = 1.4426950216e+00f,
+                  Q1 = -3.3333212137e-02f,
+                  Q2 = 1.5807170421e-03f;
+
+    let ix = reinterpretFloatToInt (x);
+    bool negative = (ix >>> 31) != 0;
+    let hx = ix & 0x7fffffff;
+
+    if (hx >= 0x4195b844)
+    {
+        if (hx > 0x7f800000)
+            return x;
+
+        if (negative)
+            return -1.0f;
+
+        if (hx > 0x42b17217)
+        {
+            x *= 1.7014118e38f;
+            return x;
+        }
+    }
+
+    float32 c = 0;
+    float32 lo = 0;
+    float32 hi = 0;
+    int32 k = 0;
+
+    if (hx > 0x3eb17218)
+    {
+        if (hx < 0x3f851592)
+        {
+            if (! negative)
+            {
+                hi = x - ln2_hi;
+                lo = ln2_lo;
+                k = 1;
+            }
+            else
+            {
+                hi = x + ln2_hi;
+                lo = -ln2_lo;
+                k = -1;
+            }
+        }
+        else
+        {
+            k = int32 (invln2 * x + (negative ? -0.5f : 0.5f));
+            let kf = float32 (k);
+            hi = x - kf * ln2_hi;
+            lo = kf * ln2_lo;
+        }
+
+        x = hi - lo;
+        c = (hi - x) - lo;
+    }
+    else if (hx < 0x33000000)
+    {
+        return x;
+    }
+
+    float32 hfx = 0.5f * x;
+    float32 hxs = x * hfx;
+    float32 r1 = 1.0f + hxs * (Q1 + hxs * Q2);
+    float32 t = 3.0f - r1 * hfx;
+    float32 e = hxs * ((r1 - t) / (6.0f - x * t));
+
+    if (k == 0)
+        return x - (x * e - hxs);
+
+    e = x * (e - c) - c;
+    e -= hxs;
+
+    if (k == -1)
+        return 0.5f * (x - e) - 0.5f;
+
+    if (k == 1)
+    {
+        if (x < -0.25f)
+            return -2.0f * (e - (x + 0.5f));
+
+        return 1.0f + 2.0f * (x - e);
+    }
+
+    let twopk = reinterpretIntToFloat ((0x7f + k) << 23);
+
+    if (k < 0 || k > 56)
+    {
+        float32 y = x - e + 1.0f;
+
+        if (k == 128)
+            y = y * 2.0f * 1.7014118e38f;
+        else
+            y = y * twopk;
+
+        return y - 1.0f;
+    }
+
+    let twopnk = reinterpretIntToFloat ((0x7f - k) << 23);
+
+    if (k < 23)
+        return (x - e + (1.0f - twopnk)) * twopk;
+
+    return (x - (e + twopnk) + 1.0f) * twopk;
+}
+
+//==============================================================================
+float64 expm1 (float64 x)
+{
+    const float64 o_threshold = 7.09782712893383973096e+02,
+                  ln2_hi = 6.93147180369123816490e-01,
+                  ln2_lo = 1.90821492927058770002e-10,
+                  invln2 = 1.44269504088896338700e+00,
+                  Q1 = -3.33333333333331316428e-02,
+                  Q2 = 1.58730158725481460165e-03,
+                  Q3 = -7.93650757867487942473e-05,
+                  Q4 = 4.00821782732936239552e-06,
+                  Q5 = -2.01099218183624371326e-07;
+
+    let ix = reinterpretFloatToInt (x);
+    let hx = int32 (ix >> 32) & 0x7fffffff;
+    bool negative = (ix >>> 63) != 0;
+
+    if (hx >= 0x4043687a)
+    {
+        if (isnan (x))
+            return x;
+
+        if (negative)
+            return -1.0;
+
+        if (x > o_threshold)
+        {
+            x *= 8.98846567431158e307;
+            return x;
+        }
+    }
+
+    float64 c = 0;
+    float64 lo = 0;
+    float64 hi = 0;
+    int32 k = 0;
+
+    if (hx > 0x3fd62e42)
+    {
+        if (hx < 0x3ff0a2b2)
+        {
+            if (! negative)
+            {
+                hi = x - ln2_hi;
+                lo = ln2_lo;
+                k = 1;
+            }
+            else
+            {
+                hi = x + ln2_hi;
+                lo = -ln2_lo;
+                k = -1;
+            }
+        }
+        else
+        {
+            k = int32 (invln2 * x + (negative ? -0.5 : 0.5));
+            let kf = float64 (k);
+            hi = x - kf * ln2_hi;
+            lo = kf * ln2_lo;
+        }
+
+        x = hi - lo;
+        c = (hi - x) - lo;
+    }
+    else if (hx < 0x3c900000)
+    {
+        return x;
+    }
+
+    float64 hfx = 0.5 * x;
+    float64 hxs = x * hfx;
+    float64 r1 = 1.0 + hxs * (Q1 + hxs * (Q2 + hxs * (Q3 + hxs * (Q4 + hxs * Q5))));
+    float64 t = 3.0 - r1 * hfx;
+    float64 e = hxs * ((r1 - t) / (6.0 - x * t));
+
+    if (k == 0)
+        return x - (x * e - hxs);
+
+    e = x * (e - c) - c;
+    e -= hxs;
+
+    if (k == -1)
+        return 0.5 * (x - e) - 0.5;
+
+    if (k == 1)
+    {
+        if (x < -0.25)
+            return -2.0 * (e - (x + 0.5));
+
+        return 1.0 + 2.0 * (x - e);
+    }
+
+    let twopk = reinterpretIntToFloat (int64 (0x3ff + k) << 52);
+
+    if (k < 0 || k > 56)
+    {
+        float64 y = x - e + 1.0;
+
+        if (k == 1024)
+            y = y * 2.0 * 8.98846567431158e307;
+        else
+            y = y * twopk;
+
+        return y - 1.0;
+    }
+
+    let twopnk = reinterpretIntToFloat (int64 (0x3ff - k) << 52);
+
+    if (k < 20)
+        return (x - e + (1.0 - twopnk)) * twopk;
+
+    return (x - (e + twopnk) + 1.0) * twopk;
+}
+
+//==============================================================================
+float32 expo2 (float32 x, float32 sign)
+{
+    const int32 k = 235;
+    const float32 kln2 = 162.88958740234375f;
+
+    let scale = reinterpretIntToFloat ((0x7f + (k / 2)) << 23);
+
+    return exp (x - kln2) * (sign * scale) * scale;
+}
+
+//==============================================================================
+float32 sinh (float32 x)
+{
+    let ix = reinterpretFloatToInt (x);
+    let h = (ix >>> 31) != 0 ? -0.5f : 0.5f;
+
+    let w = ix & 0x7fffffff;
+    let absx = reinterpretIntToFloat (w);
+
+    if (w < 0x42b17217)
+    {
+        let t = expm1 (absx);
+
+        if (w < 0x3f800000)
+        {
+            if (w < 0x39800000)
+                return x;
+
+            return h * (2.0f * t - t * t / (t + 1.0f));
+        }
+
+        return h * (t + t / (t + 1.0f));
+    }
+
+    return expo2 (absx, 2.0f * h);
+}
+
+//==============================================================================
+float64 expo2 (float64 x, float64 sign)
+{
+    const int32 k = 2043;
+    const float64 kln2 = 1416.0996898839683;
+
+    let scale = reinterpretIntToFloat (int64 (0x3ff + (k / 2)) << 52);
+
+    return exp (x - kln2) * (sign * scale) * scale;
+}
+
+//==============================================================================
+float64 sinh (float64 x)
+{
+    let ix = reinterpretFloatToInt (x);
+    let h = (ix >>> 63) != 0 ? -0.5 : 0.5;
+
+    let absbits = ix & 0x7fffffffffffffff_i64;
+    let absx = reinterpretIntToFloat (absbits);
+    let w = int32 (absbits >> 32);
+
+    if (w < 0x40862e42)
+    {
+        let t = expm1 (absx);
+
+        if (w < 0x3ff00000)
+        {
+            if (w < 0x3e500000)
+                return x;
+
+            return h * (2.0 * t - t * t / (t + 1.0));
+        }
+
+        return h * (t + t / (t + 1.0));
+    }
+
+    return expo2 (absx, 2.0 * h);
+}
+
+//==============================================================================
+float32 cosh (float32 x)
+{
+    let w = reinterpretFloatToInt (x) & 0x7fffffff;
+    let absx = reinterpretIntToFloat (w);
+
+    if (w < 0x3f317217)
+    {
+        if (w < 0x39800000)
+            return 1.0f;
+
+        let t = expm1 (absx);
+        return 1.0f + t * t / (2.0f * (1.0f + t));
+    }
+
+    if (w < 0x42b17217)
+    {
+        let t = exp (absx);
+        return 0.5f * (t + 1.0f / t);
+    }
+
+    return expo2 (absx, 1.0f);
+}
+
+//==============================================================================
+float64 cosh (float64 x)
+{
+    let absbits = reinterpretFloatToInt (x) & 0x7fffffffffffffff_i64;
+    let absx = reinterpretIntToFloat (absbits);
+    let w = int32 (absbits >> 32);
+
+    if (w < 0x3fe62e42)
+    {
+        if (w < 0x3e500000)
+            return 1.0;
+
+        let t = expm1 (absx);
+        return 1.0 + t * t / (2.0 * (1.0 + t));
+    }
+
+    if (w < 0x40862e42)
+    {
+        let t = exp (absx);
+        return 0.5 * (t + 1.0 / t);
+    }
+
+    return expo2 (absx, 1.0);
+}
+
+//==============================================================================
+float32 tanh (float32 x)
+{
+    let ix = reinterpretFloatToInt (x);
+    let negative = (ix >>> 31) != 0;
+
+    let w = ix & 0x7fffffff;
+    let absx = reinterpretIntToFloat (w);
+
+    float32 t;
+
+    if (w > 0x3f0c9f54)
+    {
+        if (w > 0x41200000)
+        {
+            t = 1.0f + 0.0f / absx;
+        }
+        else
+        {
+            t = expm1 (2.0f * absx);
+            t = 1.0f - 2.0f / (t + 2.0f);
+        }
+    }
+    else if (w > 0x3e82c578)
+    {
+        t = expm1 (2.0f * absx);
+        t = t / (t + 2.0f);
+    }
+    else if (w >= 0x00800000)
+    {
+        t = expm1 (-2.0f * absx);
+        t = -t / (t + 2.0f);
+    }
+    else
+    {
+        t = absx;
+    }
+
+    return negative ? -t : t;
+}
+
+//==============================================================================
+float64 tanh (float64 x)
+{
+    let ix = reinterpretFloatToInt (x);
+    let negative = (ix >>> 63) != 0;
+
+    let absbits = ix & 0x7fffffffffffffff_i64;
+    let absx = reinterpretIntToFloat (absbits);
+    let w = int32 (absbits >> 32);
+
+    float64 t;
+
+    if (w > 0x3fe193ea)
+    {
+        if (w > 0x40340000)
+        {
+            t = 1.0 - 0.0 / absx;
+        }
+        else
+        {
+            t = expm1 (2.0 * absx);
+            t = 1.0 - 2.0 / (t + 2.0);
+        }
+    }
+    else if (w > 0x3fd058ae)
+    {
+        t = expm1 (2.0 * absx);
+        t = t / (t + 2.0);
+    }
+    else if (w >= 0x00100000)
+    {
+        t = expm1 (-2.0 * absx);
+        t = -t / (t + 2.0);
+    }
+    else
+    {
+        t = absx;
+    }
+
+    return negative ? -t : t;
+}
+
+//==============================================================================
+float32 asinh (float32 x)
+{
+    const float32 ln2 = 0.693147180559945309417232121458176568f;
+
+    let ix = reinterpretFloatToInt (x);
+    let negative = (ix >>> 31) != 0;
+
+    let i = ix & 0x7fffffff;
+    var absx = reinterpretIntToFloat (i);
+
+    if (i >= 0x45800000)
+        absx = log (absx) + ln2;
+    else if (i >= 0x40000000)
+        absx = log (2.0f * absx + 1.0f / (sqrt (absx * absx + 1.0f) + absx));
+    else if (i >= 0x39800000)
+        absx = log1p (absx + absx * absx / (sqrt (absx * absx + 1.0f) + 1.0f));
+
+    return negative ? -absx : absx;
+}
+
+//==============================================================================
+float64 asinh (float64 x)
+{
+    const float64 ln2 = 0.693147180559945309417232121458176568;
+
+    let ix = reinterpretFloatToInt (x);
+    let e = (ix >>> 52) & 0x7ff_i64;
+    let negative = (ix >>> 63) != 0;
+
+    var absx = reinterpretIntToFloat (ix & 0x7fffffffffffffff_i64);
+
+    if (e >= 0x419_i64)
+        absx = log (absx) + ln2;
+    else if (e >= 0x400_i64)
+        absx = log (2.0 * absx + 1.0 / (sqrt (absx * absx + 1.0) + absx));
+    else if (e >= 0x3e5_i64)
+        absx = log1p (absx + absx * absx / (sqrt (absx * absx + 1.0) + 1.0));
+
+    return negative ? -absx : absx;
+}
+
+//==============================================================================
+float32 acosh (float32 x)
+{
+    // the comparisons below treat the whole word as unsigned, so keep it in an int64
+    let ix = int64 (reinterpretFloatToInt (x)) & 0xffffffff_i64;
+
+    if (ix < 0x40000000_i64)
+        return log1p (x - 1.0f + sqrt ((x - 1.0f) * (x - 1.0f) + 2.0f * (x - 1.0f)));
+
+    if (ix < 0x45800000_i64)
+        return log (2.0f * x - 1.0f / (x + sqrt (x * x - 1.0f)));
+
+    if ((ix & 0x80000000_i64) != 0)
+        return nan;
+
+    return log (x) + 0.693147180559945309417232121458176568f;
+}
+
+//==============================================================================
+float64 acosh (float64 x)
+{
+    // the exponent field here deliberately includes the sign bit
+    let e = (reinterpretFloatToInt (x) >>> 52) & 0xfff_i64;
+
+    if (e < 0x400_i64)
+        return log1p (x - 1.0 + sqrt ((x - 1.0) * (x - 1.0) + 2.0 * (x - 1.0)));
+
+    if (e < 0x419_i64)
+        return log (2.0 * x - 1.0 / (x + sqrt (x * x - 1.0)));
+
+    if ((e & 0x800_i64) != 0)
+        return nan;
+
+    return log (x) + 0.693147180559945309417232121458176568;
+}
+
+//==============================================================================
+float32 atanh (float32 x)
+{
+    let ix = reinterpretFloatToInt (x);
+    let negative = (ix >>> 31) != 0;
+
+    let i = ix & 0x7fffffff;
+    var y = reinterpretIntToFloat (i);
+
+    if (i < 0x3f000000)
+    {
+        if (i >= 0x2f800000)
+            y = 0.5f * log1p (2.0f * y + 2.0f * y * y / (1.0f - y));
+    }
+    else
+    {
+        y = 0.5f * log1p (2.0f * (y / (1.0f - y)));
+    }
+
+    return negative ? -y : y;
+}
+
+//==============================================================================
+float64 atanh (float64 x)
+{
+    let ix = reinterpretFloatToInt (x);
+    let e = (ix >>> 52) & 0x7ff_i64;
+    let negative = (ix >>> 63) != 0;
+
+    var y = reinterpretIntToFloat (ix & 0x7fffffffffffffff_i64);
+
+    if (e < 0x3fe_i64)
+    {
+        if (e >= 0x3df_i64)
+            y = 0.5 * log1p (2.0 * y + 2.0 * y * y / (1.0 - y));
+    }
+    else
+    {
+        y = 0.5 * log1p (2.0 * (y / (1.0 - y)));
+    }
+
+    return negative ? -y : y;
 }
 
 //==============================================================================
