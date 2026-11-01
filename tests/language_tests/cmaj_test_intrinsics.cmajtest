@@ -1077,3 +1077,162 @@ bool test_rintVector()
 {
     return near (rint (float32<2> (1.1f, 2.7f)), float32<2> (1.0f, 3.0f));
 }
+
+
+
+## testConsole ("[0,0,0,0]")
+
+processor Hyperbolic
+{
+    output stream float32 out;
+
+    void main()
+    {
+        // Results from c++ std library implementations
+        let expectedResults = float32<4>[]
+        (
+            (1.0016674995422363,0.996679961681366,0.9983407855033875,1.003353476524353),
+            (1.000016689300537,0.9999666810035706,0.9999833106994629,1.0000333786010742),
+            (1.0000001192092896,0.9999996423721313,0.9999998807907104,1.0000003576278687),
+            (1,1,1,1),
+            (1,1,1,1),
+            (1,1,1,1),
+            (1,1,1,1),
+            (1,1,1,1)
+        );
+
+        let xs = float64[] (1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 4.656613e-10);
+
+        float<4> totalError = 0;
+
+        for (wrap<8> i)
+        {
+            let x32 = float32 (xs[i]);
+            let v = float32<4> (sinh (x32) /x32, tanh (x32) /x32, asinh (x32) /x32, atanh (x32) /x32);
+            // console <- v;
+
+            totalError += abs (expectedResults[i] - v);
+
+            advance();
+        }
+
+        if (sum (totalError) < 1e-6f)
+            totalError = 0;
+
+        console <- totalError;
+    }
+}
+
+
+## testConsole ("[0,0,0,0]")
+
+processor Hyperbolic
+{
+    output stream float32 out;
+
+    void main()
+    {
+        // Results from c++ std library implementations
+        let expectedResults = float64<4>[]
+        (
+            (1.0016675001984403,0.9966799462495581,0.9983407889920757,1.0033534773107557),
+            (1.0000166667500003,0.999966667999946,0.9999833340832885,1.0000333353334763),
+            (1.0000001666666751,0.9999996666668,0.9999998333334083,1.0000003333335332),
+            (1.0000000016666666,0.9999999966666666,0.9999999983333334,1.0000000033333334),
+            (1.0000000000166667,0.9999999999666667,0.9999999999833332,1.0000000000333333),
+            (1.0000000000001668,0.9999999999996667,0.9999999999998334,1.0000000000003333),
+            (1.0000000000000018,0.9999999999999967,0.9999999999999984,1.000000000000003),
+            (1,1,1,1)
+        );
+
+        let xs = float64[] (1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 4.656613e-10);
+
+        float64<4> totalError = 0;
+
+        for (wrap<8> i)
+        {
+            let x64 = xs[i];
+            let v = float64<4> (sinh (x64) /x64, tanh (x64) /x64, asinh (x64) /x64, atanh (x64) /x64);
+            // console <- v;
+
+            totalError += abs (expectedResults[i] - v);
+
+            advance();
+        }
+
+        if (sum (totalError) < 1e-14)
+            totalError = 0;
+
+        console <- totalError;
+    }
+}
+
+
+## testConsole ("[0,0,0,0]")
+
+processor HyperbolicVectorised
+{
+    output stream float32 out;
+
+    void main()
+    {
+        var xs = float32<8> (1e-1f, 1e-2f, 1e-3f, 1e-4f, 1e-5f, 1e-6f, 1e-7f, 4.656613e-10f);
+        xs += 0;   // stops the calls below being constant-folded by the compiler
+
+        // The same results from the c++ std library implementations as the scalar
+        // test above, but transposed: one vector of expected values per function.
+        let expectedSinh  = float32<8> (1.0016674995422363f, 1.000016689300537f,  1.0000001192092896f, 1, 1, 1, 1, 1);
+        let expectedTanh  = float32<8> (0.996679961681366f,  0.9999666810035706f, 0.9999996423721313f, 1, 1, 1, 1, 1);
+        let expectedAsinh = float32<8> (0.9983407855033875f, 0.9999833106994629f, 0.9999998807907104f, 1, 1, 1, 1, 1);
+        let expectedAtanh = float32<8> (1.003353476524353f,  1.0000333786010742f, 1.0000003576278687f, 1, 1, 1, 1, 1);
+
+        // each function is evaluated for all 8 inputs with a single vectorised call
+        float<4> totalError = (sum (abs (expectedSinh  - sinh  (xs) / xs)),
+                               sum (abs (expectedTanh  - tanh  (xs) / xs)),
+                               sum (abs (expectedAsinh - asinh (xs) / xs)),
+                               sum (abs (expectedAtanh - atanh (xs) / xs)));
+
+        if (sum (totalError) < 1e-6)
+            totalError = 0;
+
+        console <- totalError;
+        advance();
+    }
+}
+
+
+## testConsole ("[0,0,0,0]")
+
+processor HyperbolicVectorised64
+{
+    output stream float32 out;
+
+    void main()
+    {
+        var xs = float64<8> (1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 4.656613e-10);
+        xs += 0;   // stops the calls below being constant-folded by the compiler
+
+        // The same results from the c++ std library implementations as the scalar
+        // test above, but transposed: one vector of expected values per function.
+        let expectedSinh  = float64<8> (1.0016675001984403, 1.0000166667500003, 1.0000001666666751, 1.0000000016666666,
+                                        1.0000000000166667, 1.0000000000001668, 1.0000000000000018, 1);
+        let expectedTanh  = float64<8> (0.9966799462495581, 0.999966667999946,  0.9999996666668,    0.9999999966666666,
+                                        0.9999999999666667, 0.9999999999996667, 0.9999999999999967, 1);
+        let expectedAsinh = float64<8> (0.9983407889920757, 0.9999833340832885, 0.9999998333334083, 0.9999999983333334,
+                                        0.9999999999833332, 0.9999999999998334, 0.9999999999999984, 1);
+        let expectedAtanh = float64<8> (1.0033534773107557, 1.0000333353334763, 1.0000003333335332, 1.0000000033333334,
+                                        1.0000000000333333, 1.0000000000003333, 1.000000000000003,  1);
+
+        // each function is evaluated for all 8 inputs with a single vectorised call
+        float64<4> totalError = (sum (abs (expectedSinh  - sinh  (xs) / xs)),
+                                 sum (abs (expectedTanh  - tanh  (xs) / xs)),
+                                 sum (abs (expectedAsinh - asinh (xs) / xs)),
+                                 sum (abs (expectedAtanh - atanh (xs) / xs)));
+
+        if (sum (totalError) < 1e-14)
+            totalError = 0;
+
+        console <- totalError;
+        advance();
+    }
+}
