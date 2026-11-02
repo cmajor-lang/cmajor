@@ -22,6 +22,98 @@ namespace cmaj::transformations
 //==============================================================================
 static inline void replaceMultidimensionalArrays (AST::Program& program)
 {
+    // Collapse chained access to an array to a multi-dimensional element access
+    // e.g, a[i][j] -> a[i,j]
+    struct CollapseChainedElementAccesses  : public AST::NonParameterisedObjectVisitor
+    {
+        using super = AST::NonParameterisedObjectVisitor;
+        using super::visit;
+
+        CollapseChainedElementAccesses (AST::Namespace& root) : super (root.context.allocator)
+        {}
+
+        std::vector<ref<AST::GetElement>> chains, innerNodes;
+
+        void visit (AST::GetElement& g) override
+        {
+            super::visit (g);
+
+            if (auto inner = findCollapsibleParent (g))
+            {
+                chains.push_back (g);
+                innerNodes.push_back (*inner);
+            }
+        }
+
+        static ptr<AST::GetElement> findCollapsibleParent (const AST::GetElement& g)
+        {
+            auto inner = AST::castTo<AST::GetElement> (g.parent);
+
+            if (inner == nullptr)
+                return {};
+
+            auto innerParent = AST::castToValue (inner->parent);
+
+            if (innerParent == nullptr)
+                return {};
+
+            auto parentType = innerParent->getResultType();
+
+            if (parentType == nullptr)
+                return {};
+
+            auto arrayType = AST::castTo<AST::ArrayType> (parentType->skipConstAndRefModifiers());
+
+            if (arrayType == nullptr || arrayType->isSlice())
+                return {};
+
+            auto numDimensions = arrayType->getNumDimensions();
+            auto numInnerIndexes = static_cast<uint32_t> (inner->indexes.size());
+
+            if (numInnerIndexes >= numDimensions)
+                return {};
+
+            if (numInnerIndexes + static_cast<uint32_t> (g.indexes.size()) > numDimensions)
+                return {};
+
+            return inner;
+        }
+
+        void applyChanges()
+        {
+            for (auto& g : chains)
+                if (std::find (innerNodes.begin(), innerNodes.end(), g) == innerNodes.end())
+                    collapse (g);
+        }
+
+        static void collapse (AST::GetElement& g)
+        {
+            std::vector<ref<AST::GetElement>> chain;   // outermost first
+            ptr<const AST::GetElement> current = g;
+
+            while (auto inner = findCollapsibleParent (*current))
+            {
+                chain.push_back (*inner);
+                current = inner;
+            }
+
+            if (chain.empty())
+                return;
+
+            auto& combined = g.context.allocate<AST::GetElement>();
+            combined.parent.referTo (chain.back()->parent.getObjectRef());
+
+            for (auto i = chain.rbegin(); i != chain.rend(); ++i)
+                for (size_t n = 0; n < (*i)->indexes.size(); ++n)
+                    combined.indexes.addReference ((*i)->indexes[n].getObjectRef());
+
+            for (size_t n = 0; n < g.indexes.size(); ++n)
+                combined.indexes.addReference (g.indexes[n].getObjectRef());
+
+            g.replaceWith (combined);
+        }
+    };
+
     struct ReplaceMultidimensionalAccesses  : public AST::NonParameterisedObjectVisitor
     {
         using super = AST::NonParameterisedObjectVisitor;
@@ -250,6 +342,10 @@ static inline void replaceMultidimensionalArrays (AST::Program& program)
             newList.addReference (source);
         }
     };
+
+    CollapseChainedElementAccesses collapse (program.rootNamespace);
+    collapse.visitObject (program.rootNamespace);
+    collapse.applyChanges();
 
     ReplaceMultidimensionalAccesses ra (program.rootNamespace);
     ra.visitObject (program.rootNamespace);
