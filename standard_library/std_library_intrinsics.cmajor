@@ -97,7 +97,7 @@ namespace intrinsics
     /// Returns the smallest integer not less than the argument. This follows the same rules as the standard C/C++ std::ceil() function.
     T ceil<T> (T n)                                 { static_assert (n.isScalar && n.primitiveType.isFloat, "ceil() requires floating point arguments");      if const (n.isVector) return internal::vec_ceil (n); else { let rounded = T(int64(n)); if (rounded == n) return n; if (n >= 0) return rounded + 1; return rounded; } }
     /// Rounds the argument to an integer value. This follows the same rules as the standard C/C++ std::rint() function.
-    T rint<T> (T n)                                 { static_assert (n.isScalar && n.primitiveType.isFloat, "rint() requires floating point arguments");      if const (n.isVector) return internal::vec_rint (n); else { return T(roundToInt (n)); } }
+    T rint<T> (T n)                                 { static_assert (n.isScalar && n.primitiveType.isFloat, "rint() requires floating point arguments");      if const (n.isVector) return internal::vec_rint (n); else { if const (T.isFloat32) { return T (int32 (n + (n < 0 ? -0.5f : 0.5f))); } else { return T (int64 (n + (n < 0 ? -0.5f : 0.5f))); } } }
     /// Returns the floating point modulo operation of its arguments. This follows the same rules as the standard C/C++ std::fmod() function.
     T fmod<T> (T x, T y)                            { static_assert (x.isScalar && x.primitiveType.isFloat, "fmod() requires floating point arguments");      if const (x.isVector) return internal::vec_fmod (x, y); else { return x - (y * T(int64(x / y))); } }
     /// Returns the floating remainder of its arguments. This follows the same rules as the standard C/C++ std::remainder() function.
@@ -105,9 +105,9 @@ namespace intrinsics
     /// Performs a linear-interpolation between a pair of scalar values.
     T lerp<T, P> (T value1, T value2, P proportion) { static_assert (value1.isScalar && value1.primitiveType.isFloat && proportion.primitiveType.isFloat, "lerp() requires floating point arguments");   return value1 + (value2 - value1) * proportion; }
     /// Returns the nearest integer to a floating point value.
-    int32 roundToInt (float32 value)                { return int32 (value + (value < 0 ? -0.5f : 0.5f)); }
+    int32 roundToInt (float32 value)                { return int32 (rint (value)); }
     /// Returns the nearest integer to a floating point value.
-    int64 roundToInt (float64 value)                { return int64 (value + (value < 0 ? -0.5 : 0.5)); }
+    int64 roundToInt (float64 value)                { return int64 (rint (value)); }
 
     //==============================================================================
     /// Returns the square root of its argument.

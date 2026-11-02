@@ -573,7 +573,8 @@ bool test_roundToInt()
         && roundToInt (-0.4)  == 0   && roundToInt (-0.0f) == 0
         && roundToInt (-0.0)  == 0   && roundToInt (0.0)   == 0
         && roundToInt (0.0f)  == 0   && roundToInt (0.4f)  == 0
-        && roundToInt (0.49f) == 0   && roundToInt (0.5f)  == 1
+        && roundToInt (0.49f) == 0   && roundToInt (0.5f)  == 0
+        && roundToInt (1.5f)  == 2   && roundToInt (2.5f)  == 2
         && roundToInt (0.75f) == 1   && roundToInt (0.75)  == 1
         && roundToInt (1.5f)  == 2   && roundToInt (1.1f)  == 1;
 }
@@ -1081,9 +1082,9 @@ bool test_remainderVector()
 
 bool test_rintVector()
 {
-    return near (rint (float32<2> (1.1f, 2.7f)), float32<2> (1.0f, 3.0f));
+    return near (rint (float32<2> (1.1f, 2.7f)), float32<2> (1.0f, 3.0f)) &&
+           near (rint (float64<2> (1.1, 2.7)), float64<2> (1.0, 3.0));
 }
-
 
 
 ## testConsole ("[0,0,0,0]")
