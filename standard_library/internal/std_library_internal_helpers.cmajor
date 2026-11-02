@@ -53,36 +53,13 @@ T vec_sin<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = sin        (n[i])
 T vec_cos<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = cos        (n[i]);  return r; }
 T vec_tan<T>         (T n) { T r;  for (wrap<T.size> i) r[i] = tan        (n[i]);  return r; }
 T vec_atan<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = atan       (n[i]);  return r; }
+T vec_asin<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = asin       (n[i]);  return r; }
+T vec_acos<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = acos       (n[i]);  return r; }
 T vec_floor<T>       (T n) { T r;  for (wrap<T.size> i) r[i] = floor      (n[i]);  return r; }
 T vec_ceil<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = ceil       (n[i]);  return r; }
 T vec_rint<T>        (T n) { T r;  for (wrap<T.size> i) r[i] = rint       (n[i]);  return r; }
 
 //==============================================================================
-T atan_pos<T> (T n)
-{
-    return n > 1.0f ? (T(pi / 2) - atan_0to1 (1 / n)) : atan_0to1 (n);
-}
-
-T atan_0to1<T> (T n)
-{
-    let sqrt3 = T(sqrt(3.0));
-
-    if (n < T(2 - sqrt3))
-        return atan_approx (n);
-
-    let x = (sqrt3 * n - 1) / (sqrt3 + n);
-
-    return x < 0 ? T(pi / 6) - atan_approx (-x)
-                 : T(pi / 6) + atan_approx (x);
-}
-
-T atan_approx<T> (T n)
-{
-    let n2 = n * n;
-    let n3 = n2 * n;
-    return n - (n3 * T(1 / 3.0)) + (n3 * n2 * T(1 / 5.0));
-}
-
 T atan2_vec<T> (T y, T x)
 {
     T r;
@@ -309,6 +286,333 @@ float64 tan (float64 x)
 
     let result = helpers::remainderPiOver2 (x);
     return helpers::tan (result.y0, result.y1, result.n & 1);
+}
+
+//==============================================================================
+float32 atan (float32 x)
+{
+    const float32 aT0 = 3.3333328366e-01f,
+                  aT1 = -1.9999158382e-01f,
+                  aT2 = 1.4253635705e-01f,
+                  aT3 = -1.0648017377e-01f,
+                  aT4 = 6.1687607318e-02f;
+
+    let bits = reinterpretFloatToInt (x);
+    let negative = (bits >>> 31) != 0;
+    let ix = bits & 0x7fffffff;
+
+    if (ix >= 0x4c800000)
+    {
+        if (isnan (x))
+            return x;
+
+        return negative ? -1.5707962513e+00f : 1.5707962513e+00f;
+    }
+
+    var v = x;
+    float32 hi = 0;
+    float32 lo = 0;
+    bool reduced = false;
+
+    if (ix < 0x3ee00000)
+    {
+        if (ix < 0x39800000)
+            return x;
+    }
+    else
+    {
+        v = abs (x);
+        reduced = true;
+
+        if (ix < 0x3f980000)
+        {
+            if (ix < 0x3f300000)
+            {
+                v = (2.0f * v - 1.0f) / (2.0f + v);
+                hi = 4.6364760399e-01f;
+                lo = 5.0121582440e-09f;
+            }
+            else
+            {
+                v = (v - 1.0f) / (v + 1.0f);
+                hi = 7.8539812565e-01f;
+                lo = 3.7748947079e-08f;
+            }
+        }
+        else
+        {
+            if (ix < 0x401c0000)
+            {
+                v = (v - 1.5f) / (1.0f + 1.5f * v);
+                hi = 9.8279368877e-01f;
+                lo = 3.4473217170e-08f;
+            }
+            else
+            {
+                v = -1.0f / v;
+                hi = 1.5707962513e+00f;
+                lo = 7.5497894159e-08f;
+            }
+        }
+    }
+
+    let zz = v * v;
+    let w = zz * zz;
+    let s1 = zz * (aT0 + w * (aT2 + w * aT4));
+    let s2 = w * (aT1 + w * aT3);
+
+    if (! reduced)
+        return v - v * (s1 + s2);
+
+    let z = hi - ((v * (s1 + s2) - lo) - v);
+    return negative ? -z : z;
+}
+
+//==============================================================================
+float64 atan (float64 x)
+{
+    const float64 aT0 = 3.33333333333329318027e-01,
+                  aT1 = -1.99999999998764832476e-01,
+                  aT2 = 1.42857142725034663711e-01,
+                  aT3 = -1.11111104054623557880e-01,
+                  aT4 = 9.09088713343650656196e-02,
+                  aT5 = -7.69187620504482999495e-02,
+                  aT6 = 6.66107313738753120669e-02,
+                  aT7 = -5.83357013379057348645e-02,
+                  aT8 = 4.97687799461593236017e-02,
+                  aT9 = -3.65315727442169155270e-02,
+                  aT10 = 1.62858201153657823623e-02;
+
+    let bits = reinterpretFloatToInt (x);
+    let negative = (bits >>> 63) != 0;
+    let ix = int32 (bits >> 32) & 0x7fffffff;
+
+    if (ix >= 0x44100000)
+    {
+        if (isnan (x))
+            return x;
+
+        return negative ? -1.57079632679489655800 : 1.57079632679489655800;
+    }
+
+    var v = x;
+    float64 hi = 0;
+    float64 lo = 0;
+    bool reduced = false;
+
+    if (ix < 0x3fdc0000)
+    {
+        if (ix < 0x3e400000)
+            return x;
+    }
+    else
+    {
+        v = abs (x);
+        reduced = true;
+
+        if (ix < 0x3ff30000)
+        {
+            if (ix < 0x3fe60000)
+            {
+                v = (2.0 * v - 1.0) / (2.0 + v);
+                hi = 4.63647609000806093515e-01;
+                lo = 2.26987774529616870924e-17;
+            }
+            else
+            {
+                v = (v - 1.0) / (v + 1.0);
+                hi = 7.85398163397448278999e-01;
+                lo = 3.06161699786838301793e-17;
+            }
+        }
+        else
+        {
+            if (ix < 0x40038000)
+            {
+                v = (v - 1.5) / (1.0 + 1.5 * v);
+                hi = 9.82793723247329054082e-01;
+                lo = 1.39033110312309984516e-17;
+            }
+            else
+            {
+                v = -1.0 / v;
+                hi = 1.57079632679489655800;
+                lo = 6.12323399573676603587e-17;
+            }
+        }
+    }
+
+    let zz = v * v;
+    let w = zz * zz;
+    let s1 = zz * (aT0 + w * (aT2 + w * (aT4 + w * (aT6 + w * (aT8 + w * aT10)))));
+    let s2 = w * (aT1 + w * (aT3 + w * (aT5 + w * (aT7 + w * aT9))));
+
+    if (! reduced)
+        return v - v * (s1 + s2);
+
+    let z = hi - (v * (s1 + s2) - lo - v);
+    return negative ? -z : z;
+}
+
+//==============================================================================
+float32 asin (float32 x)
+{
+    const float64 pio2 = 1.570796326794896558;
+
+    let bits = reinterpretFloatToInt (x);
+    let ix = bits & 0x7fffffff;
+
+    if (ix >= 0x3f800000)
+    {
+        if (ix == 0x3f800000)
+            return float32 (float64 (x) * pio2);
+
+        return nan;
+    }
+
+    if (ix < 0x3f000000)
+    {
+        if (ix < 0x39800000)
+            return x;
+
+        return x + x * helpers::asinR (x * x);
+    }
+
+    let z = (1.0f - abs (x)) * 0.5f;
+    let s = sqrt (float64 (z));
+    let r = float32 (pio2 - 2.0 * (s + s * float64 (helpers::asinR (z))));
+
+    return (bits >>> 31) != 0 ? -r : r;
+}
+
+//==============================================================================
+float64 asin (float64 x)
+{
+    const float64 pio2_hi = 1.57079632679489655800,
+                  pio2_lo = 6.12323399573676603587e-17;
+
+    let bits = reinterpretFloatToInt (x);
+    let ix = int32 (bits >> 32) & 0x7fffffff;
+
+    if (ix >= 0x3ff00000)
+    {
+        if (ix == 0x3ff00000 && (bits << 32) == 0)
+            return x * pio2_hi;
+
+        return nan;
+    }
+
+    if (ix < 0x3fe00000)
+    {
+        if (ix < 0x3e500000)
+            return x;
+
+        return x + x * helpers::asinR (x * x);
+    }
+
+    let z = (1.0 - abs (x)) * 0.5;
+    let s = sqrt (z);
+    let r = helpers::asinR (z);
+    float64 result;
+
+    if (ix >= 0x3fef3333)
+    {
+        result = pio2_hi - (2.0 * (s + s * r) - pio2_lo);
+    }
+    else
+    {
+        let f = helpers::clearLowWord (s);
+        let c = (z - f * f) / (s + f);
+        result = 0.5 * pio2_hi - (2.0 * s * r - (pio2_lo - 2.0 * c) - (0.5 * pio2_hi - 2.0 * f));
+    }
+
+    return (bits >>> 63) != 0 ? -result : result;
+}
+
+//==============================================================================
+float32 acos (float32 x)
+{
+    const float32 pio2_hi = 1.5707962513e+00f,
+                  pio2_lo = 7.5497894159e-08f;
+
+    let bits = reinterpretFloatToInt (x);
+    let negative = (bits >>> 31) != 0;
+    let ix = bits & 0x7fffffff;
+
+    if (ix >= 0x3f800000)
+    {
+        if (ix == 0x3f800000)
+            return negative ? 2.0f * pio2_hi : 0.0f;
+
+        return nan;
+    }
+
+    if (ix < 0x3f000000)
+    {
+        if (ix <= 0x32800000)
+            return pio2_hi;
+
+        return pio2_hi - (x - (pio2_lo - x * helpers::asinR (x * x)));
+    }
+
+    if (negative)
+    {
+        let z = (1.0f + x) * 0.5f;
+        let s = sqrt (z);
+        let w = helpers::asinR (z) * s - pio2_lo;
+        return 2.0f * (pio2_hi - (s + w));
+    }
+
+    let z = (1.0f - x) * 0.5f;
+    let s = sqrt (z);
+    let df = reinterpretIntToFloat (reinterpretFloatToInt (s) & int32 (0xfffff000_i64));
+    let c = (z - df * df) / (s + df);
+    let w = helpers::asinR (z) * s + c;
+
+    return 2.0f * (df + w);
+}
+
+//==============================================================================
+float64 acos (float64 x)
+{
+    const float64 pio2_hi = 1.57079632679489655800,
+                  pio2_lo = 6.12323399573676603587e-17;
+
+    let bits = reinterpretFloatToInt (x);
+    let negative = (bits >>> 63) != 0;
+    let ix = int32 (bits >> 32) & 0x7fffffff;
+
+    if (ix >= 0x3ff00000)
+    {
+        if (ix == 0x3ff00000 && (bits << 32) == 0)
+            return negative ? 2.0 * pio2_hi : 0.0;
+
+        return nan;
+    }
+
+    if (ix < 0x3fe00000)
+    {
+        if (ix <= 0x3c600000)
+            return pio2_hi;
+
+        return pio2_hi - (x - (pio2_lo - x * helpers::asinR (x * x)));
+    }
+
+    if (negative)
+    {
+        let z = (1.0 + x) * 0.5;
+        let s = sqrt (z);
+        let w = helpers::asinR (z) * s - pio2_lo;
+        return 2.0 * (pio2_hi - (s + w));
+    }
+
+    let z = (1.0 - x) * 0.5;
+    let s = sqrt (z);
+    let df = helpers::clearLowWord (s);
+    let c = (z - df * df) / (s + df);
+    let w = helpers::asinR (z) * s + c;
+
+    return 2.0 * (df + w);
 }
 
 //==============================================================================
@@ -2113,6 +2417,36 @@ namespace helpers
         }
 
         return y * reinterpretIntToFloat (int32 (0x7f + n) << 23);
+    }
+
+    float32 asinR (float32 z)
+    {
+        const float32 pS0 = 1.6666586697e-01f,
+                      pS1 = -4.2743422091e-02f,
+                      pS2 = -8.6563630030e-03f,
+                      qS1 = -7.0662963390e-01f;
+
+        let p = z * (pS0 + z * (pS1 + z * pS2));
+        let q = 1.0f + z * qS1;
+        return p / q;
+    }
+
+    float64 asinR (float64 z)
+    {
+        const float64 pS0 = 1.66666666666666657415e-01,
+                      pS1 = -3.25565818622400915405e-01,
+                      pS2 = 2.01212532134862925881e-01,
+                      pS3 = -4.00555345006794114027e-02,
+                      pS4 = 7.91534994289814532176e-04,
+                      pS5 = 3.47933107596021167570e-05,
+                      qS1 = -2.40339491173441421878e+00,
+                      qS2 = 2.02094576023350569471e+00,
+                      qS3 = -6.88283971605453293030e-01,
+                      qS4 = 7.70381505559019352791e-02;
+
+        let p = z * (pS0 + z * (pS1 + z * (pS2 + z * (pS3 + z * (pS4 + z * pS5)))));
+        let q = 1.0 + z * (qS1 + z * (qS2 + z * (qS3 + z * qS4)));
+        return p / q;
     }
 
     float32 sindf (float64 x)

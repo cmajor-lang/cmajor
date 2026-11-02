@@ -154,11 +154,11 @@ struct CPlusPlusCodeGenerator
             printEndpointProperties();
 
             out << sectionBreak
+                << choc::text::trim (getWarningDisableFlags())
+                << sectionBreak
                 << choc::text::trim (getIntrinsicsDefinitions())
                 << sectionBreak
                 << choc::text::trim (getHelperClassDefinitions())
-                << sectionBreak
-                << choc::text::trim (getWarningDisableFlags())
                 << sectionBreak;
 
             Builder codeGen (*this, mainProcessor);

@@ -412,7 +412,7 @@ namespace intrinsics
     /// Tangent of an angle.
     T tan<T> (T n)         { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "tan() requires a floating point argument");   if const (T.isVector) return internal::vec_tan (n); else return sin(n) / cos(n); }
     /// Arc tangent (inverse tangent) of x.
-    T atan<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "atan() requires a floating point argument");  if const (T.isVector) return internal::vec_atan (n); else return n < 0 ? -internal::atan_pos (-n) : internal::atan_pos (n); }
+    T atan<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "atan() requires a floating point argument");  if const (T.isVector) return internal::vec_atan (n); else return internal::math_implementations::atan (n); }
 
     /// Hyperbolic sine of an angle.
     T sinh<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "sinh() requires a floating point argument");  if const (T.isVector) return internal::vec_sinh (n);  else return internal::math_implementations::sinh (n); }
@@ -424,9 +424,9 @@ namespace intrinsics
     T atanh<T> (T n)       { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "atanh() requires a floating point argument"); if const (T.isVector) return internal::vec_atanh (n); else return internal::math_implementations::atanh (n); }
 
     /// Arc sine (inverse sine) of an angle.
-    T asin<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "asin() requires a floating point argument");  return atan (n / (sqrt (1 - (n * n)))); }
+    T asin<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "asin() requires a floating point argument");  if const (T.isVector) return internal::vec_asin (n); else return internal::math_implementations::asin (n); }
     /// Arc cosine (inverse cosine) of an angle.
-    T acos<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "acos() requires a floating point argument");  return atan ((sqrt (1 - n * n)) / n); }
+    T acos<T> (T n)        { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "acos() requires a floating point argument");  if const (T.isVector) return internal::vec_acos (n); else return internal::math_implementations::acos (n); }
     /// Arc hyperbolic sine.
     T asinh<T> (T n)       { static_assert ((n.isPrimitive || n.isVector) && n.primitiveType.isFloat, "asinh() requires a floating point argument"); if const (T.isVector) return internal::vec_asinh (n); else return internal::math_implementations::asinh (n); }
     /// Arc hyperbolic cosine.

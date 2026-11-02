@@ -11,6 +11,12 @@
 //  This code may be used under either a GPLv3 or commercial
 //  license: see LICENSE.md for more details.
 
+function fastMathsDisabled()
+{
+    var level = createEngine().getBuildSettings().optimisationLevel;
+
+    return (level == undefined || level < 4);
+}
 
 ## testFunction()
 
@@ -1235,4 +1241,324 @@ processor HyperbolicVectorised64
         console <- totalError;
         advance();
     }
+}
+
+## testFunction()
+
+// Each case below compares a runtime call against the same call written as a
+// constant, which the compiler folds using the C++ std:: implementation.
+
+bool close (float32 a, float32 b)  { return abs (a - b) <= 4.0e-7f; }
+bool close (float64 a, float64 b)  { return abs (a - b) <= 4.0e-15; }
+
+//==============================================================================
+bool testAtan32_tiny()           // |x| < 2**-12, returned unchanged
+{
+    var a =  1.0e-6f;  a += 0.0f;
+    var b = -1.0e-6f;  b += 0.0f;
+    var c =  0.0002f;  c += 0.0f;
+
+    return close (atan (a), atan ( 1.0e-6f))
+        && close (atan (b), atan (-1.0e-6f))
+        && close (atan (c), atan ( 0.0002f));
+}
+
+bool testAtan32_small()          // |x| < 0.4375, the bare polynomial
+{
+    var a =  0.001f;  a += 0.0f;
+    var b =  0.1f;    b += 0.0f;
+    var c = -0.268f;  c += 0.0f;
+    var d =  0.43f;   d += 0.0f;
+
+    return close (atan (a), atan ( 0.001f))
+        && close (atan (b), atan ( 0.1f))
+        && close (atan (c), atan (-0.268f))
+        && close (atan (d), atan ( 0.43f));
+}
+
+bool testAtan32_7_16()           // 7/16 <= |x| < 11/16
+{
+    var a =  0.44f;  a += 0.0f;
+    var b =  0.5f;   b += 0.0f;
+    var c = -0.5f;   c += 0.0f;
+    var d =  0.68f;  d += 0.0f;
+
+    return close (atan (a), atan ( 0.44f))
+        && close (atan (b), atan ( 0.5f))
+        && close (atan (c), atan (-0.5f))
+        && close (atan (d), atan ( 0.68f));
+}
+
+bool testAtan32_11_16()          // 11/16 <= |x| < 19/16
+{
+    var a =  0.7f;   a += 0.0f;
+    var b =  1.0f;   b += 0.0f;
+    var c = -1.0f;   c += 0.0f;
+    var d =  1.18f;  d += 0.0f;
+
+    return close (atan (a), atan ( 0.7f))
+        && close (atan (b), atan ( 1.0f))
+        && close (atan (c), atan (-1.0f))
+        && close (atan (d), atan ( 1.18f));
+}
+
+bool testAtan32_19_16()          // 19/16 <= |x| < 39/16
+{
+    var a =  1.2f;   a += 0.0f;
+    var b =  1.5f;   b += 0.0f;
+    var c = -1.5f;   c += 0.0f;
+    var d =  2.43f;  d += 0.0f;
+
+    return close (atan (a), atan ( 1.2f))
+        && close (atan (b), atan ( 1.5f))
+        && close (atan (c), atan (-1.5f))
+        && close (atan (d), atan ( 2.43f));
+}
+
+bool testAtan32_large()          // 39/16 <= |x| < 2**26, via -1/x
+{
+    var a =  2.44f;    a += 0.0f;
+    var b =  5.0f;     b += 0.0f;
+    var c = -5.0f;     c += 0.0f;
+    var d =  1.0e6f;   d += 0.0f;
+
+    return close (atan (a), atan ( 2.44f))
+        && close (atan (b), atan ( 5.0f))
+        && close (atan (c), atan (-5.0f))
+        && close (atan (d), atan ( 1.0e6f));
+}
+
+bool testAtan32_huge()           // |x| >= 2**26, saturates to +/-pi/2
+{
+    var a =  1.0e9f;   a += 0.0f;
+    var b = -1.0e9f;   b += 0.0f;
+    var c =  1.0e30f;  c += 0.0f;
+
+    return close (atan (a), atan ( 1.0e9f))
+        && close (atan (b), atan (-1.0e9f))
+        && close (atan (c), atan ( 1.0e30f));
+}
+
+//==============================================================================
+bool testAcos32_unit()           // acos (1) = 0, acos (-1) = pi
+{
+    var a =  1.0f;  a += 0.0f;
+    var b = -1.0f;  b += 0.0f;
+
+    return close (acos (a), acos ( 1.0f))
+        && close (acos (b), acos (-1.0f));
+}
+
+bool testAcos32_tiny()           // |x| < 2**-26, returns pi/2
+{
+    var a =  1.0e-9f;  a += 0.0f;
+    var b = -1.0e-9f;  b += 0.0f;
+    var c =  0.0f;     c += 0.0f;
+
+    return close (acos (a), acos ( 1.0e-9f))
+        && close (acos (b), acos (-1.0e-9f))
+        && close (acos (c), acos ( 0.0f));
+}
+
+bool testAcos32_small()          // |x| < 0.5
+{
+    var a =  0.1f;   a += 0.0f;
+    var b = -0.1f;   b += 0.0f;
+    var c =  0.49f;  c += 0.0f;
+    var d = -0.49f;  d += 0.0f;
+
+    return close (acos (a), acos ( 0.1f))
+        && close (acos (b), acos (-0.1f))
+        && close (acos (c), acos ( 0.49f))
+        && close (acos (d), acos (-0.49f));
+}
+
+bool testAcos32_negative()       // x < -0.5
+{
+    var a = -0.5f;   a += 0.0f;
+    var b = -0.6f;   b += 0.0f;
+    var c = -0.9f;   c += 0.0f;
+    var d = -0.99f;  d += 0.0f;
+
+    return close (acos (a), acos (-0.5f))
+        && close (acos (b), acos (-0.6f))
+        && close (acos (c), acos (-0.9f))
+        && close (acos (d), acos (-0.99f));
+}
+
+bool testAcos32_positive()       // x > 0.5
+{
+    var a = 0.5f;   a += 0.0f;
+    var b = 0.6f;   b += 0.0f;
+    var c = 0.9f;   c += 0.0f;
+    var d = 0.99f;  d += 0.0f;
+
+    return close (acos (a), acos (0.5f))
+        && close (acos (b), acos (0.6f))
+        && close (acos (c), acos (0.9f))
+        && close (acos (d), acos (0.99f));
+}
+
+//==============================================================================
+bool testAsin32()
+{
+    var a =  1.0f;     a += 0.0f;
+    var b = -1.0f;     b += 0.0f;
+    var c =  1.0e-6f;  c += 0.0f;
+    var d =  0.3f;     d += 0.0f;
+    var e = -0.49f;    e += 0.0f;
+    var f =  0.5f;     f += 0.0f;
+    var g = -0.9f;     g += 0.0f;
+    var h =  0.99f;    h += 0.0f;
+
+    return close (asin (a), asin ( 1.0f))
+        && close (asin (b), asin (-1.0f))
+        && close (asin (c), asin ( 1.0e-6f))
+        && close (asin (d), asin ( 0.3f))
+        && close (asin (e), asin (-0.49f))
+        && close (asin (f), asin ( 0.5f))
+        && close (asin (g), asin (-0.9f))
+        && close (asin (h), asin ( 0.99f));
+}
+
+//==============================================================================
+bool testAtan64()
+{
+    var a =  1.0e-9;  a += 0.0;
+    var b =  0.1;     b += 0.0;
+    var c = -0.43;    c += 0.0;
+    var d =  0.5;     d += 0.0;
+    var e = -0.68;    e += 0.0;
+    var f =  1.0;     f += 0.0;
+    var g = -1.18;    g += 0.0;
+    var h =  1.5;     h += 0.0;
+    var i = -2.43;    i += 0.0;
+    var j =  5.0;     j += 0.0;
+    var k = -1.0e6;   k += 0.0;
+    var l =  1.0e20;  l += 0.0;
+
+    return close (atan (a), atan ( 1.0e-9))
+        && close (atan (b), atan ( 0.1))
+        && close (atan (c), atan (-0.43))
+        && close (atan (d), atan ( 0.5))
+        && close (atan (e), atan (-0.68))
+        && close (atan (f), atan ( 1.0))
+        && close (atan (g), atan (-1.18))
+        && close (atan (h), atan ( 1.5))
+        && close (atan (i), atan (-2.43))
+        && close (atan (j), atan ( 5.0))
+        && close (atan (k), atan (-1.0e6))
+        && close (atan (l), atan ( 1.0e20));
+}
+
+bool testAcos64()
+{
+    var a =  1.0;      a += 0.0;
+    var b = -1.0;      b += 0.0;
+    var c =  1.0e-18;  c += 0.0;
+    var d =  0.1;      d += 0.0;
+    var e = -0.49;     e += 0.0;
+    var f =  0.5;      f += 0.0;
+    var g = -0.5;      g += 0.0;
+    var h = -0.9;      h += 0.0;
+    var i =  0.99;     i += 0.0;
+
+    return close (acos (a), acos ( 1.0))
+        && close (acos (b), acos (-1.0))
+        && close (acos (c), acos ( 1.0e-18))
+        && close (acos (d), acos ( 0.1))
+        && close (acos (e), acos (-0.49))
+        && close (acos (f), acos ( 0.5))
+        && close (acos (g), acos (-0.5))
+        && close (acos (h), acos (-0.9))
+        && close (acos (i), acos ( 0.99));
+}
+
+bool testAsin64()
+{
+    var a =  1.0;      a += 0.0;
+    var b = -1.0;      b += 0.0;
+    var c =  1.0e-18;  c += 0.0;
+    var d =  0.3;      d += 0.0;
+    var e = -0.49;     e += 0.0;
+    var f =  0.5;      f += 0.0;
+    var g = -0.9;      g += 0.0;
+    var h =  0.974;    h += 0.0;
+    var i =  0.976;    i += 0.0;   // the |x| > 0.975 branch
+    var j = -0.999;    j += 0.0;
+
+    return close (asin (a), asin ( 1.0))
+        && close (asin (b), asin (-1.0))
+        && close (asin (c), asin ( 1.0e-18))
+        && close (asin (d), asin ( 0.3))
+        && close (asin (e), asin (-0.49))
+        && close (asin (f), asin ( 0.5))
+        && close (asin (g), asin (-0.9))
+        && close (asin (h), asin ( 0.974))
+        && close (asin (i), asin ( 0.976))
+        && close (asin (j), asin (-0.999));
+}
+
+//==============================================================================
+bool testAtan2_32()              // atan2 is built on atan, so check it too
+{
+    var y1 =  1.0f;     y1 += 0.0f;
+    var x1 =  2.0f;     x1 += 0.0f;
+    var y2 = -1.0f;     y2 += 0.0f;
+    var x2 = -2.0f;     x2 += 0.0f;
+    var y3 =  0.001f;   y3 += 0.0f;
+    var x3 = -1000.0f;  x3 += 0.0f;
+    var y4 = -3.0f;     y4 += 0.0f;
+    var x4 =  0.0f;     x4 += 0.0f;
+
+    return close (atan2 (y1, x1), atan2 ( 1.0f,    2.0f))
+        && close (atan2 (y2, x2), atan2 (-1.0f,   -2.0f))
+        && close (atan2 (y3, x3), atan2 ( 0.001f, -1000.0f))
+        && close (atan2 (y4, x4), atan2 (-3.0f,    0.0f));
+}
+
+//==============================================================================
+bool testAtanVectorised()        // the vec_* paths
+{
+    var v = float32<4> (-0.268f, 0.5f, 1.5f, 5.0f);
+    v += 0;
+
+    let a = atan (v);
+    let b = float32<4> (atan (-0.268f), atan (0.5f), atan (1.5f), atan (5.0f));
+
+    var w = float32<4> (-0.9f, -0.1f, 0.4f, 0.95f);
+    w += 0;
+
+    let c = acos (w);
+    let d = float32<4> (acos (-0.9f), acos (-0.1f), acos (0.4f), acos (0.95f));
+    let e = asin (w);
+    let f = float32<4> (asin (-0.9f), asin (-0.1f), asin (0.4f), asin (0.95f));
+
+    return sum (abs (a - b)) <= 1.0e-6f
+        && sum (abs (c - d)) <= 1.0e-6f
+        && sum (abs (e - f)) <= 1.0e-6f;
+}
+
+
+## if (fastMathsDisabled()) { testFunction() } else { getCurrentTestSection().reportUnsupported ("Test disabled for --O4") }
+
+// These tests are only valid when fast-maths is disabled
+
+bool close (float32 a, float32 b)  { return abs (a - b) <= 4.0e-7f; }
+bool close (float64 a, float64 b)  { return abs (a - b) <= 4.0e-15; }
+
+bool testAcos32_outOfRange()     // |x| > 1 is not a number
+{
+    var a =  1.5f;  a += 0.0f;
+    var b = -1.5f;  b += 0.0f;
+
+    return isnan (acos (a)) && isnan (acos (b));
+}
+
+bool testAsin32_outOfRange()
+{
+    var a =  1.5f;  a += 0.0f;
+    var b = -1.5f;  b += 0.0f;
+
+    return isnan (asin (a)) && isnan (asin (b));
 }
