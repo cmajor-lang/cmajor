@@ -11,6 +11,13 @@
 //  This code may be used under either a GPLv3 or commercial
 //  license: see LICENSE.md for more details.
 
+function fastMathsDisabled()
+{
+    var level = createEngine().getBuildSettings().optimisationLevel;
+
+    return (level == undefined || level < 4);
+}
+
 
 ## expectError ("2:24: error: Illegal types for binary operator '&' ('int32' and 'bool')")
 
@@ -348,12 +355,50 @@ bool test_literals()
         && d > -100;
 }
 
-float32 getNormal32() { return -100.0f; }
-float64 getNormal64() { return 100.0; }
+bool test_multiply1() { int32 a = 999999; a++; int32 b = 1000000; return a * b < 0; }
+bool test_multiply2() { int64 a = 999999; a++; int64 b = 1000000; return a * b > 0; }
+bool test_multiply3() { int32 a = 1000000; int32 b = 1000000; return a * b == -727379968; }
+bool test_multiply4() { int64 a = 1000000; int64 b = 1000000; return a * b == 1000000000000L; }
+
+string a1()  { return "string1"; }
+string a2()  { return "string1"; }
+string b()   { return "string"; }
+string c1()  { return "string\n"; }
+string c2()  { return "string\n"; }
+string e1()  { return ""; }
+string e2()  { return ""; }
+string g1()  { return "a\""; }
+string g2()  { return "a\u0022"; }
+
+bool checkStringCompare()
+{
+    string empty;
+
+    string a = "123";
+    string b = a1();
+
+    return a1() == a2()
+        && c1() == c2()
+        && e1() == e2()
+        && g1() == g2()
+        && a1() == "string1"
+        && a2() != b()
+        && a1() != e2()
+        && e2() == ""
+        && e2() == empty
+        && empty == ""
+        && e2() != "\u0000"
+        && b() != "";
+}
+
+## if (fastMathsDisabled()) { testFunction() } else { getCurrentTestSection().reportUnsupported ("Test disabled for --O4") }
+
 float32 getInf32()    { return inf; }
 float64 getInf64()    { return inf; }
 float32 getNan32()    { return nan; }
 float64 getNan64()    { return nan; }
+float32 getNormal32() { return -100.0f; }
+float64 getNormal64() { return 100.0; }
 
 bool test_inf()
 {
@@ -393,41 +438,6 @@ bool test_nan()
         && ! isnan (1000.0);
 }
 
-bool test_multiply1() { int32 a = 999999; a++; int32 b = 1000000; return a * b < 0; }
-bool test_multiply2() { int64 a = 999999; a++; int64 b = 1000000; return a * b > 0; }
-bool test_multiply3() { int32 a = 1000000; int32 b = 1000000; return a * b == -727379968; }
-bool test_multiply4() { int64 a = 1000000; int64 b = 1000000; return a * b == 1000000000000L; }
-
-string a1()  { return "string1"; }
-string a2()  { return "string1"; }
-string b()   { return "string"; }
-string c1()  { return "string\n"; }
-string c2()  { return "string\n"; }
-string e1()  { return ""; }
-string e2()  { return ""; }
-string g1()  { return "a\""; }
-string g2()  { return "a\u0022"; }
-
-bool checkStringCompare()
-{
-    string empty;
-
-    string a = "123";
-    string b = a1();
-
-    return a1() == a2()
-        && c1() == c2()
-        && e1() == e2()
-        && g1() == g2()
-        && a1() == "string1"
-        && a2() != b()
-        && a1() != e2()
-        && e2() == ""
-        && e2() == empty
-        && empty == ""
-        && e2() != "\u0000"
-        && b() != "";
-}
 
 ## expectError ("2:25: error: Illegal types for binary operator '+' ('string' and 'string')")
 
