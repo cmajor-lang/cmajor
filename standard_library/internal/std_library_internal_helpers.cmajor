@@ -1860,7 +1860,10 @@ float32 acosh (float32 x)
     if ((ix & 0x80000000_i64) != 0)
         return nan;
 
-    return log (x) + 0.693147180559945309417232121458176568f;
+    if (ix >= 0x7f000000_i64)  // 2 * x would overflow (this also handles inf and nan)
+        return log (x) + 0.693147180559945309417232121458176568f;
+
+    return log (2.0f * x);     // log (x) + ln2 rounds twice, costing up to an extra ulp
 }
 
 //==============================================================================
