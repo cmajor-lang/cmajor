@@ -792,6 +792,112 @@ float64 fmod (float64 x, float64 y)
 }
 
 //==============================================================================
+float32 remainder (float32 x, float32 y)
+{
+    let ix = reinterpretFloatToInt (x) & 0x7fffffff;
+    let iy = reinterpretFloatToInt (y) & 0x7fffffff;
+
+    // nan for a nan operand, an infinite x, or a zero y
+    if (ix >= 0x7f800000 || iy > 0x7f800000 || iy == 0)
+        return (x * y) / (x * y);
+
+    if (iy == 0x7f800000)
+        return x;
+
+    let negative = (reinterpretFloatToInt (x) >>> 31) != 0;
+
+    var ax = reinterpretIntToFloat (ix);
+    let ay = reinterpretIntToFloat (iy);
+
+    if (ix == iy)
+        return negative ? -0.0f : 0.0f;
+
+    // reducing modulo 2y leaves the parity of the quotient known, so that the
+    // halfway cases below can be rounded to even. Any larger y would overflow.
+    if (iy <= 0x7effffff)
+        ax = fmod (ax, ay + ay);
+
+    if (iy < 0x01000000)
+    {
+        // 0.5f * ay is inexact for subnormal y, so compare doubled values instead
+        if (ax + ax > ay)
+        {
+            ax -= ay;
+
+            if (ax + ax >= ay)
+                ax -= ay;
+        }
+    }
+    else
+    {
+        let halfAy = 0.5f * ay;
+
+        if (ax > halfAy)
+        {
+            ax -= ay;
+
+            if (ax >= halfAy)
+                ax -= ay;
+        }
+    }
+
+    return negative ? -ax : ax;
+}
+
+//==============================================================================
+float64 remainder (float64 x, float64 y)
+{
+    let ix = reinterpretFloatToInt (x) & 0x7fffffffffffffff_i64;
+    let iy = reinterpretFloatToInt (y) & 0x7fffffffffffffff_i64;
+
+    // nan for a nan operand, an infinite x, or a zero y
+    if (ix >= 0x7ff0000000000000_i64 || iy > 0x7ff0000000000000_i64 || iy == 0)
+        return (x * y) / (x * y);
+
+    if (iy == 0x7ff0000000000000_i64)
+        return x;
+
+    let negative = (reinterpretFloatToInt (x) >>> 63) != 0;
+
+    var ax = reinterpretIntToFloat (ix);
+    let ay = reinterpretIntToFloat (iy);
+
+    if (ix == iy)
+        return negative ? -0.0 : 0.0;
+
+    // reducing modulo 2y leaves the parity of the quotient known, so that the
+    // halfway cases below can be rounded to even. Any larger y would overflow.
+    if (iy <= 0x7fdfffffffffffff_i64)
+        ax = fmod (ax, ay + ay);
+
+    if (iy < 0x0020000000000000_i64)
+    {
+        // 0.5 * ay is inexact for subnormal y, so compare doubled values instead
+        if (ax + ax > ay)
+        {
+            ax -= ay;
+
+            if (ax + ax >= ay)
+                ax -= ay;
+        }
+    }
+    else
+    {
+        let halfAy = 0.5 * ay;
+
+        if (ax > halfAy)
+        {
+            ax -= ay;
+
+            if (ax >= halfAy)
+                ax -= ay;
+        }
+    }
+
+    return negative ? -ax : ax;
+}
+
+//==============================================================================
 float32 log (float32 x)
 {
     const float32 ln2_hi = 6.9313812256e-01f,
@@ -1706,8 +1812,10 @@ float32 asinh (float32 x)
     let i = ix & 0x7fffffff;
     var absx = reinterpretIntToFloat (i);
 
-    if (i >= 0x45800000)
-        absx = log (absx) + ln2;
+    if (i >= 0x7f000000)
+        absx = log (absx) + ln2;  // 2 * absx would overflow (this also handles inf and nan)
+    else if (i >= 0x45800000)
+        absx = log (2.0f * absx); // log (absx) + ln2 rounds twice, costing up to an extra ulp
     else if (i >= 0x40000000)
         absx = log (2.0f * absx + 1.0f / (sqrt (absx * absx + 1.0f) + absx));
     else if (i >= 0x39800000)
