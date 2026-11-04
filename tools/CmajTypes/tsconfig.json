@@ -1,0 +1,20 @@
+{
+	"compilerOptions": {
+	  /* turn on strictness so the declarations are solid */
+	  "strict": true,
+	  /* emit only declarations, no JS */
+	  "declaration": true,
+	  "emitDeclarationOnly": true,
+	  /* help editors jump to source */
+	  "declarationMap": true,
+	  /* out folder for the generated .d.ts files */
+	  "rootDir": ".",
+	  "outDir": "dist",
+	  /* allow consumers to reference this project */
+	  "composite": true,
+	  /* misc hygiene */
+	  "skipLibCheck": true,
+	  "forceConsistentCasingInFileNames": true
+	},
+	"include": ["."]
+  }
