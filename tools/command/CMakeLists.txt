@@ -38,7 +38,6 @@ target_compile_options(cmaj PRIVATE ${CMAJ_WARNING_FLAGS})
 file(GLOB_RECURSE CPPs
     ./Source/*.cpp
     ./Source/*.h
-    ../../tests/unit_tests/*.h
 )
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -49,7 +48,7 @@ endif()
 
 target_sources(cmaj PRIVATE ${CPPs} ${MMs})
 
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" FILES ${SOURCE})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" FILES ${CPPs})
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_package(PkgConfig REQUIRED)
