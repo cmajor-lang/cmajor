@@ -1965,8 +1965,8 @@ struct intrinsics
     template <typename T> static T max           (T a, T b)         { return std::max (a, b); }
     template <typename T> static T clamp         (T a, T b, T c)    { return a < b ? b : (a > c ? c : a); }
     template <typename T> static T wrap          (T a, T b)         { if (b == 0) return 0; auto n = modulo (a, b); if (n < 0) n += b; return n; }
-    template <typename T> static T fmod          (T a, T b)         { return b != 0 ? std::fmod (a, b) : 0; }
-    template <typename T> static T remainder     (T a, T b)         { return b != 0 ? std::remainder (a, b) : 0; }
+    template <typename T> static T fmod          (T a, T b)         { return std::fmod (a, b); }
+    template <typename T> static T remainder     (T a, T b)         { return std::remainder (a, b); }
     template <typename T> static T floor         (T a)              { return std::floor (a); }
     template <typename T> static T ceil          (T a)              { return std::ceil (a); }
     template <typename T> static T rint          (T a)              { return std::rint (a); }

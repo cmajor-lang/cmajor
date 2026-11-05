@@ -194,8 +194,8 @@ private:
     template <typename T> static T perform_select        (const T* args)  { return static_cast<bool> (args[0]) ? args[1] : args[2]; }
     template <typename T> static T perform_clamp         (const T* args)  { return args[0] < args[1] ? args[1] : (args[0] > args[2] ? args[2] : args[0]); }
     template <typename T> static T perform_wrap          (const T* args)  { if (args[1] == 0) return 0; auto n = modulo (args[0], args[1]); if (n < 0) n += args[1]; return n; }
-    template <typename T> static T perform_fmod          (const T* args)  { return args[1] != 0 ? std::fmod (args[0], args[1]) : 0; }
-    template <typename T> static T perform_remainder     (const T* args)  { return args[1] != 0 ? std::remainder (args[0], args[1]) : 0; }
+    template <typename T> static T perform_fmod          (const T* args)  { return std::fmod (args[0], args[1]); }
+    template <typename T> static T perform_remainder     (const T* args)  { return std::remainder (args[0], args[1]); }
     template <typename T> static T perform_floor         (const T* args)  { return std::floor (args[0]); }
     template <typename T> static T perform_ceil          (const T* args)  { return std::ceil (args[0]); }
     template <typename T> static T perform_rint          (const T* args)  { return std::rint (args[0]); }

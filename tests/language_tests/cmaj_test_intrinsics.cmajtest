@@ -1563,3 +1563,36 @@ bool testAsin32_outOfRange()
 
     return isnan (asin (a)) && isnan (asin (b));
 }
+
+bool test_fmod()
+{
+    var a = 1.5f; a += 0.0f;
+    var b = 1.5; b += 0.0;
+
+    return isnan (fmod (1.5f, 0.0f))
+        && isnan (fmod (a, 0.0f))
+        && isnan (fmod (1.5, 0.0))
+        && isnan (fmod (b, 0.0));
+}
+
+bool test_modulo()
+{
+    var a = 1.5f; a += 0.0f;
+    var b = 1.5; b += 0.0;
+
+    return isnan (1.5f % 0.0f)
+        && isnan (a % 0.0f)
+        && isnan (1.5 % 0.0)
+        && isnan (b % 0.0);
+}
+
+bool test_remainder()
+{
+    var a = 1.5f; a += 0.0f;
+    var b = 1.5; b += 0.0;
+
+    return isnan (remainder (1.5f, 0.0f))
+        && isnan (remainder (a, 0.0f))
+        && isnan (remainder (1.5, 0.0))
+        && isnan (remainder (b, 0.0));
+}
