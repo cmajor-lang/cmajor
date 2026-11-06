@@ -592,7 +592,7 @@ export class Options  extends ParameterControlBase
 
         const stepCount = toStepCount (options.length);
         const normalise = (/** @type {number} */ value) => (value - min) / (max - min);
-        this.toIndex = (/** @type {number} */ value) => Math.min (Math.max (Math.round (normalise (value) * stepCount), 0), stepCount);
+        this.toIndex = (/** @type {number} */ value) => Math.min (stepCount, normalise (value) * options.length) | 0;
 
         this.innerHTML = "";
 

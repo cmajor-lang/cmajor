@@ -1882,21 +1882,15 @@ static bool runUnitTests (choc::test::TestProgress& progress)
             return false;
         }
 
-        // The five options are spread across the 0 to 100 range, so their values are
-        // 0, 25, 50, 75 and 100, and each value should be shown as the option nearest
-        // to it - i.e. the switch-over points are half way between them.
         CHOC_EXPECT_EQ (parameter->properties.getValueAsString (0.0f), "One");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (12.4f), "One");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (12.6f), "Two");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (25.0f), "Two");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (37.4f), "Two");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (37.6f), "Three");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (50.0f), "Three");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (62.4f), "Three");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (62.6f), "Four");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (75.0f), "Four");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (87.4f), "Four");
-        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (87.6f), "Five");
+        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (19.9f), "One");
+        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (20.0f), "Two");
+        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (39.0f), "Two");
+        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (40.0f), "Three");
+        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (59.9f), "Three");
+        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (60.0f), "Four");
+        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (79.9f), "Four");
+        CHOC_EXPECT_EQ (parameter->properties.getValueAsString (80.0f), "Five");
         CHOC_EXPECT_EQ (parameter->properties.getValueAsString (100.0f), "Five");
 
         CHOC_EXPECT_NEAR (*parameter->properties.getStringAsValue ("One"), 0.0f, 0.0001f);
@@ -2449,18 +2443,16 @@ static bool runUnitTests (choc::test::TestProgress& progress)
                 return false;
             }
 
-            // the three options have values of 0, 1 and 2, so 1.34 snaps to option 1,
-            // which the patch turns into a gain of 0.25
             const auto valueToSnap = 1.34f;
 
             const auto forceSend = true;
             parameter->setValue (choc::value::Value (valueToSnap).getView(), forceSend, -1, 0);
             patch.process (buffers.data(), 4, [] (auto&&...) {});
 
-            CHOC_EXPECT_NEAR (buffer[0], 0.25f, 0.0001f);
-            CHOC_EXPECT_NEAR (buffer[1], 0.25f, 0.0001f);
-            CHOC_EXPECT_NEAR (buffer[2], 0.25f, 0.0001f);
-            CHOC_EXPECT_NEAR (buffer[3], 0.25f, 0.0001f);
+            CHOC_EXPECT_NEAR (buffer[0], 1.0f, 0.0001f);
+            CHOC_EXPECT_NEAR (buffer[1], 1.0f, 0.0001f);
+            CHOC_EXPECT_NEAR (buffer[2], 1.0f, 0.0001f);
+            CHOC_EXPECT_NEAR (buffer[3], 1.0f, 0.0001f);
         }
 
         {
@@ -2577,13 +2569,11 @@ static bool runUnitTests (choc::test::TestProgress& progress)
                 CHOC_EXPECT_NEAR (buffer[3], displayValueFloat, 0.0001f);
             };
 
-            // the options are 0, 0.5 and 1.0, so values should snap to whichever is
-            // nearest, switching over at 0.25 and 0.75
             setValueAndVerifyPerformerAndDisplayValuesMatch (0.00f, "0.0");
-            setValueAndVerifyPerformerAndDisplayValuesMatch (0.24f, "0.0");
-            setValueAndVerifyPerformerAndDisplayValuesMatch (0.26f, "0.5");
-            setValueAndVerifyPerformerAndDisplayValuesMatch (0.74f, "0.5");
-            setValueAndVerifyPerformerAndDisplayValuesMatch (0.76f, "1.0");
+            setValueAndVerifyPerformerAndDisplayValuesMatch (0.32f, "0.0");
+            setValueAndVerifyPerformerAndDisplayValuesMatch (0.34f, "0.5");
+            setValueAndVerifyPerformerAndDisplayValuesMatch (0.65f, "0.5");
+            setValueAndVerifyPerformerAndDisplayValuesMatch (0.67f, "1.0");
             setValueAndVerifyPerformerAndDisplayValuesMatch (1.00f, "1.0");
         }
     }

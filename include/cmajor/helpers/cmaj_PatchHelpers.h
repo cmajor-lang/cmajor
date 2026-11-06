@@ -330,24 +330,8 @@ inline float PatchParameterProperties::snapAndConstrainValue (float newValue) co
     if (getNumDiscreteOptions() > 1)
         return *toValueFromDiscreteOptionIndex (toDiscreteOptionIndex (newValue));
 
-    if (step > 0 && maxValue > minValue)
-    {
-        auto lowest       = static_cast<double> (minValue);
-        auto stepSize     = static_cast<double> (step);
-        auto stepsInRange = (static_cast<double> (maxValue) - lowest) / stepSize;
-
-        auto wholeSteps = std::round (stepsInRange);
-        auto isWholeNumberOfSteps = std::abs (stepsInRange - wholeSteps) < (1.0 + stepsInRange) * 1.0e-6;
-        auto highestIndex = isWholeNumberOfSteps ? wholeSteps : std::floor (stepsInRange);
-
-        auto index = std::clamp (std::round ((static_cast<double> (newValue) - lowest) / stepSize),
-                                 0.0, highestIndex);
-
-        if (isWholeNumberOfSteps && index >= highestIndex)
-            return maxValue;
-
-        newValue = static_cast<float> (lowest + index * stepSize);
-    }
+    if (step > 0)
+        newValue = std::round (newValue / step) * step;
 
     return std::clamp (newValue, minValue, maxValue);
 }
@@ -506,14 +490,8 @@ inline uint64_t PatchParameterProperties::getNumDiscreteOptions() const
 inline size_t PatchParameterProperties::toDiscreteOptionIndex (float value) const
 {
     auto numDiscreteSteps = getNumDiscreteOptions();
-
-    if (numDiscreteSteps < 2)
-        return 0;
-
-    auto maxIndex = static_cast<double> (numDiscreteSteps - 1u);
-    auto index = std::round (static_cast<double> (convertTo0to1 (value)) * maxIndex);
-
-    return static_cast<size_t> (std::clamp (index, 0.0, maxIndex));
+    return std::min (static_cast<size_t> (convertTo0to1 (value) * (float) numDiscreteSteps),
+                     static_cast<size_t> (numDiscreteSteps > 0 ? numDiscreteSteps - 1 : 0));
 }
 
 inline std::optional<float> PatchParameterProperties::toValueFromDiscreteOptionIndex (size_t i) const

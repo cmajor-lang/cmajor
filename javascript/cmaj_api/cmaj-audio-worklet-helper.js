@@ -69,67 +69,6 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
             initialise();
     }
 
-    /** Mirrors cmaj::PatchParameterProperties::snapAndConstrainValue() in cmaj_PatchHelpers.h
-     *  @param {Object.<string, *>} [annotation] @param {any} [dataType]
-     */
-    function makeSnapAndConstrainValue (annotation, dataType)
-    {
-        const a = annotation ?? {};
-        const optionList = typeof a.text === "string" ? a.text.split ("|") : [];
-        const hasTextOptions = optionList.length > 1;
-
-        let min = a.min ?? 0;
-        let max = a.max ?? 1;
-
-        if (hasTextOptions && ! (a.min != null && a.max != null))
-        {
-            min = 0;
-            max = optionList.length - 1;
-        }
-
-        const step = a.step ?? 0;
-
-        const numDiscreteOptions = (() =>
-        {
-            if (hasTextOptions)          return optionList.length;
-            if (a.boolean)               return 2;
-            if (a.discrete && step > 0)  return Math.trunc ((max - min) / step) + 1;
-            return 0;
-        })();
-
-        const shouldRound = dataType?.type === "int32" || dataType?.type === "int64";
-
-        const clamp = (/** @type {number} */ v, /** @type {number} */ lo, /** @type {number} */ hi) => Math.min (Math.max (v, lo), hi);
-
-        return (/** @type {number} */ value) =>
-        {
-            if (numDiscreteOptions > 1)
-            {
-                const maxIndex = numDiscreteOptions - 1;
-                const index = clamp (Math.round (clamp ((value - min) / (max - min), 0, 1) * maxIndex), 0, maxIndex);
-                const option = min + ((max - min) * index) / maxIndex;
-
-                return shouldRound ? Math.round (option) : option;
-            }
-
-            if (step > 0 && max > min)
-            {
-                const stepsInRange = (max - min) / step;
-                const wholeSteps = Math.round (stepsInRange);
-                const isWholeNumberOfSteps = Math.abs (stepsInRange - wholeSteps) < (1 + stepsInRange) * 1.0e-6;
-                const highestIndex = isWholeNumberOfSteps ? wholeSteps : Math.floor (stepsInRange);
-                const index = clamp (Math.round ((value - min) / step), 0, highestIndex);
-
-                if (isWholeNumberOfSteps && index >= highestIndex)
-                    return max;
-
-                value = min + index * step;
-            }
-
-            return clamp (value, min, max);
-        };
-    }
-
     /** @param {any} wrapper @param {any[]} endpoints @param {Object.<string, *>} initialValueOverrides */
     function makeEndpointMap (wrapper, endpoints, initialValueOverrides)
     {
@@ -146,12 +85,21 @@ function registerWorkletProcessor (workletName, CmajorClass, hostDescription)
 
         const lookup = /** @type {Object.<string, any>} */ ({});
 
-        for (const { endpointID, endpointType, annotation, dataType, purpose } of endpoints)
+        for (const { endpointID, endpointType, annotation, purpose } of endpoints)
         {
             const key = toKey ({ endpointType, endpointID });
             const wrapperUpdate = wrapper[key]?.bind (wrapper);
 
-            const snapAndConstrainValue = makeSnapAndConstrainValue (annotation, dataType);
+            const snapAndConstrainValue = (/** @type {number} */ value) =>
+            {
+                if (annotation.step != null)
+                    value = Math.round (value / annotation.step) * annotation.step;
+
+                if (annotation.min != null && annotation.max != null)
+                    value = Math.min (Math.max (value, annotation.min), annotation.max);
+
+                return value;
+            };
 
             const update = (/** @type {number} */ value, /** @type {number | undefined} */ rampFrames = undefined) =>
             {
