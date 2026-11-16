@@ -96,6 +96,9 @@ struct GeneratedFiles
 
         for (auto& view : manifest.views)
         {
+            if (view.getSource().empty())
+                continue; // a view with no source just uses the generic UI, so there's no file to embed
+
             auto viewFile = std::filesystem::path (manifest.getFullPathForFile (view.getSource()));
             auto viewFolder = viewFile.parent_path();
 
