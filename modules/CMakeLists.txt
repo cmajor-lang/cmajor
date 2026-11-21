@@ -210,7 +210,6 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMOrcShared
         LLVMDWP
         LLVMDebugInfoLogicalView
-        LLVMDebugInfoGSYM
         LLVMOption
         LLVMObjectYAML
         LLVMObjCopy
@@ -228,13 +227,12 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMVectorize
         LLVMSandboxIR
         LLVMLinker
-        LLVMInstrumentation
         LLVMFrontendOpenMP
         LLVMFrontendOffloading
         LLVMFrontendOpenACC
-        LLVMFrontendHLSL
         LLVMFrontendDriver
         LLVMFrontendAtomic
+        LLVMInstrumentation
         LLVMExtensions
         LLVMDWARFLinkerParallel
         LLVMDWARFLinkerClassic
@@ -258,20 +256,22 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMTransformUtils
         LLVMBitWriter
         LLVMAnalysis
+        LLVMFrontendHLSL
         LLVMProfileData
         LLVMSymbolize
+        LLVMDebugInfoGSYM
         LLVMDebugInfoBTF
         LLVMDebugInfoPDB
         LLVMDebugInfoMSF
         LLVMDebugInfoCodeView
         LLVMDebugInfoDWARF
-        LLVMDebugInfoDWARFLowLevel
         LLVMObject
         LLVMTextAPI
         LLVMMCParser
         LLVMIRReader
         LLVMAsmParser
         LLVMMC
+        LLVMDebugInfoDWARFLowLevel
         LLVMBitReader
         LLVMFuzzerCLI
         LLVMCore

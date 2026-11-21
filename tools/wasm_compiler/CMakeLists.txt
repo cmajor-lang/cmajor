@@ -69,7 +69,6 @@ set (EXTRA_LIBS
     LLVMOrcShared
     LLVMDWP
     LLVMDebugInfoLogicalView
-    LLVMDebugInfoGSYM
     LLVMOption
     LLVMObjectYAML
     LLVMObjCopy
@@ -84,13 +83,12 @@ set (EXTRA_LIBS
     LLVMVectorize
     LLVMSandboxIR
     LLVMLinker
-    LLVMInstrumentation
     LLVMFrontendOpenMP
     LLVMFrontendOffloading
     LLVMFrontendOpenACC
-    LLVMFrontendHLSL
     LLVMFrontendDriver
     LLVMFrontendAtomic
+    LLVMInstrumentation
     LLVMExtensions
     LLVMDWARFLinkerParallel
     LLVMDWARFLinkerClassic
@@ -114,20 +112,22 @@ set (EXTRA_LIBS
     LLVMTransformUtils
     LLVMBitWriter
     LLVMAnalysis
+    LLVMFrontendHLSL
     LLVMProfileData
     LLVMSymbolize
+    LLVMDebugInfoGSYM
     LLVMDebugInfoBTF
     LLVMDebugInfoPDB
     LLVMDebugInfoMSF
     LLVMDebugInfoCodeView
     LLVMDebugInfoDWARF
-    LLVMDebugInfoDWARFLowLevel
     LLVMObject
     LLVMTextAPI
     LLVMMCParser
     LLVMIRReader
     LLVMAsmParser
     LLVMMC
+    LLVMDebugInfoDWARFLowLevel
     LLVMBitReader
     LLVMFuzzerCLI
     LLVMCore
