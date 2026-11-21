@@ -40,6 +40,7 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/ExecutionEngine/Orc/InProcessMemoryAccess.h"
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 #include "llvm/ExecutionEngine/RTDyldMemoryManager.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
@@ -99,7 +100,6 @@ public:
     {
         this->TargetTriple            = std::move (targetTriple);
         this->PageSize                = static_cast<unsigned> (::llvm::sys::Process::getPageSizeEstimate());
-        this->DylibMgr                = &dyLibManager;
         this->JDI.JITDispatchFunction = ::llvm::orc::ExecutorAddr::fromPtr (&jitDispatchViaWrapperFunctionManager);
         this->JDI.JITDispatchContext  = ::llvm::orc::ExecutorAddr::fromPtr (this);
     }
@@ -121,9 +121,24 @@ public:
 
     void callWrapperAsync (::llvm::orc::ExecutorAddr wrapperAddr, IncomingWFRHandler handler, ::llvm::ArrayRef<char> argBuffer) override
     {
-        using WrapperFnTy = ::llvm::orc::shared::CWrapperFunctionResult(*)(const char *, size_t);
+        using WrapperFnTy = ::llvm::orc::shared::CWrapperFunctionBuffer(*)(const char *, size_t);
         auto *fn = wrapperAddr.toPtr<WrapperFnTy>();
-        handler (fn (argBuffer.data(), argBuffer.size()));
+        handler (::llvm::orc::shared::WrapperFunctionBuffer (fn (argBuffer.data(), argBuffer.size())));
+    }
+
+    ::llvm::Expected<std::unique_ptr<::llvm::jitlink::JITLinkMemoryManager>> createDefaultMemoryManager() override
+    {
+        return ::llvm::jitlink::InProcessMemoryManager::Create();
+    }
+
+    ::llvm::Expected<std::unique_ptr<::llvm::orc::DylibManager>> createDefaultDylibMgr() override
+    {
+        return std::make_unique<DylibManager>();
+    }
+
+    ::llvm::Expected<std::unique_ptr<::llvm::orc::MemoryAccess>> createDefaultMemoryAccess() override
+    {
+        return std::make_unique<::llvm::orc::InProcessMemoryAccess> (TargetTriple.isArch64Bit());
     }
 
     ::llvm::Error disconnect() override { return ::llvm::Error::success(); }
@@ -141,41 +156,40 @@ public:
             return ::llvm::orc::ExecutorAddr::fromPtr (dylib.getOSSpecificHandle());
         }
 
-        void lookupSymbolsAsync (::llvm::ArrayRef<::llvm::orc::DylibManager::LookupRequest> request, ::llvm::orc::DylibManager::SymbolLookupCompleteFn complete) override
+        void lookupSymbolsAsync (::llvm::orc::tpctypes::DylibHandle,
+                                 const ::llvm::orc::SymbolLookupSet& symbols,
+                                 ::llvm::orc::DylibManager::SymbolLookupCompleteFn complete) override
         {
-            std::vector<::llvm::orc::tpctypes::LookupResult> results;
+            ::llvm::orc::tpctypes::LookupResult result;
 
-            for (const auto& req : request)
+            for (const auto& kvp : symbols)
             {
-                ::llvm::orc::tpctypes::LookupResult result;
+                auto name = (*kvp.first).str();
+                auto addr = ::llvm::sys::DynamicLibrary::SearchForAddressOfSymbol (name);
 
-                for (const auto& kvp : req.Symbols)
+                if (! addr)
                 {
-                    auto name = (*kvp.first).str();
-                    auto addr = ::llvm::sys::DynamicLibrary::SearchForAddressOfSymbol (name);
-
-                    if (! addr && kvp.second == ::llvm::orc::SymbolLookupFlags::RequiredSymbol)
+                    if (kvp.second == ::llvm::orc::SymbolLookupFlags::RequiredSymbol)
                     {
                         complete (::llvm::make_error<::llvm::StringError> ("Symbol not found: " + name, ::llvm::inconvertibleErrorCode()));
                         return;
                     }
 
-                    result.push_back (::llvm::orc::ExecutorSymbolDef (::llvm::orc::ExecutorAddr::fromPtr (addr), ::llvm::JITSymbolFlags::Exported));
+                    result.push_back (std::nullopt);
+                    continue;
                 }
 
-                results.push_back (std::move (result));
+                result.push_back (::llvm::orc::ExecutorAddr::fromPtr (addr));
             }
 
-            complete (std::move (results));
+            complete (std::move (result));
         }
     };
 
 private:
-    DylibManager dyLibManager;
-
-    static ::llvm::orc::shared::CWrapperFunctionResult jitDispatchViaWrapperFunctionManager (void*, const void*, const char*, size_t)
+    static ::llvm::orc::shared::CWrapperFunctionBuffer jitDispatchViaWrapperFunctionManager (void*, const void*, const char*, size_t)
     {
-        return ::llvm::orc::shared::CWrapperFunctionResult();
+        return {};
     }
 
 };
@@ -193,8 +207,6 @@ struct LLJITHolder
             auto targetTriple = machineBuilder->getTargetTriple();
             auto& opts = machineBuilder->getOptions();
             opts.ExceptionModel = ::llvm::ExceptionHandling::None;
-            opts.setFPDenormalMode (::llvm::DenormalMode::getPositiveZero());
-            opts.setFP32DenormalMode (::llvm::DenormalMode::getPositiveZero());
 
             machineBuilder->setCodeGenOptLevel (getCodeGenOptLevel (optimisationLevel));
 
@@ -208,9 +220,9 @@ struct LLJITHolder
             {
                 builder.setExecutorProcessControl (std::make_unique<SafeInProcessEPC> (targetTriple));
 
-                builder.setObjectLinkingLayerCreator ([] (::llvm::orc::ExecutionSession& ES, const ::llvm::Triple&) -> ::llvm::Expected<std::unique_ptr<::llvm::orc::ObjectLayer>>
+                builder.setObjectLinkingLayerCreator ([] (::llvm::orc::ExecutionSession& ES, ::llvm::jitlink::JITLinkMemoryManager&) -> ::llvm::Expected<std::unique_ptr<::llvm::orc::ObjectLayer>>
                 {
-                    return std::make_unique<::llvm::orc::RTDyldObjectLinkingLayer> (ES, [] { return std::make_unique<::llvm::SectionMemoryManager>(); });
+                    return std::make_unique<::llvm::orc::RTDyldObjectLinkingLayer> (ES, [] (const ::llvm::MemoryBuffer&) { return std::make_unique<::llvm::SectionMemoryManager>(); });
                 });
             }
            #endif
@@ -844,7 +856,6 @@ std::string generateAssembler (const cmaj::ProgramInterface& p,
         {
             auto& opts = machineBuilder->getOptions();
             opts.ExceptionModel = ::llvm::ExceptionHandling::None;
-            opts.setFPDenormalMode (::llvm::DenormalMode::getPositiveZero());
 
             machineBuilder->setCodeGenOptLevel (LLVMCodeGenerator::getCodeGenOptLevel (buildSettings.getOptimisationLevel()));
 

@@ -121,6 +121,7 @@ set (EXTRA_LIBS
     LLVMDebugInfoMSF
     LLVMDebugInfoCodeView
     LLVMDebugInfoDWARF
+    LLVMDebugInfoDWARFLowLevel
     LLVMObject
     LLVMTextAPI
     LLVMMCParser

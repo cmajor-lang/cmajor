@@ -265,6 +265,7 @@ function (MAKE_CMAJ_LIBRARY)
         LLVMDebugInfoMSF
         LLVMDebugInfoCodeView
         LLVMDebugInfoDWARF
+        LLVMDebugInfoDWARFLowLevel
         LLVMObject
         LLVMTextAPI
         LLVMMCParser
