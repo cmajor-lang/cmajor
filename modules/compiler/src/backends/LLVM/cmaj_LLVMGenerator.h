@@ -341,6 +341,7 @@ struct LLVMCodeGenerator
         targetMachine.Options.MCOptions.AsmVerbose = true;
 
         ::llvm::legacy::PassManager passManager;
+        passManager.add (new ::llvm::TargetLibraryInfoWrapperPass (createTargetLibraryInfo()));
 
         targetMachine.addPassesToEmitFile (passManager, ostream, nullptr,
                                            generateObjectCode ? ::llvm::CodeGenFileType::ObjectFile
@@ -383,6 +384,22 @@ struct LLVMCodeGenerator
         return std::string (result.begin(), result.end());
     }
 
+    ::llvm::TargetLibraryInfoImpl createTargetLibraryInfo() const
+    {
+        ::llvm::TargetLibraryInfoImpl info (targetModule->getTargetTriple());
+
+        if (webAssemblyMode)
+        {
+            // Ensure that missing functions are not used by the optimisation phases when building WASM
+            info.disableAllFunctions();
+            info.setAvailable (::llvm::LibFunc_memcpy);
+            info.setAvailable (::llvm::LibFunc_memmove);
+            info.setAvailable (::llvm::LibFunc_memset);
+        }
+
+        return info;
+    }
+
     void applyOptimisationPasses()
     {
         auto optLevel = getOptimisationLevelWithDefault (buildSettings.getOptimisationLevel());
@@ -401,6 +418,8 @@ struct LLVMCodeGenerator
 #endif
 
         ::llvm::PassBuilder passBuilder (targetMachine.get(), pto);
+
+        functionAnalysisManager.registerPass ([this] { return ::llvm::TargetLibraryAnalysis (createTargetLibraryInfo()); });
 
         passBuilder.registerModuleAnalyses          (moduleAnalysisManager);
         passBuilder.registerCGSCCAnalyses           (cGSCCAnalysisManager);
