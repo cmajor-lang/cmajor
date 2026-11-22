@@ -346,6 +346,10 @@ private:
     std::vector<PatchView*> activeViews;
     std::unordered_map<std::string, choc::value::Value> storedState;
 
+    /// The error that caused the patch to be unloaded, if any. With no renderer there's no
+    /// other status to give a view that asks for it, so this is sent instead.
+    std::string unloadedErrorMessage;
+
     struct ClientEventQueue;
     std::unique_ptr<ClientEventQueue> clientEventQueue;
     static constexpr uint32_t clientEventQueueSize = 65536;
@@ -2108,6 +2112,7 @@ inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, cons
 
 inline void Patch::unload()
 {
+    unloadedErrorMessage.clear();
     buildThread.reset();
     clientEventQueue->stop();
 
@@ -2157,17 +2162,24 @@ inline void Patch::setErrorStatus (const std::string& error, const std::string& 
     if (unloadFirst)
         unload();
 
-    if (statusChanged)
-    {
-        cmaj::FullCodeLocation location;
-        location.filename = file;
-        location.lineAndColumn = lineAndCol;
+    cmaj::FullCodeLocation location;
+    location.filename = file;
+    location.lineAndColumn = lineAndCol;
 
-        Status s;
-        s.messageList.add (cmaj::DiagnosticMessage::createError (error, location));
-        s.statusMessage = s.messageList.toString();
-        statusChanged (s);
+    Status s;
+    s.messageList.add (cmaj::DiagnosticMessage::createError (error, location));
+    s.statusMessage = s.messageList.toString();
+
+    // Views reload when the patch is unloaded, so keep the error to give them when they
+    // ask for the status, as well as telling any that are already listening
+    if (renderer == nullptr)
+    {
+        unloadedErrorMessage = s.statusMessage;
+        sendPatchStatusChangeToViews();
     }
+
+    if (statusChanged)
+        statusChanged (s);
 }
 
 inline void Patch::handleFileChange (PatchFileChangeChecker::ChangeType change)
@@ -2455,6 +2467,13 @@ inline void Patch::sendPatchStatusChangeToViews() const
                                     "sampleRate", renderer->sampleRate,
                                     "host", hostDescription));
     }
+    else if (! unloadedErrorMessage.empty())
+    {
+        broadcastMessageToViews ("status",
+                                 choc::json::create (
+                                    "error", unloadedErrorMessage,
+                                    "host", hostDescription));
+    }
 }
 
 inline const std::unordered_map<std::string, choc::value::Value>& Patch::getStoredStateValues() const
@@ -2622,6 +2641,7 @@ inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
     if (stopPlayback)
         stopPlayback();
 
+    unloadedErrorMessage.clear();
     fileChangeChecker.reset();
     renderer.reset();
     sendPatchChange();
