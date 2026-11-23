@@ -26,6 +26,7 @@
 
 #include "cmaj_command_Generate.h"
 #include "cmaj_command_Render.h"
+#include "cmaj_command_Run.h"
 #include "cmaj_command_CreatePatch.h"
 #include "cmaj_command_RunTests.h"
 
@@ -134,6 +135,49 @@ cmaj render [opts] <file>   Renders the given file or patch
     --output=<file>         Write the output to the given file
     --input=<file>          Use input from the given file
     --midi=<file>           Use input MIDI data from the given file
+
+cmaj run [opts] [files]     Compiles the given Cmajor source files (and/or inline code) and renders
+                            the main processor synchronously, writing any output streams to audio
+                            files and all output events, values and console messages to a JSON
+                            report on stdout. Diagnostics go to stderr.
+
+    -c <code>, --code=<code>  Inline Cmajor source. May be combined with files and repeated
+    -                       Read Cmajor source from stdin
+    --main=<name>           The processor or graph to run. Optional if the program has exactly
+                            one top-level processor or one marked [[ main ]]
+    --rate=<rate>           The sample rate (optional if an --input file provides one). Audio
+                            files are never resampled, so every --input file must match it
+    --length=<frames|Ns|Nms>  How long to render, in frames or with a seconds/ms suffix. If
+                            omitted, it's the length of the longest --input file, or else the
+                            end of the --score or --midi file plus one second
+    --blockSize=<size>      Maximum block size (default 512). Blocks are split at event times,
+                            so this never affects timing
+    --input=[name=]<file>   Feed the audio file into the named input stream, which must have the
+                            same number of channels. The name may be omitted if there is exactly
+                            one input stream. Past the end of the file, the stream gets silence
+    --output=[name=]<file>  Write the named output stream to a .wav file. The name may be
+                            omitted if there is exactly one output stream
+    --external=<name>=<v>   Supply an external variable: an audio file path, @file.json, or a
+                            JSON literal. May be repeated
+    --set=<name>=<json>     Send the JSON value to the named input event or value endpoint at
+                            frame 0. May be repeated
+    --score=<file|json>     Notes and automation, as a file or inline JSON, with times in seconds:
+                              { "notes": [ { "start": 0, "duration": 1.5, "pitch": 60,
+                                             "velocity": 0.8, "channel": 0 } ],
+                                "automation": [ { "time": 0.5, "endpoint": "cutoff",
+                                                  "value": 0.2, "rampFrames": 2205 } ] }
+                            Notes go as std::notes::NoteOn/NoteOff to the first input events that
+                            accept them, or as MIDI if the program only has a MIDI input.
+                            rampFrames only applies to value endpoints
+    --midi=<file>           Send a MIDI file to the program's MIDI input endpoint
+    --report=<file|->       Where to write the JSON report (default: stdout)
+    --format=json|ndjson    Report format. With ndjson, each event or console message is a line
+                            as it happens, and the final line holds the values (default: json)
+    --maxEvents=<n>         Keep at most n events per endpoint in the report (default 10000)
+    --no-flush              Don't send the end-of-stream event to an 'input event void flush'
+                            endpoint (normally sent at the end frame, followed by a single
+                            frame of processing before the values are captured)
+    --quiet                 Suppress progress output on stderr
 
 cmaj generate [opts] <file> Generates some code from the given file or patch
 
@@ -285,6 +329,7 @@ static void performCommandLineTask (choc::ArgumentList& args)
     if (isCommand (args, "server"))    return runServerProcess (args, engine, buildSettings, parseAudioDeviceArgs (args));
     if (isCommand (args, "generate"))  return generate (args, engine, buildSettings);
     if (isCommand (args, "render"))    return render (args, engine, buildSettings);
+    if (isCommand (args, "run"))       return run (args, engine, buildSettings);
     if (isCommand (args, "test"))      return runTests (args, engine, buildSettings);
     if (isCommand (args, "create"))    return createPatch (args);
     if (isCommand (args, "unit-test")) return runUnitTests (args, engine, buildSettings);
