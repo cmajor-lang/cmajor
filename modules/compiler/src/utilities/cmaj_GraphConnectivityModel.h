@@ -16,6 +16,8 @@
 //  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
 //  DISCLAIMED.
 
+#pragma once
+
 namespace cmaj
 {
 
@@ -24,7 +26,12 @@ struct GraphConnectivityModel
 {
     GraphConnectivityModel() = default;
 
-    GraphConnectivityModel (const AST::Graph& graph)
+    /// By default, delayed connections are skipped: the cycle check, latency calculation and
+    /// unused-node removal all depend on that, because a delay is what makes feedback legal.
+    /// Set includeDelayedConnections to have them reported as sources too (callers can tell
+    /// them apart using Source::isDelayed()).
+    GraphConnectivityModel (const AST::Graph& graph, bool shouldIncludeDelayedConnections = false)
+        : includeDelayedConnections (shouldIncludeDelayedConnections)
     {
         for (auto& node : graph.nodes)
             addNode (AST::castToRefSkippingReferences<AST::GraphNode> (node));
@@ -63,6 +70,8 @@ struct GraphConnectivityModel
             const AST::Connection& connection;
             const AST::EndpointInstance& sourceEndpointInstance;
             const AST::EndpointInstance& destEndpointInstance;
+
+            bool isDelayed() const      { return connection.delayLength != nullptr; }
         };
 
         const AST::GraphNode& node;
@@ -122,6 +131,7 @@ struct GraphConnectivityModel
 
     std::vector<Node> nodes;
     std::vector<Node::Source> outputs;
+    bool includeDelayedConnections = false;
 
     //==============================================================================
     void addNode (const AST::GraphNode& node)
@@ -131,7 +141,7 @@ struct GraphConnectivityModel
 
     void addConnection (const AST::Connection& c)
     {
-        if (c.delayLength != nullptr)
+        if (c.delayLength != nullptr && ! includeDelayedConnections)
             return;
 
         for (auto& source : c.sources)

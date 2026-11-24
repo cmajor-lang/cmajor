@@ -23,7 +23,6 @@
 #include "choc/text/choc_Files.h"
 #include "choc/containers/choc_COM.h"
 #include "../../../modules/compiler/src/codegen/cmaj_HTMLDocGenerator.h"
-#include "../../../modules/compiler/src/codegen/cmaj_GraphGenerator.h"
 
 static void writeToOutput (const std::string& outputFile, std::string_view s)
 {

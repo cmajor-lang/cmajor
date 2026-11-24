@@ -26,6 +26,7 @@
 #include "cmaj_command_GenerateHelpers.h"
 #include "cmaj_command_GenerateJavascript.h"
 #include "cmaj_command_GeneratePlugin.h"
+#include "cmaj_command_PatchGraphHTML.h"
 
 void generateBinaryModule (const std::string& outputFile, const std::vector<std::string>& sourceFiles, bool shouldObfuscate);
 void generateJSONSyntaxTree (const std::string& outputFile, const std::vector<std::string>& sourceFiles);
@@ -59,7 +60,7 @@ static std::string getCodeGenTargetHelp (std::string_view type)
     if (type == "module")         return "Compiles a list of .cmajor files into a binary-format Cmajor module";
     if (type == "syntaxtree")     return "Dumps a JSON syntax tree for the code in a patch or some .cmajor files";
     if (type == "html")           return "Generates HTML documentation for some cmajor files";
-    if (type == "graph")          return "Generates a graphviz diagram to show a patch's structure";
+    if (type == "graph")          return "Generates a JSON description of a patch's graph structure, or an interactive HTML view if --output ends in .html";
     if (type == "cpp")            return "Converts a patch to a self-contained raw C++ class";
     if (type == "javascript")     return "Converts a patch to a Javascript/WebAssembly class";
     if (type == "webaudio")       return "Converts a patch to Javascript/WebAssembly with WebAudio helpers";
@@ -135,6 +136,13 @@ void generateFromPatch (choc::ArgumentList& args,
     if (targetType == "webaudio")
         return writeToFolderOrConsole (outputFile, generate_javascript::generateJavascriptWorklet (patch, loadParams, engineOptions));
    #endif
+
+    if (targetType == "graph" && choc::text::endsWith (choc::text::toLowerCase (outputFile), ".html"))
+    {
+        auto json = generateCodeAndCheckResult (patch, loadParams, targetType, {}).generatedCode;
+        auto title = loadParams.manifest.name.empty() ? std::string ("Patch graph") : loadParams.manifest.name + " graph";
+        return writeToFolderOrConsole (outputFile, cmaj::patch_graph_html::createPatchGraphHTML (json, title));
+    }
 
     std::string optionsJSON;
 

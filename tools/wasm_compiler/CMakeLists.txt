@@ -10,7 +10,6 @@ add_executable(cmajor_compiler)
 file(GLOB_RECURSE SOURCE
     ../../modules/compiler/src/*.h
     ../../modules/compiler/src/*.cpp
-    ../../3rdParty/graphviz/cmaj_GraphViz.cpp
 )
 
 target_sources(cmajor_compiler

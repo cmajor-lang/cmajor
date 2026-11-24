@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!--
+    The page written by `cmaj generate --target=graph --output=something.html`: an interactive view
+    of a patch's graph that works when opened straight from the file system. The cmaj tool
+    fills in the title, the panel_api/cmaj-patch-graph/*.js module sources, and the "graph"
+    codegen output (see createPatchGraphHTML() in cmaj_command_Generate.h).
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PATCH_GRAPH_TITLE</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #2a3331; color: #dddddd; overflow: hidden;
+                 font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    #toolbar { position: absolute; top: 8px; left: 8px; z-index: 1; display: flex; gap: 4px; align-items: center; }
+    #toolbar button { font: inherit; background: #445550; color: inherit; border: 1px solid #6f827c; border-radius: 3px; padding: 2px 8px; cursor: pointer; }
+    #toolbar span { margin-left: 8px; opacity: 0.7; }
+    #graph { position: absolute; inset: 0; }
+    #error { position: absolute; bottom: 8px; left: 8px; color: #ff8a80; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div id="graph"></div>
+  <div id="toolbar">
+    <button id="zoomIn" title="Zoom in (or pinch, or ctrl/cmd + scroll)">+</button>
+    <button id="zoomOut" title="Zoom out (or pinch, or ctrl/cmd + scroll)">−</button>
+    <button id="fit" title="Fit to window (or double-click the background)">Fit</button>
+    <button id="expandAll">Expand all</button>
+    <button id="collapseAll">Collapse nested</button>
+    <span>Drag or scroll to pan, pinch or ctrl/cmd + scroll to zoom, click a name to open it in VS Code</span>
+  </div>
+  <div id="error"></div>
+
+  <script>
+    const patchGraphModules = PATCH_GRAPH_MODULES;
+    const patchGraphData = PATCH_GRAPH_DATA;
+
+    // The modules import each other by relative path, which can't resolve from a file:// page,
+    // so each one becomes a blob: URL, with its imports rewritten to point at the others.
+    (async () =>
+    {
+        const urls = {};
+        let remaining = Object.keys (patchGraphModules);
+
+        while (remaining.length > 0)
+        {
+            const ready = remaining.filter (name => [...patchGraphModules[name].matchAll (/from\s+"\.\/([\w-]+\.js)"/g)]
+                                                      .every (m => urls[m[1]]));
+
+            if (ready.length === 0)
+                throw new Error ("Couldn't resolve the imports of " + remaining.join (", "));
+
+            for (const name of ready)
+            {
+                const source = patchGraphModules[name].replace (/from\s+"\.\/([\w-]+\.js)"/g, (_, file) => `from "${urls[file]}"`);
+                urls[name] = URL.createObjectURL (new Blob ([source], { type: "text/javascript" }));
+            }
+
+            remaining = remaining.filter (name => ! ready.includes (name));
+        }
+
+        const { PatchGraphView } = await import (urls["patch-graph-view.js"]);
+
+        // source locations arrive as "file:line:column"; vscode://file/ URLs open them in VS Code
+        const openSource = (location) =>
+        {
+            const match = /^(.*):(\d+):(\d+)$/.exec (location);
+
+            if (match)
+                window.location.href = "vscode://file/" + encodeURI (match[1].replace (/\\/g, "/").replace (/^\//, ""))
+                                         + ":" + match[2] + ":" + match[3];
+        };
+
+        const view = new PatchGraphView (document.getElementById ("graph"), { onOpenSource: openSource, fitTopMargin: 40 });
+        await view.setModel (patchGraphData);
+
+        document.getElementById ("zoomIn").onclick = () => view.zoomBy (1.25);
+        document.getElementById ("zoomOut").onclick = () => view.zoomBy (0.8);
+        document.getElementById ("fit").onclick = () => view.fit();
+        document.getElementById ("expandAll").onclick = () => view.setAllCollapsed (false);
+        document.getElementById ("collapseAll").onclick = () => view.setAllCollapsed (true);
+        window.onresize = () => view.fit();
+    })().catch (e => document.getElementById ("error").textContent = String (e?.stack ?? e));
+  </script>
+</body>
+</html>

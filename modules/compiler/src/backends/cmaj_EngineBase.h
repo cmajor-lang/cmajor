@@ -22,7 +22,7 @@
 #include "../../../../include/cmajor/COM/cmaj_EngineFactoryInterface.h"
 #include <iostream>
 #include "../AST/cmaj_AST.h"
-#include "../codegen/cmaj_GraphGenerator.h"
+#include "../codegen/cmaj_GraphStructureGenerator.h"
 #include "../transformations/cmaj_Transformations.h"
 #include "CPlusPlus/cmaj_CPlusPlus.h"
 #include "WebAssembly/cmaj_WebAssembly.h"
@@ -339,10 +339,11 @@ struct EngineBase  : public choc::com::ObjectWithAtomicRefCount<EngineInterface,
             {
                 cmaj::transformations::prepareForGraphGen (*program,
                                                            buildSettings.getFrequency(),
-                                                           buildSettings.getMaxStackSize());
+                                                           buildSettings.getMaxStackSize(),
+                                                           true);
 
-                cmaj::GraphVizGenerator generator (*program);
-                output = generator.createGraphSVG();
+                cmaj::GraphStructureGenerator generator (*program);
+                output = generator.createJSON();
                 return;
             }
 

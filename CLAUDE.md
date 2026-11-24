@@ -82,7 +82,6 @@ The test runner is part of the command line tool. Use:
 - **LLVM**: Pre-built libraries in `3rdParty/llvm/release/` for different platforms
 - **Boost**: Header-only libraries for various utilities
 - **JUCE**: Audio framework (external dependency for plugin builds)
-- **Graphviz**: Graph visualization for patch diagrams
 
 ## Development Workflow
 

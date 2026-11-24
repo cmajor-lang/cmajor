@@ -193,10 +193,6 @@ cmaj-patch-view-parent {
     height: 400px;
 }
 
-cmaj-patch-graph {
-    max-height: 50rem;
-}
-
 #cmaj-error-list {
     display: block;
     white-space: pre-wrap;

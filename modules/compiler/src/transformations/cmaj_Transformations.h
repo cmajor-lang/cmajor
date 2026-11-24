@@ -40,10 +40,13 @@ namespace cmaj::transformations
                             double& resultLatency,
                             const std::function<bool(const EndpointID&)>& isEndpointActive);
 
-    // Run passes for graph generation
+    // Run passes for graph generation. If keepDelayedConnections is true, delayed
+    // connections are left in place rather than being replaced by delay nodes, so
+    // that a structure diagram can show them as the user wrote them.
     void prepareForGraphGen (AST::Program&,
                              double frequency,
-                             uint64_t stackSizeLimit);
+                             uint64_t stackSizeLimit,
+                             bool keepDelayedConnections = false);
 
     /// Runs a set of basic simplification and resolution passes, ignoring errors
     /// and stopping when it runs out of things to change.

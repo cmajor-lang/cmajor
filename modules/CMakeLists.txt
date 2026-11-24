@@ -371,8 +371,6 @@ function (MAKE_CMAJ_LIBRARY)
         target_link_options(${CMAJ_LIBRARY_NAME} INTERFACE "-Wl,--exclude-libs,ALL")
     endif()
 
-    target_sources(${CMAJ_LIBRARY_NAME} PRIVATE ${CMAJ_MODULE_DIR}/../3rdParty/graphviz/cmaj_GraphViz.cpp)
-
     target_compile_features (${CMAJ_LIBRARY_NAME} PRIVATE cxx_std_17)
 
     target_compile_options (${CMAJ_LIBRARY_NAME} PRIVATE ${CMAJ_WARNING_FLAGS})

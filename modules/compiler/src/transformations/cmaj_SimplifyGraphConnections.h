@@ -19,16 +19,17 @@
 namespace cmaj::transformations
 {
 
-/// Coalesces chained connections and replaces delay connections with nodes
-/// to implement delays
-inline void simplifyGraphConnections (AST::Program& program)
+/// Coalesces chained connections and (if replaceDelays is true) replaces delay
+/// connections with nodes to implement delays
+inline void simplifyGraphConnections (AST::Program& program, bool replaceDelays = true)
 {
     struct SimplifyConnectionPass  : public passes::PassAvoidingGenericFunctionsAndModules
     {
         using super = PassAvoidingGenericFunctionsAndModules;
         using super::visit;
 
-        SimplifyConnectionPass (AST::Program& p) : super (p) {}
+        SimplifyConnectionPass (AST::Program& p, bool shouldReplaceDelays)
+            : super (p), replaceDelays (shouldReplaceDelays) {}
 
         CMAJ_DO_NOT_VISIT_CONSTANTS
 
@@ -43,6 +44,7 @@ inline void simplifyGraphConnections (AST::Program& program)
 
     private:
         int nextDelayID = 1;
+        bool replaceDelays = true;
 
         void transformConnectionList (AST::Graph& graph, AST::ListProperty& connectionList)
         {
@@ -93,7 +95,7 @@ inline void simplifyGraphConnections (AST::Program& program)
         bool transformConnection (AST::Graph& graph, AST::ListProperty& connectionList, AST::Connection& connection)
         {
             return splitChainedConnections (connectionList, connection)
-                    || removeDelayIfPresent (graph, connectionList, connection);
+                    || (replaceDelays && removeDelayIfPresent (graph, connectionList, connection));
         }
 
         bool splitChainedConnections (AST::ListProperty& connectionList, AST::Connection& connection)
@@ -436,7 +438,7 @@ inline void simplifyGraphConnections (AST::Program& program)
         }
     };
 
-    SimplifyConnectionPass (program).visitObject (program.rootNamespace);
+    SimplifyConnectionPass (program, replaceDelays).visitObject (program.rootNamespace);
 }
 
 }

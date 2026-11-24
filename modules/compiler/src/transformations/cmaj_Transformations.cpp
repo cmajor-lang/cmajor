@@ -166,12 +166,13 @@ void prepareForCodeGen (AST::Program& program,
 
 void prepareForGraphGen (AST::Program& program,
                          double frequency,
-                         uint64_t stackSizeLimit)
+                         uint64_t stackSizeLimit,
+                         bool keepDelayedConnections)
 {
     cloneGraphNodes (program);
     replaceProcessorProperties (program, frequency, frequency, false);
     runFullResolutionAndChecks (program, stackSizeLimit, true, true);
-    simplifyGraphConnections (program);
+    simplifyGraphConnections (program, ! keepDelayedConnections);
     runResolutionPasses (program, true);
 }
 
