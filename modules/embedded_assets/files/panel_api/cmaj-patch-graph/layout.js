@@ -36,7 +36,24 @@ import { layoutLevel } from "./layered-layout.js";
         width, height,
         metrics,                    // sizes and fonts the layout assumed for text
         nodes: [PositionedNode],    // parents always come before their children
-        edges: [PositionedEdge]
+        edges: [PositionedEdge],
+        boundaryWidgets: [PositionedBoundaryWidget]     // (see the boundaryWidgets option below)
+    }
+
+    Layout options (as well as collapsedNodeIDs, metrics, spacing and showTypes):
+
+        boundaryWidgets: { [endpointName]: { width, height } }
+
+    makes room for something (e.g. a live control, drawn by the host over the graph) next to
+    some of the root graph's own endpoints: a gutter outside the root's box on each side, and
+    those ports spaced far enough apart for the things next to them not to overlap. Each one
+    is then given a place, centred on its port:
+
+    PositionedBoundaryWidget:
+    {
+        name, direction: "in" | "out", portId,
+        x, y, width, height,        // to the left of an input's port, or the right of an output's
+        portX, portY, portWidth, portHeight
     }
 
     PositionedNode:
@@ -88,6 +105,8 @@ export const defaultMetrics =
     nodePadding:    8,
     graphPadding:   14,
     maxTypeLabelLength: 22,
+    boundaryWidgetGap:      6,      // vertical space between two boundary widgets (see the boundaryWidgets option)
+    boundaryWidgetOffset:   10,     // horizontal space between a boundary widget and its port
 };
 
 /// Width of some text in the (monospace) font that the layout assumes
@@ -113,6 +132,13 @@ export function getGraphNodeIDsBelowDepth (model, depth)
 
     visit (model.root, 0);
     return ids;
+}
+
+/// The ID of the port drawn for a node's endpoint (direction "in" or "out"). A graph's own
+/// endpoints have one port, with the graph's node ID (e.g. the root's boundary ports).
+export function getPortID (nodeID, direction, endpointName)
+{
+    return PatchGraphLayout.getPortID (nodeID, direction, endpointName);
 }
 
 //==============================================================================
@@ -149,6 +175,7 @@ class PatchGraphLayout
         this.spacing = options.spacing ?? {};
         this.collapsed = new Set (options.collapsedNodeIDs ?? []);
         this.showTypes = options.showTypes ?? true;
+        this.boundaryWidgets = getValidBoundaryWidgets (options.boundaryWidgets);
 
         this.nodes = [];            // PositionedNodes, parents first
         this.ports = new Map();     // id -> PositionedPort
@@ -160,16 +187,97 @@ class PatchGraphLayout
     {
         const margin = 10;
         const root = this.layoutNode (this.model.root, null, 0);
-        root.place (margin, margin);
+        const gutter = this.getBoundaryGutter (root);
+        root.place (margin + gutter.left, margin + gutter.top);
         this.combineIndexLabels();
 
         return {
-            width: root.width + 2 * margin,
-            height: root.height + 2 * margin,
+            width: root.width + 2 * margin + gutter.left + gutter.right,
+            height: root.height + 2 * margin + gutter.top + gutter.bottom,
             metrics: this.metrics,
             nodes: this.nodes,
-            edges: this.edges.filter (e => e.points.length > 1)
+            edges: this.edges.filter (e => e.points.length > 1),
+            boundaryWidgets: this.placeBoundaryWidgets (root)
         };
+    }
+
+    //==============================================================================
+    // The boundaryWidgets option: room for a widget next to some of the root's own ports
+
+    getBoundaryWidget (endpoint, depth)
+    {
+        return depth === 0 && this.boundaryWidgets ? this.boundaryWidgets.get (endpoint.name) ?? null : null;
+    }
+
+    /// The minimum distance between the centres of each of the root's ports and the next one,
+    /// so that the widgets next to them don't overlap (or undefined if none have widgets)
+    getBoundarySeparations (endpoints, depth)
+    {
+        if (depth !== 0 || ! this.boundaryWidgets)
+            return undefined;
+
+        const m = this.metrics;
+        const heights = endpoints.map (e => this.getBoundaryWidget (e, depth)?.height ?? 0);
+
+        return heights.slice (1).map ((h, i) => (h > 0 || heights[i] > 0)
+                                                    ? Math.max (m.rowHeight, (h + heights[i]) / 2 + m.boundaryWidgetGap)
+                                                    : m.rowHeight);
+    }
+
+    /// How much room the root needs around it for its ports' widgets
+    getBoundaryGutter (root)
+    {
+        const gutter = { left: 0, right: 0, top: 0, bottom: 0 };
+
+        if (! this.boundaryWidgets)
+            return gutter;
+
+        const offset = this.metrics.boundaryWidgetOffset;
+
+        for (const p of root.ports)
+        {
+            const widget = this.getBoundaryWidget (this.ports.get (p.id).endpoint, 0);
+
+            if (! widget)
+                continue;
+
+            if (p.direction === "in")
+                gutter.left = Math.max (gutter.left, root.protrudeLeft + offset + widget.width);
+            else
+                gutter.right = Math.max (gutter.right, root.protrudeRight + offset + widget.width);
+
+            gutter.top = Math.max (gutter.top, widget.height / 2 - p.offsetY);
+            gutter.bottom = Math.max (gutter.bottom, p.offsetY + widget.height / 2 - root.height);
+        }
+
+        return gutter;
+    }
+
+    placeBoundaryWidgets (root)
+    {
+        if (! this.boundaryWidgets)
+            return [];
+
+        const offset = this.metrics.boundaryWidgetOffset;
+
+        return root.ports.flatMap (p =>
+        {
+            const port = this.ports.get (p.id);
+            const widget = this.getBoundaryWidget (port.endpoint, 0);
+
+            if (! widget)
+                return [];
+
+            const isInput = p.direction === "in";
+
+            return [{
+                name: port.endpoint.name, direction: p.direction, portId: port.id,
+                x: isInput ? port.x - offset - widget.width : port.x + port.width + offset,
+                y: port.y + port.height / 2 - widget.height / 2,
+                width: widget.width, height: widget.height,
+                portX: port.x, portY: port.y, portWidth: port.width, portHeight: port.height
+            }];
+        });
     }
 
     //==============================================================================
@@ -340,8 +448,19 @@ class PatchGraphLayout
         const inWidth = this.getRowLabelWidth (inputs), outWidth = this.getRowLabelWidth (outputs);
         const rowsWidth = 2 * m.nodePadding + inWidth + outWidth + (inWidth > 0 && outWidth > 0 ? 20 : 0);
 
+        // each row's offset below the first one (rows are usually evenly spaced, but the root's
+        // may be spread out to make room for boundary widgets)
+        const getRowOffsets = (endpoints) =>
+        {
+            const separations = this.getBoundarySeparations (endpoints, info.depth) ?? endpoints.slice (1).map (() => m.rowHeight);
+            return endpoints.map ((_, i) => separations.slice (0, i).reduce ((total, s) => total + s, 0));
+        };
+
+        const inputOffsets = getRowOffsets (inputs), outputOffsets = getRowOffsets (outputs);
+        const rowsHeight = numRows > 0 ? Math.max (inputOffsets.at (-1) ?? 0, outputOffsets.at (-1) ?? 0) + m.rowHeight : 0;
+
         const width = Math.max (header.width, rowsWidth, 60);
-        const height = header.height + numRows * m.rowHeight + (numRows > 0 ? m.nodePadding / 2 : 0);
+        const height = header.height + rowsHeight + (numRows > 0 ? m.nodePadding / 2 : 0);
 
         info.headerHeight = header.height;
 
@@ -349,7 +468,7 @@ class PatchGraphLayout
         {
             const port = this.createPort (node, endpoint, direction, false);
             port.relX = direction === "in" ? -m.portWidth : width;
-            port.relY = header.height + index * m.rowHeight + m.rowHeight / 2 - m.portHeight / 2;
+            port.relY = header.height + (direction === "in" ? inputOffsets : outputOffsets)[index] + m.rowHeight / 2 - m.portHeight / 2;
             info.ports.push (port);
             return port;
         });
@@ -414,6 +533,8 @@ class PatchGraphLayout
             portWidth: m.portWidth,
             portHeight: m.portHeight,
             portSpacing: m.rowHeight,
+            inputSeparations: this.getBoundarySeparations (inputs, depth),
+            outputSeparations: this.getBoundarySeparations (outputs, depth),
             contentTop: header.height + m.graphPadding,
             portTop: header.height + 6,
             leftPadding,
@@ -634,6 +755,18 @@ class PatchGraphLayout
             port.labelY = centreY + m.portLabelSize * 0.35;
         }
     }
+}
+
+/// The usable entries of a boundaryWidgets option, as a Map (or null if there are none)
+function getValidBoundaryWidgets (widgets)
+{
+    if (! widgets || typeof widgets !== "object")
+        return null;
+
+    const isSize = (v) => Number.isFinite (v) && v >= 0;
+    const valid = Object.entries (widgets).filter (([, w]) => isSize (w?.width) && isSize (w?.height));
+
+    return valid.length > 0 ? new Map (valid.map (([name, w]) => [name, { width: w.width, height: w.height }])) : null;
 }
 
 function hasIndex (end)

@@ -1,0 +1,2414 @@
+{
+ "patchFile": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajorpatch",
+ "capturedAt": "2026-11-24T16:54:33.834Z",
+ "listeners": {
+  "out": "event_out_capture"
+ },
+ "status": {
+  "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREHELLOWORLD/",
+  "playing": true,
+  "manifestFile": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajorpatch",
+  "manifest": {
+   "CmajorVersion": 1,
+   "ID": "dev.cmajor.examples.helloworld",
+   "version": "1.0",
+   "name": "Hello World",
+   "description": "The classic audio Hello World",
+   "manufacturer": "Cmajor Software Ltd",
+   "category": "generator",
+   "isInstrument": false,
+   "source": "HelloWorld.cmajor"
+  },
+  "details": {
+   "mainProcessor": "HelloWorld",
+   "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:8:11: ",
+   "inputs": [],
+   "outputs": [
+    {
+     "endpointID": "out",
+     "endpointType": "stream",
+     "dataType": {
+      "type": "float32"
+     },
+     "purpose": "audio out",
+     "numAudioChannels": 1,
+     "source": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:10:19:"
+    }
+   ]
+  },
+  "codeGenTargets": [
+   "cpp",
+   "llvm",
+   "llvm-arm64",
+   "llvm-x86_64",
+   "llvm-wasm32"
+  ],
+  "loaded": true,
+  "status": "Loaded: Hello World",
+  "log": "Total build time: 52.33 ms\nload: 16.52 ms, compile: 18.51 ms, link: 17.31 ms"
+ },
+ "graph": {
+  "format": "cmajor-patch-graph",
+  "version": 1,
+  "root": {
+   "id": "n0",
+   "path": "",
+   "name": "HelloWorld",
+   "processor": "HelloWorld",
+   "processorFullName": "HelloWorld",
+   "isGraph": false,
+   "source": {
+    "file": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor",
+    "line": 8,
+    "column": 11
+   },
+   "inputs": [],
+   "outputs": [
+    {
+     "path": "out",
+     "name": "out",
+     "endpointType": "stream",
+     "dataTypes": [
+      {
+       "name": "float32",
+       "fullName": "float32"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor",
+      "line": 10,
+      "column": 19
+     }
+    }
+   ]
+  }
+ },
+ "patchList": [],
+ "messages": [
+  {
+   "t": 6,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREHELLOWORLD/",
+    "playing": true,
+    "loaded": false
+   }
+  },
+  {
+   "t": 6,
+   "type": "audio_device_properties",
+   "message": {
+    "availableAPIs": [
+     "CoreAudio"
+    ],
+    "availableOutputDevices": [
+     {
+      "ID": "129",
+      "name": "GSM: LG ULTRAFINE"
+     },
+     {
+      "ID": "130",
+      "name": "Existential Audio Inc.: BlackHole 16ch"
+     },
+     {
+      "ID": "132",
+      "name": "Apple Inc.: MacBook Pro Speakers"
+     },
+     {
+      "ID": "133",
+      "name": "Microsoft Corp.: Microsoft Teams Audio"
+     },
+     {
+      "ID": "134",
+      "name": "GreenLight Audio: GreenLight AVB"
+     },
+     {
+      "ID": "135",
+      "name": "zoom.us: ZoomAudioDevice"
+     }
+    ],
+    "availableInputDevices": [
+     {
+      "ID": "130",
+      "name": "Existential Audio Inc.: BlackHole 16ch"
+     },
+     {
+      "ID": "131",
+      "name": "Apple Inc.: MacBook Pro Microphone"
+     },
+     {
+      "ID": "133",
+      "name": "Microsoft Corp.: Microsoft Teams Audio"
+     },
+     {
+      "ID": "134",
+      "name": "GreenLight Audio: GreenLight AVB"
+     },
+     {
+      "ID": "135",
+      "name": "zoom.us: ZoomAudioDevice"
+     }
+    ],
+    "sampleRates": [
+     44100,
+     48000,
+     88200,
+     96000
+    ],
+    "blockSizes": [
+     16,
+     32,
+     48,
+     64,
+     96,
+     128,
+     196,
+     224,
+     256,
+     320,
+     480,
+     512,
+     768,
+     1024,
+     1536,
+     2048
+    ],
+    "audioAPI": "CoreAudio",
+    "output": "132",
+    "input": "131",
+    "rate": 44100,
+    "blockSize": 128
+   }
+  },
+  {
+   "t": 7,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREHELLOWORLD/",
+    "playing": true,
+    "loaded": false,
+    "status": "Loading: HelloWorld.cmajorpatch"
+   }
+  },
+  {
+   "t": 60,
+   "type": "status",
+   "message": {
+    "warning": "",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.helloworld",
+     "version": "1.0",
+     "name": "Hello World",
+     "description": "The classic audio Hello World",
+     "manufacturer": "Cmajor Software Ltd",
+     "category": "generator",
+     "isInstrument": false,
+     "source": "HelloWorld.cmajor"
+    },
+    "details": {
+     "mainProcessor": "HelloWorld",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:8:11: ",
+     "inputs": [],
+     "outputs": [
+      {
+       "endpointID": "out",
+       "endpointType": "stream",
+       "dataType": {
+        "type": "float32"
+       },
+       "purpose": "audio out",
+       "numAudioChannels": 1,
+       "source": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:10:19:"
+      }
+     ]
+    },
+    "sampleRate": 44100,
+    "host": "Cmajor Player"
+   }
+  },
+  {
+   "t": 60,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREHELLOWORLD/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.helloworld",
+     "version": "1.0",
+     "name": "Hello World",
+     "description": "The classic audio Hello World",
+     "manufacturer": "Cmajor Software Ltd",
+     "category": "generator",
+     "isInstrument": false,
+     "source": "HelloWorld.cmajor"
+    },
+    "details": {
+     "mainProcessor": "HelloWorld",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:8:11: ",
+     "inputs": [],
+     "outputs": [
+      {
+       "endpointID": "out",
+       "endpointType": "stream",
+       "dataType": {
+        "type": "float32"
+       },
+       "purpose": "audio out",
+       "numAudioChannels": 1,
+       "source": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:10:19:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "loaded": true,
+    "status": "Loading: HelloWorld.cmajorpatch",
+    "log": "Total build time: 52.33 ms\nload: 16.52 ms, compile: 18.51 ms, link: 17.31 ms"
+   }
+  },
+  {
+   "t": 60,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREHELLOWORLD/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.helloworld",
+     "version": "1.0",
+     "name": "Hello World",
+     "description": "The classic audio Hello World",
+     "manufacturer": "Cmajor Software Ltd",
+     "category": "generator",
+     "isInstrument": false,
+     "source": "HelloWorld.cmajor"
+    },
+    "details": {
+     "mainProcessor": "HelloWorld",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:8:11: ",
+     "inputs": [],
+     "outputs": [
+      {
+       "endpointID": "out",
+       "endpointType": "stream",
+       "dataType": {
+        "type": "float32"
+       },
+       "purpose": "audio out",
+       "numAudioChannels": 1,
+       "source": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:10:19:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "loaded": true,
+    "status": "Loaded: Hello World",
+    "log": "Total build time: 52.33 ms\nload: 16.52 ms, compile: 18.51 ms, link: 17.31 ms"
+   }
+  },
+  {
+   "t": 106,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREHELLOWORLD/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.helloworld",
+     "version": "1.0",
+     "name": "Hello World",
+     "description": "The classic audio Hello World",
+     "manufacturer": "Cmajor Software Ltd",
+     "category": "generator",
+     "isInstrument": false,
+     "source": "HelloWorld.cmajor"
+    },
+    "details": {
+     "mainProcessor": "HelloWorld",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:8:11: ",
+     "inputs": [],
+     "outputs": [
+      {
+       "endpointID": "out",
+       "endpointType": "stream",
+       "dataType": {
+        "type": "float32"
+       },
+       "purpose": "audio out",
+       "numAudioChannels": 1,
+       "source": "${CMAJOR_ROOT}/examples/patches/HelloWorld/HelloWorld.cmajor:10:19:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "loaded": true,
+    "status": "Loaded: Hello World",
+    "log": "Total build time: 52.33 ms\nload: 16.52 ms, compile: 18.51 ms, link: 17.31 ms"
+   }
+  },
+  {
+   "t": 120,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999883
+    ],
+    "max": [
+     0.14999244
+    ]
+   }
+  },
+  {
+   "t": 128,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999917
+    ],
+    "max": [
+     0.14999197
+    ]
+   }
+  },
+  {
+   "t": 135,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999944
+    ],
+    "max": [
+     0.149991
+    ]
+   }
+  },
+  {
+   "t": 148,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999966
+    ],
+    "max": [
+     0.14998998
+    ]
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999983
+    ],
+    "max": [
+     0.14998889
+    ]
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999989
+    ],
+    "max": [
+     0.14998834
+    ]
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999998
+    ],
+    "max": [
+     0.14998716
+    ]
+   }
+  },
+  {
+   "t": 179,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.15
+    ],
+    "max": [
+     0.14998594
+    ]
+   }
+  },
+  {
+   "t": 193,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999999
+    ],
+    "max": [
+     0.14998655
+    ]
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999995
+    ],
+    "max": [
+     0.14998774
+    ]
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499999
+    ],
+    "max": [
+     0.14999993
+    ]
+   }
+  },
+  {
+   "t": 216,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999999
+    ],
+    "max": [
+     0.14999983
+    ]
+   }
+  },
+  {
+   "t": 223,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999941
+    ],
+    "max": [
+     0.14998867
+    ]
+   }
+  },
+  {
+   "t": 234,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999786
+    ],
+    "max": [
+     0.14999875
+    ]
+   }
+  },
+  {
+   "t": 241,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999731
+    ],
+    "max": [
+     0.14999673
+    ]
+   }
+  },
+  {
+   "t": 254,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499991
+    ],
+    "max": [
+     0.14999834
+    ]
+   }
+  },
+  {
+   "t": 266,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499875
+    ],
+    "max": [
+     0.14999963
+    ]
+   }
+  },
+  {
+   "t": 272,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999995
+    ],
+    "max": [
+     0.14999999
+    ]
+   }
+  },
+  {
+   "t": 279,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999981
+    ],
+    "max": [
+     0.1499994
+    ]
+   }
+  },
+  {
+   "t": 291,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999874
+    ],
+    "max": [
+     0.14999785
+    ]
+   }
+  },
+  {
+   "t": 297,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999671
+    ],
+    "max": [
+     0.14999534
+    ]
+   }
+  },
+  {
+   "t": 309,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999834
+    ],
+    "max": [
+     0.14999734
+    ]
+   }
+  },
+  {
+   "t": 315,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999965
+    ],
+    "max": [
+     0.14999911
+    ]
+   }
+  },
+  {
+   "t": 322,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999999
+    ],
+    "max": [
+     0.14999995
+    ]
+   }
+  },
+  {
+   "t": 336,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499994
+    ],
+    "max": [
+     0.14999981
+    ]
+   }
+  },
+  {
+   "t": 343,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999093
+    ],
+    "max": [
+     0.14999874
+    ]
+   }
+  },
+  {
+   "t": 355,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999785
+    ],
+    "max": [
+     0.14997433
+    ]
+   }
+  },
+  {
+   "t": 361,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999758
+    ],
+    "max": [
+     0.14999986
+    ]
+   }
+  },
+  {
+   "t": 368,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.15
+    ],
+    "max": [
+     0.14999622
+    ]
+   }
+  },
+  {
+   "t": 407,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499976
+    ],
+    "max": [
+     0.14999984
+    ]
+   }
+  },
+  {
+   "t": 407,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999937
+    ],
+    "max": [
+     0.14999868
+    ]
+   }
+  },
+  {
+   "t": 407,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999944
+    ],
+    "max": [
+     0.14999859
+    ]
+   }
+  },
+  {
+   "t": 407,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999749
+    ],
+    "max": [
+     0.14999987
+    ]
+   }
+  },
+  {
+   "t": 417,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.15
+    ],
+    "max": [
+     0.14999633
+    ]
+   }
+  },
+  {
+   "t": 424,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999768
+    ],
+    "max": [
+     0.14999607
+    ]
+   }
+  },
+  {
+   "t": 437,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999434
+    ],
+    "max": [
+     0.14999983
+    ]
+   }
+  },
+  {
+   "t": 444,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999932
+    ],
+    "max": [
+     0.14999874
+    ]
+   }
+  },
+  {
+   "t": 451,
+   "type": "cpu_info",
+   "message": {
+    "level": 0.014785162
+   }
+  },
+  {
+   "t": 451,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999947
+    ],
+    "max": [
+     0.14999852
+    ]
+   }
+  },
+  {
+   "t": 463,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499974
+    ],
+    "max": [
+     0.14999989
+    ]
+   }
+  },
+  {
+   "t": 470,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.15
+    ],
+    "max": [
+     0.14999643
+    ]
+   }
+  },
+  {
+   "t": 482,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999777
+    ],
+    "max": [
+     0.1499998
+    ]
+   }
+  },
+  {
+   "t": 489,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999928
+    ],
+    "max": [
+     0.1499988
+    ]
+   }
+  },
+  {
+   "t": 495,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999951
+    ],
+    "max": [
+     0.14999846
+    ]
+   }
+  },
+  {
+   "t": 507,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999731
+    ],
+    "max": [
+     0.1499999
+    ]
+   }
+  },
+  {
+   "t": 514,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999999
+    ],
+    "max": [
+     0.14999653
+    ]
+   }
+  },
+  {
+   "t": 525,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999785
+    ],
+    "max": [
+     0.14999585
+    ]
+   }
+  },
+  {
+   "t": 530,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999408
+    ],
+    "max": [
+     0.14999977
+    ]
+   }
+  },
+  {
+   "t": 543,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999923
+    ],
+    "max": [
+     0.14999886
+    ]
+   }
+  },
+  {
+   "t": 554,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999954
+    ],
+    "max": [
+     0.14999838
+    ]
+   }
+  },
+  {
+   "t": 560,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999722
+    ],
+    "max": [
+     0.14999993
+    ]
+   }
+  },
+  {
+   "t": 571,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999999
+    ],
+    "max": [
+     0.14999664
+    ]
+   }
+  },
+  {
+   "t": 577,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999793
+    ],
+    "max": [
+     0.14999975
+    ]
+   }
+  },
+  {
+   "t": 589,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999919
+    ],
+    "max": [
+     0.14999892
+    ]
+   }
+  },
+  {
+   "t": 596,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999959
+    ],
+    "max": [
+     0.1499983
+    ]
+   }
+  },
+  {
+   "t": 603,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999712
+    ],
+    "max": [
+     0.14999995
+    ]
+   }
+  },
+  {
+   "t": 616,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999999
+    ],
+    "max": [
+     0.14999673
+    ]
+   }
+  },
+  {
+   "t": 627,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999801
+    ],
+    "max": [
+     0.14999561
+    ]
+   }
+  },
+  {
+   "t": 633,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999998
+    ],
+    "max": [
+     0.14999971
+    ]
+   }
+  },
+  {
+   "t": 646,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999522
+    ],
+    "max": [
+     0.149999
+    ]
+   }
+  },
+  {
+   "t": 652,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999883
+    ],
+    "max": [
+     0.14999999
+    ]
+   }
+  },
+  {
+   "t": 658,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999835
+    ],
+    "max": [
+     0.14999391
+    ]
+   }
+  },
+  {
+   "t": 670,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999986
+    ],
+    "max": [
+     0.14999937
+    ]
+   }
+  },
+  {
+   "t": 676,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999244
+    ],
+    "max": [
+     0.14999755
+    ]
+   }
+  },
+  {
+   "t": 688,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999974
+    ],
+    "max": [
+     0.14999956
+    ]
+   }
+  },
+  {
+   "t": 699,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.149998
+    ],
+    "max": [
+     0.14999324
+    ]
+   }
+  },
+  {
+   "t": 706,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499991
+    ],
+    "max": [
+     0.14999995
+    ]
+   }
+  },
+  {
+   "t": 719,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999463
+    ],
+    "max": [
+     0.14999872
+    ]
+   }
+  },
+  {
+   "t": 725,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.15
+    ],
+    "max": [
+     0.14999849
+    ]
+   }
+  },
+  {
+   "t": 732,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999928
+    ],
+    "max": [
+     0.1499999
+    ]
+   }
+  },
+  {
+   "t": 744,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999771
+    ],
+    "max": [
+     0.14999273
+    ]
+   }
+  },
+  {
+   "t": 750,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999963
+    ],
+    "max": [
+     0.14999968
+    ]
+   }
+  },
+  {
+   "t": 757,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999296
+    ],
+    "max": [
+     0.14999677
+    ]
+   }
+  },
+  {
+   "t": 769,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999993
+    ],
+    "max": [
+     0.1499992
+    ]
+   }
+  },
+  {
+   "t": 780,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999568
+    ],
+    "max": [
+     0.14999439
+    ]
+   }
+  },
+  {
+   "t": 786,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999862
+    ],
+    "max": [
+     0.15
+    ]
+   }
+  },
+  {
+   "t": 797,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999564
+    ],
+    "max": [
+     0.14999919
+    ]
+   }
+  },
+  {
+   "t": 804,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999993
+    ],
+    "max": [
+     0.14999788
+    ]
+   }
+  },
+  {
+   "t": 815,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999962
+    ],
+    "max": [
+     0.14999674
+    ]
+   }
+  },
+  {
+   "t": 821,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999697
+    ],
+    "max": [
+     0.1499997
+    ]
+   }
+  },
+  {
+   "t": 833,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999768
+    ],
+    "max": [
+     0.14999989
+    ]
+   }
+  },
+  {
+   "t": 846,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499993
+    ],
+    "max": [
+     0.14999591
+    ]
+   }
+  },
+  {
+   "t": 853,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.15
+    ],
+    "max": [
+     0.14999874
+    ]
+   }
+  },
+  {
+   "t": 859,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999467
+    ],
+    "max": [
+     0.14999542
+    ]
+   }
+  },
+  {
+   "t": 870,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999908
+    ],
+    "max": [
+     0.14999995
+    ]
+   }
+  },
+  {
+   "t": 876,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999655
+    ],
+    "max": [
+     0.1499933
+    ]
+   }
+  },
+  {
+   "t": 888,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999975
+    ],
+    "max": [
+     0.14999954
+    ]
+   }
+  },
+  {
+   "t": 893,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999986
+    ],
+    "max": [
+     0.14999752
+    ]
+   }
+  },
+  {
+   "t": 905,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999612
+    ],
+    "max": [
+     0.1499994
+    ]
+   }
+  },
+  {
+   "t": 917,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999832
+    ],
+    "max": [
+     0.14999999
+    ]
+   }
+  },
+  {
+   "t": 923,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999886
+    ],
+    "max": [
+     0.1499987
+    ]
+   }
+  },
+  {
+   "t": 936,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999895
+    ],
+    "max": [
+     0.14999747
+    ]
+   }
+  },
+  {
+   "t": 942,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14998582
+    ],
+    "max": [
+     0.14999978
+    ]
+   }
+  },
+  {
+   "t": 954,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999999
+    ],
+    "max": [
+     0.14996266
+    ]
+   }
+  },
+  {
+   "t": 960,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999856
+    ],
+    "max": [
+     0.14999959
+    ]
+   }
+  },
+  {
+   "t": 966,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999765
+    ],
+    "max": [
+     0.14999905
+    ]
+   }
+  },
+  {
+   "t": 978,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999984
+    ],
+    "max": [
+     0.14998625
+    ]
+   }
+  },
+  {
+   "t": 991,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499882
+    ],
+    "max": [
+     0.14999999
+    ]
+   }
+  },
+  {
+   "t": 996,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999951
+    ],
+    "max": [
+     0.14999841
+    ]
+   }
+  },
+  {
+   "t": 1009,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999917
+    ],
+    "max": [
+     0.14999783
+    ]
+   }
+  },
+  {
+   "t": 1016,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14996785
+    ],
+    "max": [
+     0.14999989
+    ]
+   }
+  },
+  {
+   "t": 1023,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999996
+    ],
+    "max": [
+     0.14998779
+    ]
+   }
+  },
+  {
+   "t": 1030,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999826
+    ],
+    "max": [
+     0.14999942
+    ]
+   }
+  },
+  {
+   "t": 1041,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499828
+    ],
+    "max": [
+     0.14999928
+    ]
+   }
+  },
+  {
+   "t": 1063,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999992
+    ],
+    "max": [
+     0.1499672
+    ]
+   }
+  },
+  {
+   "t": 1063,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999934
+    ],
+    "max": [
+     0.14999993
+    ]
+   }
+  },
+  {
+   "t": 1070,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499999
+    ],
+    "max": [
+     0.14997588
+    ]
+   }
+  },
+  {
+   "t": 1079,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999479
+    ],
+    "max": [
+     0.14999989
+    ]
+   }
+  },
+  {
+   "t": 1090,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.149999
+    ],
+    "max": [
+     0.14999738
+    ]
+   }
+  },
+  {
+   "t": 1097,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499991
+    ],
+    "max": [
+     0.1499972
+    ]
+   }
+  },
+  {
+   "t": 1107,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14998148
+    ],
+    "max": [
+     0.14999993
+    ]
+   }
+  },
+  {
+   "t": 1115,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999986
+    ],
+    "max": [
+     0.14997533
+    ]
+   }
+  },
+  {
+   "t": 1122,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14996827
+    ],
+    "max": [
+     0.14999916
+    ]
+   }
+  },
+  {
+   "t": 1135,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999995
+    ],
+    "max": [
+     0.14996034
+    ]
+   }
+  },
+  {
+   "t": 1136,
+   "type": "cpu_info",
+   "message": {
+    "level": 0.016814232
+   }
+  },
+  {
+   "t": 1140,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499623
+    ],
+    "max": [
+     0.14999984
+    ]
+   }
+  },
+  {
+   "t": 1154,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999922
+    ],
+    "max": [
+     0.14997002
+    ]
+   }
+  },
+  {
+   "t": 1161,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14997688
+    ],
+    "max": [
+     0.14999996
+    ]
+   }
+  },
+  {
+   "t": 1166,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999981
+    ],
+    "max": [
+     0.14998282
+    ]
+   }
+  },
+  {
+   "t": 1180,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499879
+    ],
+    "max": [
+     0.14999928
+    ]
+   }
+  },
+  {
+   "t": 1187,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999685
+    ],
+    "max": [
+     0.1499921
+    ]
+   }
+  },
+  {
+   "t": 1193,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999998
+    ],
+    "max": [
+     0.14999405
+    ]
+   }
+  },
+  {
+   "t": 1205,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999394
+    ],
+    "max": [
+     0.14999977
+    ]
+   }
+  },
+  {
+   "t": 1217,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999995
+    ],
+    "max": [
+     0.1499972
+    ]
+   }
+  },
+  {
+   "t": 1224,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999595
+    ],
+    "max": [
+     0.14999999
+    ]
+   }
+  },
+  {
+   "t": 1230,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999683
+    ],
+    "max": [
+     0.14999445
+    ]
+   }
+  },
+  {
+   "t": 1241,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499998
+    ],
+    "max": [
+     0.14999793
+    ]
+   }
+  },
+  {
+   "t": 1248,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999881
+    ],
+    "max": [
+     0.14999937
+    ]
+   }
+  },
+  {
+   "t": 1279,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499987
+    ],
+    "max": [
+     0.14999944
+    ]
+   }
+  },
+  {
+   "t": 1279,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999984
+    ],
+    "max": [
+     0.1499978
+    ]
+   }
+  },
+  {
+   "t": 1279,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999667
+    ],
+    "max": [
+     0.14999999
+    ]
+   }
+  },
+  {
+   "t": 1296,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999993
+    ],
+    "max": [
+     0.14999735
+    ]
+   }
+  },
+  {
+   "t": 1296,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999369
+    ],
+    "max": [
+     0.14999963
+    ]
+   }
+  },
+  {
+   "t": 1309,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499991
+    ],
+    "max": [
+     0.14999186
+    ]
+   }
+  },
+  {
+   "t": 1314,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999194
+    ],
+    "max": [
+     0.14999913
+    ]
+   }
+  },
+  {
+   "t": 1320,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999965
+    ],
+    "max": [
+     0.14999832
+    ]
+   }
+  },
+  {
+   "t": 1333,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999731
+    ],
+    "max": [
+     0.14999995
+    ]
+   }
+  },
+  {
+   "t": 1339,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999999
+    ],
+    "max": [
+     0.14999671
+    ]
+   }
+  },
+  {
+   "t": 1351,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999785
+    ],
+    "max": [
+     0.14999983
+    ]
+   }
+  },
+  {
+   "t": 1358,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999941
+    ],
+    "max": [
+     0.14999872
+    ]
+   }
+  },
+  {
+   "t": 1371,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499994
+    ],
+    "max": [
+     0.14999877
+    ]
+   }
+  },
+  {
+   "t": 1378,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999789
+    ],
+    "max": [
+     0.1499928
+    ]
+   }
+  },
+  {
+   "t": 1384,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999452
+    ],
+    "max": [
+     0.14999981
+    ]
+   }
+  },
+  {
+   "t": 1395,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999999
+    ],
+    "max": [
+     0.149996
+    ]
+   }
+  },
+  {
+   "t": 1402,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999725
+    ],
+    "max": [
+     0.14999995
+    ]
+   }
+  },
+  {
+   "t": 1415,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999966
+    ],
+    "max": [
+     0.14999828
+    ]
+   }
+  },
+  {
+   "t": 1427,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999905
+    ],
+    "max": [
+     0.14999916
+    ]
+   }
+  },
+  {
+   "t": 1433,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999841
+    ],
+    "max": [
+     0.1499996
+    ]
+   }
+  },
+  {
+   "t": 1439,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999993
+    ],
+    "max": [
+     0.14999743
+    ]
+   }
+  },
+  {
+   "t": 1451,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499962
+    ],
+    "max": [
+     0.15
+    ]
+   }
+  },
+  {
+   "t": 1462,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999986
+    ],
+    "max": [
+     0.14999475
+    ]
+   }
+  },
+  {
+   "t": 1468,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999306
+    ],
+    "max": [
+     0.14999774
+    ]
+   }
+  },
+  {
+   "t": 1474,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999865
+    ],
+    "max": [
+     0.14999945
+    ]
+   }
+  },
+  {
+   "t": 1487,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999884
+    ],
+    "max": [
+     0.14999934
+    ]
+   }
+  },
+  {
+   "t": 1500,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999749
+    ],
+    "max": [
+     0.14999798
+    ]
+   }
+  },
+  {
+   "t": 1506,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999738
+    ],
+    "max": [
+     0.14999528
+    ]
+   }
+  },
+  {
+   "t": 1512,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999712
+    ],
+    "max": [
+     0.14999561
+    ]
+   }
+  },
+  {
+   "t": 1533,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999685
+    ],
+    "max": [
+     0.14999592
+    ]
+   }
+  },
+  {
+   "t": 1533,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999658
+    ],
+    "max": [
+     0.14999624
+    ]
+   }
+  },
+  {
+   "t": 1543,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999628
+    ],
+    "max": [
+     0.14999652
+    ]
+   }
+  },
+  {
+   "t": 1569,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999613
+    ],
+    "max": [
+     0.14999667
+    ]
+   }
+  },
+  {
+   "t": 1569,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999583
+    ],
+    "max": [
+     0.14999694
+    ]
+   }
+  },
+  {
+   "t": 1569,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499955
+    ],
+    "max": [
+     0.1499972
+    ]
+   }
+  },
+  {
+   "t": 1613,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999518
+    ],
+    "max": [
+     0.14999744
+    ]
+   }
+  },
+  {
+   "t": 1613,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999501
+    ],
+    "max": [
+     0.14999758
+    ]
+   }
+  },
+  {
+   "t": 1613,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999466
+    ],
+    "max": [
+     0.1499978
+    ]
+   }
+  },
+  {
+   "t": 1613,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.1499943
+    ],
+    "max": [
+     0.14999802
+    ]
+   }
+  },
+  {
+   "t": 1613,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999391
+    ],
+    "max": [
+     0.14999823
+    ]
+   }
+  },
+  {
+   "t": 1625,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999354
+    ],
+    "max": [
+     0.14999844
+    ]
+   }
+  },
+  {
+   "t": 1631,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999333
+    ],
+    "max": [
+     0.14999853
+    ]
+   }
+  },
+  {
+   "t": 1644,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.14999293
+    ],
+    "max": [
+     0.14999871
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,4852 @@
+{
+ "patchFile": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajorpatch",
+ "capturedAt": "2026-11-24T16:54:32.187Z",
+ "listeners": {
+  "midiOut": "event_midiOut_capture",
+  "midiIn": "event_midiIn_capture"
+ },
+ "status": {
+  "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREMIDIECHO/",
+  "playing": true,
+  "manifestFile": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajorpatch",
+  "manifest": {
+   "CmajorVersion": 1,
+   "ID": "dev.cmajor.examples.MidiEcho",
+   "version": "1.0",
+   "name": "MidiEcho",
+   "description": "A processor that just receives and emits MIDI messages",
+   "category": "midi",
+   "manufacturer": "Cmajor Software Ltd",
+   "isInstrument": false,
+   "source": "MidiEcho.cmajor"
+  },
+  "details": {
+   "mainProcessor": "MidiEcho",
+   "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:4:11: ",
+   "inputs": [
+    {
+     "endpointID": "midiIn",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "Message",
+      "members": {
+       "message": {
+        "type": "int32"
+       }
+      }
+     },
+     "purpose": "midi in",
+     "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:6:17:"
+    }
+   ],
+   "outputs": [
+    {
+     "endpointID": "midiOut",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "Message",
+      "members": {
+       "message": {
+        "type": "int32"
+       }
+      }
+     },
+     "purpose": "midi out",
+     "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:7:18:"
+    }
+   ]
+  },
+  "codeGenTargets": [
+   "cpp",
+   "llvm",
+   "llvm-arm64",
+   "llvm-x86_64",
+   "llvm-wasm32"
+  ],
+  "loaded": true,
+  "status": "Loaded: MidiEcho",
+  "log": "Total build time: 28.03 ms\nload: 11.3 ms, compile: 10.91 ms, link: 5.82 ms"
+ },
+ "graph": {
+  "format": "cmajor-patch-graph",
+  "version": 1,
+  "root": {
+   "id": "n0",
+   "path": "",
+   "name": "MidiEcho",
+   "processor": "MidiEcho",
+   "processorFullName": "MidiEcho",
+   "isGraph": false,
+   "source": {
+    "file": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor",
+    "line": 4,
+    "column": 11
+   },
+   "inputs": [
+    {
+     "path": "midiIn",
+     "name": "midiIn",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "Message",
+       "fullName": "std::midi::Message"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor",
+      "line": 6,
+      "column": 17
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "path": "midiOut",
+     "name": "midiOut",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "Message",
+       "fullName": "std::midi::Message"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor",
+      "line": 7,
+      "column": 18
+     }
+    }
+   ]
+  }
+ },
+ "patchList": [],
+ "messages": [
+  {
+   "t": 5,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREMIDIECHO/",
+    "playing": true,
+    "loaded": false
+   }
+  },
+  {
+   "t": 5,
+   "type": "audio_device_properties",
+   "message": {
+    "availableAPIs": [
+     "CoreAudio"
+    ],
+    "availableOutputDevices": [
+     {
+      "ID": "129",
+      "name": "GSM: LG ULTRAFINE"
+     },
+     {
+      "ID": "130",
+      "name": "Existential Audio Inc.: BlackHole 16ch"
+     },
+     {
+      "ID": "132",
+      "name": "Apple Inc.: MacBook Pro Speakers"
+     },
+     {
+      "ID": "133",
+      "name": "Microsoft Corp.: Microsoft Teams Audio"
+     },
+     {
+      "ID": "134",
+      "name": "GreenLight Audio: GreenLight AVB"
+     },
+     {
+      "ID": "135",
+      "name": "zoom.us: ZoomAudioDevice"
+     }
+    ],
+    "availableInputDevices": [
+     {
+      "ID": "130",
+      "name": "Existential Audio Inc.: BlackHole 16ch"
+     },
+     {
+      "ID": "131",
+      "name": "Apple Inc.: MacBook Pro Microphone"
+     },
+     {
+      "ID": "133",
+      "name": "Microsoft Corp.: Microsoft Teams Audio"
+     },
+     {
+      "ID": "134",
+      "name": "GreenLight Audio: GreenLight AVB"
+     },
+     {
+      "ID": "135",
+      "name": "zoom.us: ZoomAudioDevice"
+     }
+    ],
+    "sampleRates": [
+     44100,
+     48000,
+     88200,
+     96000
+    ],
+    "blockSizes": [
+     16,
+     32,
+     48,
+     64,
+     96,
+     128,
+     196,
+     224,
+     256,
+     320,
+     480,
+     512,
+     768,
+     1024,
+     1536,
+     2048
+    ],
+    "audioAPI": "CoreAudio",
+    "output": "132",
+    "input": "131",
+    "rate": 44100,
+    "blockSize": 128
+   }
+  },
+  {
+   "t": 5,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREMIDIECHO/",
+    "playing": true,
+    "loaded": false,
+    "status": "Loading: MidiEcho.cmajorpatch"
+   }
+  },
+  {
+   "t": 34,
+   "type": "status",
+   "message": {
+    "warning": "",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.MidiEcho",
+     "version": "1.0",
+     "name": "MidiEcho",
+     "description": "A processor that just receives and emits MIDI messages",
+     "category": "midi",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": "MidiEcho.cmajor"
+    },
+    "details": {
+     "mainProcessor": "MidiEcho",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:4:11: ",
+     "inputs": [
+      {
+       "endpointID": "midiIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi in",
+       "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:6:17:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "midiOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi out",
+       "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:7:18:"
+      }
+     ]
+    },
+    "sampleRate": 44100,
+    "host": "Cmajor Player"
+   }
+  },
+  {
+   "t": 34,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREMIDIECHO/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.MidiEcho",
+     "version": "1.0",
+     "name": "MidiEcho",
+     "description": "A processor that just receives and emits MIDI messages",
+     "category": "midi",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": "MidiEcho.cmajor"
+    },
+    "details": {
+     "mainProcessor": "MidiEcho",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:4:11: ",
+     "inputs": [
+      {
+       "endpointID": "midiIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi in",
+       "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:6:17:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "midiOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi out",
+       "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:7:18:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "loaded": true,
+    "status": "Loading: MidiEcho.cmajorpatch",
+    "log": "Total build time: 28.03 ms\nload: 11.3 ms, compile: 10.91 ms, link: 5.82 ms"
+   }
+  },
+  {
+   "t": 34,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREMIDIECHO/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.MidiEcho",
+     "version": "1.0",
+     "name": "MidiEcho",
+     "description": "A processor that just receives and emits MIDI messages",
+     "category": "midi",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": "MidiEcho.cmajor"
+    },
+    "details": {
+     "mainProcessor": "MidiEcho",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:4:11: ",
+     "inputs": [
+      {
+       "endpointID": "midiIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi in",
+       "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:6:17:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "midiOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi out",
+       "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:7:18:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "loaded": true,
+    "status": "Loaded: MidiEcho",
+    "log": "Total build time: 28.03 ms\nload: 11.3 ms, compile: 10.91 ms, link: 5.82 ms"
+   }
+  },
+  {
+   "t": 119,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTUREMIDIECHO/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.MidiEcho",
+     "version": "1.0",
+     "name": "MidiEcho",
+     "description": "A processor that just receives and emits MIDI messages",
+     "category": "midi",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": "MidiEcho.cmajor"
+    },
+    "details": {
+     "mainProcessor": "MidiEcho",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:4:11: ",
+     "inputs": [
+      {
+       "endpointID": "midiIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi in",
+       "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:6:17:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "midiOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi out",
+       "source": "${CMAJOR_ROOT}/examples/patches/MidiEcho/MidiEcho.cmajor:7:18:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "loaded": true,
+    "status": "Loaded: MidiEcho",
+    "log": "Total build time: 28.03 ms\nload: 11.3 ms, compile: 10.91 ms, link: 5.82 ms"
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 126,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 129,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 129,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 129,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 129,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 129,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 129,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 129,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 129,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 129,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 131,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 131,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 131,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 131,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 131,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 131,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 131,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 132,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 132,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 132,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 132,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 132,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 132,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 132,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 132,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 138,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 146,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 147,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 147,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 147,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 147,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 147,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 147,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 153,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 160,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 167,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 173,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 180,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 184,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 191,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 198,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 204,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 204,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 204,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 204,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 204,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 204,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 204,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 204,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 205,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 212,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 212,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 212,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 212,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 212,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 212,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 217,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 218,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 218,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 218,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 218,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 218,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 218,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 225,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 225,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 225,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 225,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 225,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 225,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 225,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 225,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 225,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 230,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 231,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 231,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 231,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 231,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 231,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 231,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 237,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 238,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 238,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 238,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 238,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 238,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 238,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 240,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 240,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 240,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 243,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 246,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 246,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 246,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 246,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 246,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 247,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 250,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 252,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 252,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 252,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 252,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 252,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 252,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 256,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 258,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 258,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 258,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 258,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 258,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 258,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 262,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 265,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 265,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 265,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 265,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 265,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 265,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436,
+    "_type": "Message"
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiOut_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 269,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 275,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 275,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 275,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 275,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 275,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 275,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 282,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 282,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 282,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 282,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 282,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 282,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 288,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 288,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 288,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 288,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 288,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 288,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 295,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 295,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 295,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 295,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 295,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 295,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 295,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 295,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 295,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 301,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 301,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 301,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 301,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 301,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 301,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 308,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 308,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 308,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 308,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 308,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 308,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 314,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 314,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 314,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 314,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 314,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 314,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 320,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 320,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 320,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 320,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 320,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 320,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 326,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 326,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 326,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 327,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 327,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 327,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 327,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 327,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 327,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 333,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 333,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 333,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 333,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 333,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 333,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 340,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 340,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 340,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 340,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 340,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 340,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 346,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 346,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 346,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 346,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 346,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 346,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 353,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 353,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 353,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 353,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 353,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 353,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 353,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 353,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 353,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 360,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 360,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 360,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 360,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 360,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 360,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 366,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 366,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 366,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 366,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 366,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 366,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 372,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 372,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 372,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 372,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 372,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 372,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 378,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 378,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 378,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 378,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 378,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 378,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 379,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 379,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 379,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 386,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 386,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 386,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 386,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 386,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 386,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 392,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 392,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 392,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 392,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 392,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 392,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 399,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 399,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 399,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 399,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 399,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 399,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 400,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 400,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 400,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 406,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 406,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 406,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 406,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 406,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 406,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 412,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 412,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 412,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 461,
+   "type": "cpu_info",
+   "message": {
+    "level": 0.014699083
+   }
+  }
+ ]
+}

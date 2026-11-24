@@ -116,18 +116,29 @@ export class ServerSession   extends EventListenerList
 
     /** Creates and returns a new PatchConnection object which can be used to control the
      *  patch that this session has loaded.
+     *
+     *  The optional `options` let a host adjust the connection without overriding its methods:
+     *   - `transformResourceAddress (address, path)` is called with each address that
+     *     `getResourceAddress (path)` would return, and returns the one to use instead (e.g. to
+     *     make a view load fresh copies of its files after they've changed).
+     *   - `filterMessage (message)` is called with each message from the server before the
+     *     connection delivers it to its listeners; if it returns false, the message is dropped.
+     *
+     *  @param {PatchConnectionOptions} [options]
      *  @returns {PatchConnection}
      */
-    createPatchConnection()
+    createPatchConnection (options)
     {
         class ServerPatchConnection  extends PatchConnection
         {
-            /** @param {ServerSession} session */
-            constructor (session)
+            /** @param {ServerSession} session @param {PatchConnectionOptions} [options] */
+            constructor (session, options)
             {
                 super();
                 /** @type {ServerSession | undefined} */
                 this.session = session;
+                /** @type {PatchConnectionOptions} */
+                this.options = options ?? {};
                 this.manifest = session.status?.manifest;
                 this.session.activePatchConnections.add (this);
             }
@@ -147,15 +158,22 @@ export class ServerSession   extends EventListenerList
             /** @override @param {string} path @returns {string} */
             getResourceAddress (path)
             {
-                if (! this.session?.status?.httpRootURL)
-                    return path;
+                const address = this.session?.status?.httpRootURL
+                                  ? this.session.status.httpRootURL + (path.startsWith ("/") ? path.substr (1) : path)
+                                  : path;
 
-                return this.session.status.httpRootURL
-                        + (path.startsWith ("/") ? path.substr (1) : path);
+                return this.options.transformResourceAddress ? this.options.transformResourceAddress (address, path) : address;
+            }
+
+            /** @override @param {*} msg */
+            deliverMessageFromServer (msg)
+            {
+                if (! this.options.filterMessage || this.options.filterMessage (msg) !== false)
+                    super.deliverMessageFromServer (msg);
             }
         }
 
-        return new ServerPatchConnection (this);
+        return new ServerPatchConnection (this, options);
     }
 
     //==============================================================================
@@ -220,6 +238,64 @@ export class ServerSession   extends EventListenerList
      */
     requestAudioInputMode (endpointID)                  { this.sendMessageToServer ({ type: "req_audio_input_mode", endpoint: endpointID }); }
 
+    /**
+     *  Makes the server play a built-in test signal into an audio input endpoint, or changes
+     *  the settings of the one that it's already playing.
+     *
+     *  If the endpoint is already playing a generator, the given fields are merged into its
+     *  settings in place (so a slider can be dragged without gaps or clicks). Otherwise a new
+     *  generator is started, using the given fields merged over the last settings that this
+     *  endpoint's generator had (or the defaults). So passing an empty object switches back to
+     *  the last-used signal.
+     *
+     *  Afterwards, the audio input mode listeners are told that the mode is "generator", and the
+     *  generator listeners (see `addAudioInputGeneratorListener()`) get the complete settings.
+     *
+     *  @param {string} endpointID
+     *  @param {Object} settings - any of these (all optional):
+     *    - `type`: "sine", "sweep", "white", "pink", "impulse" or "silence"
+     *    - `level`: the peak level in dBFS (-120 to 0, default -12)
+     *    - `frequency`: the sine's frequency in Hz (default 440)
+     *    - `startFrequency`, `endFrequency`: the sweep's range in Hz (default 20 to 20000)
+     *    - `sweepSeconds`: the length of the sweep (default 5)
+     *    - `impulseRate`: the number of impulses per second (default 2)
+     */
+    setAudioInputGenerator (endpointID, settings)
+    {
+        const loopFile = "_audio_source_" + endpointID;
+
+        // (only once: this is called for every step of a dragged slider)
+        if (this.files?.has (loopFile))
+            this.removeFile (loopFile);
+
+        this.sendMessageToServer ({ type: "set_custom_audio_input",
+                                    endpoint: endpointID,
+                                    generator: settings ?? {} });
+    }
+
+    /** Attaches a listener function to be told the settings of the test signal generator for a
+     *  particular endpoint. It's called with an object holding all of the settings that
+     *  `setAudioInputGenerator()` takes, whenever they change, and in reply to
+     *  `requestAudioInputGenerator()`.
+     *  @param {string} endpointID
+     *  @param {Function} listener
+     */
+    addAudioInputGeneratorListener (endpointID, listener)    { this.addEventListener    ("audio_input_generator_" + endpointID, listener); }
+
+    /** Removes a listener previously added with `addAudioInputGeneratorListener()`
+     *  @param {string} endpointID
+     *  @param {Function} listener
+     */
+    removeAudioInputGeneratorListener (endpointID, listener) { this.removeEventListener ("audio_input_generator_" + endpointID, listener); }
+
+    /** Asks the server to send the generator settings for the given endpoint to any generator
+     *  listeners that are attached to it. If the endpoint isn't playing a generator, these are the
+     *  settings that it last used (or the defaults), which `setAudioInputGenerator()` with an empty
+     *  object would restore.
+     *  @param {string} endpointID
+     */
+    requestAudioInputGenerator (endpointID)                  { this.sendMessageToServer ({ type: "req_audio_input_generator", endpoint: endpointID }); }
+
     //==============================================================================
     // Audio device methods:
 
@@ -255,6 +331,59 @@ export class ServerSession   extends EventListenerList
     requestAudioDeviceProperties()                      { this.sendMessageToServer ({ type: "req_audio_device_props" }); }
 
     //==============================================================================
+    // Transport methods:
+
+    /** Changes the session's transport: the tempo, time signature and playing, recording and
+     *  looping flags that the patch's timeline endpoints receive, and its position.
+     *
+     *  Only the fields that are given are changed. Afterwards, the transport state listeners
+     *  (see `addTransportStateListener()`) are sent the new state. The settings are kept by the
+     *  session, so they apply to every patch that it loads, and survive rebuilds.
+     *
+     *  An older server ignores this message, and its transport always plays at 120 BPM in 4/4.
+     *
+     *  @param {Object} props - any of these (all optional):
+     *    - `tempo`: in BPM (the server clamps it to 1 to 999)
+     *    - `numerator`, `denominator`: the time signature (1 to 64, and 1 to 32 rounded down to a
+     *      power of two)
+     *    - `playing`, `recording`, `looping`: booleans (these flags are independent)
+     *    - `position`: the timeline position, in frames
+     *    - `rewind`: true to set the position to 0 (overriding `position`)
+     */
+    setTransport (props)                                { this.sendMessageToServer ({ type: "set_transport", ...props }); }
+
+    /** Asks the server to send the transport's state to any transport state listeners. */
+    requestTransportState()                             { this.sendMessageToServer ({ type: "req_transport_state" }); }
+
+    /** Attaches a listener function to be told the transport's state. It's called with an object
+     *  `{ tempo, numerator, denominator, playing, recording, looping, frame, quarterNote,
+     *  barStartQuarterNote, sampleRate }` after every change, in reply to
+     *  `requestTransportState()`, and (while the transport is playing) every `intervalMs`, so
+     *  that a display of the position can keep up. `frame` is the timeline position in frames.
+     *
+     *  While any of these listeners are attached, the session asks the server for these updates;
+     *  the interval is shared by all of the session's transport state listeners (the last one
+     *  given is used), and when the last listener is removed, the session stops asking.
+     *
+     *  @param {Function} listener
+     *  @param {number} [intervalMs] - how often to be sent the position while playing (the
+     *                                 server clamps it to 30 to 2000 ms; the default is 50)
+     */
+    addTransportStateListener (listener, intervalMs)
+    {
+        if (intervalMs !== undefined)
+            this.transportUpdateIntervalMs = intervalMs;
+
+        this.addEventListener ("transport_state", listener);
+        this.updateTransportInfoRate();
+    }
+
+    /** Removes a listener that was previously attached with `addTransportStateListener()`.
+     *  @param {Function} listener
+     */
+    removeTransportStateListener (listener)             { this.removeEventListener ("transport_state", listener); this.updateTransportInfoRate(); }
+
+    //==============================================================================
     /** Asks the server to asynchronously generate some code from the currently loaded patch.
      *
      *  @param {string} codeType - this must be one of the strings that are listed in the
@@ -268,6 +397,29 @@ export class ServerSession   extends EventListenerList
         return await this.sendMessageToServerWithReply ({ type: "req_codegen",
                                                           codeType: codeType,
                                                           options: extraOptions, });
+    }
+
+    /** Asks the server for a description of the loaded patch's graph: its nodes, endpoints and
+     *  connections (the same JSON that the "graph" code generation target produces).
+     *
+     *  The server makes this once per build, so asking for it is cheap. The session status has a
+     *  `graphVersion` property which changes whenever the graph does, so a client only needs to
+     *  ask again when that changes. A server whose status has no `graphVersion` doesn't support
+     *  this message: use `requestGeneratedCode ("graph")` with it instead.
+     *
+     *  @returns {Promise<{ graph: Object | undefined, version: string, manifestFile: string | undefined }>}
+     *           `graph` is undefined if there's no successful build, `version` matches the status's
+     *           `graphVersion`, and `manifestFile` is the patch that the graph is for (the loaded
+     *           patch may have changed since the request was made). An older server doesn't send
+     *           `manifestFile`.
+     */
+    async requestGraph()
+    {
+        const reply = await this.sendMessageToServerWithReply ({ type: "req_graph" });
+
+        return { graph: reply?.graph ? JSON.parse (reply.graph) : undefined,
+                 version: reply?.version ?? "",
+                 manifestFile: reply?.manifestFile || undefined };
     }
 
     //==============================================================================
@@ -291,10 +443,19 @@ export class ServerSession   extends EventListenerList
 
     /** Attaches a listener function which will be sent messages containing CPU info.
      *  To remove the listener, call `removeCPUListener()`. To change the rate of these
-     *  messages, use `setCPULevelUpdateRate()`.
+     *  messages, pass `framesPerUpdate`, or use `setCPULevelUpdateRate()` (either way, the
+     *  rate is shared by all the session's CPU listeners).
      *  @param {Function} listener
+     *  @param {number} [framesPerUpdate]
      */
-    addCPUListener (listener)                       { this.addEventListener    ("cpu_info", listener); this.updateCPULevelUpdateRate(); }
+    addCPUListener (listener, framesPerUpdate)
+    {
+        if (framesPerUpdate !== undefined)
+            this.cpuFramesPerUpdate = framesPerUpdate;
+
+        this.addEventListener ("cpu_info", listener);
+        this.updateCPULevelUpdateRate();
+    }
 
     /** Removes a listener that was previously attached with `addCPUListener()`.
      *  @param {Function} listener
@@ -379,6 +540,7 @@ export class ServerSession   extends EventListenerList
         switch (type)
         {
             case "cpu_info":
+            case "transport_state":
             case "audio_device_properties":
             case "patch_source_changed":
             case "infinite_loop_detected":
@@ -399,7 +561,7 @@ export class ServerSession   extends EventListenerList
                 break;
 
             default:
-                if (type.startsWith ("audio_input_mode_") || type.startsWith ("reply_"))
+                if (type.startsWith ("audio_input_mode_") || type.startsWith ("audio_input_generator_") || type.startsWith ("reply_"))
                 {
                     this.dispatchEvent (type, message);
                     break;
@@ -426,9 +588,29 @@ export class ServerSession   extends EventListenerList
     /** @private @param {StatusMessage} newStatus */
     setNewStatus (newStatus)
     {
+        const wasConnected = this.status?.connected;
         this.status = newStatus;
         this.dispatchEvent ("session_status", this.status);
         this.updateCPULevelUpdateRate();
+
+        // (a server that has just been (re)connected to doesn't know about the request, but
+        // each request is answered with a state, so it's only sent again then)
+        if (newStatus?.connected && ! wasConnected && this.getNumListenersForType ("transport_state") > 0)
+            this.updateTransportInfoRate (true);
+    }
+
+    /** @private @param {boolean} [force] */
+    updateTransportInfoRate (force)
+    {
+        const interval = this.getNumListenersForType ("transport_state") > 0 ? (this.transportUpdateIntervalMs || 50) : 0;
+
+        // (each non-zero request is answered with a state, so an unchanged one isn't repeated)
+        if (interval === this.lastTransportInfoRate && interval !== 0 && ! force)
+            return;
+
+        this.lastTransportInfoRate = interval;
+        this.sendMessageToServer ({ type: "set_transport_info_rate",
+                                    intervalMs: interval });
     }
 
     /** @private */

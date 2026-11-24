@@ -1,0 +1,257 @@
+/*
+     ,ad888ba,                              88
+    d8"'    "8b
+   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+   Y8,           88    88    88  88     88  88
+    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+                                           ,88
+                                        888P"
+
+  The Cmajor project is subject to commercial or open-source licensing.
+  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+  visit https://cmajor.dev to learn about our commercial licence options.
+
+  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+  DISCLAIMED.
+*/
+
+/*
+    The patch panel's design tokens. Everything in panel.css, and the graph's colours, come
+    from these; nothing else in the panel should contain a literal colour, size or duration.
+
+    They apply inside <cmaj-patch-panel>, and inside any element with class="cp-theme" (the
+    static graph page uses that). data-theme="dark" | "light" picks the palette: in a browser
+    core/theme.js sets it from prefers-color-scheme (or the user's choice), and in VS Code
+    from the editor's theme kind.
+
+    There are three layers:
+      1. Base colours: the only ones a host theme sets. core/theme.js maps VS Code's
+         --vscode-* colours onto these as inline styles, so the panel matches the editor.
+      2. Derived colours: mixed from the base ones, so they follow any host theme.
+      3. Scales: type, spacing, sizes, radii, motion and layering, the same in every theme.
+*/
+
+/*==============================================================================
+  1. Base colours: dark */
+
+:is(cmaj-patch-panel, .cp-theme) {
+    --cp-bg:            #18191b;    /* the content canvas: main area, graph, code */
+    --cp-surface:       #1f2023;    /* chrome around it: bars, inspector, drawer */
+    --cp-fg:            #e2e3e5;    /* text and icons */
+    --cp-fg-muted:      #989a9f;    /* secondary text: labels, values, captions */
+    --cp-divider:       #2d2f33;    /* hairlines between regions */
+    --cp-accent:        #4d9bf5;    /* selection, on-states, focus */
+    --cp-on-accent:     #ffffff;    /* text on an accent fill */
+    --cp-link:          #6cb0ff;
+    --cp-ok:            #4cc38a;
+    --cp-warn:          #e2a64a;
+    --cp-err:           #ef6b5e;
+
+    /* the kinds of endpoint, as in the graph: data colours, never used for chrome */
+    --cp-stream:        #3fbfae;
+    --cp-value:         #d9ae55;
+    --cp-event:         #a58df2;
+
+    --cp-sans:          system-ui, -apple-system, "Segoe UI", sans-serif;
+    --cp-mono:          ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --cp-shadow-colour: rgb(0 0 0 / 0.45);
+
+    color-scheme: dark;
+}
+
+/*==============================================================================
+  1. Base colours: light */
+
+:is(cmaj-patch-panel, .cp-theme)[data-theme="light"] {
+    --cp-bg:            #ffffff;
+    --cp-surface:       #f5f5f6;
+    --cp-fg:            #1f2124;
+    --cp-fg-muted:      #66696f;
+    --cp-divider:       #e2e3e6;
+    --cp-accent:        #0a68d4;
+    --cp-on-accent:     #ffffff;
+    --cp-link:          #0a68d4;
+    --cp-ok:            #1d8b4e;
+    --cp-warn:          #b06f0c;
+    --cp-err:           #cc3a2f;
+
+    --cp-stream:        #0f8576;
+    --cp-value:         #a36d07;
+    --cp-event:         #6a52d4;
+
+    --cp-shadow-colour: rgb(20 24 32 / 0.16);
+    --cp-raised:        var(--cp-bg);   /* (light themes lift the selected segment to white) */
+
+    color-scheme: light;
+}
+
+/*==============================================================================
+  2. Derived colours (a host theme only sets the base ones; these follow) */
+
+:is(cmaj-patch-panel, .cp-theme) {
+    --cp-fg-subtle:     color-mix(in srgb, var(--cp-fg) 42%, var(--cp-surface));   /* hints, placeholders, disabled */
+    --cp-divider-strong: color-mix(in srgb, var(--cp-fg) 20%, var(--cp-surface));  /* field outlines */
+
+    --cp-well:          color-mix(in srgb, var(--cp-fg) 7%, var(--cp-surface));    /* recessed: tracks, scopes, quiet buttons, chips */
+    --cp-well-strong:   color-mix(in srgb, var(--cp-fg) 13%, var(--cp-surface));   /* a hovered quiet button, an empty slider track */
+    --cp-raised:        color-mix(in srgb, var(--cp-fg) 17%, var(--cp-surface));   /* the selected segment, sitting on a well */
+    --cp-hover:         color-mix(in srgb, var(--cp-fg) 5%, transparent);          /* a hovered row */
+    --cp-selected:      color-mix(in srgb, var(--cp-accent) 16%, transparent);     /* a selected row, an on-state fill */
+    --cp-field:         var(--cp-bg);                                              /* text fields and selects */
+    --cp-field-border:  var(--cp-divider-strong);
+    --cp-focus:         var(--cp-accent);
+    --cp-indicator:     var(--cp-fg);                                              /* the active tab's underline */
+    --cp-value-fill:    var(--cp-accent);                                          /* how far a slider, switch or value bar is set */
+
+    --cp-ok-soft:       color-mix(in srgb, var(--cp-ok) 16%, var(--cp-surface));
+    --cp-warn-soft:     color-mix(in srgb, var(--cp-warn) 18%, var(--cp-surface));
+    --cp-err-soft:      color-mix(in srgb, var(--cp-err) 16%, var(--cp-surface));
+
+    /* meters (the canvas widgets read these through core/theme.js) */
+    --cp-meter-track:   var(--cp-well);
+    --cp-meter-low:     var(--cp-ok);
+    --cp-meter-high:    var(--cp-warn);
+    --cp-meter-clip:    var(--cp-err);
+    --cp-meter-peak:    var(--cp-fg);
+    --cp-scope-trace:   var(--cp-stream);
+
+    /* the CPU history charts (canvases too): the smoothed load, the slowest blocks, and blocks over budget */
+    --cp-cpu-trace:     var(--cp-fg-muted);
+    --cp-cpu-peak:      var(--cp-warn);
+    --cp-cpu-over:      var(--cp-err);
+
+    /* the spectrum analyser (a canvas): a well with hairline gridlines and subtle labels; the level is the
+       audio (stream) colour, as the scope's trace is, and the held peaks a quieter line over it */
+    --cp-spectrum-bg:       var(--cp-meter-track);
+    --cp-spectrum-grid:     color-mix(in srgb, var(--cp-fg) 11%, var(--cp-spectrum-bg));
+    --cp-spectrum-label:    var(--cp-fg-subtle);
+    --cp-spectrum-trace:    var(--cp-scope-trace);
+    --cp-spectrum-peak:     var(--cp-fg-muted);
+    --cp-spectrum-cursor:   var(--cp-fg);
+
+    /* the waveform viewer (widgets/waveform-view.js, a canvas): a well like the spectrum's; the trace is the
+       audio (stream) colour; dropouts are a warn tint with hatching; markers are user (accent), event/MIDI
+       (event) or parameter (value) */
+    --cp-wave-bg:               var(--cp-meter-track);
+    --cp-wave-grid:             color-mix(in srgb, var(--cp-fg) 11%, var(--cp-wave-bg));
+    --cp-wave-label:            var(--cp-fg-subtle);
+    --cp-wave-trace:            var(--cp-scope-trace);
+    --cp-wave-cursor:           var(--cp-fg);
+    --cp-wave-selection:        color-mix(in srgb, var(--cp-accent) 22%, transparent);
+    --cp-wave-selection-edge:   var(--cp-accent);
+    --cp-wave-dropout:          color-mix(in srgb, var(--cp-warn) 20%, transparent);
+    --cp-wave-dropout-hatch:    color-mix(in srgb, var(--cp-warn) 55%, transparent);
+    --cp-wave-marker:           var(--cp-accent);
+    --cp-wave-marker-event:     var(--cp-event);
+    --cp-wave-marker-parameter: var(--cp-value);
+
+    /* the transport's record button, when it's on (the convention: recording is red) */
+    --cp-record:        var(--cp-err);
+    --cp-record-soft:   var(--cp-err-soft);
+
+    /* the one elevation: things that float over the content (popovers, the floating GUI window,
+       the narrow inspector). Everything else is flat. */
+    --cp-overlay-shadow: 0 8px 28px var(--cp-shadow-colour);
+
+    /* the graph (cmaj-patch-graph/render-svg.js reads these; they cross into its shadow root) */
+    --cmaj-graph-background:       var(--cp-bg);
+    --cmaj-graph-fill-0:           color-mix(in srgb, var(--cp-fg) 3%, var(--cp-bg));
+    --cmaj-graph-fill-1:           color-mix(in srgb, var(--cp-fg) 6%, var(--cp-bg));
+    --cmaj-graph-fill-2:           color-mix(in srgb, var(--cp-fg) 9%, var(--cp-bg));
+    --cmaj-graph-stroke:           color-mix(in srgb, var(--cp-fg) 22%, var(--cp-bg));
+    --cmaj-graph-node-fill:        var(--cp-surface);
+    --cmaj-graph-node-header-fill: var(--cp-well);
+    --cmaj-graph-node-stroke:      color-mix(in srgb, var(--cp-fg) 32%, var(--cp-bg));
+    --cmaj-graph-text:             var(--cp-fg);
+    --cmaj-graph-text-dim:         var(--cp-fg-muted);
+    --cmaj-graph-stream:           var(--cp-stream);
+    --cmaj-graph-value:            var(--cp-value);
+    --cmaj-graph-event:            var(--cp-event);
+    --cmaj-graph-badge-array:      var(--cp-event);
+    --cmaj-graph-badge-clock:      var(--cp-stream);
+    --cmaj-graph-badge-text:       var(--cp-bg);
+    --cmaj-graph-highlight:        var(--cp-fg);
+    --cmaj-graph-activity:         var(--cp-accent);
+}
+
+/*==============================================================================
+  3. Scales (the same in every theme) */
+
+:is(cmaj-patch-panel, .cp-theme) {
+    /* type: one family for UI, one for code and numbers */
+    --cp-text-2xs:      10px;       /* key hints, badges */
+    --cp-text-xs:       11px;       /* captions, section titles, values, compact widgets */
+    --cp-text-sm:       12px;       /* controls, list rows, form labels */
+    --cp-text-md:       13px;       /* body (VS Code's default size) */
+    --cp-text-lg:       15px;       /* the inspector's title */
+    --cp-text-xl:       18px;       /* page headings (chooser) */
+
+    --cp-weight-regular: 400;
+    --cp-weight-medium:  500;
+    --cp-weight-strong:  600;
+
+    --cp-leading-tight: 1.25;
+    --cp-leading:       1.45;
+    --cp-leading-code:  1.55;
+    --cp-tracking-caps: 0.06em;     /* for the uppercase section titles */
+
+    /* spacing: a 4px grid, with 2px and 6px for tight spots */
+    --cp-space-1:       2px;
+    --cp-space-2:       4px;
+    --cp-space-3:       6px;
+    --cp-space-4:       8px;
+    --cp-space-5:       12px;
+    --cp-space-6:       16px;
+    --cp-space-7:       20px;
+    --cp-space-8:       24px;
+    --cp-space-9:       32px;
+
+    /* sizes */
+    --cp-control-h:     26px;       /* buttons, fields, selects */
+    --cp-control-h-sm:  22px;       /* in dense bars (drawer, float title bar), chips */
+    --cp-control-h-xs:  18px;       /* inside compact widgets */
+    --cp-topbar-h:      44px;
+    --cp-tabbar-h:      34px;
+    --cp-icon:          14px;
+    --cp-dot:           7px;        /* status dots */
+    --cp-kind-mark:     6px;        /* the endpoint-kind square, as on the graph's ports */
+    --cp-track:         4px;        /* slider tracks */
+    --cp-track-thin:    2px;        /* read-only value bars (the inspector's parameters) */
+    --cp-thumb:         12px;
+
+    /* radii */
+    --cp-radius-xs:     2px;        /* key hints, tracks */
+    --cp-radius-sm:     4px;        /* wells: meters, scopes, small buttons */
+    --cp-radius:        6px;        /* controls */
+    --cp-radius-lg:     10px;       /* overlays: popovers, the floating window */
+    --cp-radius-full:   999px;      /* chips, switches, dots */
+
+    /* lines */
+    --cp-hairline:      1px solid var(--cp-divider);
+    --cp-focus-ring:    2px solid var(--cp-focus);
+    --cp-focus-offset:  1px;
+    --cp-disabled-opacity: 0.45;
+
+    /* motion */
+    --cp-duration-fast: 100ms;      /* hover and press feedback */
+    --cp-duration:      180ms;      /* state changes: switches, bars */
+    --cp-duration-slow: 400ms;      /* the event flash */
+    --cp-ease:          cubic-bezier(0.2, 0, 0, 1);
+
+    /* layering */
+    --cp-z-raised:      5;          /* splitters */
+    --cp-z-overlay:     20;         /* the narrow inspector */
+    --cp-z-float:       50;         /* the floating GUI window */
+    --cp-z-popover:     100;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :is(cmaj-patch-panel, .cp-theme) {
+        --cp-duration-fast: 0ms;
+        --cp-duration:      0ms;
+        --cp-duration-slow: 0ms;
+    }
+}

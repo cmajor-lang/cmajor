@@ -194,6 +194,11 @@ struct CPUMonitor
     /// significantly, or just periodically if it remains constant.
     std::function<void(float)> handleCPULevel;
 
+    /// Like handleCPULevel, but also given the peak: the highest unsmoothed
+    /// per-block load (block time / block duration) seen since the last call.
+    /// If this is set, it's called instead of handleCPULevel.
+    std::function<void(float level, float peak)> handleCPULevelAndPeak;
+
     /// Sets the minimum number of frames to sample between each call to
     /// the handleCPULevel callback. If this is 0, no callbacks are made
     std::atomic<uint32_t> framesPerCallback { 0 };
@@ -209,6 +214,7 @@ private:
     uint32_t frameCount = 0, minFramesPerCallback = 0;
     float lastLevelSent = 0;
     uint32_t lastLevelConstantCounter = 0;
+    double peakSinceLastCallback = 0; // only touched on the audio thread
 };
 
 
@@ -513,6 +519,7 @@ inline void CPUMonitor::reset (double sampleRate)
     inverseRate = 1.0 / sampleRate;
     frameCount = 0;
     average = 0;
+    peakSinceLastCallback = 0;
 }
 
 inline void CPUMonitor::startProcess()
@@ -527,6 +534,7 @@ inline void CPUMonitor::startProcess()
     {
         frameCount = 0;
         average = 0;
+        peakSinceLastCallback = 0;
     }
 }
 
@@ -539,6 +547,7 @@ inline void CPUMonitor::endProcess (uint32_t numFrames)
         auto proportionInBlock = secondsInBlock / blockLengthSeconds;
 
         average += (proportionInBlock - average) * 0.1;
+        peakSinceLastCallback = std::max (peakSinceLastCallback, proportionInBlock);
 
         if (average < 0.001)
             average = 0;
@@ -555,8 +564,12 @@ inline void CPUMonitor::endProcess (uint32_t numFrames)
             {
                 lastLevelConstantCounter = 0;
                 lastLevelSent = newLevel;
+                auto peak = static_cast<float> (peakSinceLastCallback);
+                peakSinceLastCallback = 0;
 
-                if (handleCPULevel)
+                if (handleCPULevelAndPeak)
+                    handleCPULevelAndPeak (newLevel, peak);
+                else if (handleCPULevel)
                     handleCPULevel (newLevel);
             }
         }

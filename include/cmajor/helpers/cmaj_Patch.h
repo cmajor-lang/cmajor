@@ -26,6 +26,7 @@
 #include <unordered_set>
 #include <chrono>
 #include <condition_variable>
+#include <future>
 
 namespace cmaj
 {
@@ -136,6 +137,26 @@ struct Patch
     Engine::CodeGenOutput generateCode (const LoadParams&,
                                         const std::string& targetType,
                                         const std::string& extraOptionsJSON);
+
+    /// If this is set to true before a patch is built, each build also creates a JSON
+    /// description of the patch's graph structure (the same as the "graph" code generation
+    /// target gives), which getGraphStructure() then returns until the next build.
+    /// It's made by a second, unlinked load of the same source text, which runs alongside
+    /// the main build's linking. This defaults to false. (It's read by the build thread when
+    /// a build starts, so it can be changed at any time, and affects the next build.)
+    std::atomic<bool> generateGraphStructure { false };
+
+    /// Returns a number that goes up by one each time a build finishes (successfully or not),
+    /// so that a client can tell one build from the next.
+    uint32_t getBuildNumber() const                     { return buildNumber; }
+
+    /// Returns the graph structure JSON for the current build, or an empty string if there
+    /// isn't one (because generateGraphStructure wasn't set, or the build failed).
+    std::string getGraphStructure() const;
+
+    /// Returns a string that changes whenever getGraphStructure() does, or an empty string if
+    /// there's no graph structure, so that a client can tell when it needs to fetch it again.
+    std::string getGraphStructureVersion() const;
 
     //==============================================================================
     const PatchManifest* getManifest() const;
@@ -250,6 +271,8 @@ struct Patch
     void sendParameterChangeToViews (const EndpointID&, float value) const;
     void sendCurrentParameterValueToViews (const EndpointID&) const;
     void sendCPUInfoToViews (float level) const;
+    /// Sends a cpu_info message with a level and the peak block load since the last one
+    void sendCPUInfoToViews (float level, float peak) const;
     void sendStoredStateValueToViews (const std::string& key) const;
 
     // These can be called by things like the GUI to control the patch
@@ -271,11 +294,17 @@ struct Patch
 
     /// Starts sending data messages to clients for a particular endpoint.
     /// The replyType is the type ID to use for the events that are sent to the client.
-    /// For audio endpoints, granularity == 1 sends complete blocks of all incoming data
-    /// For audio endpoints, granularity > 1 sends min/max ranges for each chunk of this many frames
+    /// For audio endpoints, granularity is the number of frames per message: min/max ranges are
+    /// sent for each chunk of this many frames. A value outside 64 to 8192 is replaced by 500.
     /// For non-audio endpoints, granularity is ignored.
     /// If fullAudioData is true, then instead of min/max levels, the entire audio stream is
     /// sent, in chunks that are the size specified by granularity.
+    /// Asking again with the same view, endpoint and replyType replaces the earlier listener;
+    /// otherwise each call adds a separate one.
+    /// The listeners outlive a rebuild of the same patch: each is re-created on the new build if
+    /// that still has an endpoint with the same ID and kind. While the patch has a build error,
+    /// they (and any asked for in the meantime) are held until the next good build of it.
+    /// Unloading, or loading a different patch, removes them.
     bool startEndpointData (PatchView&, const EndpointID&, std::string replyType,
                             uint32_t granularity, bool fullAudioData);
 
@@ -362,9 +391,30 @@ private:
 
     std::unique_ptr<BuildThread> buildThread;
     std::atomic<uint16_t> nextViewID { 0 };
+    uint32_t buildNumber = 0;
+
+    /// The frames rendered by builds that have been replaced or unloaded: a new build's frame
+    /// count starts from here, so the frames stamped on audio data never go backwards
+    uint64_t framesRenderedByEarlierBuilds = 0;
+
+    /// What's needed to re-create an endpoint monitor (see startEndpointData()) on a new build
+    struct EndpointMonitorSpec
+    {
+        PatchView* view;
+        std::string endpointID, replyType;
+        uint32_t granularity;
+        bool fullAudioData;
+        std::optional<bool> isAudio;   // (unknown for one asked for while there was no good build)
+    };
+
+    /// The monitors of the last good build, and any asked for since, while a build of the same
+    /// patch has failed: the next good build gets them (see setNewRenderer())
+    std::vector<EndpointMonitorSpec> heldEndpointMonitors;
+    std::string heldEndpointMonitorsManifestFile;
 
     void sendPatchChange();
     void setNewRenderer (std::shared_ptr<PatchRenderer>);
+    void carryOverEndpointMonitors (std::vector<EndpointMonitorSpec>, const std::string& previousManifestFile);
     void sendOutputEventToViews (uint64_t frame, std::string_view endpointID, const choc::value::ValueView&);
     PatchView* findViewForID (uint16_t) const;
     void startCheckingForChanges();
@@ -445,7 +495,7 @@ struct Patch::ClientEventQueue
 {
     ClientEventQueue (Patch& p) : patch (p)
     {
-        cpu.handleCPULevel = [this] (float newLevel) { postCPULevel (newLevel); };
+        cpu.handleCPULevelAndPeak = [this] (float newLevel, float peak) { postCPULevel (newLevel, peak); };
     }
 
     ~ClientEventQueue() { stop(); }
@@ -490,13 +540,14 @@ struct Patch::ClientEventQueue
         patch.sendParameterChangeToViews (EndpointID::create (endpointID), value);
     }
 
-    void postCPULevel (float level)
+    void postCPULevel (float level, float peak)
     {
-        fifo.push (1 + sizeof (float), [&] (void* dest)
+        fifo.push (1 + 2 * sizeof (float), [&] (void* dest)
         {
             auto d = static_cast<char*> (dest);
             d[0] = static_cast<char> (EventType::cpuLevel);
             choc::memory::writeNativeEndian (d + 1, level);
+            choc::memory::writeNativeEndian (d + 1 + sizeof (float), peak);
         });
 
         triggerDispatchOnEndOfBlock = true;
@@ -505,10 +556,13 @@ struct Patch::ClientEventQueue
     void dispatchCPULevel (const char* d)
     {
         auto value = choc::memory::readNativeEndian<float> (d + 1);
-        patch.sendCPUInfoToViews (value);
+        auto peak = choc::memory::readNativeEndian<float> (d + 1 + sizeof (float));
+        patch.sendCPUInfoToViews (value, peak);
     }
 
-    void postAudioMinMax (const PatchView& view, const std::string& eventName, const choc::buffer::ChannelArrayBuffer<float>& levels)
+    /// `firstFrame` is the index of the first frame that the levels cover (see AudioLevelMonitor)
+    void postAudioMinMax (const PatchView& view, const std::string& eventName,
+                          const choc::buffer::ChannelArrayBuffer<float>& levels, uint64_t firstFrame)
     {
         triggerDispatchOnEndOfBlock = true;
         auto numChannels = levels.getNumChannels();
@@ -516,7 +570,7 @@ struct Patch::ClientEventQueue
         auto eventNameChars = eventName.data();
         auto eventNameLen = static_cast<uint32_t> (eventName.length());
 
-        fifo.push (5 + numChannels * sizeof (float) * 2 + eventNameLen, [&] (void* dest)
+        fifo.push (5 + sizeof (uint64_t) + numChannels * sizeof (float) * 2 + eventNameLen, [&] (void* dest)
         {
             auto d = static_cast<char*> (dest);
             *d++ = static_cast<char> (EventType::audioMinMaxLevels);
@@ -524,6 +578,8 @@ struct Patch::ClientEventQueue
             d += sizeof (uint16_t);
             choc::memory::writeNativeEndian<uint16_t> (d, static_cast<uint16_t> (numChannels));
             d += sizeof (uint16_t);
+            choc::memory::writeNativeEndian<uint64_t> (d, firstFrame);
+            d += sizeof (uint64_t);
 
             for (uint32_t chan = 0; chan < numChannels; ++chan)
             {
@@ -548,6 +604,8 @@ struct Patch::ClientEventQueue
             d += sizeof (uint16_t);
             auto numChannels = choc::memory::readNativeEndian<uint16_t> (d);
             d += sizeof (uint16_t);
+            auto firstFrame = choc::memory::readNativeEndian<uint64_t> (d);
+            d += sizeof (uint64_t);
 
             choc::SmallVector<float, 8> mins, maxs;
 
@@ -564,11 +622,14 @@ struct Patch::ClientEventQueue
             patch.sendMessageToView (*view, std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
                                      choc::json::create (
                                         "min", choc::value::createArrayView (mins.data(), static_cast<uint32_t> (mins.size())),
-                                        "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size()))));
+                                        "max", choc::value::createArrayView (maxs.data(), static_cast<uint32_t> (maxs.size())),
+                                        "frame", static_cast<double> (firstFrame)));
         }
     }
 
-    void postAudioFullData (const PatchView& view, const std::string& eventName, const choc::buffer::ChannelArrayBuffer<float>& levels)
+    /// `firstFrame` is the index of the chunk's first frame (see AudioLevelMonitor)
+    void postAudioFullData (const PatchView& view, const std::string& eventName,
+                            const choc::buffer::ChannelArrayBuffer<float>& levels, uint64_t firstFrame)
     {
         triggerDispatchOnEndOfBlock = true;
         auto numChannels = levels.getNumChannels();
@@ -578,7 +639,7 @@ struct Patch::ClientEventQueue
         auto eventNameChars = eventName.data();
         auto eventNameLen = static_cast<uint32_t> (eventName.length());
 
-        fifo.push (6 + numChannels * numFrames * sizeof (float) + eventNameLen, [&] (void* dest)
+        fifo.push (6 + sizeof (uint64_t) + numChannels * numFrames * sizeof (float) + eventNameLen, [&] (void* dest)
         {
             auto d = static_cast<char*> (dest);
             *d++ = static_cast<char> (EventType::audioFullData);
@@ -587,6 +648,8 @@ struct Patch::ClientEventQueue
             *d++ = static_cast<char> (numChannels);
             choc::memory::writeNativeEndian<uint16_t> (d, static_cast<uint16_t> (numFrames));
             d += sizeof (uint16_t);
+            choc::memory::writeNativeEndian<uint64_t> (d, firstFrame);
+            d += sizeof (uint64_t);
 
             for (uint32_t chan = 0; chan < numChannels; ++chan)
             {
@@ -614,6 +677,8 @@ struct Patch::ClientEventQueue
             auto numChannels = static_cast<uint32_t> (static_cast<uint8_t> (*d++));
             auto numFrames = static_cast<uint32_t> (choc::memory::readNativeEndian<uint16_t> (d));
             d += sizeof (uint16_t);
+            auto firstFrame = choc::memory::readNativeEndian<uint64_t> (d);
+            d += sizeof (uint64_t);
             auto audioData = d;
             d += numFrames * numChannels * sizeof (float);
             CMAJ_ASSERT (end > d);
@@ -629,7 +694,8 @@ struct Patch::ClientEventQueue
             });
 
             patch.sendMessageToView (*view, std::string_view (d, static_cast<std::string_view::size_type> (end - d)),
-                                     choc::json::create ("data", std::move (levels)));
+                                     choc::json::create ("data", std::move (levels),
+                                                         "frame", static_cast<double> (firstFrame)));
         }
     }
 
@@ -1026,17 +1092,21 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 levels.resize ({ numChannels, 2 });
         }
 
+        /// `firstFrame` is the index of data's first frame in the patch's count of rendered frames
+        /// (see DataListener::getCurrentFrame()). Each message is stamped with the index of the
+        /// first frame it covers, which is captured when its chunk starts to accumulate, so it's
+        /// exact even when a chunk spans several blocks.
         template <typename SampleType>
-        void process (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
+        void process (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data, uint64_t firstFrame)
         {
             if (sendFullData)
-                processFullData (queue, data);
+                processFullData (queue, data, firstFrame);
             else
-                processMinMax (queue, data);
+                processMinMax (queue, data, firstFrame);
         }
 
         template <typename SampleType>
-        void processMinMax (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
+        void processMinMax (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data, uint64_t firstFrame)
         {
             auto numFrames = data.getNumFrames();
             auto numChannels = data.getNumChannels();
@@ -1050,6 +1120,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
                     if (frameCount == 0)
                     {
+                        chunkStartFrame = firstFrame + i;
                         *minMax = level;
                         ++minMax;
                         *minMax = level;
@@ -1065,19 +1136,22 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 if (++frameCount == granularity)
                 {
                     frameCount = 0;
-                    queue.postAudioMinMax (view, replyType, levels);
+                    queue.postAudioMinMax (view, replyType, levels, chunkStartFrame);
                 }
             }
         }
 
         template <typename SampleType>
-        void processFullData (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data)
+        void processFullData (ClientEventQueue& queue, const choc::buffer::InterleavedView<SampleType>& data, uint64_t firstFrame)
         {
             auto numFrames = data.getNumFrames();
             choc::buffer::FrameCount sourceStart = 0;
 
             while (numFrames != 0)
             {
+                if (frameCount == 0)
+                    chunkStartFrame = firstFrame + sourceStart;
+
                 auto numToAdd = std::min (numFrames, granularity - frameCount);
 
                 copy (levels.getFrameRange ({ frameCount, frameCount + numToAdd }),
@@ -1088,8 +1162,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                 if (frameCount == granularity)
                 {
                     frameCount = 0;
-                    queue.postAudioFullData (view, replyType, levels);
-                    break;
+                    queue.postAudioFullData (view, replyType, levels, chunkStartFrame);
                 }
 
                 sourceStart += numToAdd;
@@ -1114,6 +1187,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     private:
         choc::buffer::ChannelArrayBuffer<float> levels;
         uint32_t frameCount = 0;
+        uint64_t chunkStartFrame = 0;
     };
 
     //==============================================================================
@@ -1125,8 +1199,29 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         if (! performer->prepareToStart())
             return false;
 
+        for (auto& l : endpointListeners.dataListeners)
+            l.second->performer = performer.get();
+
         framesLatency = performer->performer.getLatency();
         return true;
+    }
+
+    /// The number of frames this build has rendered, plus the origin it was given
+    uint64_t getNumFramesRendered()
+    {
+        std::scoped_lock lock (processLock);
+        return frameOrigin + (performer != nullptr ? performer->getNumFramesProcessed() : 0);
+    }
+
+    /// Sets the frame that this build's frame count starts from, so that the frames stamped on
+    /// audio data messages carry on from earlier builds. Must be called before it renders.
+    void setFrameOrigin (uint64_t origin)
+    {
+        std::scoped_lock lock (processLock);
+        frameOrigin = origin;
+
+        for (auto& l : endpointListeners.dataListeners)
+            l.second->frameOrigin = origin;
     }
 
     //==============================================================================
@@ -1139,8 +1234,13 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             if (customSource != nullptr)
                 customSource->read (block);
 
-            for (auto& m : audioMonitors)
-                m->process (queue, block);
+            if (! audioMonitors.empty())
+            {
+                auto frame = getCurrentFrame();
+
+                for (auto& m : audioMonitors)
+                    m->process (queue, block, frame);
+            }
         }
 
         void process (const choc::buffer::InterleavedView<double>& block) override
@@ -1148,8 +1248,21 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             if (customSource != nullptr)
                 customSource->read (block);
 
-            for (auto& m : audioMonitors)
-                m->process (queue, block);
+            if (! audioMonitors.empty())
+            {
+                auto frame = getCurrentFrame();
+
+                for (auto& m : audioMonitors)
+                    m->process (queue, block, frame);
+            }
+        }
+
+        /// The index, in the patch's count of rendered frames, of the first frame of the block
+        /// being processed. Every listener of a build reads the same performer, so they agree;
+        /// frameOrigin carries the count on from earlier builds (see Patch::setNewRenderer()).
+        uint64_t getCurrentFrame() const
+        {
+            return frameOrigin + (performer != nullptr ? performer->getNumFramesProcessed() : 0);
         }
 
         bool removeMonitor (PatchView& view, const EndpointID& e, const std::string& type)
@@ -1180,6 +1293,8 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         ClientEventQueue& queue;
         CustomAudioSourcePtr customSource;
         std::vector<std::unique_ptr<AudioLevelMonitor>> audioMonitors;
+        const AudioMIDIPerformer* performer = nullptr;
+        uint64_t frameOrigin = 0;
     };
 
     //==============================================================================
@@ -1198,8 +1313,25 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             configuredPlaybackParams = playbackParams;
             manifest = std::move (loadParams.manifest);
 
-            if (! loadProgram (engine, playbackParams, shouldResolveExternals, transformSource, checkForStopSignal))
+            auto wantsGraphStructure = patch.generateGraphStructure && shouldResolveExternals && shouldLink;
+            ProgramInputs programInputs;
+
+            if (! loadProgram (engine, playbackParams, shouldResolveExternals, transformSource, checkForStopSignal,
+                               wantsGraphStructure ? std::addressof (programInputs) : nullptr))
                 return;
+
+            // The graph structure needs a program that hasn't been prepared for linking, so it comes
+            // from a second load of the same inputs, done while this one carries on. The future waits
+            // for it in its destructor, so it can't outlive this build, however the build ends.
+            std::future<std::string> graphStructureJob;
+
+            if (wantsGraphStructure)
+                graphStructureJob = std::async (std::launch::async,
+                                                [&engineFactory = patch.createEngine, settings = engine.getBuildSettings(),
+                                                 inputs = std::move (programInputs), &checkForStopSignal]
+                                                {
+                                                    return createGraphStructureJSON (engineFactory, settings, inputs, checkForStopSignal);
+                                                });
 
             if (! shouldResolveExternals)
                 return;
@@ -1225,6 +1357,14 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
             if (createPerformer (performerBuilder))
                 applyParameterValues (loadParams.parameterValues, 0, 0);
+
+            if (graphStructureJob.valid())
+            {
+                graphStructure = graphStructureJob.get();
+
+                if (! graphStructure.empty())
+                    graphStructureVersion = choc::text::createHexString (std::hash<std::string>() (graphStructure));
+            }
         }
         catch (const choc::json::ParseError& e)
         {
@@ -1236,17 +1376,41 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         }
     }
 
+    /// What a program was loaded from: each source file's path and its (transformed) content, as
+    /// it was given to the compiler, and the values that its external variables were given
+    struct ProgramInputs
+    {
+        struct SourceFile
+        {
+            std::string path, content;
+        };
+
+        std::vector<SourceFile> sourceFiles;
+        std::unordered_map<std::string, choc::value::Value> externals;
+    };
+
+    /// If inputsUsed isn't null, it's given a copy of each source file that's parsed and each
+    /// external variable value that's resolved
     bool loadProgram (cmaj::Engine& engine,
                       const PlaybackParams& playbackParams,
                       bool shouldResolveExternals,
                       const std::function<std::string(DiagnosticMessageList&, const std::string&, const std::string&)>& transformSource,
-                      const std::function<void()>& checkForStopSignal)
+                      const std::function<void()>& checkForStopSignal,
+                      ProgramInputs* inputsUsed)
     {
         cmaj::Program program;
 
         if (! manifest.addSourceFilesToProgram (program,
                                                 errors,
-                                                transformSource,
+                                                [&] (DiagnosticMessageList& messages, const std::string& path, const std::string& content)
+                                                {
+                                                    auto source = transformSource (messages, path, content);
+
+                                                    if (inputsUsed != nullptr)
+                                                        inputsUsed->sourceFiles.push_back ({ path, source });
+
+                                                    return source;
+                                                },
                                                 checkForStopSignal))
             return false;
 
@@ -1257,10 +1421,24 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
         checkForStopSignal();
 
-        if (engine.load (errors, program,
-                         shouldResolveExternals ? manifest.createExternalResolverFunction()
-                                                : [] (const cmaj::ExternalVariable&) -> choc::value::Value { return {}; },
-                         {}))
+        Engine::ExternalVariableProviderFn resolveExternal = [] (const cmaj::ExternalVariable&) -> choc::value::Value { return {}; };
+
+        if (shouldResolveExternals)
+        {
+            resolveExternal = manifest.createExternalResolverFunction();
+
+            if (inputsUsed != nullptr)
+            {
+                resolveExternal = [inputsUsed, resolve = std::move (resolveExternal)] (const cmaj::ExternalVariable& v)
+                {
+                    auto value = resolve (v);
+                    inputsUsed->externals[v.name] = value;
+                    return value;
+                };
+            }
+        }
+
+        if (engine.load (errors, program, resolveExternal, {}))
         {
             programDetails = engine.getProgramDetails();
             inputEndpoints = engine.getInputEndpoints();
@@ -1269,6 +1447,56 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         }
 
         return false;
+    }
+
+    /// Loads a program into a new engine (without linking) and returns the JSON from its "graph"
+    /// code generation target, or an empty string if anything fails. The externals get the values
+    /// that the main build gave them, because their types can depend on them. This runs on its
+    /// own thread.
+    static std::string createGraphStructureJSON (const std::function<cmaj::Engine()>& engineFactory,
+                                                 const cmaj::BuildSettings& buildSettings,
+                                                 const ProgramInputs& inputs,
+                                                 const std::function<void()>& checkForStopSignal)
+    {
+        try
+        {
+            auto engine = engineFactory();
+
+            if (! engine)
+                return {};
+
+            engine.setBuildSettings (buildSettings);
+
+            cmaj::Program program;
+            cmaj::DiagnosticMessageList messages;
+
+            for (auto& file : inputs.sourceFiles)
+                if (! program.parse (messages, file.path, file.content))
+                    return {};
+
+            checkForStopSignal();
+
+            auto resolveExternal = [&inputs] (const cmaj::ExternalVariable& v) -> choc::value::Value
+            {
+                auto found = inputs.externals.find (v.name);
+                return found != inputs.externals.end() ? found->second : choc::value::Value();
+            };
+
+            if (! engine.load (messages, program, resolveExternal, {}))
+                return {};
+
+            checkForStopSignal();
+
+            auto output = engine.generateCode ("graph", "{}");
+
+            if (output.messages.hasErrors())
+                return {};
+
+            return output.generatedCode;
+        }
+        catch (...) {}  // (including a cancelled build's stop signal)
+
+        return {};
     }
 
     //==============================================================================
@@ -1435,6 +1663,9 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     {
         if (auto details = findEndpointDetails (e))
         {
+            // (a monitor that's asked for again replaces the old one, rather than doubling its messages)
+            stopEndpointData (view, e, replyType);
+
             if (auto l = endpointListeners.findAudioDataListener (e))
             {
                 auto monitor = std::make_unique<AudioLevelMonitor> (view, *details, std::move (replyType), granularity, fullData);
@@ -1461,6 +1692,27 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     {
         std::scoped_lock lock (processLock);
         return endpointListeners.remove (view, e, replyType);
+    }
+
+    /// Describes every endpoint monitor that views have added to this build
+    std::vector<EndpointMonitorSpec> getEndpointMonitorSpecs()
+    {
+        std::vector<EndpointMonitorSpec> specs;
+        std::scoped_lock lock (processLock);
+        endpointListeners.addMonitorSpecs (specs);
+        return specs;
+    }
+
+    /// Re-creates a monitor from a previous build, if this build has an endpoint with that ID
+    /// and of the same kind (audio, or events)
+    bool restartEndpointMonitor (const EndpointMonitorSpec& m)
+    {
+        auto endpointID = EndpointID::create (m.endpointID);
+
+        if (m.isAudio.has_value() && (endpointListeners.findAudioDataListener (endpointID) != nullptr) != *m.isAudio)
+            return false;
+
+        return startEndpointData (*m.view, endpointID, m.replyType, m.granularity, m.fullAudioData);
     }
 
     //==============================================================================
@@ -1532,9 +1784,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
                                            timeoutMilliseconds))
             return false;
 
-        for (auto& m : endpointListeners.eventMonitors)
-            m->process (queue, endpointID.toString(), value);
-
+        endpointListeners.postEventToMonitors (queue, endpointID.toString(), value);
         return true;
     }
 
@@ -1546,9 +1796,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
         if (! performer->postEvent (endpointID, value, timeoutMilliseconds))
             return false;
 
-        for (auto& m : endpointListeners.eventMonitors)
-            m->process (queue, endpointID.toString(), value);
-
+        endpointListeners.postEventToMonitors (queue, endpointID.toString(), value);
         return true;
     }
 
@@ -1687,10 +1935,12 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
     PlaybackParams configuredPlaybackParams;
 
     choc::value::Value programDetails;
+    std::string graphStructure, graphStructureVersion;
     std::vector<PatchParameterPtr> parameterList;
     cmaj::EndpointDetailsList inputEndpoints, outputEndpoints;
     double sampleRate = 0;
     double framesLatency = 0;
+    uint64_t frameOrigin = 0;
     uint32_t numAudioInputChans = 0;
     uint32_t numAudioOutputChans = 0;
     bool hasMIDIInputs = false;
@@ -1743,6 +1993,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
 
         void add (std::unique_ptr<EventMonitor> m)
         {
+            std::scoped_lock lock (eventMonitorLock);
             eventMonitors.push_back (std::move (m));
         }
 
@@ -1756,6 +2007,7 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             if (auto l = findAudioDataListener (e))
                 return l->removeMonitor (view, e, replyType);
 
+            std::scoped_lock lock (eventMonitorLock);
             auto oldEnd = eventMonitors.end();
             auto newEnd = std::remove_if (eventMonitors.begin(), oldEnd,
                                           [&] (auto& m) { return m->isFor (view, e, replyType); });
@@ -1777,29 +2029,70 @@ struct Patch::PatchRenderer  : public std::enable_shared_from_this<PatchRenderer
             return {};
         }
 
+        /// Called on the message thread: the monitors are copied under the lock, so that the
+        /// messages are sent without holding it
         void sendOutputEventToViews (Patch& p, std::string_view endpointID, const choc::value::ValueView& value)
         {
-            if (! value.isVoid())
+            if (value.isVoid())
+                return;
+
+            std::vector<std::pair<PatchView*, std::string>> targets;
+
+            {
+                std::scoped_lock lock (eventMonitorLock);
+
                 for (auto& m : eventMonitors)
                     if (m->endpointID == endpointID)
-                        p.sendMessageToView (m->view, m->replyType, value);
+                        targets.emplace_back (std::addressof (m->view), m->replyType);
+            }
+
+            for (auto& t : targets)
+                p.sendMessageToView (*t.first, t.second, value);
+        }
+
+        /// Echoes an event sent to the patch (on a client's thread) to the views listening to it
+        void postEventToMonitors (ClientEventQueue& queue, const std::string& endpointID, const choc::value::ValueView& value)
+        {
+            std::scoped_lock lock (eventMonitorLock);
+
+            for (auto& m : eventMonitors)
+                m->process (queue, endpointID, value);
+        }
+
+        void addMonitorSpecs (std::vector<EndpointMonitorSpec>& specs) const
+        {
+            for (auto& m : eventMonitors)
+                specs.push_back ({ std::addressof (m->view), m->endpointID, m->replyType, 0, false, false });
+
+            for (auto& d : dataListeners)
+                for (auto& m : d.second->audioMonitors)
+                    specs.push_back ({ std::addressof (m->view), m->endpointID, m->replyType, m->granularity, m->sendFullData, true });
         }
 
         void removeReferencesToView (PatchView& v)
         {
-            auto oldEnd = eventMonitors.end();
-            auto newEnd = std::remove_if (eventMonitors.begin(), oldEnd,
-                                          [&] (auto& m) { return std::addressof (m->view) == std::addressof (v); });
+            {
+                std::scoped_lock lock (eventMonitorLock);
+                auto oldEnd = eventMonitors.end();
+                auto newEnd = std::remove_if (eventMonitors.begin(), oldEnd,
+                                              [&] (auto& m) { return std::addressof (m->view) == std::addressof (v); });
 
-            if (newEnd != oldEnd)
-                eventMonitors.erase (newEnd, oldEnd);
+                if (newEnd != oldEnd)
+                    eventMonitors.erase (newEnd, oldEnd);
+            }
 
             for (auto& d : dataListeners)
                 d.second->removeMonitorsForView (v);
         }
 
         std::unordered_map<std::string, std::shared_ptr<DataListener>> dataListeners;
+
+        // The event monitors are changed on a client's thread (with processLock held as well, as
+        // the audio thread reads them in processMIDIBlock() under it), and read on the message
+        // thread and the clients' threads, which take eventMonitorLock instead, so that they
+        // never wait for the audio thread, nor make it wait for them
         std::vector<std::unique_ptr<EventMonitor>> eventMonitors;
+        std::mutex eventMonitorLock;
     };
 
     EndpointListeners endpointListeners;
@@ -2021,10 +2314,13 @@ inline bool Patch::loadPatch (const LoadParams& params, bool synchronous)
     if (! currentPlaybackParams.isValid())
         return false;
 
-    fileChangeChecker.reset();
-
     if (std::addressof (lastLoadParams) != std::addressof (params))
         lastLoadParams = params;
+
+    // The checker takes its snapshot of the files' times now, before the build reads them, and
+    // keeps watching while it runs: a file saved during the build triggers another one (which
+    // cancels this), rather than being taken into a snapshot made after the build and missed.
+    startCheckingForChanges();
 
     auto build = std::make_unique<Build> (*this, params, true, true);
 
@@ -2113,6 +2409,8 @@ inline Engine::CodeGenOutput Patch::generateCode (const LoadParams& params, cons
 inline void Patch::unload()
 {
     unloadedErrorMessage.clear();
+    heldEndpointMonitors.clear();
+    heldEndpointMonitorsManifestFile.clear();
     buildThread.reset();
     clientEventQueue->stop();
 
@@ -2121,6 +2419,7 @@ inline void Patch::unload()
         if (stopPlayback)
             stopPlayback();
 
+        framesRenderedByEarlierBuilds = renderer->getNumFramesRendered();
         renderer.reset();
         sendPatchChange();
         setStatus ({});
@@ -2160,7 +2459,24 @@ inline void Patch::setErrorStatus (const std::string& error, const std::string& 
                                    choc::text::LineAndColumn lineAndCol, bool unloadFirst)
 {
     if (unloadFirst)
+    {
+        // (e.g. a broken manifest: the patch is unloaded, but its views' endpoint monitors come
+        // back with the next good build of it, as they do after a build error)
+        auto heldFile = getManifestFile();
+        auto held = std::move (heldEndpointMonitors);
+
+        if (heldEndpointMonitorsManifestFile != heldFile)
+            held.clear();
+
+        if (renderer != nullptr)
+            for (auto& m : renderer->getEndpointMonitorSpecs())
+                held.push_back (m);
+
         unload();
+
+        heldEndpointMonitors = std::move (held);
+        heldEndpointMonitorsManifestFile = heldEndpointMonitors.empty() ? std::string() : heldFile;
+    }
 
     cmaj::FullCodeLocation location;
     location.filename = file;
@@ -2313,6 +2629,8 @@ inline bool Patch::hasAudioOutput() const                   { return renderer !=
 inline bool Patch::wantsTimecodeEvents() const              { return renderer != nullptr && renderer->hasTimecodeInputs; }
 inline double Patch::getFramesLatency() const               { return renderer != nullptr ? renderer->framesLatency : 0.0; }
 inline choc::value::Value Patch::getProgramDetails() const  { return renderer != nullptr ? renderer->programDetails : choc::value::Value(); }
+inline std::string Patch::getGraphStructure() const         { return renderer != nullptr ? renderer->graphStructure : std::string(); }
+inline std::string Patch::getGraphStructureVersion() const  { return renderer != nullptr ? renderer->graphStructureVersion : std::string(); }
 
 inline std::string Patch::getMainProcessorName() const
 {
@@ -2608,6 +2926,13 @@ inline void Patch::sendCPUInfoToViews (float level) const
                              choc::json::create ("level", level));
 }
 
+inline void Patch::sendCPUInfoToViews (float level, float peak) const
+{
+    broadcastMessageToViews ("cpu_info",
+                             choc::json::create ("level", level,
+                                                 "peak", peak));
+}
+
 inline void Patch::sendStoredStateValueToViews (const std::string& key) const
 {
     if (! key.empty())
@@ -2641,14 +2966,27 @@ inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
     if (stopPlayback)
         stopPlayback();
 
+    // (the views' endpoint monitors are carried over to the new build)
+    std::vector<EndpointMonitorSpec> monitors;
+    std::string previousManifestFile;
+
+    if (renderer != nullptr)
+    {
+        monitors = renderer->getEndpointMonitorSpecs();
+        previousManifestFile = getManifestFile();
+        framesRenderedByEarlierBuilds = renderer->getNumFramesRendered();
+    }
+
     unloadedErrorMessage.clear();
-    fileChangeChecker.reset();
     renderer.reset();
     sendPatchChange();
 
     if (newRenderer != nullptr)
     {
+        ++buildNumber;
         renderer = std::move (newRenderer);
+        renderer->setFrameOrigin (framesRenderedByEarlierBuilds);
+        carryOverEndpointMonitors (std::move (monitors), previousManifestFile);
         sendPatchChange();
 
         if (isPlayable())
@@ -2677,7 +3015,49 @@ inline void Patch::setNewRenderer (std::shared_ptr<PatchRenderer> newRenderer)
         }
     }
 
-    startCheckingForChanges();
+    // (a build started by loadPatch() is already being watched, from before it read the files)
+    if (fileChangeChecker == nullptr)
+        startCheckingForChanges();
+}
+
+/// A view's endpoint monitors outlive a rebuild of the same patch: each one is re-created on the
+/// new build if it still has an endpoint with that ID and of the same kind. If the build failed
+/// (so it has no endpoints), they're held until the next build of that patch succeeds. Loading
+/// a different patch starts with none.
+inline void Patch::carryOverEndpointMonitors (std::vector<EndpointMonitorSpec> monitors, const std::string& previousManifestFile)
+{
+    auto manifestFile = getManifestFile();
+    std::vector<EndpointMonitorSpec> toCarry;
+
+    if (! manifestFile.empty())
+    {
+        if (previousManifestFile == manifestFile)
+            toCarry = std::move (monitors);
+
+        if (heldEndpointMonitorsManifestFile == manifestFile)
+            toCarry.insert (toCarry.end(), heldEndpointMonitors.begin(), heldEndpointMonitors.end());
+    }
+
+    heldEndpointMonitors.clear();
+    heldEndpointMonitorsManifestFile.clear();
+
+    // (only for views that are still there)
+    toCarry.erase (std::remove_if (toCarry.begin(), toCarry.end(),
+                                   [this] (auto& m) { return std::find (activeViews.begin(), activeViews.end(), m.view) == activeViews.end(); }),
+                   toCarry.end());
+
+    if (toCarry.empty())
+        return;
+
+    if (renderer->errors.hasErrors())
+    {
+        heldEndpointMonitors = std::move (toCarry);
+        heldEndpointMonitorsManifestFile = manifestFile;
+        return;
+    }
+
+    for (auto& m : toCarry)
+        renderer->restartEndpointMonitor (m);
 }
 
 inline void Patch::addActiveView (PatchView& v)
@@ -2695,6 +3075,10 @@ inline void Patch::removeActiveView (PatchView& v)
 
         if (renderer != nullptr)
             renderer->removeReferencesToView (v);
+
+        heldEndpointMonitors.erase (std::remove_if (heldEndpointMonitors.begin(), heldEndpointMonitors.end(),
+                                                    [&] (auto& m) { return m.view == std::addressof (v); }),
+                                    heldEndpointMonitors.end());
     }
 }
 
@@ -2760,11 +3144,29 @@ inline void Patch::sendCurrentParameterValueToViews (const EndpointID& endpointI
 
 inline bool Patch::startEndpointData (PatchView& view, const EndpointID& endpointID, std::string replyType, uint32_t granularity, bool fullData)
 {
-    return renderer != nullptr && renderer->startEndpointData (view, endpointID, replyType, granularity, fullData);
+    if (renderer != nullptr && ! renderer->errors.hasErrors())
+        return renderer->startEndpointData (view, endpointID, replyType, granularity, fullData);
+
+    // While the patch has failed to build, the request is held for its next good build, as
+    // the monitors of its last good build are (see carryOverEndpointMonitors())
+    auto manifestFile = getManifestFile();
+
+    if (manifestFile.empty() || (! heldEndpointMonitorsManifestFile.empty() && heldEndpointMonitorsManifestFile != manifestFile))
+        return false;
+
+    stopEndpointData (view, endpointID, replyType);
+    heldEndpointMonitors.push_back ({ std::addressof (view), endpointID.toString(), std::move (replyType), granularity, fullData, std::nullopt });
+    heldEndpointMonitorsManifestFile = manifestFile;
+    return true;
 }
 
 inline bool Patch::stopEndpointData (PatchView& view, const EndpointID& endpointID, std::string replyType)
 {
+    heldEndpointMonitors.erase (std::remove_if (heldEndpointMonitors.begin(), heldEndpointMonitors.end(),
+                                                [&] (auto& m) { return m.view == std::addressof (view) && m.replyType == replyType
+                                                                        && m.endpointID == endpointID.toString(); }),
+                                heldEndpointMonitors.end());
+
     return renderer != nullptr && renderer->stopEndpointData (view, endpointID, replyType);
 }
 

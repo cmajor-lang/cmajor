@@ -137,6 +137,11 @@ struct AudioMIDIPerformer
                                      const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn& sendMidiOut,
                                      bool replaceOutput);
 
+    /// Returns the number of frames that process() has rendered since this object was created.
+    /// While an AudioDataListener is being called (on the audio thread), this is the index of the
+    /// first frame of the data it's been given. It isn't reset by swapping the inner performer.
+    uint64_t getNumFramesProcessed() const      { return numFramesProcessed; }
+
     /// Call this after processing ends, to clean up and release resources
     void playbackStopped();
 

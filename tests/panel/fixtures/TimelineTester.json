@@ -1,0 +1,4689 @@
+{
+ "patchFile": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajorpatch",
+ "capturedAt": "2026-11-25T13:46:20.669Z",
+ "listeners": {
+  "timeSigOut": "event_timeSigOut_capture",
+  "tempoOut": "event_tempoOut_capture",
+  "transportStateOut": "event_transportStateOut_capture",
+  "positionOut": "event_positionOut_capture",
+  "timeSigIn": "event_timeSigIn_capture",
+  "tempoIn": "event_tempoIn_capture",
+  "transportStateIn": "event_transportStateIn_capture",
+  "positionIn": "event_positionIn_capture"
+ },
+ "status": {
+  "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+  "playing": true,
+  "manifestFile": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajorpatch",
+  "manifest": {
+   "CmajorVersion": 1,
+   "ID": "dev.cmajor.examples.TimelineTester",
+   "version": "0.1",
+   "name": "TimelineTester",
+   "description": "A patch that catches incoming timeline events and displays them on its UI",
+   "category": "effect",
+   "manufacturer": "Cmajor Software Ltd",
+   "isInstrument": false,
+   "source": [
+    "TimelineTester.cmajor"
+   ],
+   "view": {
+    "src": "Timeline_UI.js",
+    "width": 500,
+    "height": 250,
+    "resizable": true
+   }
+  },
+  "details": {
+   "mainProcessor": "TimelineTester",
+   "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:20:11: ",
+   "inputs": [
+    {
+     "endpointID": "timeSigIn",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "TimeSignature",
+      "members": {
+       "numerator": {
+        "type": "int32"
+       },
+       "denominator": {
+        "type": "int32"
+       }
+      }
+     },
+     "purpose": "time signature",
+     "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:24:15:"
+    },
+    {
+     "endpointID": "tempoIn",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "Tempo",
+      "members": {
+       "bpm": {
+        "type": "float32"
+       }
+      }
+     },
+     "purpose": "tempo",
+     "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:25:15:"
+    },
+    {
+     "endpointID": "transportStateIn",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "TransportState",
+      "members": {
+       "flags": {
+        "type": "int32"
+       }
+      }
+     },
+     "purpose": "transport state",
+     "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:26:15:"
+    },
+    {
+     "endpointID": "positionIn",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "Position",
+      "members": {
+       "frameIndex": {
+        "type": "int64"
+       },
+       "quarterNote": {
+        "type": "float64"
+       },
+       "barStartQuarterNote": {
+        "type": "float64"
+       }
+      }
+     },
+     "purpose": "timeline position",
+     "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:27:15:"
+    }
+   ],
+   "outputs": [
+    {
+     "endpointID": "timeSigOut",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "TimeSignature",
+      "members": {
+       "numerator": {
+        "type": "int32"
+       },
+       "denominator": {
+        "type": "int32"
+       }
+      }
+     },
+     "purpose": "time signature",
+     "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:32:15:"
+    },
+    {
+     "endpointID": "tempoOut",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "Tempo",
+      "members": {
+       "bpm": {
+        "type": "float32"
+       }
+      }
+     },
+     "purpose": "tempo",
+     "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:33:15:"
+    },
+    {
+     "endpointID": "transportStateOut",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "TransportState",
+      "members": {
+       "flags": {
+        "type": "int32"
+       }
+      }
+     },
+     "purpose": "transport state",
+     "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:34:15:"
+    },
+    {
+     "endpointID": "positionOut",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "Position",
+      "members": {
+       "frameIndex": {
+        "type": "int64"
+       },
+       "quarterNote": {
+        "type": "float64"
+       },
+       "barStartQuarterNote": {
+        "type": "float64"
+       }
+      }
+     },
+     "purpose": "timeline position",
+     "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:35:15:"
+    }
+   ]
+  },
+  "codeGenTargets": [
+   "cpp",
+   "llvm",
+   "llvm-arm64",
+   "llvm-x86_64",
+   "llvm-wasm32"
+  ],
+  "buildNumber": 2,
+  "loaded": true,
+  "status": "Loaded: TimelineTester",
+  "log": "Total build time: 41.78 ms\nload: 13.89 ms, compile: 16.4 ms, link: 11.49 ms"
+ },
+ "graph": {
+  "format": "cmajor-patch-graph",
+  "version": 1,
+  "root": {
+   "id": "n0",
+   "path": "",
+   "name": "TimelineTester",
+   "processor": "TimelineTester",
+   "processorFullName": "TimelineTester",
+   "isGraph": false,
+   "source": {
+    "file": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor",
+    "line": 20,
+    "column": 11
+   },
+   "inputs": [
+    {
+     "path": "timeSigIn",
+     "name": "timeSigIn",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "TimeSignature",
+       "fullName": "std::timeline::TimeSignature"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor",
+      "line": 24,
+      "column": 15
+     }
+    },
+    {
+     "path": "tempoIn",
+     "name": "tempoIn",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "Tempo",
+       "fullName": "std::timeline::Tempo"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor",
+      "line": 25,
+      "column": 15
+     }
+    },
+    {
+     "path": "transportStateIn",
+     "name": "transportStateIn",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "TransportState",
+       "fullName": "std::timeline::TransportState"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor",
+      "line": 26,
+      "column": 15
+     }
+    },
+    {
+     "path": "positionIn",
+     "name": "positionIn",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "Position",
+       "fullName": "std::timeline::Position"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor",
+      "line": 27,
+      "column": 15
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "path": "timeSigOut",
+     "name": "timeSigOut",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "TimeSignature",
+       "fullName": "std::timeline::TimeSignature"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor",
+      "line": 32,
+      "column": 15
+     }
+    },
+    {
+     "path": "tempoOut",
+     "name": "tempoOut",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "Tempo",
+       "fullName": "std::timeline::Tempo"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor",
+      "line": 33,
+      "column": 15
+     }
+    },
+    {
+     "path": "transportStateOut",
+     "name": "transportStateOut",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "TransportState",
+       "fullName": "std::timeline::TransportState"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor",
+      "line": 34,
+      "column": 15
+     }
+    },
+    {
+     "path": "positionOut",
+     "name": "positionOut",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "Position",
+       "fullName": "std::timeline::Position"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor",
+      "line": 35,
+      "column": 15
+     }
+    }
+   ]
+  }
+ },
+ "patchList": [],
+ "messages": [
+  {
+   "t": 5,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+    "playing": true,
+    "loaded": false
+   }
+  },
+  {
+   "t": 5,
+   "type": "audio_device_properties",
+   "message": {}
+  },
+  {
+   "t": 5,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+    "playing": true,
+    "loaded": false,
+    "status": "Loading: TimelineTester.cmajorpatch"
+   }
+  },
+  {
+   "t": 2879,
+   "type": "status",
+   "message": {
+    "warning": "",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.TimelineTester",
+     "version": "0.1",
+     "name": "TimelineTester",
+     "description": "A patch that catches incoming timeline events and displays them on its UI",
+     "category": "effect",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": [
+      "TimelineTester.cmajor"
+     ],
+     "view": {
+      "src": "Timeline_UI.js",
+      "width": 500,
+      "height": 250,
+      "resizable": true
+     }
+    },
+    "details": {
+     "mainProcessor": "TimelineTester",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:20:11: ",
+     "inputs": [
+      {
+       "endpointID": "timeSigIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:24:15:"
+      },
+      {
+       "endpointID": "tempoIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:25:15:"
+      },
+      {
+       "endpointID": "transportStateIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:26:15:"
+      },
+      {
+       "endpointID": "positionIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:27:15:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "timeSigOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:32:15:"
+      },
+      {
+       "endpointID": "tempoOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:33:15:"
+      },
+      {
+       "endpointID": "transportStateOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:34:15:"
+      },
+      {
+       "endpointID": "positionOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:35:15:"
+      }
+     ]
+    },
+    "sampleRate": 44100,
+    "host": "Cmajor Player"
+   }
+  },
+  {
+   "t": 2880,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.TimelineTester",
+     "version": "0.1",
+     "name": "TimelineTester",
+     "description": "A patch that catches incoming timeline events and displays them on its UI",
+     "category": "effect",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": [
+      "TimelineTester.cmajor"
+     ],
+     "view": {
+      "src": "Timeline_UI.js",
+      "width": 500,
+      "height": 250,
+      "resizable": true
+     }
+    },
+    "details": {
+     "mainProcessor": "TimelineTester",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:20:11: ",
+     "inputs": [
+      {
+       "endpointID": "timeSigIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:24:15:"
+      },
+      {
+       "endpointID": "tempoIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:25:15:"
+      },
+      {
+       "endpointID": "transportStateIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:26:15:"
+      },
+      {
+       "endpointID": "positionIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:27:15:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "timeSigOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:32:15:"
+      },
+      {
+       "endpointID": "tempoOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:33:15:"
+      },
+      {
+       "endpointID": "transportStateOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:34:15:"
+      },
+      {
+       "endpointID": "positionOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:35:15:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "buildNumber": 1,
+    "loaded": true,
+    "status": "Loading: TimelineTester.cmajorpatch",
+    "log": "Total build time: 32.54 ms\nload: 10.7 ms, compile: 11.12 ms, link: 10.71 ms"
+   }
+  },
+  {
+   "t": 2880,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.TimelineTester",
+     "version": "0.1",
+     "name": "TimelineTester",
+     "description": "A patch that catches incoming timeline events and displays them on its UI",
+     "category": "effect",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": [
+      "TimelineTester.cmajor"
+     ],
+     "view": {
+      "src": "Timeline_UI.js",
+      "width": 500,
+      "height": 250,
+      "resizable": true
+     }
+    },
+    "details": {
+     "mainProcessor": "TimelineTester",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:20:11: ",
+     "inputs": [
+      {
+       "endpointID": "timeSigIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:24:15:"
+      },
+      {
+       "endpointID": "tempoIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:25:15:"
+      },
+      {
+       "endpointID": "transportStateIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:26:15:"
+      },
+      {
+       "endpointID": "positionIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:27:15:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "timeSigOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:32:15:"
+      },
+      {
+       "endpointID": "tempoOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:33:15:"
+      },
+      {
+       "endpointID": "transportStateOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:34:15:"
+      },
+      {
+       "endpointID": "positionOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:35:15:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "buildNumber": 1,
+    "loaded": true,
+    "status": "Loaded: TimelineTester",
+    "log": "Total build time: 32.54 ms\nload: 10.7 ms, compile: 11.12 ms, link: 10.71 ms"
+   }
+  },
+  {
+   "t": 2910,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.TimelineTester",
+     "version": "0.1",
+     "name": "TimelineTester",
+     "description": "A patch that catches incoming timeline events and displays them on its UI",
+     "category": "effect",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": [
+      "TimelineTester.cmajor"
+     ],
+     "view": {
+      "src": "Timeline_UI.js",
+      "width": 500,
+      "height": 250,
+      "resizable": true
+     }
+    },
+    "details": {
+     "mainProcessor": "TimelineTester",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:20:11: ",
+     "inputs": [
+      {
+       "endpointID": "timeSigIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:24:15:"
+      },
+      {
+       "endpointID": "tempoIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:25:15:"
+      },
+      {
+       "endpointID": "transportStateIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:26:15:"
+      },
+      {
+       "endpointID": "positionIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:27:15:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "timeSigOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:32:15:"
+      },
+      {
+       "endpointID": "tempoOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:33:15:"
+      },
+      {
+       "endpointID": "transportStateOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:34:15:"
+      },
+      {
+       "endpointID": "positionOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:35:15:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "buildNumber": 1,
+    "loaded": true,
+    "status": "Loading: TimelineTester.cmajorpatch",
+    "log": "Total build time: 32.54 ms\nload: 10.7 ms, compile: 11.12 ms, link: 10.71 ms"
+   }
+  },
+  {
+   "t": 2962,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+    "playing": true,
+    "loaded": false,
+    "status": "Loading: TimelineTester.cmajorpatch"
+   }
+  },
+  {
+   "t": 2963,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+    "playing": true,
+    "loaded": false,
+    "status": "Loading: TimelineTester.cmajorpatch"
+   }
+  },
+  {
+   "t": 2963,
+   "type": "status",
+   "message": {
+    "warning": "",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.TimelineTester",
+     "version": "0.1",
+     "name": "TimelineTester",
+     "description": "A patch that catches incoming timeline events and displays them on its UI",
+     "category": "effect",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": [
+      "TimelineTester.cmajor"
+     ],
+     "view": {
+      "src": "Timeline_UI.js",
+      "width": 500,
+      "height": 250,
+      "resizable": true
+     }
+    },
+    "details": {
+     "mainProcessor": "TimelineTester",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:20:11: ",
+     "inputs": [
+      {
+       "endpointID": "timeSigIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:24:15:"
+      },
+      {
+       "endpointID": "tempoIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:25:15:"
+      },
+      {
+       "endpointID": "transportStateIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:26:15:"
+      },
+      {
+       "endpointID": "positionIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:27:15:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "timeSigOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:32:15:"
+      },
+      {
+       "endpointID": "tempoOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:33:15:"
+      },
+      {
+       "endpointID": "transportStateOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:34:15:"
+      },
+      {
+       "endpointID": "positionOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:35:15:"
+      }
+     ]
+    },
+    "sampleRate": 44100,
+    "host": "Cmajor Player"
+   }
+  },
+  {
+   "t": 2963,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.TimelineTester",
+     "version": "0.1",
+     "name": "TimelineTester",
+     "description": "A patch that catches incoming timeline events and displays them on its UI",
+     "category": "effect",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": [
+      "TimelineTester.cmajor"
+     ],
+     "view": {
+      "src": "Timeline_UI.js",
+      "width": 500,
+      "height": 250,
+      "resizable": true
+     }
+    },
+    "details": {
+     "mainProcessor": "TimelineTester",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:20:11: ",
+     "inputs": [
+      {
+       "endpointID": "timeSigIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:24:15:"
+      },
+      {
+       "endpointID": "tempoIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:25:15:"
+      },
+      {
+       "endpointID": "transportStateIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:26:15:"
+      },
+      {
+       "endpointID": "positionIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:27:15:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "timeSigOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:32:15:"
+      },
+      {
+       "endpointID": "tempoOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:33:15:"
+      },
+      {
+       "endpointID": "transportStateOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:34:15:"
+      },
+      {
+       "endpointID": "positionOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:35:15:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "buildNumber": 2,
+    "loaded": true,
+    "status": "Loading: TimelineTester.cmajorpatch",
+    "log": "Total build time: 41.78 ms\nload: 13.89 ms, compile: 16.4 ms, link: 11.49 ms"
+   }
+  },
+  {
+   "t": 2969,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURETIMELINETESTER/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.TimelineTester",
+     "version": "0.1",
+     "name": "TimelineTester",
+     "description": "A patch that catches incoming timeline events and displays them on its UI",
+     "category": "effect",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": false,
+     "source": [
+      "TimelineTester.cmajor"
+     ],
+     "view": {
+      "src": "Timeline_UI.js",
+      "width": 500,
+      "height": 250,
+      "resizable": true
+     }
+    },
+    "details": {
+     "mainProcessor": "TimelineTester",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:20:11: ",
+     "inputs": [
+      {
+       "endpointID": "timeSigIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:24:15:"
+      },
+      {
+       "endpointID": "tempoIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:25:15:"
+      },
+      {
+       "endpointID": "transportStateIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:26:15:"
+      },
+      {
+       "endpointID": "positionIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:27:15:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "timeSigOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TimeSignature",
+        "members": {
+         "numerator": {
+          "type": "int32"
+         },
+         "denominator": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "time signature",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:32:15:"
+      },
+      {
+       "endpointID": "tempoOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Tempo",
+        "members": {
+         "bpm": {
+          "type": "float32"
+         }
+        }
+       },
+       "purpose": "tempo",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:33:15:"
+      },
+      {
+       "endpointID": "transportStateOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "TransportState",
+        "members": {
+         "flags": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "transport state",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:34:15:"
+      },
+      {
+       "endpointID": "positionOut",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Position",
+        "members": {
+         "frameIndex": {
+          "type": "int64"
+         },
+         "quarterNote": {
+          "type": "float64"
+         },
+         "barStartQuarterNote": {
+          "type": "float64"
+         }
+        }
+       },
+       "purpose": "timeline position",
+       "source": "${CMAJOR_ROOT}/examples/patches/TimelineTester/TimelineTester.cmajor:35:15:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "buildNumber": 2,
+    "loaded": true,
+    "status": "Loaded: TimelineTester",
+    "log": "Total build time: 41.78 ms\nload: 13.89 ms, compile: 16.4 ms, link: 11.49 ms"
+   }
+  },
+  {
+   "t": 3359,
+   "type": "event_timeSigOut_capture",
+   "message": {
+    "numerator": 4,
+    "denominator": 4,
+    "_type": "TimeSignature"
+   }
+  },
+  {
+   "t": 3359,
+   "type": "event_tempoOut_capture",
+   "message": {
+    "bpm": 120,
+    "_type": "Tempo"
+   }
+  },
+  {
+   "t": 3359,
+   "type": "event_transportStateOut_capture",
+   "message": {
+    "flags": 1,
+    "_type": "TransportState"
+   }
+  },
+  {
+   "t": 3359,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 0,
+    "quarterNote": 0,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3359,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 128,
+    "quarterNote": 0.005804988662131519,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3365,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 256,
+    "quarterNote": 0.011609977324263039,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3365,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 384,
+    "quarterNote": 0.017414965986394557,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3372,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 512,
+    "quarterNote": 0.023219954648526078,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3372,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 640,
+    "quarterNote": 0.029024943310657598,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3372,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 768,
+    "quarterNote": 0.034829931972789115,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3379,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 896,
+    "quarterNote": 0.040634920634920635,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3379,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 1024,
+    "quarterNote": 0.046439909297052155,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3385,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 1152,
+    "quarterNote": 0.052244897959183675,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3385,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 1280,
+    "quarterNote": 0.058049886621315196,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3392,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 1408,
+    "quarterNote": 0.06385487528344672,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3392,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 1536,
+    "quarterNote": 0.06965986394557823,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3398,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 1664,
+    "quarterNote": 0.07546485260770976,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3398,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 1792,
+    "quarterNote": 0.08126984126984127,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3398,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 1920,
+    "quarterNote": 0.08707482993197278,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3405,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 2048,
+    "quarterNote": 0.09287981859410431,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3405,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 2176,
+    "quarterNote": 0.09868480725623582,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3411,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 2304,
+    "quarterNote": 0.10448979591836735,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3411,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 2432,
+    "quarterNote": 0.11029478458049886,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3418,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 2560,
+    "quarterNote": 0.11609977324263039,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3418,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 2688,
+    "quarterNote": 0.1219047619047619,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3424,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 2816,
+    "quarterNote": 0.12770975056689343,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3424,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 2944,
+    "quarterNote": 0.13351473922902493,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3424,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 3072,
+    "quarterNote": 0.13931972789115646,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3431,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 3200,
+    "quarterNote": 0.14512471655328799,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3431,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 3328,
+    "quarterNote": 0.1509297052154195,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3437,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 3456,
+    "quarterNote": 0.156734693877551,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3437,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 3584,
+    "quarterNote": 0.16253968253968254,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3443,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 3712,
+    "quarterNote": 0.16834467120181407,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3443,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 3840,
+    "quarterNote": 0.17414965986394557,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3449,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 3968,
+    "quarterNote": 0.1799546485260771,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3449,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 4096,
+    "quarterNote": 0.18575963718820862,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3455,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 4224,
+    "quarterNote": 0.19156462585034015,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3455,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 4352,
+    "quarterNote": 0.19736961451247165,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3462,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 4480,
+    "quarterNote": 0.20317460317460317,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3462,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 4608,
+    "quarterNote": 0.2089795918367347,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3462,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 4736,
+    "quarterNote": 0.2147845804988662,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3468,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 4864,
+    "quarterNote": 0.22058956916099773,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3469,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 4992,
+    "quarterNote": 0.22639455782312926,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3475,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 5120,
+    "quarterNote": 0.23219954648526078,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3475,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 5248,
+    "quarterNote": 0.23800453514739228,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3481,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 5376,
+    "quarterNote": 0.2438095238095238,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3481,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 5504,
+    "quarterNote": 0.24961451247165534,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3487,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 5632,
+    "quarterNote": 0.25541950113378686,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3487,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 5760,
+    "quarterNote": 0.2612244897959184,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3493,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 5888,
+    "quarterNote": 0.26702947845804986,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3493,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 6016,
+    "quarterNote": 0.2728344671201814,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3499,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 6144,
+    "quarterNote": 0.2786394557823129,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3499,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 6272,
+    "quarterNote": 0.28444444444444444,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3506,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 6400,
+    "quarterNote": 0.29024943310657597,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3506,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 6528,
+    "quarterNote": 0.2960544217687075,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3506,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 6656,
+    "quarterNote": 0.301859410430839,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3513,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 6784,
+    "quarterNote": 0.3076643990929705,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3513,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 6912,
+    "quarterNote": 0.313469387755102,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3519,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 7040,
+    "quarterNote": 0.31927437641723355,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3519,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 7168,
+    "quarterNote": 0.3250793650793651,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3524,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 7296,
+    "quarterNote": 0.3308843537414966,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3525,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 7424,
+    "quarterNote": 0.33668934240362813,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3530,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 7552,
+    "quarterNote": 0.34249433106575966,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3530,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 7680,
+    "quarterNote": 0.34829931972789113,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3536,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 7808,
+    "quarterNote": 0.35410430839002266,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3536,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 7936,
+    "quarterNote": 0.3599092970521542,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3543,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 8064,
+    "quarterNote": 0.3657142857142857,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3543,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 8192,
+    "quarterNote": 0.37151927437641724,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3549,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 8320,
+    "quarterNote": 0.37732426303854877,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3549,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 8448,
+    "quarterNote": 0.3831292517006803,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3555,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 8576,
+    "quarterNote": 0.38893424036281177,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3555,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 8704,
+    "quarterNote": 0.3947392290249433,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3555,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 8832,
+    "quarterNote": 0.4005442176870748,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3562,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 8960,
+    "quarterNote": 0.40634920634920635,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3562,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 9088,
+    "quarterNote": 0.4121541950113379,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3568,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 9216,
+    "quarterNote": 0.4179591836734694,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3568,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 9344,
+    "quarterNote": 0.42376417233560093,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3575,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 9472,
+    "quarterNote": 0.4295691609977324,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3575,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 9600,
+    "quarterNote": 0.43537414965986393,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3581,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 9728,
+    "quarterNote": 0.44117913832199546,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3581,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 9856,
+    "quarterNote": 0.446984126984127,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3581,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 9984,
+    "quarterNote": 0.4527891156462585,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3587,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 10112,
+    "quarterNote": 0.45859410430839004,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3587,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 10240,
+    "quarterNote": 0.46439909297052157,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3594,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 10368,
+    "quarterNote": 0.47020408163265304,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3594,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 10496,
+    "quarterNote": 0.47600907029478456,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3599,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 10624,
+    "quarterNote": 0.4818140589569161,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3599,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 10752,
+    "quarterNote": 0.4876190476190476,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3605,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 10880,
+    "quarterNote": 0.49342403628117915,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3605,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 11008,
+    "quarterNote": 0.4992290249433107,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3612,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 11136,
+    "quarterNote": 0.5050340136054422,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3612,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 11264,
+    "quarterNote": 0.5108390022675737,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3617,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 11392,
+    "quarterNote": 0.5166439909297053,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3617,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 11520,
+    "quarterNote": 0.5224489795918368,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3623,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 11648,
+    "quarterNote": 0.5282539682539683,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3623,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 11776,
+    "quarterNote": 0.5340589569160997,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3629,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 11904,
+    "quarterNote": 0.5398639455782313,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3629,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 12032,
+    "quarterNote": 0.5456689342403628,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3636,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 12160,
+    "quarterNote": 0.5514739229024943,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3636,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 12288,
+    "quarterNote": 0.5572789115646258,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3636,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 12416,
+    "quarterNote": 0.5630839002267574,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3643,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 12544,
+    "quarterNote": 0.5688888888888889,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3643,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 12672,
+    "quarterNote": 0.5746938775510204,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3649,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 12800,
+    "quarterNote": 0.5804988662131519,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3649,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 12928,
+    "quarterNote": 0.5863038548752835,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3656,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 13056,
+    "quarterNote": 0.592108843537415,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3656,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 13184,
+    "quarterNote": 0.5979138321995465,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3662,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 13312,
+    "quarterNote": 0.603718820861678,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3662,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 13440,
+    "quarterNote": 0.6095238095238096,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3662,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 13568,
+    "quarterNote": 0.615328798185941,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3669,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 13696,
+    "quarterNote": 0.6211337868480725,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3669,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 13824,
+    "quarterNote": 0.626938775510204,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3675,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 13952,
+    "quarterNote": 0.6327437641723356,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3675,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 14080,
+    "quarterNote": 0.6385487528344671,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3681,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 14208,
+    "quarterNote": 0.6443537414965986,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3681,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 14336,
+    "quarterNote": 0.6501587301587302,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3687,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 14464,
+    "quarterNote": 0.6559637188208617,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3687,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 14592,
+    "quarterNote": 0.6617687074829932,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3693,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 14720,
+    "quarterNote": 0.6675736961451247,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3693,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 14848,
+    "quarterNote": 0.6733786848072563,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3699,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 14976,
+    "quarterNote": 0.6791836734693878,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3699,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 15104,
+    "quarterNote": 0.6849886621315193,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3706,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 15232,
+    "quarterNote": 0.6907936507936508,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3706,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 15360,
+    "quarterNote": 0.6965986394557823,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3706,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 15488,
+    "quarterNote": 0.7024036281179138,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3712,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 15616,
+    "quarterNote": 0.7082086167800453,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3712,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 15744,
+    "quarterNote": 0.7140136054421768,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3719,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 15872,
+    "quarterNote": 0.7198185941043084,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3719,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 16000,
+    "quarterNote": 0.7256235827664399,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3724,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 16128,
+    "quarterNote": 0.7314285714285714,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3725,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 16256,
+    "quarterNote": 0.737233560090703,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3731,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 16384,
+    "quarterNote": 0.7430385487528345,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3731,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 16512,
+    "quarterNote": 0.748843537414966,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3738,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 16640,
+    "quarterNote": 0.7546485260770975,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3738,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 16768,
+    "quarterNote": 0.7604535147392291,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3738,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 16896,
+    "quarterNote": 0.7662585034013606,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3744,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 17024,
+    "quarterNote": 0.7720634920634921,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3744,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 17152,
+    "quarterNote": 0.7778684807256235,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3751,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 17280,
+    "quarterNote": 0.7836734693877551,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3751,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 17408,
+    "quarterNote": 0.7894784580498866,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3756,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 17536,
+    "quarterNote": 0.7952834467120181,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3756,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 17664,
+    "quarterNote": 0.8010884353741496,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3763,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 17792,
+    "quarterNote": 0.8068934240362812,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3763,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 17920,
+    "quarterNote": 0.8126984126984127,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3769,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 18048,
+    "quarterNote": 0.8185034013605442,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3769,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 18176,
+    "quarterNote": 0.8243083900226758,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3769,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 18304,
+    "quarterNote": 0.8301133786848073,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3776,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 18432,
+    "quarterNote": 0.8359183673469388,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3776,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 18560,
+    "quarterNote": 0.8417233560090703,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3783,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 18688,
+    "quarterNote": 0.8475283446712019,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3783,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 18816,
+    "quarterNote": 0.8533333333333334,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3789,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 18944,
+    "quarterNote": 0.8591383219954648,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3789,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 19072,
+    "quarterNote": 0.8649433106575963,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3795,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 19200,
+    "quarterNote": 0.8707482993197279,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3795,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 19328,
+    "quarterNote": 0.8765532879818594,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3802,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 19456,
+    "quarterNote": 0.8823582766439909,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3802,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 19584,
+    "quarterNote": 0.8881632653061224,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3802,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 19712,
+    "quarterNote": 0.893968253968254,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3808,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 19840,
+    "quarterNote": 0.8997732426303855,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3808,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 19968,
+    "quarterNote": 0.905578231292517,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3814,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 20096,
+    "quarterNote": 0.9113832199546485,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3814,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 20224,
+    "quarterNote": 0.9171882086167801,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3821,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 20352,
+    "quarterNote": 0.9229931972789116,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3821,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 20480,
+    "quarterNote": 0.9287981859410431,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3827,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 20608,
+    "quarterNote": 0.9346031746031747,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3828,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 20736,
+    "quarterNote": 0.9404081632653061,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3828,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 20864,
+    "quarterNote": 0.9462131519274376,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3834,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 20992,
+    "quarterNote": 0.9520181405895691,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3834,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 21120,
+    "quarterNote": 0.9578231292517007,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3841,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 21248,
+    "quarterNote": 0.9636281179138322,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3841,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 21376,
+    "quarterNote": 0.9694331065759637,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3846,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 21504,
+    "quarterNote": 0.9752380952380952,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3846,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 21632,
+    "quarterNote": 0.9810430839002268,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3853,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 21760,
+    "quarterNote": 0.9868480725623583,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3853,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 21888,
+    "quarterNote": 0.9926530612244898,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3859,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 22016,
+    "quarterNote": 0.9984580498866213,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3859,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 22144,
+    "quarterNote": 1.0042630385487528,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3859,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 22272,
+    "quarterNote": 1.0100680272108844,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3866,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 22400,
+    "quarterNote": 1.0158730158730158,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3866,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 22528,
+    "quarterNote": 1.0216780045351475,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3872,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 22656,
+    "quarterNote": 1.0274829931972789,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3872,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 22784,
+    "quarterNote": 1.0332879818594105,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3879,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 22912,
+    "quarterNote": 1.039092970521542,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3879,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 23040,
+    "quarterNote": 1.0448979591836736,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3884,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 23168,
+    "quarterNote": 1.050702947845805,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3885,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 23296,
+    "quarterNote": 1.0565079365079366,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3891,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 23424,
+    "quarterNote": 1.062312925170068,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3891,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 23552,
+    "quarterNote": 1.0681179138321995,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3897,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 23680,
+    "quarterNote": 1.073922902494331,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3897,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 23808,
+    "quarterNote": 1.0797278911564625,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3897,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 23936,
+    "quarterNote": 1.0855328798185941,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3904,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 24064,
+    "quarterNote": 1.0913378684807256,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3904,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 24192,
+    "quarterNote": 1.0971428571428572,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3910,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 24320,
+    "quarterNote": 1.1029478458049886,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3910,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 24448,
+    "quarterNote": 1.1087528344671203,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3916,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 24576,
+    "quarterNote": 1.1145578231292517,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3916,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 24704,
+    "quarterNote": 1.1203628117913833,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3922,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 24832,
+    "quarterNote": 1.1261678004535147,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3923,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 24960,
+    "quarterNote": 1.1319727891156464,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3929,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 25088,
+    "quarterNote": 1.1377777777777778,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3929,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 25216,
+    "quarterNote": 1.1435827664399092,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3929,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 25344,
+    "quarterNote": 1.1493877551020408,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3936,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 25472,
+    "quarterNote": 1.1551927437641722,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3936,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 25600,
+    "quarterNote": 1.1609977324263039,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3942,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 25728,
+    "quarterNote": 1.1668027210884353,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3942,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 25856,
+    "quarterNote": 1.172607709750567,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3948,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 25984,
+    "quarterNote": 1.1784126984126984,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3948,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 26112,
+    "quarterNote": 1.18421768707483,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3954,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 26240,
+    "quarterNote": 1.1900226757369614,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3954,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 26368,
+    "quarterNote": 1.195827664399093,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3961,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 26496,
+    "quarterNote": 1.2016326530612245,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3961,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 26624,
+    "quarterNote": 1.207437641723356,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3967,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 26752,
+    "quarterNote": 1.2132426303854875,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3967,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 26880,
+    "quarterNote": 1.2190476190476192,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3967,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 27008,
+    "quarterNote": 1.2248526077097506,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3973,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 27136,
+    "quarterNote": 1.230657596371882,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3973,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 27264,
+    "quarterNote": 1.2364625850340136,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3980,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 27392,
+    "quarterNote": 1.242267573696145,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3980,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 27520,
+    "quarterNote": 1.2480725623582767,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3987,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 27648,
+    "quarterNote": 1.253877551020408,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3987,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 27776,
+    "quarterNote": 1.2596825396825397,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3987,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 27904,
+    "quarterNote": 1.2654875283446712,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3994,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 28032,
+    "quarterNote": 1.2712925170068028,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 3994,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 28160,
+    "quarterNote": 1.2770975056689342,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4001,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 28288,
+    "quarterNote": 1.2829024943310658,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4001,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 28416,
+    "quarterNote": 1.2887074829931973,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4007,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 28544,
+    "quarterNote": 1.294512471655329,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4007,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 28672,
+    "quarterNote": 1.3003174603174603,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4013,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 28800,
+    "quarterNote": 1.3061224489795917,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4013,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 28928,
+    "quarterNote": 1.3119274376417234,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4013,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 29056,
+    "quarterNote": 1.3177324263038548,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4020,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 29184,
+    "quarterNote": 1.3235374149659864,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4020,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 29312,
+    "quarterNote": 1.3293424036281178,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4025,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 29440,
+    "quarterNote": 1.3351473922902495,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4025,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 29568,
+    "quarterNote": 1.340952380952381,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4031,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 29696,
+    "quarterNote": 1.3467573696145125,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4031,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 29824,
+    "quarterNote": 1.352562358276644,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4037,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 29952,
+    "quarterNote": 1.3583673469387756,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4037,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 30080,
+    "quarterNote": 1.364172335600907,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4044,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 30208,
+    "quarterNote": 1.3699773242630386,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4044,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 30336,
+    "quarterNote": 1.37578231292517,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4050,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 30464,
+    "quarterNote": 1.3815873015873017,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4050,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 30592,
+    "quarterNote": 1.3873922902494331,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4057,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 30720,
+    "quarterNote": 1.3931972789115645,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4057,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 30848,
+    "quarterNote": 1.3990022675736962,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4057,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 30976,
+    "quarterNote": 1.4048072562358276,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4063,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 31104,
+    "quarterNote": 1.4106122448979592,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4063,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 31232,
+    "quarterNote": 1.4164172335600906,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4070,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 31360,
+    "quarterNote": 1.4222222222222223,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4070,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 31488,
+    "quarterNote": 1.4280272108843537,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4076,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 31616,
+    "quarterNote": 1.4338321995464853,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4076,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 31744,
+    "quarterNote": 1.4396371882086167,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4083,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 31872,
+    "quarterNote": 1.4454421768707484,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4083,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 32000,
+    "quarterNote": 1.4512471655328798,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4089,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 32128,
+    "quarterNote": 1.4570521541950114,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4089,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 32256,
+    "quarterNote": 1.4628571428571429,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4089,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 32384,
+    "quarterNote": 1.4686621315192743,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4095,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 32512,
+    "quarterNote": 1.474467120181406,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4095,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 32640,
+    "quarterNote": 1.4802721088435373,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4101,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 32768,
+    "quarterNote": 1.486077097505669,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4101,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 32896,
+    "quarterNote": 1.4918820861678004,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4108,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 33024,
+    "quarterNote": 1.497687074829932,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4108,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 33152,
+    "quarterNote": 1.5034920634920634,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4114,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 33280,
+    "quarterNote": 1.509297052154195,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4114,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 33408,
+    "quarterNote": 1.5151020408163265,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4121,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 33536,
+    "quarterNote": 1.5209070294784581,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4121,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 33664,
+    "quarterNote": 1.5267120181405895,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4121,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 33792,
+    "quarterNote": 1.5325170068027212,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4127,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 33920,
+    "quarterNote": 1.5383219954648526,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4127,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 34048,
+    "quarterNote": 1.5441269841269842,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4133,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 34176,
+    "quarterNote": 1.5499319727891157,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4133,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 34304,
+    "quarterNote": 1.555736961451247,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4140,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 34432,
+    "quarterNote": 1.5615419501133787,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4140,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 34560,
+    "quarterNote": 1.5673469387755101,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4146,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 34688,
+    "quarterNote": 1.5731519274376418,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4146,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 34816,
+    "quarterNote": 1.5789569160997732,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4151,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 34944,
+    "quarterNote": 1.5847619047619048,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4151,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 35072,
+    "quarterNote": 1.5905668934240362,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4158,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 35200,
+    "quarterNote": 1.5963718820861679,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4158,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 35328,
+    "quarterNote": 1.6021768707482993,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4164,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 35456,
+    "quarterNote": 1.607981859410431,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4164,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 35584,
+    "quarterNote": 1.6137868480725623,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4164,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 35712,
+    "quarterNote": 1.619591836734694,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4171,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 35840,
+    "quarterNote": 1.6253968253968254,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4171,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 35968,
+    "quarterNote": 1.6312018140589568,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4177,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 36096,
+    "quarterNote": 1.6370068027210884,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4178,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 36224,
+    "quarterNote": 1.6428117913832199,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4184,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 36352,
+    "quarterNote": 1.6486167800453515,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4184,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 36480,
+    "quarterNote": 1.654421768707483,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4191,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 36608,
+    "quarterNote": 1.6602267573696146,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4191,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 36736,
+    "quarterNote": 1.666031746031746,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4191,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 36864,
+    "quarterNote": 1.6718367346938776,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4197,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 36992,
+    "quarterNote": 1.677641723356009,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4197,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 37120,
+    "quarterNote": 1.6834467120181407,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4203,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 37248,
+    "quarterNote": 1.689251700680272,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4203,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 37376,
+    "quarterNote": 1.6950566893424037,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4210,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 37504,
+    "quarterNote": 1.7008616780045351,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4210,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 37632,
+    "quarterNote": 1.7066666666666668,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4216,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 37760,
+    "quarterNote": 1.7124716553287982,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4216,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 37888,
+    "quarterNote": 1.7182766439909296,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4216,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 38016,
+    "quarterNote": 1.7240816326530612,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4223,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 38144,
+    "quarterNote": 1.7298866213151927,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  },
+  {
+   "t": 4223,
+   "type": "event_positionOut_capture",
+   "message": {
+    "frameIndex": 38272,
+    "quarterNote": 1.7356916099773243,
+    "barStartQuarterNote": 0,
+    "_type": "Position"
+   }
+  }
+ ]
+}

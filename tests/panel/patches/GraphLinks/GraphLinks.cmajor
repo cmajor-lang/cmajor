@@ -1,0 +1,85 @@
+// A small patch for checking click-to-definition in the graph view: it has a user struct
+// type, a type alias, a nested graph, a node array and a delayed connection.
+
+namespace graph_links
+{
+    struct Voicing
+    {
+        float32 pitch;
+        float32 velocity;
+    }
+
+    using Sample = float32;
+
+    processor NoteSource
+    {
+        input event std::midi::Message midiIn;
+        output event Voicing voicingOut;
+
+        event midiIn (std::midi::Message m)
+        {
+            if (m.isNoteOn())
+                voicingOut <- Voicing (m.getPitch(), m.getFloatVelocity());
+        }
+    }
+
+    processor Tone
+    {
+        input event Voicing voicingIn;
+        input value float32 level;
+        output stream Sample out;
+
+        float32 phase, increment, amplitude;
+
+        event voicingIn (Voicing v)
+        {
+            increment = float32 (std::notes::noteToFrequency (v.pitch) * processor.period);
+            amplitude = v.velocity;
+        }
+
+        void main()
+        {
+            loop
+            {
+                out <- amplitude * level * sin (phase * float32 (twoPi));
+                phase = fmod (phase + increment, 1.0f);
+                advance();
+            }
+        }
+    }
+
+    graph Voice
+    {
+        input event Voicing voicingIn;
+        input value float32 level;
+        output stream Sample out;
+
+        node tone = Tone;
+
+        connection
+        {
+            voicingIn -> tone.voicingIn;
+            level -> tone.level;
+            tone.out -> out;
+        }
+    }
+
+    graph GraphLinks  [[ main ]]
+    {
+        input event std::midi::Message midiIn;
+        input value float32 level  [[ name: "Level", min: 0, max: 1, init: 0.5 ]];
+        output stream Sample out;
+
+        node source = NoteSource;
+        node voices = Voice[2];
+
+        connection
+        {
+            midiIn -> source.midiIn;
+            source.voicingOut -> voices.voicingIn;
+            level -> voices.level;
+            voices.out -> out;
+            voices.out -> [4800] -> out;
+        }
+    }
+}

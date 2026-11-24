@@ -55,6 +55,7 @@ export const defaultStyles = `
     --event:                var(--cmaj-graph-event, #ffb74d);
     --badge-array:          var(--cmaj-graph-badge-array, #ce93d8);
     --badge-clock:          var(--cmaj-graph-badge-clock, #80cbc4);
+    --badge-text:           var(--cmaj-graph-badge-text, #1b1b1b);
     --highlight:            var(--cmaj-graph-highlight, #ffffff);
     --activity-colour:      var(--cmaj-graph-activity, #fff59d);
     background: var(--graph-background);
@@ -77,7 +78,7 @@ export const defaultStyles = `
 .cmaj-patch-graph .graph > .array-shadow { fill: var(--graph-fill-1); stroke: var(--graph-stroke); }
 .cmaj-patch-graph .badge-array   { fill: var(--badge-array); }
 .cmaj-patch-graph .badge-clock   { fill: var(--badge-clock); }
-.cmaj-patch-graph .badge-text    { fill: #1b1b1b; font-weight: bold; }
+.cmaj-patch-graph .badge-text    { fill: var(--badge-text); font-weight: bold; }
 .cmaj-patch-graph .toggle        { cursor: pointer; }
 .cmaj-patch-graph .toggle rect   { fill: transparent; }
 .cmaj-patch-graph .toggle:hover text { fill: var(--highlight); }
@@ -97,8 +98,8 @@ export const defaultStyles = `
 .cmaj-patch-graph .edge-label.delay text { fill: var(--highlight); }
 .cmaj-patch-graph [data-source]  { cursor: pointer; }
 .cmaj-patch-graph tspan.type[data-source]:hover { text-decoration: underline; fill: var(--highlight); }
-.cmaj-patch-graph .has-highlight .edge:not(.highlighted) { opacity: 0.18; }
-.cmaj-patch-graph .has-highlight .edge-label:not(.highlighted) { opacity: 0.25; }
+.cmaj-patch-graph.has-highlight .edge:not(.highlighted) { opacity: 0.18; }
+.cmaj-patch-graph.has-highlight .edge-label:not(.highlighted) { opacity: 0.25; }
 .cmaj-patch-graph .edge.highlighted { stroke-width: 3; }
 .cmaj-patch-graph .port.highlighted { stroke: var(--highlight); stroke-width: 1.5; }
 .cmaj-patch-graph .edge-group.active > .edge { stroke-width: calc(2px + 3px * var(--activity, 0)); }

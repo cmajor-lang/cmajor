@@ -1,0 +1,12 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.tests.graphlinks",
+    "version":          "1.0",
+    "name":             "Graph Links",
+    "description":      "Checks click-to-definition in the patch graph view",
+    "category":         "generator",
+    "manufacturer":     "Cmajor Software Ltd",
+    "isInstrument":     true,
+
+    "source":           "GraphLinks.cmajor"
+}

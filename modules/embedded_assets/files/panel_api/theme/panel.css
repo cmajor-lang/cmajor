@@ -1,0 +1,1889 @@
+/*
+     ,ad888ba,                              88
+    d8"'    "8b
+   d8            88,dba,,adba,   ,aPP8A.A8  88     The Cmajor Toolkit
+   Y8,           88    88    88  88     88  88
+    Y8a.   .a8P  88    88    88  88,   ,88  88     (C)2024 Cmajor Software Ltd
+     '"Y888Y"'   88    88    88  '"8bbP"Y8  88     https://cmajor.dev
+                                           ,88
+                                        888P"
+
+  The Cmajor project is subject to commercial or open-source licensing.
+  You may use it under the terms of the GPLv3 (see www.gnu.org/licenses), or
+  visit https://cmajor.dev to learn about our commercial licence options.
+
+  CMAJOR IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+  EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+  DISCLAIMED.
+*/
+
+/*
+    The patch panel's component styles, built on the design tokens in tokens.css.
+
+    - Every rule is scoped to <cmaj-patch-panel> and the panel's own cp- classes, so nothing
+      here reaches into the patch's GUI (which lives in .cp-gui-holder), and there are no rules
+      for bare elements.
+    - Every colour, size, radius and duration comes from a token. The few literal pixel sizes
+      left are the intrinsic geometry of one component (the logo, a canvas's height, a column
+      width), declared once, in that component's rule.
+    - Flat by default: no borders around controls or items, and no drop shadows except the one
+      overlay elevation, for things that float over the content (popover, floating window,
+      narrow inspector).
+*/
+@import url("./tokens.css");
+
+cmaj-patch-panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    position: relative;
+    height: 100%;
+    min-height: 320px;
+    overflow: hidden;
+    background: var(--cp-bg);
+    color: var(--cp-fg);
+    font: var(--cp-text-md)/var(--cp-leading) var(--cp-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+cmaj-patch-panel :where([class^="cp-"], [class*=" cp-"]),
+cmaj-patch-panel :where([class^="cp-"], [class*=" cp-"])::before,
+cmaj-patch-panel :where([class^="cp-"], [class*=" cp-"])::after {
+    box-sizing: border-box;
+}
+
+cmaj-patch-panel :is([class^="cp-"], [class*=" cp-"])[hidden] { display: none !important; }
+
+cmaj-patch-panel :is([class^="cp-"], [class*=" cp-"]):focus-visible {
+    outline: var(--cp-focus-ring);
+    outline-offset: var(--cp-focus-offset);
+}
+
+/*==============================================================================
+  Buttons: quiet (a well fill, no border), icon-only, small, and the "on" state */
+
+cmaj-patch-panel :is(.cp-button, .cp-chip, .cp-seg-button, .cp-small-button, .cp-tab, .cp-link, .cp-logo, .cp-toggle, .cp-chooser-item, .cp-clip, .cp-cpu-button) {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+cmaj-patch-panel .cp-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cp-space-2);
+    height: var(--cp-control-h);
+    padding: 0 var(--cp-space-4);
+    font-size: var(--cp-text-sm);
+    background: var(--cp-well);
+    border: none;
+    border-radius: var(--cp-radius);
+    white-space: nowrap;
+    transition: background-color var(--cp-duration-fast) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-button:hover:not(:disabled)   { background: var(--cp-well-strong); }
+cmaj-patch-panel .cp-button:disabled               { opacity: var(--cp-disabled-opacity); cursor: default; }
+cmaj-patch-panel .cp-button.cp-on                  { background: var(--cp-selected); color: var(--cp-accent); }
+cmaj-patch-panel .cp-icon-button                   { width: var(--cp-control-h); padding: 0; font-size: var(--cp-icon); }
+
+cmaj-patch-panel .cp-small-button {
+    height: var(--cp-control-h-xs);
+    padding: 0 var(--cp-space-3);
+    font-size: var(--cp-text-xs);
+    background: var(--cp-well);
+    border: none;
+    border-radius: var(--cp-radius-sm);
+}
+
+cmaj-patch-panel .cp-small-button:hover { background: var(--cp-well-strong); }
+
+/* key hints inside buttons and tabs: plain, quiet text */
+cmaj-patch-panel :is(.cp-tab, .cp-button) kbd {
+    margin-left: var(--cp-space-2);
+    font: var(--cp-text-2xs) var(--cp-mono);
+    color: var(--cp-fg-subtle);
+}
+
+cmaj-patch-panel .cp-button.cp-on kbd { color: inherit; opacity: 0.7; }
+
+cmaj-patch-panel .cp-link {
+    padding: 0;
+    color: var(--cp-link);
+    text-align: left;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+    text-underline-offset: 2px;
+    background: none;
+    border: none;
+}
+
+cmaj-patch-panel .cp-link:hover    { text-decoration-color: currentColor; }
+cmaj-patch-panel .cp-link:disabled { color: inherit; text-decoration: none; cursor: default; }
+
+/*==============================================================================
+  Fields: text inputs and selects (the only controls with an outline, so they read as editable) */
+
+cmaj-patch-panel :is(.cp-input, .cp-select) {
+    height: var(--cp-control-h);
+    min-width: 0;
+    padding: 0 var(--cp-space-4);
+    font: inherit;
+    font-size: var(--cp-text-sm);
+    color: var(--cp-fg);
+    background: var(--cp-field);
+    border: 1px solid var(--cp-field-border);
+    border-radius: var(--cp-radius);
+}
+
+cmaj-patch-panel .cp-select { padding-right: var(--cp-space-2); }
+cmaj-patch-panel .cp-input::placeholder { color: var(--cp-fg-subtle); }
+cmaj-patch-panel :is(.cp-input, .cp-select):focus-visible { border-color: var(--cp-focus); outline-width: 1px; outline-offset: -1px; }
+
+/*==============================================================================
+  Chips, dots, badges, counts */
+
+cmaj-patch-panel .cp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cp-space-3);
+    height: var(--cp-control-h-sm);
+    min-width: 0;
+    padding: 0 var(--cp-space-4);
+    font-size: var(--cp-text-xs);
+    color: var(--cp-fg-muted);
+    background: var(--cp-well);
+    border: none;
+    border-radius: var(--cp-radius-full);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+cmaj-patch-panel .cp-chips .cp-chip.cp-on {
+    color: var(--cp-fg);
+    background: color-mix(in srgb, var(--cp-event) 24%, var(--cp-surface));
+}
+
+cmaj-patch-panel .cp-dot {
+    flex: none;
+    width: var(--cp-dot);
+    height: var(--cp-dot);
+    border-radius: var(--cp-radius-full);
+    background: var(--cp-fg-subtle);
+}
+
+cmaj-patch-panel .cp-badge {
+    --cp-badge-h: 16px;
+    min-width: var(--cp-badge-h);
+    margin-left: var(--cp-space-3);
+    padding: 0 var(--cp-space-2);
+    font-size: var(--cp-text-2xs);
+    line-height: var(--cp-badge-h);
+    text-align: center;
+    color: var(--cp-fg-muted);
+    background: var(--cp-well);
+    border-radius: var(--cp-radius-full);
+}
+
+cmaj-patch-panel .cp-badge[data-kind="error"]   { color: var(--cp-on-accent); background: var(--cp-err); }
+cmaj-patch-panel .cp-badge[data-kind="warning"] { color: var(--cp-bg); background: var(--cp-warn); }
+
+cmaj-patch-panel .cp-count {
+    margin-left: var(--cp-space-3);
+    font-size: var(--cp-text-2xs);
+    font-weight: var(--cp-weight-regular);
+    letter-spacing: 0;
+    color: var(--cp-fg-subtle);
+}
+
+/*==============================================================================
+  Segmented control: a well, with the selected segment raised */
+
+cmaj-patch-panel .cp-seg {
+    display: inline-flex;
+    gap: var(--cp-space-1);
+    padding: var(--cp-space-1);
+    background: var(--cp-well);
+    border-radius: var(--cp-radius);
+}
+
+cmaj-patch-panel .cp-seg-button {
+    flex: 1;
+    height: var(--cp-control-h-xs);
+    padding: 0 var(--cp-space-3);
+    font-size: var(--cp-text-xs);
+    color: var(--cp-fg-muted);
+    background: transparent;
+    border: none;
+    border-radius: var(--cp-radius-sm);
+    transition: background-color var(--cp-duration-fast) var(--cp-ease), color var(--cp-duration-fast) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-seg-button:hover { color: var(--cp-fg); }
+cmaj-patch-panel .cp-seg-button.cp-on { color: var(--cp-fg); background: var(--cp-raised); }
+
+/*==============================================================================
+  Text helpers, section titles, empty states */
+
+cmaj-patch-panel .cp-spacer     { flex: 1; }
+cmaj-patch-panel .cp-dim        { color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-mono       { font-family: var(--cp-mono); font-size: var(--cp-text-xs); }
+
+cmaj-patch-panel .cp-section-title {
+    margin: 0;
+    padding: var(--cp-space-5) var(--cp-space-5) var(--cp-space-3);
+    font-size: var(--cp-text-xs);
+    font-weight: var(--cp-weight-strong);
+    text-transform: uppercase;
+    letter-spacing: var(--cp-tracking-caps);
+    color: var(--cp-fg-muted);
+}
+
+/* an empty state: a short, quiet sentence where the content would be */
+cmaj-patch-panel .cp-empty {
+    margin: 0;
+    padding: var(--cp-space-5);
+    font-size: var(--cp-text-sm);
+    color: var(--cp-fg-muted);
+}
+
+/*==============================================================================
+  Top bar */
+
+cmaj-patch-panel .cp-topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-4);
+    min-width: 0;
+    min-height: var(--cp-topbar-h);
+    padding: 0 var(--cp-space-5);
+    background: var(--cp-surface);
+    border-bottom: var(--cp-hairline);
+}
+
+/* the wordmark, drawn in the text colour (it's an SVG mask, so it follows the theme) */
+cmaj-patch-panel .cp-logo {
+    --cp-logo-w: 74px;
+    flex: none;
+    width: var(--cp-logo-w);
+    height: var(--cp-control-h-sm);
+    margin-right: var(--cp-space-2);
+    padding: 0;
+    border: none;
+    background: var(--cp-fg);
+    -webkit-mask: url(/cmaj_api/assets/cmajor-logo.svg) no-repeat center / contain;
+    mask: url(/cmaj_api/assets/cmajor-logo.svg) no-repeat center / contain;
+}
+
+cmaj-patch-panel .cp-patch-name {
+    flex: 0 1 auto;
+    min-width: 4em;
+    max-width: 30%;
+    color: var(--cp-fg);
+    font-weight: var(--cp-weight-strong);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+cmaj-patch-panel .cp-patch-name:hover:not(:disabled) { text-decoration: underline; }
+
+cmaj-patch-panel .cp-build-chip[data-state="ok"]    .cp-dot { background: var(--cp-ok); }
+cmaj-patch-panel .cp-build-chip[data-state="busy"]  .cp-dot { background: var(--cp-warn); animation: cp-pulse 0.8s ease-in-out infinite alternate; }
+cmaj-patch-panel .cp-build-chip[data-state="error"]        { color: var(--cp-err); background: var(--cp-err-soft); }
+cmaj-patch-panel .cp-build-chip[data-state="error"] .cp-dot { background: var(--cp-err); }
+cmaj-patch-panel .cp-build-chip[data-state="off"]   .cp-dot { background: var(--cp-fg-subtle); animation: cp-pulse 1.2s ease-in-out infinite alternate; }
+
+@keyframes cp-pulse { from { opacity: 1; } to { opacity: 0.25; } }
+
+cmaj-patch-panel .cp-info-chip { cursor: default; }
+cmaj-patch-panel .cp-topbar > .cp-chip { flex: 0 1 auto; }
+cmaj-patch-panel .cp-topbar > .cp-button,
+cmaj-patch-panel .cp-topbar > .cp-cpu-button { flex: none; }
+
+cmaj-patch-panel { container-type: inline-size; container-name: cp-panel; }
+
+cmaj-patch-panel .cp-cpu {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-3);
+    font-size: var(--cp-text-xs);
+    color: var(--cp-fg-muted);
+}
+
+cmaj-patch-panel .cp-cpu-track {
+    width: 64px;
+    height: var(--cp-track);
+    background: var(--cp-well-strong);
+    border-radius: var(--cp-radius-full);
+    overflow: hidden;
+}
+
+cmaj-patch-panel .cp-cpu-bar {
+    width: 0;
+    height: 100%;
+    background: var(--cp-fg-muted);
+    transition: width var(--cp-duration) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-cpu-bar.cp-high { background: var(--cp-err); }
+cmaj-patch-panel .cp-cpu-text        { min-width: 3.5em; font-family: var(--cp-mono); font-variant-numeric: tabular-nums; }
+
+/* the CPU meter and its sparkline are one quiet button, which opens the CPU history */
+cmaj-patch-panel .cp-cpu-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cp-space-4);
+    height: var(--cp-control-h);
+    padding: 0 var(--cp-space-3);
+    background: none;
+    border: none;
+    border-radius: var(--cp-radius);
+    transition: background-color var(--cp-duration-fast) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-cpu-button:hover,
+cmaj-patch-panel .cp-cpu-button[aria-expanded="true"] { background: var(--cp-well); }
+
+cmaj-patch-panel .cp-cpu-spark {
+    display: block;
+    width: 48px;
+    height: 16px;
+    background: var(--cp-meter-track);   /* (so the chart's extent shows before 30 s of history has filled it) */
+    border-radius: var(--cp-radius-xs);
+}
+
+/* the transport (shell/transport-control.js): play, record, loop and rewind as icon toggles, then
+   the tempo, the time signature and the position as mono readouts */
+cmaj-patch-panel .cp-transport {
+    --cp-transport-tempo-w: 46px;
+    --cp-transport-position-w: 8ch;
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--cp-space-2);
+    margin-right: var(--cp-space-4);
+}
+
+cmaj-patch-panel .cp-transport-record.cp-on { background: var(--cp-record-soft); color: var(--cp-record); }
+
+cmaj-patch-panel :is(.cp-transport-tempo, .cp-transport-signature) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cp-space-2);
+    margin-left: var(--cp-space-3);
+}
+
+cmaj-patch-panel .cp-transport-tempo-input {
+    width: var(--cp-transport-tempo-w);
+    padding: 0 var(--cp-space-3);
+    font-family: var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    cursor: ns-resize;
+}
+
+cmaj-patch-panel .cp-transport-tempo-input:focus     { cursor: text; }
+cmaj-patch-panel .cp-transport-tempo-input:disabled  { opacity: var(--cp-disabled-opacity); cursor: default; }
+cmaj-patch-panel .cp-transport-tempo-input.cp-dragging { border-color: var(--cp-focus); }
+
+cmaj-patch-panel :is(.cp-transport-unit, .cp-transport-slash) {
+    font-size: var(--cp-text-xs);
+    color: var(--cp-fg-muted);
+}
+
+cmaj-patch-panel .cp-transport-select {
+    padding: 0 var(--cp-space-1) 0 var(--cp-space-3);
+    font-family: var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+cmaj-patch-panel .cp-transport-select:disabled { opacity: var(--cp-disabled-opacity); }
+
+cmaj-patch-panel .cp-transport-position {
+    gap: var(--cp-space-3);
+    margin-left: var(--cp-space-3);
+    font-family: var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+/* "Bar " / "Time ": for screen readers only (the tooltip says it too) */
+cmaj-patch-panel .cp-transport-position-kind {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* (the transport takes the room that the audio setup chip had) */
+@container cp-panel (max-width: 1500px) {
+    cmaj-patch-panel .cp-topbar:has(> .cp-transport:not([hidden])) > .cp-info-chip { display: none; }
+}
+cmaj-patch-panel .cp-transport-position-text  { min-width: var(--cp-transport-position-w); text-align: right; }
+
+/* the about box, opened by the wordmark: the wordmark again (larger), the version, a line about
+   Cmajor, the links and the licence */
+cmaj-patch-panel .cp-about-popover { width: 320px; }
+
+cmaj-patch-panel .cp-about {
+    display: grid;
+    gap: var(--cp-space-3);
+    padding: var(--cp-space-5) var(--cp-space-5) 0;
+}
+
+cmaj-patch-panel .cp-about p { margin: 0; font-size: var(--cp-text-sm); }
+
+cmaj-patch-panel .cp-about-logo {
+    display: block;
+    width: 148px;
+    height: 32px;
+    margin-bottom: var(--cp-space-2);
+    background: var(--cp-fg);
+    -webkit-mask: url(/cmaj_api/assets/cmajor-logo.svg) no-repeat left center / contain;
+    mask: url(/cmaj_api/assets/cmajor-logo.svg) no-repeat left center / contain;
+}
+
+cmaj-patch-panel .cp-about p.cp-about-version { font-size: var(--cp-text-xs); color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-about-links              { display: flex; flex-wrap: wrap; gap: var(--cp-space-4); }
+cmaj-patch-panel .cp-about p.cp-about-legal   { margin-top: var(--cp-space-2); font-size: var(--cp-text-xs); }
+
+/* the CPU history popover: a chart, the stats, the time budget */
+cmaj-patch-panel .cp-cpu-popover { width: 400px; }
+
+cmaj-patch-panel .cp-cpu-chart {
+    --cp-cpu-chart-h: 120px;
+    position: relative;
+    margin: 0 var(--cp-space-5);
+    padding-bottom: var(--cp-space-7);     /* (room for the time axis) */
+}
+
+cmaj-patch-panel .cp-cpu-chart-canvas {
+    display: block;
+    width: 100%;
+    height: var(--cp-cpu-chart-h);
+    border-radius: var(--cp-radius-sm);
+}
+
+cmaj-patch-panel :is(.cp-cpu-budget-label, .cp-cpu-scale-label, .cp-cpu-axis-label) {
+    position: absolute;
+    font-family: var(--cp-mono);
+    font-size: var(--cp-text-2xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--cp-fg-subtle);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* (on the left: the newest data is on the right) */
+cmaj-patch-panel .cp-cpu-budget-label { left: var(--cp-space-3); transform: translateY(-100%); color: var(--cp-cpu-over); }
+cmaj-patch-panel .cp-cpu-scale-label  { top: var(--cp-space-4); left: var(--cp-space-3); }     /* (below the over-budget marks) */
+
+cmaj-patch-panel .cp-cpu-chart-empty {
+    position: absolute;
+    inset: 0 0 var(--cp-space-7);
+    display: grid;
+    place-items: center;
+    padding: 0;
+}
+
+cmaj-patch-panel .cp-cpu-axis { position: absolute; left: 0; right: 0; bottom: 0; height: var(--cp-space-7); }
+cmaj-patch-panel .cp-cpu-axis-label { bottom: var(--cp-space-2); transform: translateX(-50%); }
+cmaj-patch-panel .cp-cpu-axis-label[data-edge="start"] { transform: none; }
+cmaj-patch-panel .cp-cpu-axis-label[data-edge="end"]   { transform: translateX(-100%); }
+
+cmaj-patch-panel .cp-cpu-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--cp-space-4);
+    margin: var(--cp-space-4) 0 0;
+    padding: 0 var(--cp-space-5);
+}
+
+cmaj-patch-panel .cp-cpu-stat    { display: flex; flex-direction: column-reverse; gap: var(--cp-space-1); min-width: 0; }
+cmaj-patch-panel .cp-cpu-stat dt { font-size: var(--cp-text-xs); color: var(--cp-fg-muted); }
+
+cmaj-patch-panel .cp-cpu-stat-value {
+    margin: 0;
+    font-family: var(--cp-mono);
+    font-size: var(--cp-text-lg);
+    font-variant-numeric: tabular-nums;
+}
+
+cmaj-patch-panel .cp-cpu-stat.cp-over .cp-cpu-stat-value { color: var(--cp-err); }
+
+cmaj-patch-panel .cp-cpu-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-3);
+    margin-top: var(--cp-space-5);
+    padding: 0 var(--cp-space-5);
+    font-size: var(--cp-text-xs);
+}
+
+cmaj-patch-panel .cp-cpu-budget-value { font-family: var(--cp-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/*==============================================================================
+  Popover: with the floating window, the only things that are elevated */
+
+cmaj-patch-panel .cp-popover {
+    position: absolute;
+    z-index: var(--cp-z-popover);
+    min-width: 300px;
+    max-width: min(420px, calc(100% - 2 * var(--cp-space-4)));
+    max-height: calc(100% - 60px);
+    overflow: auto;
+    padding-bottom: var(--cp-space-5);
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-divider-strong);
+    border-radius: var(--cp-radius-lg);
+    box-shadow: var(--cp-overlay-shadow);
+}
+
+cmaj-patch-panel .cp-form          { display: grid; gap: var(--cp-space-3); padding: 0 var(--cp-space-5); }
+cmaj-patch-panel .cp-form-row      { display: grid; grid-template-columns: 100px minmax(0, 1fr); align-items: center; gap: var(--cp-space-4); font-size: var(--cp-text-sm); }
+cmaj-patch-panel .cp-form-row span { color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-form-row.cp-switch-row { grid-template-columns: minmax(0, 1fr) auto; }
+
+/*==============================================================================
+  Command palette: a search field and a list of commands, at the top of the panel, with the
+  popover's elevation */
+
+cmaj-patch-panel .cp-palette {
+    --cp-palette-w: 560px;
+    position: absolute;
+    z-index: var(--cp-z-popover);
+    top: calc(var(--cp-topbar-h) + var(--cp-space-4));
+    left: 50%;
+    display: flex;
+    flex-direction: column;
+    width: min(var(--cp-palette-w), calc(100% - 2 * var(--cp-space-4)));
+    max-height: min(480px, calc(100% - var(--cp-topbar-h) - 2 * var(--cp-space-6)));
+    transform: translateX(-50%);
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-divider-strong);
+    border-radius: var(--cp-radius-lg);
+    box-shadow: var(--cp-overlay-shadow);
+    overflow: hidden;
+}
+
+cmaj-patch-panel .cp-palette-input {
+    flex: none;
+    height: calc(var(--cp-control-h) + var(--cp-space-4));
+    margin: var(--cp-space-4);
+    font-size: var(--cp-text-md);
+}
+
+cmaj-patch-panel .cp-palette-list   { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 var(--cp-space-4) var(--cp-space-4); }
+cmaj-patch-panel .cp-palette-empty  { padding: var(--cp-space-3) var(--cp-space-5) var(--cp-space-6); margin: 0; }
+
+cmaj-patch-panel .cp-palette-option {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-5);
+    min-height: var(--cp-control-h);
+    padding: var(--cp-space-2) var(--cp-space-4);
+    font-size: var(--cp-text-sm);
+    border-radius: var(--cp-radius-sm);
+    cursor: pointer;
+}
+
+cmaj-patch-panel .cp-palette-option.cp-active    { background: var(--cp-selected); }
+cmaj-patch-panel .cp-palette-text                { display: flex; flex: 1 1 auto; align-items: baseline; gap: var(--cp-space-4); min-width: 0; }
+cmaj-patch-panel .cp-palette-title               { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+cmaj-patch-panel .cp-palette-detail              { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                                                   font: var(--cp-text-xs) var(--cp-mono); color: var(--cp-fg-subtle); }
+cmaj-patch-panel .cp-palette-category            { flex: none; font-size: var(--cp-text-xs); color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-palette-option kbd          { flex: none; min-width: 3em; text-align: right; font: var(--cp-text-2xs) var(--cp-mono); color: var(--cp-fg-subtle); }
+
+cmaj-patch-panel .cp-match {
+    color: var(--cp-accent);
+    font-weight: var(--cp-weight-strong);
+    background: none;
+}
+
+cmaj-patch-panel .cp-palette-glyph { font-size: var(--cp-icon); line-height: 1; }
+
+/* an endpoint's widget, when the palette jumps to it */
+cmaj-patch-panel .cp-ew.cp-revealed { animation: cp-reveal var(--cp-duration-slow) var(--cp-ease) 2 alternate; border-radius: var(--cp-radius-sm); }
+
+@keyframes cp-reveal { from { background: transparent; } to { background: var(--cp-selected); } }
+
+/*==============================================================================
+  Workspace */
+
+cmaj-patch-panel .cp-workspace {
+    --cp-inspector-w: 280px;
+    --cp-drawer-h: 220px;
+
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 0 0;
+    grid-template-rows: minmax(0, 1fr) 0 auto;
+    grid-template-areas: "main vsplit inspector" "hsplit hsplit hsplit" "drawer drawer drawer";
+    min-height: 0;
+    position: relative;
+}
+
+cmaj-patch-panel .cp-workspace[data-inspector-open]     { grid-template-columns: minmax(0, 1fr) 0 var(--cp-inspector-w); }
+cmaj-patch-panel .cp-workspace[data-drawer-open]        { grid-template-rows: minmax(0, 1fr) 0 var(--cp-drawer-h); }
+cmaj-patch-panel .cp-workspace.cp-resizing              { user-select: none; -webkit-user-select: none; }
+cmaj-patch-panel .cp-workspace.cp-resizing .cp-gui-holder,
+cmaj-patch-panel .cp-workspace.cp-resizing .cp-graph    { pointer-events: none; }
+
+cmaj-patch-panel .cp-main {
+    grid-area: main;
+    position: relative;
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+}
+
+cmaj-patch-panel .cp-inspector {
+    grid-area: inspector;
+    min-height: 0;
+    overflow: hidden auto;
+    background: var(--cp-surface);
+    border-left: var(--cp-hairline);
+}
+
+cmaj-patch-panel .cp-workspace:not([data-inspector-open]) .cp-inspector { visibility: hidden; }
+
+cmaj-patch-panel .cp-drawer {
+    grid-area: drawer;
+    display: grid;
+    min-height: 0;
+    background: var(--cp-surface);
+    border-top: var(--cp-hairline);
+}
+
+cmaj-patch-panel .cp-workspace:not([data-drawer-open]) .cp-drawer .cp-panes { display: none; }
+
+cmaj-patch-panel .cp-splitter          { position: relative; z-index: var(--cp-z-raised); }
+cmaj-patch-panel .cp-splitter::after   { content: ""; position: absolute; transition: background-color var(--cp-duration-fast) var(--cp-ease); }
+cmaj-patch-panel .cp-splitter-v        { grid-area: vsplit; }
+cmaj-patch-panel .cp-splitter-v::after { top: 0; bottom: 0; left: -3px; width: 6px; cursor: col-resize; }
+cmaj-patch-panel .cp-splitter-h        { grid-area: hsplit; }
+cmaj-patch-panel .cp-splitter-h::after { left: 0; right: 0; top: -3px; height: 6px; cursor: row-resize; }
+cmaj-patch-panel .cp-splitter:hover::after,
+cmaj-patch-panel .cp-splitter:focus-visible::after { background: color-mix(in srgb, var(--cp-accent) 50%, transparent); }
+cmaj-patch-panel .cp-workspace:not([data-inspector-open]) .cp-splitter-v,
+cmaj-patch-panel .cp-workspace:not([data-drawer-open]) .cp-splitter-h { display: none; }
+
+/* narrow (e.g. a VS Code side panel): the inspector slides over the main area */
+cmaj-patch-panel .cp-workspace[data-narrow]                       { grid-template-columns: minmax(0, 1fr) 0 0; }
+cmaj-patch-panel .cp-workspace[data-narrow] .cp-splitter-v        { display: none; }
+cmaj-patch-panel .cp-workspace[data-narrow] .cp-inspector {
+    grid-area: main;
+    justify-self: end;
+    width: min(300px, 85%);
+    z-index: var(--cp-z-overlay);
+    box-shadow: var(--cp-overlay-shadow);
+}
+cmaj-patch-panel .cp-workspace[data-narrow] :is(.cp-tab, .cp-button) kbd { display: none; }
+
+/*==============================================================================
+  Tabs: text, with the active one underlined */
+
+cmaj-patch-panel .cp-tabset {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-width: 0;
+    min-height: 0;
+}
+
+/* When the area is too narrow for the tabs and tools (e.g. the inspector has been dragged
+   wide), the tools wrap onto rows of their own below the tabs, kept to the right. Each row
+   is as tall as the bar would be (min-height: inherit), so the tabs keep their underline. */
+cmaj-patch-panel .cp-tabbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: stretch;
+    gap: 0 var(--cp-space-3);
+    min-width: 0;
+    min-height: var(--cp-tabbar-h);
+    padding: 0 var(--cp-space-4);
+    background: var(--cp-surface);
+    border-bottom: var(--cp-hairline);
+}
+
+cmaj-patch-panel .cp-tabset-drawer > .cp-tabbar { min-height: calc(var(--cp-tabbar-h) - var(--cp-space-2)); }
+cmaj-patch-panel .cp-workspace:not([data-drawer-open]) .cp-tabset-drawer > .cp-tabbar { border-bottom: none; }
+
+cmaj-patch-panel .cp-tablist { display: flex; flex: none; gap: var(--cp-space-1); min-height: inherit; }
+
+cmaj-patch-panel .cp-tab {
+    display: flex;
+    align-items: center;
+    padding: 0 var(--cp-space-4);
+    color: var(--cp-fg-muted);
+    white-space: nowrap;
+    background: none;
+    border: none;
+    border-block: 2px solid transparent;
+    transition: color var(--cp-duration-fast) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-tab:hover     { color: var(--cp-fg); }
+cmaj-patch-panel .cp-tab.cp-active { color: var(--cp-fg); border-bottom-color: var(--cp-indicator); }
+
+cmaj-patch-panel .cp-tabbar-tools,
+cmaj-patch-panel .cp-tab-tools {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--cp-space-2) var(--cp-space-3);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-tabbar-tools { min-height: inherit; padding-block: var(--cp-space-1); }
+cmaj-patch-panel .cp-tabbar-tools:empty { display: none; }
+cmaj-patch-panel .cp-tabset-main .cp-tab-tools .cp-seg-button { min-width: 24px; font-size: var(--cp-text-md); }
+cmaj-patch-panel .cp-tabset-main .cp-tab-tools .cp-seg-button.cp-zoom-text { min-width: 46px; font: var(--cp-text-xs) var(--cp-mono); }
+cmaj-patch-panel .cp-tabset-main .cp-tab-tools .cp-mode-seg .cp-seg-button  { flex: none; padding: 0 var(--cp-space-4); font-size: var(--cp-text-sm); }
+
+cmaj-patch-panel .cp-panes { position: relative; min-width: 0; min-height: 0; }
+cmaj-patch-panel .cp-pane  { position: absolute; inset: 0; overflow: hidden; }
+
+/*==============================================================================
+  GUI view */
+
+cmaj-patch-panel .cp-gui-view {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    overflow: auto;
+}
+
+cmaj-patch-panel .cp-gui-holder {
+    display: block;
+    max-width: 100%;
+    padding: var(--cp-space-6);
+}
+
+/* (Filling, the tracks are minmax(0, 1fr), not auto: an auto track is never smaller than the
+   view's natural size, so the holder that a scalable view fits itself to could grow but never
+   shrink, and the view got scrollbars instead of scaling down.) */
+cmaj-patch-panel .cp-gui-fill { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+cmaj-patch-panel .cp-gui-fill .cp-gui-holder { width: 100%; height: 100%; min-width: 0; min-height: 0; padding: 0; }
+
+cmaj-patch-panel .cp-gui-message {
+    position: absolute;
+    padding: var(--cp-space-7);
+    text-align: center;
+    color: var(--cp-fg-muted);
+}
+
+/* a banner over the patch's GUI (e.g. "showing the last good build"): a solid tint, no outline */
+cmaj-patch-panel .cp-gui-banner {
+    position: absolute;
+    top: var(--cp-space-4);
+    left: 50%;
+    z-index: 2;
+    transform: translateX(-50%);
+    padding: var(--cp-space-2) var(--cp-space-5);
+    font-size: var(--cp-text-sm);
+    background: var(--cp-warn-soft);
+    border-radius: var(--cp-radius-full);
+}
+
+cmaj-patch-panel .cp-gui-banner.cp-error { background: var(--cp-err-soft); }
+
+/*==============================================================================
+  Graph view (its colours are the --cmaj-graph-* tokens) */
+
+cmaj-patch-panel .cp-graph-view { position: absolute; inset: 0; }
+
+cmaj-patch-panel .cp-graph {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    min-height: 0;
+    resize: none;
+}
+
+/*==============================================================================
+  Endpoint widgets and the I/O view.
+
+  An endpoint is a header line (the kind mark, its name, and its value on the right) above
+  its control. There's no box around it: whitespace separates them, and the grid aligns them. */
+
+cmaj-patch-panel .cp-io-view    { position: absolute; inset: 0; overflow: auto; }
+cmaj-patch-panel .cp-io-content { padding: 0 var(--cp-space-8) var(--cp-space-8); }
+cmaj-patch-panel .cp-io-section .cp-section-title { padding: var(--cp-space-8) 0 var(--cp-space-5); }
+
+cmaj-patch-panel .cp-io-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--cp-space-8) var(--cp-space-9);
+}
+
+cmaj-patch-panel .cp-ew {
+    --cp-kind: var(--cp-event);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cp-space-3);
+    min-width: 0;
+    font-size: var(--cp-text-sm);
+    border-radius: var(--cp-radius-sm);
+}
+
+cmaj-patch-panel :is(.cp-ew, .cp-live-dot).cp-kind-stream { --cp-kind: var(--cp-stream); }
+cmaj-patch-panel :is(.cp-ew, .cp-live-dot).cp-kind-value  { --cp-kind: var(--cp-value); }
+cmaj-patch-panel :is(.cp-ew, .cp-live-dot).cp-kind-event  { --cp-kind: var(--cp-event); }
+
+cmaj-patch-panel .cp-ew-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--cp-space-4);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-ew-label {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-3);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-kind-mark {
+    flex: none;
+    width: var(--cp-kind-mark);
+    height: var(--cp-kind-mark);
+    border-radius: 1px;
+    background: var(--cp-kind, var(--cp-fg-subtle));
+}
+
+cmaj-patch-panel .cp-ew-name {
+    color: var(--cp-fg);
+    font-weight: var(--cp-weight-medium);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+cmaj-patch-panel .cp-ew-name.cp-link:hover { text-decoration: underline; }
+
+cmaj-patch-panel .cp-ew-value {
+    flex: none;
+    max-width: 60%;
+    font: var(--cp-text-xs) var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--cp-fg-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+cmaj-patch-panel .cp-ew-body { display: flex; flex-direction: column; gap: var(--cp-space-3); min-width: 0; }
+
+/* an event arrived: the kind mark rings and the value brightens, briefly */
+cmaj-patch-panel .cp-ew.cp-flash .cp-kind-mark { animation: cp-flash-mark var(--cp-duration-slow) var(--cp-ease); }
+cmaj-patch-panel .cp-ew.cp-flash .cp-ew-value  { animation: cp-flash-text var(--cp-duration-slow) var(--cp-ease); }
+@keyframes cp-flash-mark { from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cp-kind) 45%, transparent); } to { box-shadow: 0 0 0 0 transparent; } }
+@keyframes cp-flash-text { from { color: var(--cp-fg); } }
+
+cmaj-patch-panel .cp-ew.cp-drop-target { outline: 1px dashed var(--cp-accent); outline-offset: var(--cp-space-3); background: var(--cp-selected); }
+
+cmaj-patch-panel .cp-ew-recent {
+    min-height: calc(5em * var(--cp-leading-code));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font: var(--cp-text-xs)/var(--cp-leading-code) var(--cp-mono);
+    color: var(--cp-fg-muted);
+    overflow: hidden;
+}
+
+cmaj-patch-panel .cp-ew-recent li             { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+cmaj-patch-panel .cp-ew-recent li:first-child { color: var(--cp-fg); }
+cmaj-patch-panel .cp-ew-footer { display: flex; justify-content: space-between; align-items: center; font-size: var(--cp-text-xs); color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-ew-note   { margin: 0; font-size: var(--cp-text-xs); color: var(--cp-fg-muted); }
+
+/* meters: level bars, then a scope; both are recessed wells (drawn by widgets/audio-meter.js) */
+cmaj-patch-panel .cp-level-display {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: var(--cp-space-3);
+    align-items: center;
+}
+
+cmaj-patch-panel .cp-meter-canvas { display: block; width: 100%; height: var(--cp-meter-h, 10px); border-radius: var(--cp-radius-xs); }
+cmaj-patch-panel .cp-scope-canvas { display: block; grid-column: 1 / -1; width: 100%; height: var(--cp-scope-h, 48px); border-radius: var(--cp-radius-sm); }
+
+cmaj-patch-panel .cp-clip {
+    width: var(--cp-dot);
+    height: var(--cp-dot);
+    padding: 0;
+    background: var(--cp-well-strong);
+    border: none;
+    border-radius: var(--cp-radius-full);
+}
+
+cmaj-patch-panel .cp-clip.cp-on { background: var(--cp-meter-clip); }
+
+/* the spectrum analyser (widgets/spectrum-analyser.js): a toolbar row of small controls, then a canvas well
+   with the readout over its top-right corner. The header's toggle is a quiet icon button. */
+cmaj-patch-panel .cp-ew-end { display: flex; align-items: center; gap: var(--cp-space-3); min-width: 0; }
+cmaj-patch-panel .cp-ew-end .cp-ew-value { max-width: none; min-width: 0; }
+
+cmaj-patch-panel .cp-spectrum-toggle {
+    width: var(--cp-control-h-xs);
+    height: var(--cp-control-h-xs);
+    margin-block: calc(-1 * var(--cp-space-2));
+    display: inline-grid;
+    place-items: center;
+    color: var(--cp-fg-muted);
+    background: transparent;
+    border: none;
+    border-radius: var(--cp-radius-sm);
+}
+
+cmaj-patch-panel .cp-spectrum-toggle:hover    { color: var(--cp-fg); background: var(--cp-well); }
+cmaj-patch-panel .cp-spectrum-toggle.cp-on    { color: var(--cp-accent); background: var(--cp-selected); }
+
+cmaj-patch-panel .cp-spectrum {
+    --cp-spectrum-h: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cp-space-3);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-spectrum-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cp-space-2) var(--cp-space-3);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-spectrum-toolbar .cp-seg-button   { flex: none; }
+cmaj-patch-panel .cp-spectrum-toolbar .cp-small-button.cp-on { background: var(--cp-selected); color: var(--cp-accent); }
+cmaj-patch-panel .cp-spectrum-toolbar .cp-small-button:disabled { opacity: var(--cp-disabled-opacity); cursor: default; }
+cmaj-patch-panel .cp-spectrum .cp-spectrum-toolbar .cp-select {
+    height: var(--cp-control-h-sm);
+    padding-left: var(--cp-space-3);
+    width: auto;
+    flex: none;
+    font: var(--cp-text-xs) var(--cp-mono);
+    border-radius: var(--cp-radius-sm);
+}
+
+cmaj-patch-panel .cp-spectrum-plot   { position: relative; min-width: 0; }
+cmaj-patch-panel .cp-spectrum-canvas {
+    display: block;
+    width: 100%;
+    height: var(--cp-spectrum-h);
+    font-family: var(--cp-mono);       /* (the canvas draws its labels in this) */
+    border-radius: var(--cp-radius-sm);
+    cursor: crosshair;
+}
+
+cmaj-patch-panel .cp-spectrum-readout {
+    position: absolute;
+    top: var(--cp-space-2);
+    right: var(--cp-space-4);
+    font: var(--cp-text-2xs) var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--cp-fg);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+cmaj-patch-panel .cp-spectrum-readout.cp-dim { color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-io-grid > .cp-ew-has-spectrum { grid-column: span 2; }
+
+/* keyboard */
+cmaj-patch-panel .cp-keyboard { height: 56px; max-width: 100%; border-radius: var(--cp-radius-sm); }
+cmaj-patch-panel .cp-io-grid > .cp-ew-midi-in { grid-column: span 2; }
+
+/* the MIDI input's controls, above its keyboard (widgets/midi-controls.js): two rows of labelled
+   fields that wrap in a narrow panel; the bend and mod strips are wells like the meters' */
+cmaj-patch-panel .cp-midi-controls {
+    --cp-midi-strip-h: 12px;
+    --cp-midi-strip-min-w: 72px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cp-space-3);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-midi-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cp-space-3) var(--cp-space-6);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-midi-field {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cp-space-3);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-midi-label { font-size: var(--cp-text-xs); color: var(--cp-fg-muted); white-space: nowrap; }
+
+cmaj-patch-panel .cp-midi-controls :is(.cp-input, .cp-select) {
+    width: auto;
+    height: var(--cp-control-h-sm);
+    font: var(--cp-text-xs) var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+cmaj-patch-panel .cp-midi-controls .cp-select    { padding-left: var(--cp-space-3); }
+cmaj-patch-panel .cp-midi-number                 { width: 52px; padding: 0 var(--cp-space-2) 0 var(--cp-space-3); }
+cmaj-patch-panel .cp-midi-number:disabled        { opacity: var(--cp-disabled-opacity); }
+cmaj-patch-panel .cp-midi-controls .cp-seg-button { flex: none; }
+cmaj-patch-panel .cp-midi-controls .cp-seg-button:disabled { opacity: var(--cp-disabled-opacity); cursor: default; }
+cmaj-patch-panel .cp-midi-octave .cp-seg-button  { min-width: 22px; font-size: var(--cp-text-sm); }
+
+cmaj-patch-panel .cp-midi-octave-text {
+    align-self: center;
+    min-width: 22px;
+    font: var(--cp-text-xs) var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--cp-fg);
+}
+
+cmaj-patch-panel .cp-midi-strip-field { flex: 1 1 140px; }
+
+cmaj-patch-panel .cp-midi-strip {
+    position: relative;
+    flex: 1;
+    min-width: var(--cp-midi-strip-min-w);
+    height: var(--cp-midi-strip-h);
+    overflow: hidden;
+    background: var(--cp-meter-track);
+    border-radius: var(--cp-radius-xs);
+    cursor: ew-resize;
+    touch-action: none;
+}
+
+cmaj-patch-panel .cp-midi-strip-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: var(--cp-value-fill);
+}
+
+cmaj-patch-panel .cp-midi-strip-centre {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: var(--cp-fg-subtle);
+}
+
+cmaj-patch-panel .cp-midi-panic { margin-left: auto; }
+
+/* an audio input's test signal settings, in Signal mode (widgets/signal-generator.js): rows of a muted
+   label, a slider and an editable mono readout, on one grid so that the columns line up */
+cmaj-patch-panel .cp-gen {
+    --cp-gen-value-w: 84px;
+    display: grid;
+    grid-template-columns: max-content minmax(48px, 1fr) var(--cp-gen-value-w);
+    align-items: center;
+    gap: var(--cp-space-2) var(--cp-space-4);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-gen[hidden],
+cmaj-patch-panel .cp-gen-row[hidden] { display: none; }
+cmaj-patch-panel .cp-gen-row         { display: contents; }
+cmaj-patch-panel .cp-gen-label       { font-size: var(--cp-text-xs); color: var(--cp-fg-muted); white-space: nowrap; }
+
+cmaj-patch-panel .cp-gen :is(.cp-gen-type, .cp-gen-value) {
+    height: var(--cp-control-h-sm);
+    font-size: var(--cp-text-xs);
+}
+
+cmaj-patch-panel .cp-gen .cp-gen-type { grid-column: 2 / -1; width: 100%; padding-left: var(--cp-space-3); }
+
+cmaj-patch-panel .cp-gen-value {
+    width: 100%;
+    padding: 0 var(--cp-space-3);
+    font-family: var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+cmaj-patch-panel .cp-seg-button:disabled { opacity: var(--cp-disabled-opacity); cursor: default; }
+cmaj-patch-panel .cp-seg-button:disabled:hover { color: var(--cp-fg-muted); }
+
+/* slider: a thin track filled up to the value, and a plain round thumb (the widget sets --cp-fill,
+   0% to 100%). Values are always drawn in the value-fill colour; the kind mark shows the kind. */
+cmaj-patch-panel .cp-slider {
+    --cp-slider-fill: linear-gradient(to right, var(--cp-value-fill) var(--cp-fill, 0%), var(--cp-well-strong) var(--cp-fill, 0%));
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: var(--cp-control-h-xs);
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+cmaj-patch-panel .cp-slider::-webkit-slider-runnable-track {
+    height: var(--cp-track);
+    background: var(--cp-slider-fill);
+    border-radius: var(--cp-radius-full);
+}
+
+cmaj-patch-panel .cp-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: var(--cp-thumb);
+    height: var(--cp-thumb);
+    margin-top: calc((var(--cp-track) - var(--cp-thumb)) / 2);
+    background: var(--cp-fg);
+    border: none;
+    border-radius: var(--cp-radius-full);
+    transition: transform var(--cp-duration-fast) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-slider:hover::-webkit-slider-thumb,
+cmaj-patch-panel .cp-slider:active::-webkit-slider-thumb { transform: scale(1.2); }
+
+cmaj-patch-panel .cp-slider::-moz-range-track { height: var(--cp-track); background: var(--cp-slider-fill); border-radius: var(--cp-radius-full); }
+cmaj-patch-panel .cp-slider::-moz-range-thumb { width: var(--cp-thumb); height: var(--cp-thumb); background: var(--cp-fg); border: none; border-radius: var(--cp-radius-full); }
+
+cmaj-patch-panel .cp-ew .cp-select { width: 100%; }
+
+/* a few short options: a segmented control across the widget, as tall as a select would be */
+cmaj-patch-panel .cp-ew .cp-option-buttons { display: flex; width: 100%; }
+cmaj-patch-panel .cp-option-buttons .cp-seg-button {
+    min-width: 0;
+    height: calc(var(--cp-control-h) - 2 * var(--cp-space-1));
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* switch */
+cmaj-patch-panel .cp-toggle {
+    --cp-toggle-w: 30px;
+    --cp-toggle-inset: 3px;
+    position: relative;
+    width: var(--cp-toggle-w);
+    height: calc(var(--cp-thumb) + 2 * var(--cp-toggle-inset));
+    padding: 0;
+    background: var(--cp-well-strong);
+    border: none;
+    border-radius: var(--cp-radius-full);
+    transition: background-color var(--cp-duration) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-toggle-knob {
+    position: absolute;
+    top: var(--cp-toggle-inset);
+    left: var(--cp-toggle-inset);
+    width: var(--cp-thumb);
+    height: var(--cp-thumb);
+    background: var(--cp-fg-muted);
+    border-radius: var(--cp-radius-full);
+    transition: transform var(--cp-duration) var(--cp-ease), background-color var(--cp-duration) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-toggle.cp-on                 { background: var(--cp-value-fill); }
+cmaj-patch-panel .cp-toggle.cp-on .cp-toggle-knob { transform: translateX(calc(var(--cp-toggle-w) - var(--cp-thumb) - 2 * var(--cp-toggle-inset)));
+                                                    background: var(--cp-on-accent); }
+
+/* compact size, for the graph's live mode: it sits over the drawing, so it has the surface colour behind
+   it. Its controls are smaller, so that each kind fits the height graph-live.js gives it (getLiveWidgetSize). */
+cmaj-patch-panel .cp-ew-compact {
+    --cp-meter-h: 6px;
+    --cp-compact-control-h: 14px;
+    width: 140px;
+    gap: var(--cp-space-2);
+    padding: var(--cp-space-2) var(--cp-space-4);
+    font-size: var(--cp-text-xs);
+    line-height: var(--cp-leading-tight);
+    background: var(--cp-surface);
+    border-radius: var(--cp-radius);
+}
+
+cmaj-patch-panel .cp-ew-compact .cp-ew-header    { line-height: var(--cp-leading-tight); }
+cmaj-patch-panel .cp-ew-compact .cp-ew-name      { font: var(--cp-weight-medium) var(--cp-text-xs)/var(--cp-leading-tight) var(--cp-sans); }
+cmaj-patch-panel .cp-ew-compact .cp-ew-value     { font-size: var(--cp-text-2xs); }
+cmaj-patch-panel .cp-ew-compact .cp-ew-body      { gap: var(--cp-space-2); }
+cmaj-patch-panel .cp-ew-compact .cp-level-display { grid-template-rows: auto; }
+cmaj-patch-panel .cp-ew-compact .cp-slider       { height: var(--cp-compact-control-h); }
+cmaj-patch-panel .cp-ew-compact .cp-toggle       { --cp-toggle-inset: 2px; }
+cmaj-patch-panel .cp-ew-compact .cp-select       { height: var(--cp-control-h-xs); padding-left: var(--cp-space-3); font-size: var(--cp-text-xs); }
+cmaj-patch-panel .cp-ew-compact .cp-option-buttons .cp-seg-button { height: calc(var(--cp-control-h-xs) - 2 * var(--cp-space-1)); padding: 0 var(--cp-space-2);
+                                                                    font-size: var(--cp-text-2xs); }
+
+/* an event's last value, in a chip that flashes (in the endpoint kind's colour) when one arrives */
+cmaj-patch-panel .cp-ew-chip {
+    display: block;
+    height: var(--cp-control-h-xs);
+    max-width: 100%;
+    padding: 0 var(--cp-space-3);
+    font: var(--cp-text-2xs)/var(--cp-control-h-xs) var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+    cursor: inherit;
+}
+
+cmaj-patch-panel .cp-ew.cp-flash .cp-ew-chip { animation: cp-flash-chip var(--cp-duration-slow) var(--cp-ease); }
+@keyframes cp-flash-chip { from { color: var(--cp-fg); background: color-mix(in srgb, var(--cp-kind) 35%, var(--cp-well)); } }
+
+/* the notes playing on a MIDI endpoint: a mark per note, by pitch, that fades when it's released */
+cmaj-patch-panel .cp-note-strip {
+    position: relative;
+    height: 8px;
+    overflow: hidden;
+    background: var(--cp-meter-track);
+    border-radius: var(--cp-radius-xs);
+}
+
+cmaj-patch-panel .cp-note {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    min-width: 2px;
+    background: var(--cp-event);
+    opacity: var(--cp-note-velocity, 1);
+    transition: opacity var(--cp-duration-slow) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-note.cp-note-released { opacity: 0; }
+
+/*==============================================================================
+  The graph's live mode (views/graph-live.js). The layer sits inside the graph's transformed
+  "world" (so layout units are CSS pixels at 100% zoom) and has no size of its own: only the
+  widgets and dots in it take the pointer. --cp-live-k is the zoom, which keeps the dots and
+  their focus rings the same size on screen. */
+
+cmaj-patch-panel .cp-live-layer {
+    --cp-live-k: 1;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+}
+
+cmaj-patch-panel .cp-live-item              { position: absolute; display: flex; }
+cmaj-patch-panel .cp-live-item > .cp-ew     { width: 100%; height: 100%; justify-content: center; overflow: hidden; }
+cmaj-patch-panel .cp-live-item .cp-ew-name[role="button"] { cursor: pointer; }
+cmaj-patch-panel .cp-live-item .cp-ew-name[role="button"]:hover { text-decoration: underline; }
+
+/* below the zoom threshold, each widget is a dot beside its port, lit by its activity */
+cmaj-patch-panel .cp-live-dot {
+    --cp-live-dot-size: calc(9px / var(--cp-live-k));
+    --cp-live-dot-gap: calc(4px / var(--cp-live-k));
+    position: absolute;
+    display: none;
+    width: var(--cp-live-dot-size);
+    height: var(--cp-live-dot-size);
+    margin-top: calc(var(--cp-live-dot-size) / -2);
+    padding: 0;
+    background: var(--cp-fg-subtle);
+    border: none;
+    border-radius: var(--cp-radius-full);
+    cursor: pointer;
+}
+
+cmaj-patch-panel .cp-live-dot.cp-live-in    { margin-left: calc(-1 * (var(--cp-live-dot-size) + var(--cp-live-dot-gap))); }
+cmaj-patch-panel .cp-live-dot.cp-live-out   { margin-left: var(--cp-live-dot-gap); }
+cmaj-patch-panel .cp-live-dot::after        { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--cp-kind); opacity: var(--activity, 0); }
+cmaj-patch-panel .cp-live-dot:focus-visible { outline-width: calc(2px / var(--cp-live-k)); outline-offset: calc(1px / var(--cp-live-k)); }
+cmaj-patch-panel .cp-live-dots .cp-live-item { display: none; }
+cmaj-patch-panel .cp-live-dots .cp-live-dot  { display: block; }
+
+/* the popover with an endpoint's full-size widget */
+cmaj-patch-panel .cp-live-popover           { width: 320px; }
+cmaj-patch-panel .cp-live-popover-wide      { width: auto; max-width: min(640px, calc(100% - 2 * var(--cp-space-4))); }
+cmaj-patch-panel .cp-live-popover-spectrum  { width: min(440px, calc(100% - 2 * var(--cp-space-4))); }
+cmaj-patch-panel .cp-live-popover-body      { padding: 0 var(--cp-space-5); }
+cmaj-patch-panel .cp-live-popover .cp-section-title .cp-count { text-transform: none; }
+
+/* "boundary signals only": what the wire activity in live mode does and doesn't show (at the bottom right,
+   away from the inputs' widgets on the left, where most of them are) */
+cmaj-patch-panel .cp-live-legend {
+    position: absolute;
+    right: var(--cp-space-5);
+    bottom: var(--cp-space-5);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cp-space-3);
+    height: var(--cp-control-h-sm);
+    padding: 0 var(--cp-space-4);
+    font-size: var(--cp-text-xs);
+    color: var(--cp-fg-muted);
+    background: var(--cp-surface);
+    border-radius: var(--cp-radius-full);
+    cursor: default;
+}
+
+cmaj-patch-panel .cp-live-legend-mark {
+    width: 16px;
+    height: 3px;
+    background: linear-gradient(to right, var(--cp-fg-subtle), var(--cp-fg));
+    border-radius: var(--cp-radius-full);
+}
+
+/*==============================================================================
+  Inspector: sections divided by hairlines; rows without borders, tinted on hover and selection */
+
+cmaj-patch-panel .cp-insp-section + .cp-insp-section { border-top: var(--cp-hairline); }
+cmaj-patch-panel .cp-insp-body        { padding: 0 var(--cp-space-5) var(--cp-space-5); }
+cmaj-patch-panel .cp-insp-title       { font-size: var(--cp-text-lg); font-weight: var(--cp-weight-strong); line-height: var(--cp-leading-tight); }
+cmaj-patch-panel .cp-insp-title .cp-link       { color: var(--cp-fg); text-decoration: none; }
+cmaj-patch-panel .cp-insp-title .cp-link:hover { text-decoration: underline; }
+cmaj-patch-panel .cp-insp-sub         { margin: var(--cp-space-1) 0 var(--cp-space-3); font: var(--cp-text-xs) var(--cp-mono); color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-insp-description { margin: var(--cp-space-2) 0 var(--cp-space-4); font-size: var(--cp-text-sm); color: var(--cp-fg-muted); }
+
+cmaj-patch-panel .cp-facts {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--cp-space-1) var(--cp-space-5);
+    margin: var(--cp-space-4) 0 0;
+    font-size: var(--cp-text-sm);
+}
+
+cmaj-patch-panel .cp-facts dt { color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-facts dd { margin: 0; overflow-wrap: anywhere; }
+
+cmaj-patch-panel .cp-kind-text.cp-kind-stream { color: var(--cp-stream); }
+cmaj-patch-panel .cp-kind-text.cp-kind-value  { color: var(--cp-value); }
+cmaj-patch-panel .cp-kind-text.cp-kind-event  { color: var(--cp-event); }
+
+cmaj-patch-panel .cp-insp-section > .cp-input { width: calc(100% - 2 * var(--cp-space-5)); margin: 0 var(--cp-space-5) var(--cp-space-3); }
+
+cmaj-patch-panel .cp-param-list { padding: 0 var(--cp-space-3) var(--cp-space-4); }
+
+cmaj-patch-panel .cp-param-row {
+    padding: var(--cp-space-3);
+    border-radius: var(--cp-radius-sm);
+    cursor: default;
+    transition: background-color var(--cp-duration-fast) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-param-row:hover       { background: var(--cp-hover); }
+cmaj-patch-panel .cp-param-row.cp-selected { background: var(--cp-selected); }
+cmaj-patch-panel .cp-param-row.cp-param-hidden .cp-param-label { font-style: italic; color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-param-name  { display: flex; justify-content: space-between; gap: var(--cp-space-4); font-size: var(--cp-text-sm); }
+cmaj-patch-panel .cp-param-value { font: var(--cp-text-xs) var(--cp-mono); font-variant-numeric: tabular-nums; color: var(--cp-fg-muted); white-space: nowrap; }
+cmaj-patch-panel .cp-param-track { height: var(--cp-track-thin); margin-top: var(--cp-space-2); background: var(--cp-well-strong); border-radius: var(--cp-radius-full); overflow: hidden; }
+cmaj-patch-panel .cp-param-bar   { width: 0; height: 100%; background: var(--cp-value-fill); }
+
+cmaj-patch-panel .cp-button-row { display: flex; gap: var(--cp-space-3); padding: 0 var(--cp-space-5) var(--cp-space-5); }
+cmaj-patch-panel .cp-button-row .cp-button { flex: 1; }
+
+/*==============================================================================
+  Parameter fuzzing (widgets/fuzz-controls.js): Randomise / Restore / Stop all, the automation
+  popover, and the mark on an automated parameter */
+
+cmaj-patch-panel .cp-fuzz-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cp-space-3); min-width: 0; }
+cmaj-patch-panel .cp-fuzz-glyph   { font-size: var(--cp-icon); line-height: 1; }
+cmaj-patch-panel .cp-fuzz-snapshot { gap: var(--cp-space-2); padding: 0 var(--cp-space-3); }
+cmaj-patch-panel .cp-fuzz-snapshot .cp-dot { background: var(--cp-accent); }
+cmaj-patch-panel .cp-fuzz-compact .cp-fuzz-snapshot { padding: 0 var(--cp-space-2); background: none; }
+cmaj-patch-panel .cp-fuzz-running { display: inline-flex; align-items: center; gap: var(--cp-space-3); margin-left: auto; }
+cmaj-patch-panel .cp-fuzz-count   { font-size: var(--cp-text-xs); font-variant-numeric: tabular-nums; color: var(--cp-fg-muted); white-space: nowrap; }
+
+cmaj-patch-panel .cp-io-section-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cp-space-4) var(--cp-space-6);
+    padding: var(--cp-space-8) 0 var(--cp-space-5);
+}
+
+cmaj-patch-panel .cp-io-section-header .cp-section-title { padding: 0; }
+cmaj-patch-panel .cp-io-section-header .cp-fuzz-toolbar  { flex: 1; justify-content: flex-end; }
+cmaj-patch-panel .cp-io-section-header .cp-fuzz-running  { margin-left: var(--cp-space-4); }
+
+cmaj-patch-panel .cp-insp-fuzz { padding: 0 var(--cp-space-5) var(--cp-space-3); }
+cmaj-patch-panel .cp-insp-fuzz .cp-fuzz-toolbar { gap: var(--cp-space-2); }
+
+/* the row's automation button: quiet until the row is hovered or focused, or it's automated */
+cmaj-patch-panel .cp-param-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+cmaj-patch-panel .cp-param-tools { display: inline-flex; flex: none; align-items: center; gap: var(--cp-space-3); }
+
+cmaj-patch-panel .cp-param-automate {
+    width: var(--cp-control-h-xs);
+    padding: 0;
+    font-size: var(--cp-text-sm);
+    line-height: 1;
+    color: var(--cp-fg-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--cp-duration-fast) var(--cp-ease), background-color var(--cp-duration-fast) var(--cp-ease);
+}
+
+cmaj-patch-panel :is(.cp-param-row:hover, .cp-param-row:focus-within, .cp-param-row.cp-selected) .cp-param-automate,
+cmaj-patch-panel .cp-param-automate:is(.cp-on, [aria-expanded="true"], :focus-visible) { opacity: 1; }
+cmaj-patch-panel .cp-param-automate.cp-on { color: var(--cp-accent); background: var(--cp-selected); }
+
+/* an automated parameter: a small accent dot after its name that breathes */
+cmaj-patch-panel .cp-ew.cp-automated .cp-ew-label::after,
+cmaj-patch-panel .cp-param-row.cp-automated .cp-param-label::after {
+    content: "";
+    flex: none;
+    width: var(--cp-kind-mark);
+    height: var(--cp-kind-mark);
+    border-radius: var(--cp-radius-full);
+    background: var(--cp-accent);
+    animation: cp-pulse calc(2 * var(--cp-duration-slow)) var(--cp-ease) infinite alternate;
+}
+
+cmaj-patch-panel .cp-param-row.cp-automated .cp-param-label::after { display: inline-block; margin-left: var(--cp-space-3); vertical-align: middle; }
+
+/* the automation popover */
+cmaj-patch-panel .cp-fuzz-popover { width: 320px; }
+cmaj-patch-panel .cp-fuzz-popover .cp-section-title .cp-count { text-transform: none; }
+cmaj-patch-panel .cp-fuzz-form    { display: grid; gap: var(--cp-space-4); padding: 0 var(--cp-space-5); }
+cmaj-patch-panel .cp-fuzz-modes   { display: flex; }
+
+cmaj-patch-panel .cp-fuzz-row {
+    --cp-fuzz-value-w: 68px;
+    display: grid;
+    grid-template-columns: 48px minmax(48px, 1fr) var(--cp-fuzz-value-w);
+    align-items: center;
+    gap: var(--cp-space-4);
+}
+
+cmaj-patch-panel .cp-fuzz-row.cp-fuzz-switch-row { grid-template-columns: minmax(0, 1fr) auto; }
+cmaj-patch-panel .cp-fuzz-exclude-row { padding-top: var(--cp-space-3); }
+cmaj-patch-panel .cp-fuzz-label { font-size: var(--cp-text-xs); color: var(--cp-fg-muted); white-space: nowrap; }
+
+cmaj-patch-panel .cp-fuzz-value {
+    width: 100%;
+    height: var(--cp-control-h-sm);
+    padding: 0 var(--cp-space-3);
+    font: var(--cp-text-xs) var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+cmaj-patch-panel .cp-fuzz-hint { margin: calc(-1 * var(--cp-space-2)) 0 0; font-size: var(--cp-text-xs); line-height: var(--cp-leading); color: var(--cp-fg-subtle); }
+
+/*==============================================================================
+  Drawer: console, problems, code */
+
+cmaj-patch-panel .cp-console,
+cmaj-patch-panel .cp-problems-view,
+cmaj-patch-panel .cp-code-view { position: absolute; inset: 0; }
+
+cmaj-patch-panel .cp-console-list {
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+    padding: var(--cp-space-2) var(--cp-space-5);
+    font: var(--cp-text-xs)/var(--cp-leading-code) var(--cp-mono);
+}
+
+cmaj-patch-panel .cp-log-row {
+    display: grid;
+    grid-template-columns: 92px 100px minmax(0, 1fr);
+    gap: var(--cp-space-4);
+}
+
+cmaj-patch-panel .cp-log-time   { color: var(--cp-fg-subtle); }
+cmaj-patch-panel .cp-log-source { color: var(--cp-event); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+cmaj-patch-panel .cp-log-text   { white-space: pre-wrap; overflow-wrap: anywhere; }
+cmaj-patch-panel .cp-log-error   .cp-log-text { color: var(--cp-err); }
+cmaj-patch-panel .cp-log-warning .cp-log-text { color: var(--cp-warn); }
+
+cmaj-patch-panel .cp-chips { display: flex; gap: var(--cp-space-2); min-width: 0; overflow: hidden; }
+cmaj-patch-panel .cp-console-filter { width: 130px; }
+cmaj-patch-panel .cp-tabset-drawer :is(.cp-button, .cp-input, .cp-select) { height: var(--cp-control-h-sm); }
+
+cmaj-patch-panel .cp-problems {
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+    margin: 0;
+    padding: var(--cp-space-3) var(--cp-space-5);
+    list-style: none;
+    font: var(--cp-text-sm)/var(--cp-leading) var(--cp-mono);
+}
+
+cmaj-patch-panel .cp-problem {
+    display: grid;
+    grid-template-columns: var(--cp-space-6) auto minmax(0, 1fr);
+    column-gap: var(--cp-space-4);
+    align-items: baseline;
+    padding: var(--cp-space-1) 0;
+}
+
+cmaj-patch-panel .cp-problem-none { display: block; font-family: var(--cp-sans); color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-problem-icon { font-weight: var(--cp-weight-strong); text-align: center; }
+cmaj-patch-panel .cp-problem-error   .cp-problem-icon { color: var(--cp-err); }
+cmaj-patch-panel .cp-problem-warning .cp-problem-icon { color: var(--cp-warn); }
+cmaj-patch-panel .cp-problem-note    .cp-problem-icon { color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-problem-location { font: inherit; white-space: nowrap; }
+cmaj-patch-panel .cp-problem:not(:has(.cp-problem-location)) .cp-problem-message { grid-column: 2 / -1; }
+
+cmaj-patch-panel .cp-problem-context {
+    grid-column: 2 / -1;
+    margin: var(--cp-space-1) 0 var(--cp-space-2);
+    padding: var(--cp-space-2) var(--cp-space-4);
+    font: inherit;
+    color: var(--cp-fg-muted);
+    background: var(--cp-well);
+    border-radius: var(--cp-radius-sm);
+    overflow-x: auto;
+}
+
+cmaj-patch-panel .cp-code {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: var(--cp-space-3) var(--cp-space-5);
+    font: var(--cp-text-xs)/var(--cp-leading-code) var(--cp-mono);
+    color: var(--cp-fg);
+    background: var(--cp-bg);
+    border: none;
+    outline: none;
+    resize: none;
+    tab-size: 4;
+}
+
+/*==============================================================================
+  Floating GUI window (elevated, like the popover) */
+
+cmaj-patch-panel .cp-float {
+    --cp-float-titlebar-h: 28px;    /* (shell/float-window.js assumes this height) */
+    position: absolute;
+    z-index: var(--cp-z-float);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-divider-strong);
+    border-radius: var(--cp-radius-lg);
+    box-shadow: var(--cp-overlay-shadow);
+}
+
+cmaj-patch-panel .cp-float.cp-focused { border-color: color-mix(in srgb, var(--cp-accent) 60%, var(--cp-divider-strong)); }
+
+cmaj-patch-panel .cp-float-titlebar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-3);
+    min-width: 0;
+    height: var(--cp-float-titlebar-h);
+    padding: 0 var(--cp-space-2) 0 var(--cp-space-5);
+    font-size: var(--cp-text-sm);
+    border-bottom: var(--cp-hairline);
+    cursor: move;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+cmaj-patch-panel .cp-float-title  { min-width: 0; font-weight: var(--cp-weight-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+cmaj-patch-panel .cp-float-size   { font: var(--cp-text-2xs) var(--cp-mono); color: var(--cp-fg-muted); white-space: nowrap; }
+cmaj-patch-panel .cp-float-titlebar :is(.cp-select, .cp-button) { height: calc(var(--cp-control-h-sm) - 2px); font-size: var(--cp-text-xs); }
+cmaj-patch-panel .cp-float-titlebar .cp-select { max-width: 150px; }
+cmaj-patch-panel .cp-float-titlebar .cp-button { padding: 0 var(--cp-space-3); }
+
+cmaj-patch-panel .cp-float-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+cmaj-patch-panel .cp-float-handle { position: absolute; z-index: 2; touch-action: none; }
+cmaj-patch-panel .cp-float-r  { right: -3px; top: var(--cp-float-titlebar-h); bottom: 10px; width: 7px; cursor: ew-resize; }
+cmaj-patch-panel .cp-float-b  { bottom: -3px; left: 0; right: 10px; height: 7px; cursor: ns-resize; }
+cmaj-patch-panel .cp-float-rb {
+    right: 0;
+    bottom: 0;
+    width: 14px;
+    height: 14px;
+    cursor: nwse-resize;
+    opacity: 0.7;
+    background: linear-gradient(135deg, transparent 50%, var(--cp-fg-subtle) 50%, transparent 58%, transparent 68%, var(--cp-fg-subtle) 68%, transparent 76%);
+}
+
+cmaj-patch-panel .cp-float.cp-fixed .cp-float-handle { display: none; }
+cmaj-patch-panel .cp-float.cp-dragging,
+cmaj-patch-panel .cp-float.cp-dragging * { user-select: none; -webkit-user-select: none; }
+cmaj-patch-panel .cp-float.cp-dragging .cp-float-body { pointer-events: none; }
+
+/*==============================================================================
+  Chooser (browser mode, nothing loaded) */
+
+cmaj-patch-panel .cp-chooser {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    overflow: auto;
+    padding: var(--cp-space-8);
+    background: var(--cp-bg);
+}
+
+cmaj-patch-panel .cp-chooser h2 { margin: 0 0 var(--cp-space-5); font-size: var(--cp-text-xl); font-weight: var(--cp-weight-strong); }
+
+cmaj-patch-panel .cp-chooser-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--cp-space-2) var(--cp-space-5);
+    margin-bottom: var(--cp-space-6);
+}
+
+cmaj-patch-panel .cp-chooser-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--cp-space-1);
+    padding: var(--cp-space-4) var(--cp-space-5);
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: var(--cp-radius);
+    transition: background-color var(--cp-duration-fast) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-chooser-item:hover   { background: var(--cp-hover); }
+cmaj-patch-panel .cp-chooser-item span    { font-size: var(--cp-text-sm); color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-chooser-item small   { font: var(--cp-text-2xs) var(--cp-mono); color: var(--cp-fg-subtle); overflow-wrap: anywhere; }
+
+cmaj-patch-panel .cp-drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--cp-space-2);
+    padding: var(--cp-space-8);
+    color: var(--cp-fg-muted);
+    border: 1px dashed var(--cp-divider-strong);
+    border-radius: var(--cp-radius-lg);
+}
+
+/*==============================================================================
+  Recording (views/recordings-view.js, widgets/waveform-view.js) */
+
+/* for screen readers only */
+cmaj-patch-panel .cp-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* the top bar's Capture button: a quiet button whose dot is the record colour; while capturing,
+   the record tint, with the elapsed time and the memory in mono */
+cmaj-patch-panel .cp-capture-dot            { color: var(--cp-record); font-size: var(--cp-text-xs); }
+cmaj-patch-panel .cp-capture-button.cp-capturing { background: var(--cp-record-soft); color: var(--cp-record); }
+cmaj-patch-panel .cp-capture-button.cp-capturing .cp-capture-dot { color: inherit; }
+cmaj-patch-panel :is(.cp-capture-time, .cp-capture-memory) { font-family: var(--cp-mono); font-size: var(--cp-text-xs); font-variant-numeric: tabular-nums; }
+cmaj-patch-panel .cp-capture-memory         { color: var(--cp-fg-muted); }
+
+/* the Recordings tab: the list beside the viewer (or above it, when narrow) */
+cmaj-patch-panel .cp-recordings {
+    container: cp-recordings / inline-size;
+    position: absolute;
+    inset: 0;
+}
+
+cmaj-patch-panel .cp-rec-layout {
+    --cp-rec-list-w: 280px;
+    display: grid;
+    grid-template-columns: var(--cp-rec-list-w) minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+}
+
+cmaj-patch-panel .cp-rec-list-pane {
+    min-height: 0;
+    overflow: auto;
+    padding: var(--cp-space-3);
+    border-right: var(--cp-hairline);
+}
+
+cmaj-patch-panel .cp-rec-list { display: grid; gap: var(--cp-space-1); margin: 0; padding: 0; list-style: none; }
+
+cmaj-patch-panel .cp-rec-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--cp-space-2);
+    padding: var(--cp-space-3);
+    border-radius: var(--cp-radius-sm);
+    transition: background-color var(--cp-duration-fast) var(--cp-ease);
+}
+
+cmaj-patch-panel .cp-rec-row:hover        { background: var(--cp-hover); }
+cmaj-patch-panel .cp-rec-row.cp-selected  { background: var(--cp-selected); }
+
+cmaj-patch-panel .cp-rec-select {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--cp-space-1);
+    min-width: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+cmaj-patch-panel .cp-rec-name    { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--cp-text-sm); font-weight: var(--cp-weight-medium); }
+cmaj-patch-panel .cp-rec-details { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--cp-text-2xs) var(--cp-mono); color: var(--cp-fg-muted); font-variant-numeric: tabular-nums; }
+cmaj-patch-panel .cp-rec-badges  { display: flex; flex-wrap: wrap; gap: var(--cp-space-2); }
+cmaj-patch-panel .cp-rec-badges:empty { display: none; }
+cmaj-patch-panel .cp-rec-rename  { width: 100%; height: var(--cp-control-h-sm); }
+
+cmaj-patch-panel .cp-rec-badge {
+    padding: 0 var(--cp-space-3);
+    font-size: var(--cp-text-2xs);
+    line-height: 16px;
+    color: var(--cp-fg-muted);
+    background: var(--cp-well);
+    border-radius: var(--cp-radius-full);
+}
+
+cmaj-patch-panel .cp-rec-live        { color: var(--cp-record); background: var(--cp-record-soft); }
+cmaj-patch-panel .cp-rec-dropouts    { color: var(--cp-warn); background: var(--cp-warn-soft); }
+cmaj-patch-panel .cp-rec-stop-reason { color: var(--cp-warn); background: none; padding: 0; white-space: normal; }
+
+cmaj-patch-panel .cp-rec-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--cp-space-1); }
+cmaj-patch-panel .cp-rec-actions .cp-small-button:disabled { opacity: var(--cp-disabled-opacity); cursor: default; }
+
+cmaj-patch-panel .cp-rec-viewer { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: var(--cp-space-3) var(--cp-space-4); }
+cmaj-patch-panel .cp-rec-viewer > .cp-wave { flex: 1; }
+
+/* its toolbar: the memory gauge (a thin bar, warn when nearly full, err when full), the limit, the toggles */
+cmaj-patch-panel .cp-rec-gauge { display: inline-flex; align-items: center; gap: var(--cp-space-3); }
+cmaj-patch-panel .cp-rec-gauge-track {
+    width: 48px;
+    height: var(--cp-track);
+    overflow: hidden;
+    background: var(--cp-well-strong);
+    border-radius: var(--cp-radius-full);
+}
+cmaj-patch-panel .cp-rec-gauge-fill { display: block; width: var(--cp-fill, 0%); height: 100%; background: var(--cp-value-fill); }
+cmaj-patch-panel .cp-rec-gauge[data-level="high"] .cp-rec-gauge-fill { background: var(--cp-warn); }
+cmaj-patch-panel .cp-rec-gauge[data-level="full"] .cp-rec-gauge-fill { background: var(--cp-err); }
+cmaj-patch-panel .cp-rec-gauge-text { font: var(--cp-text-xs) var(--cp-mono); color: var(--cp-fg-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+cmaj-patch-panel .cp-rec-tools .cp-select { height: var(--cp-control-h-sm); width: auto; font: var(--cp-text-xs) var(--cp-mono); border-radius: var(--cp-radius-sm); }
+cmaj-patch-panel .cp-rec-tools .cp-small-button.cp-on { background: var(--cp-selected); color: var(--cp-accent); }
+cmaj-patch-panel .cp-rec-tools .cp-small-button:disabled { opacity: var(--cp-disabled-opacity); cursor: default; }
+cmaj-patch-panel .cp-rec-discard-all.cp-confirming { color: var(--cp-err); background: var(--cp-err-soft); }
+
+@container cp-recordings (max-width: 640px) {
+    cmaj-patch-panel .cp-rec-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, auto) minmax(140px, 1fr); }
+    cmaj-patch-panel .cp-rec-list-pane { max-height: 40cqh; border-right: none; border-bottom: var(--cp-hairline); }
+}
+
+/* the waveform viewer: a toolbar of small controls, then a canvas well that fills the rest */
+cmaj-patch-panel .cp-wave { display: flex; flex-direction: column; gap: var(--cp-space-3); min-width: 0; min-height: 0; }
+
+cmaj-patch-panel .cp-wave-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cp-space-2) var(--cp-space-3);
+    min-width: 0;
+}
+
+cmaj-patch-panel .cp-wave-toolbar .cp-seg-button { flex: none; min-width: 24px; }
+cmaj-patch-panel .cp-wave-toolbar :is(.cp-seg-button, .cp-small-button):disabled { opacity: var(--cp-disabled-opacity); cursor: default; }
+cmaj-patch-panel :is(.cp-wave-readout, .cp-wave-selection-text) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: var(--cp-text-2xs) var(--cp-mono);
+    font-variant-numeric: tabular-nums;
+}
+cmaj-patch-panel .cp-wave-readout.cp-dim { color: var(--cp-fg-muted); }
+cmaj-patch-panel .cp-wave-selection-text { color: var(--cp-accent); }
+
+cmaj-patch-panel .cp-wave-plot { position: relative; flex: 1; min-height: 100px; }
+cmaj-patch-panel .cp-wave-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    font-family: var(--cp-mono);       /* (the canvas draws its labels in this) */
+    border-radius: var(--cp-radius-sm);
+    cursor: text;
+    touch-action: none;
+}
+cmaj-patch-panel .cp-wave-canvas[data-region="ruler"] { cursor: grab; }
+cmaj-patch-panel .cp-wave-canvas.cp-dragging          { cursor: grabbing; }
+cmaj-patch-panel .cp-wave-canvas.cp-dragging:not([data-region="ruler"]) { cursor: text; }
+
+/* the export popover */
+cmaj-patch-panel .cp-export-popover { width: 360px; }
+cmaj-patch-panel .cp-export .cp-seg-button { flex: none; padding: 0 var(--cp-space-4); }
+cmaj-patch-panel .cp-export .cp-seg-button:disabled { opacity: var(--cp-disabled-opacity); cursor: default; }
+cmaj-patch-panel .cp-export-file { font: var(--cp-text-2xs) var(--cp-mono); color: var(--cp-fg-muted); overflow-wrap: anywhere; }
+cmaj-patch-panel .cp-export-footer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cp-space-3); padding: var(--cp-space-5) var(--cp-space-5) 0; }
+cmaj-patch-panel .cp-export-status { flex: 1 1 160px; margin: 0; font-size: var(--cp-text-xs); color: var(--cp-fg-muted); overflow-wrap: anywhere; }
+cmaj-patch-panel .cp-export-status[data-state="ok"]    { color: var(--cp-fg); }
+cmaj-patch-panel .cp-export-status[data-state="error"] { color: var(--cp-err); }
+cmaj-patch-panel .cp-export-progress { width: 100%; height: var(--cp-track); accent-color: var(--cp-value-fill); }
+cmaj-patch-panel .cp-export-button:disabled { opacity: var(--cp-disabled-opacity); cursor: default; }
+
+/*==============================================================================
+  Narrow panels (e.g. a VS Code side panel): the less important parts drop out, and some
+  buttons lose their labels (.cp-button-label) or go altogether (.cp-optional). These come
+  last so that they override the rules above. */
+
+@container cp-panel (max-width: 760px) {
+    cmaj-patch-panel .cp-info-chip,
+    cmaj-patch-panel .cp-topbar kbd,
+    cmaj-patch-panel .cp-cpu-label,
+    cmaj-patch-panel .cp-transport-signature { display: none; }
+    cmaj-patch-panel .cp-cpu-track { width: 36px; }
+    cmaj-patch-panel .cp-log-row { grid-template-columns: 84px 72px minmax(0, 1fr); }
+    cmaj-patch-panel .cp-io-grid > :is(.cp-ew-midi-in, .cp-ew-has-spectrum) { grid-column: auto; }
+}
+
+@container cp-panel (max-width: 600px) {
+    cmaj-patch-panel .cp-button-label,
+    cmaj-patch-panel .cp-optional,
+    cmaj-patch-panel .cp-cpu-spark,
+    cmaj-patch-panel .cp-transport-tempo,
+    cmaj-patch-panel .cp-capture-memory { display: none; }
+    cmaj-patch-panel .cp-transport { margin-right: 0; }
+}
+
+@container cp-panel (max-width: 560px) {
+    cmaj-patch-panel .cp-topbar { gap: var(--cp-space-3); padding: 0 var(--cp-space-4); }
+    cmaj-patch-panel .cp-logo { --cp-logo-w: 16px; -webkit-mask-position: left center; mask-position: left center; -webkit-mask-size: auto 100%; mask-size: auto 100%; }
+    cmaj-patch-panel .cp-build-chip > span:not(.cp-dot) { display: none; }
+    cmaj-patch-panel .cp-build-chip { padding: 0 var(--cp-space-3); }
+    cmaj-patch-panel .cp-cpu-track { display: none; }
+    cmaj-patch-panel .cp-chips { display: none; }
+    cmaj-patch-panel :is(.cp-transport-record, .cp-transport-loop, .cp-transport-rewind) { display: none; }
+    cmaj-patch-panel .cp-transport-position { margin-left: 0; padding: 0 var(--cp-space-3); }
+    cmaj-patch-panel .cp-transport-position-text { min-width: 0; }
+    cmaj-patch-panel .cp-io-content { padding: 0 var(--cp-space-6) var(--cp-space-6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    cmaj-patch-panel .cp-ew.cp-flash :is(.cp-kind-mark, .cp-ew-value, .cp-ew-chip),
+    cmaj-patch-panel .cp-build-chip .cp-dot,
+    cmaj-patch-panel .cp-ew.cp-automated .cp-ew-label::after,
+    cmaj-patch-panel .cp-param-row.cp-automated .cp-param-label::after { animation: none; }
+}

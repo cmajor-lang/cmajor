@@ -74,6 +74,52 @@ export function getActivityPaths (model)
     return [...paths];
 }
 
+/** For the activity of the root graph's own endpoints (measured at the patch's boundary, as a
+    host can): returns a Map of endpoint name → the paths that its level should light: its port,
+    and the wires attached to it.
+
+    Only the wires attached to the root's own ports: further in, nothing's measured. A wire from
+    an input carries exactly that input's signal. The wires into an output all add up to it, but
+    only the ones of the same kind count (e.g. not a value wire into an audio output).
+    A wire between two boundary ports gets both endpoints' paths (and shows the louder). */
+export function getBoundaryActivityPaths (model)
+{
+    const pathsForName = new Map();
+    const root = model?.root;
+
+    const add = (name, path) =>
+    {
+        if (typeof path !== "string")
+            return;
+
+        if (! pathsForName.has (name))
+            pathsForName.set (name, []);
+
+        pathsForName.get (name).push (path);
+    };
+
+    for (const endpoint of [...(root?.inputs ?? []), ...(root?.outputs ?? [])])
+        add (endpoint.name, endpoint.path);
+
+    const getEndpointType = (end, isSource) =>
+    {
+        const node = end.node === null ? root : root.nodes?.find (n => n.id === end.node);
+        const list = (end.node === null) === isSource ? node?.inputs : node?.outputs;
+        return list?.find (e => e.name === end.endpoint)?.endpointType;
+    };
+
+    for (const connection of root?.connections ?? [])
+    {
+        if (connection.from?.node === null)
+            add (connection.from.endpoint, connection.path);
+
+        if (connection.to?.node === null && getEndpointType (connection.from, true) === getEndpointType (connection.to, false))
+            add (connection.to.endpoint, connection.path);
+    }
+
+    return pathsForName;
+}
+
 /// Converts the forms that an activity update can take into [path, level] pairs
 function getUpdateEntries (updates)
 {

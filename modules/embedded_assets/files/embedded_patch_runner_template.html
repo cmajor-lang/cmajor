@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8" /><title>Cmajor Patch Controls</title></head>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cmajor Patch Controls</title>
 
 <script type="module">
 
@@ -29,15 +32,14 @@ window.addEventListener ("message", (event) =>
 </script>
 
 <style>
-  body {
+  html, body {
     margin: 0;
     padding: 0;
-  }
-
-  cmaj-patch-panel {
-    display: block;
+    height: 100%;
+    overflow: hidden;
   }
 </style>
+</head>
 
 <body>
   <cmaj-patch-panel id="cmaj-patch-panel" fixed-patch="true" session-id="SESSION_ID"></cmaj-patch-panel>

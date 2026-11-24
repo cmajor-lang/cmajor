@@ -17,3 +17,4 @@ To see the other command-line options for running tests (e.g. number of threads,
 - `language_tests` - this folder contains tests that sanity-check the parser and compiler's handling of language constructs
 - `integration_tests` - this folder contains tests that run sample data through some processors and check that the output is what was expected
 - `performance_tests` - this folder contains tests that measure performance of some Cmajor algorithms. Obviously the results will vary wildy depending on the platform, backend, compiler build, etc. (When running performance tests, it's probably wise to always use `--singleThread` to get more consistent results)
+- `panel` - tests for the patch panel (the browser UI that `cmaj server` and the VS Code extension show), run in headless Chrome with Node rather than by `cmaj test`. See `panel/README.md`.

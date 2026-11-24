@@ -2,29 +2,42 @@
 <!--
     The page written by `cmaj generate --target=graph --output=something.html`: an interactive view
     of a patch's graph that works when opened straight from the file system. The cmaj tool
-    fills in the title, the panel_api/cmaj-patch-graph/*.js module sources, and the "graph"
-    codegen output (see createPatchGraphHTML() in cmaj_command_Generate.h).
+    fills in the title, the panel's design tokens (panel_api/theme/tokens.css), the
+    panel_api/cmaj-patch-graph/*.js module sources, and the "graph" codegen output (see
+    createPatchGraphHTML() in cmaj_command_PatchGraphHTML.h).
+
+    It always shows the graph's structure (there's no server, so there's nothing live to show).
+    Like the panel's graph tab, it starts with the text at a readable size, anchored at the
+    graph's top-left; Fit (or F, or a double-click) shows the whole graph.
 -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>PATCH_GRAPH_TITLE</title>
+  <style>PATCH_GRAPH_STYLES</style>
   <style>
-    html, body { margin: 0; height: 100%; background: #2a3331; color: #dddddd; overflow: hidden;
-                 font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
-    #toolbar { position: absolute; top: 8px; left: 8px; z-index: 1; display: flex; gap: 4px; align-items: center; }
-    #toolbar button { font: inherit; background: #445550; color: inherit; border: 1px solid #6f827c; border-radius: 3px; padding: 2px 8px; cursor: pointer; }
-    #toolbar span { margin-left: 8px; opacity: 0.7; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body { background: var(--cp-bg); color: var(--cp-fg); font: var(--cp-text-sm)/var(--cp-leading) var(--cp-sans); }
+    #toolbar { position: absolute; top: var(--cp-space-4); left: var(--cp-space-4); z-index: 1; display: flex; gap: var(--cp-space-2); align-items: center; }
+    #toolbar button { height: var(--cp-control-h); padding: 0 var(--cp-space-4); font: inherit; color: inherit; background: var(--cp-well);
+                      border: none; border-radius: var(--cp-radius); cursor: pointer; }
+    #toolbar button:hover { background: var(--cp-well-strong); }
+    #toolbar button:focus-visible { outline: var(--cp-focus-ring); outline-offset: var(--cp-focus-offset); }
+    #toolbar #zoom { min-width: 52px; font-family: var(--cp-mono); font-size: var(--cp-text-xs); }
+    #toolbar button { white-space: nowrap; }
+    #toolbar span { margin-left: var(--cp-space-4); color: var(--cp-fg-muted); }
+    @media (max-width: 760px) { #toolbar span, #collapseAll, #expandAll { display: none; } }
     #graph { position: absolute; inset: 0; }
-    #error { position: absolute; bottom: 8px; left: 8px; color: #ff8a80; white-space: pre-wrap; }
+    #error { position: absolute; bottom: var(--cp-space-4); left: var(--cp-space-4); color: var(--cp-err); white-space: pre-wrap; }
   </style>
 </head>
-<body>
+<body class="cp-theme">
   <div id="graph"></div>
   <div id="toolbar">
-    <button id="zoomIn" title="Zoom in (or pinch, or ctrl/cmd + scroll)">+</button>
     <button id="zoomOut" title="Zoom out (or pinch, or ctrl/cmd + scroll)">−</button>
-    <button id="fit" title="Fit to window (or double-click the background)">Fit</button>
+    <button id="zoom" title="Show the text at its full size (0)">100%</button>
+    <button id="zoomIn" title="Zoom in (or pinch, or ctrl/cmd + scroll)">+</button>
+    <button id="fit" title="Fit the whole graph to the window (F, or double-click the background)">Fit</button>
     <button id="expandAll">Expand all</button>
     <button id="collapseAll">Collapse nested</button>
     <span>Drag or scroll to pan, pinch or ctrl/cmd + scroll to zoom, click a name to open it in VS Code</span>
@@ -34,6 +47,12 @@
   <script>
     const patchGraphModules = PATCH_GRAPH_MODULES;
     const patchGraphData = PATCH_GRAPH_DATA;
+
+    // the light or dark palette from the design tokens, following the system setting
+    const colourScheme = window.matchMedia ("(prefers-color-scheme: light)");
+    const updateTheme = () => document.body.dataset.theme = colourScheme.matches ? "light" : "dark";
+    updateTheme();
+    colourScheme.addEventListener?.("change", updateTheme);
 
     // The modules import each other by relative path, which can't resolve from a file:// page,
     // so each one becomes a blob: URL, with its imports rewritten to point at the others.
@@ -71,15 +90,37 @@
                                          + ":" + match[2] + ":" + match[3];
         };
 
-        const view = new PatchGraphView (document.getElementById ("graph"), { onOpenSource: openSource, fitTopMargin: 40 });
+        const container = document.getElementById ("graph");
+        const zoomText = document.getElementById ("zoom");
+
+        // (the view keeps track of its mode: "default" (readable), "fitted", or "user" (panned or
+        // zoomed, so it's left alone when the window is resized))
+        const view = new PatchGraphView (container, {
+            onOpenSource: openSource,
+            defaultView: "readable",
+            fitTopMargin: 48,
+            onViewChange: ({ transform }) => zoomText.textContent = Math.round (transform.k * 100) + "%"
+        });
+
         await view.setModel (patchGraphData);
 
         document.getElementById ("zoomIn").onclick = () => view.zoomBy (1.25);
         document.getElementById ("zoomOut").onclick = () => view.zoomBy (0.8);
+        zoomText.onclick = () => view.showDefaultView();
         document.getElementById ("fit").onclick = () => view.fit();
         document.getElementById ("expandAll").onclick = () => view.setAllCollapsed (false);
         document.getElementById ("collapseAll").onclick = () => view.setAllCollapsed (true);
-        window.onresize = () => view.fit();
+
+        window.addEventListener ("keydown", (e) =>
+        {
+            if (e.metaKey || e.ctrlKey || e.altKey)
+                return;
+
+            if (e.key === "f" || e.key === "F")  view.fit();
+            else if (e.key === "0")              view.showDefaultView();
+        });
+
+        window.onresize = () => view.applyViewMode();
     })().catch (e => document.getElementById ("error").textContent = String (e?.stack ?? e));
   </script>
 </body>

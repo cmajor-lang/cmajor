@@ -102,8 +102,8 @@ export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo
         const clientStyle = getComputedStyle (elem);
 
         return {
-            width:  elem.clientHeight - parseFloat (clientStyle.paddingTop)  - parseFloat (clientStyle.paddingBottom),
-            height: elem.clientWidth  - parseFloat (clientStyle.paddingLeft) - parseFloat (clientStyle.paddingRight)
+            width:  elem.clientWidth  - parseFloat (clientStyle.paddingLeft) - parseFloat (clientStyle.paddingRight),
+            height: elem.clientHeight - parseFloat (clientStyle.paddingTop)  - parseFloat (clientStyle.paddingBottom)
         };
     }
 
@@ -122,11 +122,17 @@ export function scalePatchViewToFit (view, parentToScale, parentContainerToFitTo
 
         const scale = Math.min (maxScale, Math.max (minScale, Math.min (scaleW, scaleH)));
 
+        // (the holder is sized so that once it's scaled it's the size of its parent again: left
+        // at 100%, scaling it up would make it overflow its parent, and give the page scrollbars)
         parentToScale.style.transform = `scale(${scale})`;
+        parentToScale.style.width = `${100 / scale}%`;
+        parentToScale.style.height = `${100 / scale}%`;
     }
     else
     {
         parentToScale.style.transform = "none";
+        parentToScale.style.width = "100%";
+        parentToScale.style.height = "100%";
     }
 }
 

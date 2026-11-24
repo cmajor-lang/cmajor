@@ -1,0 +1,3051 @@
+{
+ "patchFile": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajorpatch",
+ "capturedAt": "2026-11-24T16:54:30.553Z",
+ "listeners": {
+  "out": "event_out_capture",
+  "midiIn": "event_midiIn_capture"
+ },
+ "status": {
+  "httpRootURL": "http://127.0.0.1:51078/session_CAPTURESINESYNTH/",
+  "playing": true,
+  "manifestFile": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajorpatch",
+  "manifest": {
+   "CmajorVersion": 1,
+   "ID": "dev.cmajor.examples.sinesynth",
+   "version": "1.0",
+   "name": "SineSynth",
+   "description": "A simple synth using the SineOscillator",
+   "manufacturer": "Cmajor Software Ltd",
+   "isInstrument": true,
+   "source": "SineSynth.cmajor"
+  },
+  "details": {
+   "mainProcessor": "SineSynth",
+   "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:6:7: ",
+   "inputs": [
+    {
+     "endpointID": "midiIn",
+     "endpointType": "event",
+     "dataType": {
+      "type": "object",
+      "class": "Message",
+      "members": {
+       "message": {
+        "type": "int32"
+       }
+      }
+     },
+     "purpose": "midi in",
+     "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:8:17:"
+    }
+   ],
+   "outputs": [
+    {
+     "endpointID": "out",
+     "endpointType": "stream",
+     "dataType": {
+      "type": "float32"
+     },
+     "purpose": "audio out",
+     "numAudioChannels": 1,
+     "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:9:19:"
+    }
+   ]
+  },
+  "codeGenTargets": [
+   "cpp",
+   "llvm",
+   "llvm-arm64",
+   "llvm-x86_64",
+   "llvm-wasm32"
+  ],
+  "loaded": true,
+  "status": "Loaded: SineSynth",
+  "log": "Total build time: 107.81 ms\nload: 18.02 ms, compile: 19.16 ms, link: 70.63 ms"
+ },
+ "graph": {
+  "format": "cmajor-patch-graph",
+  "version": 1,
+  "root": {
+   "id": "n0",
+   "path": "",
+   "name": "SineSynth",
+   "processor": "SineSynth",
+   "processorFullName": "SineSynth",
+   "isGraph": true,
+   "source": {
+    "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+    "line": 6,
+    "column": 7
+   },
+   "inputs": [
+    {
+     "path": "midiIn",
+     "name": "midiIn",
+     "endpointType": "event",
+     "dataTypes": [
+      {
+       "name": "Message",
+       "fullName": "std::midi::Message"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+      "line": 8,
+      "column": 17
+     }
+    }
+   ],
+   "outputs": [
+    {
+     "path": "out",
+     "name": "out",
+     "endpointType": "stream",
+     "dataTypes": [
+      {
+       "name": "float32",
+       "fullName": "float32"
+      }
+     ],
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+      "line": 9,
+      "column": 19
+     }
+    }
+   ],
+   "nodes": [
+    {
+     "id": "n1",
+     "path": "voices",
+     "name": "voices",
+     "processor": "Voice",
+     "processorFullName": "Voice",
+     "isGraph": true,
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+      "line": 32,
+      "column": 7
+     },
+     "isImplicit": false,
+     "nodeSource": {
+      "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+      "line": 15,
+      "column": 9
+     },
+     "arraySize": 8,
+     "inputs": [
+      {
+       "path": "voices.eventIn",
+       "name": "eventIn",
+       "endpointType": "event",
+       "dataTypes": [
+        {
+         "name": "NoteOn",
+         "fullName": "std::notes::NoteOn"
+        },
+        {
+         "name": "NoteOff",
+         "fullName": "std::notes::NoteOff"
+        }
+       ],
+       "source": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 34,
+        "column": 17
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "path": "voices.out",
+       "name": "out",
+       "endpointType": "stream",
+       "dataTypes": [
+        {
+         "name": "float32",
+         "fullName": "float32"
+        }
+       ],
+       "source": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 35,
+        "column": 19
+       }
+      }
+     ],
+     "nodes": [
+      {
+       "id": "n2",
+       "path": "voices.noteToFrequency",
+       "name": "noteToFrequency",
+       "processor": "NoteToFrequency",
+       "processorFullName": "NoteToFrequency",
+       "isGraph": false,
+       "source": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 53,
+        "column": 11
+       },
+       "isImplicit": false,
+       "nodeSource": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 39,
+        "column": 9
+       },
+       "inputs": [
+        {
+         "path": "voices.noteToFrequency.eventIn",
+         "name": "eventIn",
+         "endpointType": "event",
+         "dataTypes": [
+          {
+           "name": "NoteOn",
+           "fullName": "std::notes::NoteOn"
+          }
+         ],
+         "source": {
+          "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+          "line": 55,
+          "column": 17
+         }
+        }
+       ],
+       "outputs": [
+        {
+         "path": "voices.noteToFrequency.frequencyOut",
+         "name": "frequencyOut",
+         "endpointType": "event",
+         "dataTypes": [
+          {
+           "name": "float32",
+           "fullName": "float32"
+          }
+         ],
+         "source": {
+          "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+          "line": 56,
+          "column": 18
+         }
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "path": "voices.envelope",
+       "name": "envelope",
+       "processor": "FixedASR",
+       "processorFullName": "std::envelopes::FixedASR",
+       "isGraph": false,
+       "isImplicit": false,
+       "nodeSource": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 40,
+        "column": 9
+       },
+       "inputs": [
+        {
+         "path": "voices.envelope.eventIn",
+         "name": "eventIn",
+         "endpointType": "event",
+         "dataTypes": [
+          {
+           "name": "NoteOn",
+           "fullName": "std::notes::NoteOn"
+          },
+          {
+           "name": "NoteOff",
+           "fullName": "std::notes::NoteOff"
+          }
+         ]
+        }
+       ],
+       "outputs": [
+        {
+         "path": "voices.envelope.gainOut",
+         "name": "gainOut",
+         "endpointType": "stream",
+         "dataTypes": [
+          {
+           "name": "float32",
+           "fullName": "float32"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "path": "voices.oscillator",
+       "name": "oscillator",
+       "processor": "Sine",
+       "processorFullName": "std::oscillators::Sine",
+       "isGraph": false,
+       "isImplicit": false,
+       "nodeSource": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 41,
+        "column": 9
+       },
+       "inputs": [
+        {
+         "path": "voices.oscillator.frequencyIn",
+         "name": "frequencyIn",
+         "endpointType": "event",
+         "dataTypes": [
+          {
+           "name": "float32",
+           "fullName": "float32"
+          }
+         ],
+         "annotation": {
+          "name": "Frequency",
+          "min": 0,
+          "max": 24000,
+          "init": 440,
+          "unit": "Hz"
+         }
+        }
+       ],
+       "outputs": [
+        {
+         "path": "voices.oscillator.out",
+         "name": "out",
+         "endpointType": "stream",
+         "dataTypes": [
+          {
+           "name": "FrameType",
+           "fullName": "std::oscillators::Sine::FrameType",
+           "resolvedName": "float32"
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "connections": [
+      {
+       "path": "voices.eventIn -> voices.noteToFrequency.eventIn",
+       "from": {
+        "node": null,
+        "endpoint": "eventIn",
+        "path": "voices.eventIn"
+       },
+       "to": {
+        "node": "n2",
+        "endpoint": "eventIn",
+        "path": "voices.noteToFrequency.eventIn"
+       },
+       "source": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 46,
+        "column": 17
+       }
+      },
+      {
+       "path": "voices.eventIn -> voices.envelope.eventIn",
+       "from": {
+        "node": null,
+        "endpoint": "eventIn",
+        "path": "voices.eventIn"
+       },
+       "to": {
+        "node": "n3",
+        "endpoint": "eventIn",
+        "path": "voices.envelope.eventIn"
+       },
+       "source": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 47,
+        "column": 17
+       }
+      },
+      {
+       "path": "voices.noteToFrequency.frequencyOut -> voices.oscillator.frequencyIn",
+       "from": {
+        "node": "n2",
+        "endpoint": "frequencyOut",
+        "path": "voices.noteToFrequency.frequencyOut"
+       },
+       "to": {
+        "node": "n4",
+        "endpoint": "frequencyIn",
+        "path": "voices.oscillator.frequencyIn"
+       },
+       "source": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 46,
+        "column": 36
+       }
+      },
+      {
+       "path": "voices.envelope.gainOut -> voices.out",
+       "from": {
+        "node": "n3",
+        "endpoint": "gainOut",
+        "path": "voices.envelope.gainOut"
+       },
+       "to": {
+        "node": null,
+        "endpoint": "out",
+        "path": "voices.out"
+       },
+       "source": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 48,
+        "column": 45
+       }
+      },
+      {
+       "path": "voices.oscillator.out -> voices.out",
+       "from": {
+        "node": "n4",
+        "endpoint": "out",
+        "path": "voices.oscillator.out"
+       },
+       "to": {
+        "node": null,
+        "endpoint": "out",
+        "path": "voices.out"
+       },
+       "source": {
+        "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+        "line": 48,
+        "column": 45
+       }
+      }
+     ]
+    },
+    {
+     "id": "n5",
+     "path": "voiceAllocator",
+     "name": "voiceAllocator",
+     "processor": "VoiceAllocator",
+     "processorFullName": "std::voices::VoiceAllocator",
+     "isGraph": false,
+     "isImplicit": false,
+     "nodeSource": {
+      "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+      "line": 16,
+      "column": 9
+     },
+     "inputs": [
+      {
+       "path": "voiceAllocator.eventIn",
+       "name": "eventIn",
+       "endpointType": "event",
+       "dataTypes": [
+        {
+         "name": "NoteOn",
+         "fullName": "std::notes::NoteOn"
+        },
+        {
+         "name": "NoteOff",
+         "fullName": "std::notes::NoteOff"
+        },
+        {
+         "name": "PitchBend",
+         "fullName": "std::notes::PitchBend"
+        },
+        {
+         "name": "Slide",
+         "fullName": "std::notes::Slide"
+        },
+        {
+         "name": "Pressure",
+         "fullName": "std::notes::Pressure"
+        },
+        {
+         "name": "Control",
+         "fullName": "std::notes::Control"
+        }
+       ]
+      }
+     ],
+     "outputs": [
+      {
+       "path": "voiceAllocator.voiceEventOut",
+       "name": "voiceEventOut",
+       "endpointType": "event",
+       "dataTypes": [
+        {
+         "name": "NoteOn",
+         "fullName": "std::notes::NoteOn"
+        },
+        {
+         "name": "NoteOff",
+         "fullName": "std::notes::NoteOff"
+        },
+        {
+         "name": "PitchBend",
+         "fullName": "std::notes::PitchBend"
+        },
+        {
+         "name": "Slide",
+         "fullName": "std::notes::Slide"
+        },
+        {
+         "name": "Pressure",
+         "fullName": "std::notes::Pressure"
+        },
+        {
+         "name": "Control",
+         "fullName": "std::notes::Control"
+        }
+       ],
+       "arraySize": 8
+      }
+     ]
+    },
+    {
+     "id": "n6",
+     "path": "MPEConverter",
+     "name": "MPEConverter",
+     "processor": "MPEConverter",
+     "processorFullName": "std::midi::MPEConverter",
+     "isGraph": false,
+     "isImplicit": true,
+     "inputs": [
+      {
+       "path": "MPEConverter.parseMIDI",
+       "name": "parseMIDI",
+       "endpointType": "event",
+       "dataTypes": [
+        {
+         "name": "Message",
+         "fullName": "std::midi::Message"
+        }
+       ]
+      }
+     ],
+     "outputs": [
+      {
+       "path": "MPEConverter.eventOut",
+       "name": "eventOut",
+       "endpointType": "event",
+       "dataTypes": [
+        {
+         "name": "NoteOn",
+         "fullName": "std::notes::NoteOn"
+        },
+        {
+         "name": "NoteOff",
+         "fullName": "std::notes::NoteOff"
+        },
+        {
+         "name": "PitchBend",
+         "fullName": "std::notes::PitchBend"
+        },
+        {
+         "name": "Slide",
+         "fullName": "std::notes::Slide"
+        },
+        {
+         "name": "Pressure",
+         "fullName": "std::notes::Pressure"
+        },
+        {
+         "name": "Aftertouch",
+         "fullName": "std::notes::Aftertouch"
+        },
+        {
+         "name": "Control",
+         "fullName": "std::notes::Control"
+        },
+        {
+         "name": "ProgramChange",
+         "fullName": "std::notes::ProgramChange"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "connections": [
+    {
+     "path": "voiceAllocator.voiceEventOut -> voices.eventIn",
+     "from": {
+      "node": "n5",
+      "endpoint": "voiceEventOut",
+      "path": "voiceAllocator.voiceEventOut"
+     },
+     "to": {
+      "node": "n1",
+      "endpoint": "eventIn",
+      "path": "voices.eventIn"
+     },
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+      "line": 25,
+      "column": 38
+     }
+    },
+    {
+     "path": "MPEConverter.eventOut -> voiceAllocator.eventIn",
+     "from": {
+      "node": "n6",
+      "endpoint": "eventOut",
+      "path": "MPEConverter.eventOut"
+     },
+     "to": {
+      "node": "n5",
+      "endpoint": "eventIn",
+      "path": "voiceAllocator.eventIn"
+     },
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+      "line": 22,
+      "column": 43
+     }
+    },
+    {
+     "path": "midiIn -> MPEConverter.parseMIDI",
+     "from": {
+      "node": null,
+      "endpoint": "midiIn",
+      "path": "midiIn"
+     },
+     "to": {
+      "node": "n6",
+      "endpoint": "parseMIDI",
+      "path": "MPEConverter.parseMIDI"
+     },
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+      "line": 22,
+      "column": 16
+     }
+    },
+    {
+     "path": "voices.out -> out",
+     "from": {
+      "node": "n1",
+      "endpoint": "out",
+      "path": "voices.out"
+     },
+     "to": {
+      "node": null,
+      "endpoint": "out",
+      "path": "out"
+     },
+     "source": {
+      "file": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor",
+      "line": 28,
+      "column": 16
+     }
+    }
+   ]
+  }
+ },
+ "patchList": [],
+ "messages": [
+  {
+   "t": 2,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURESINESYNTH/",
+    "playing": true,
+    "loaded": false
+   }
+  },
+  {
+   "t": 2,
+   "type": "audio_device_properties",
+   "message": {
+    "availableAPIs": [
+     "CoreAudio"
+    ],
+    "availableOutputDevices": [
+     {
+      "ID": "129",
+      "name": "GSM: LG ULTRAFINE"
+     },
+     {
+      "ID": "130",
+      "name": "Existential Audio Inc.: BlackHole 16ch"
+     },
+     {
+      "ID": "132",
+      "name": "Apple Inc.: MacBook Pro Speakers"
+     },
+     {
+      "ID": "133",
+      "name": "Microsoft Corp.: Microsoft Teams Audio"
+     },
+     {
+      "ID": "134",
+      "name": "GreenLight Audio: GreenLight AVB"
+     },
+     {
+      "ID": "135",
+      "name": "zoom.us: ZoomAudioDevice"
+     }
+    ],
+    "availableInputDevices": [
+     {
+      "ID": "130",
+      "name": "Existential Audio Inc.: BlackHole 16ch"
+     },
+     {
+      "ID": "131",
+      "name": "Apple Inc.: MacBook Pro Microphone"
+     },
+     {
+      "ID": "133",
+      "name": "Microsoft Corp.: Microsoft Teams Audio"
+     },
+     {
+      "ID": "134",
+      "name": "GreenLight Audio: GreenLight AVB"
+     },
+     {
+      "ID": "135",
+      "name": "zoom.us: ZoomAudioDevice"
+     }
+    ],
+    "sampleRates": [
+     44100,
+     48000,
+     88200,
+     96000
+    ],
+    "blockSizes": [
+     16,
+     32,
+     48,
+     64,
+     96,
+     128,
+     196,
+     224,
+     256,
+     320,
+     480,
+     512,
+     768,
+     1024,
+     1536,
+     2048
+    ],
+    "audioAPI": "CoreAudio",
+    "output": "132",
+    "input": "131",
+    "rate": 44100,
+    "blockSize": 128
+   }
+  },
+  {
+   "t": 2,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURESINESYNTH/",
+    "playing": true,
+    "loaded": false,
+    "status": "Loading: SineSynth.cmajorpatch"
+   }
+  },
+  {
+   "t": 111,
+   "type": "status",
+   "message": {
+    "warning": "",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.sinesynth",
+     "version": "1.0",
+     "name": "SineSynth",
+     "description": "A simple synth using the SineOscillator",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": true,
+     "source": "SineSynth.cmajor"
+    },
+    "details": {
+     "mainProcessor": "SineSynth",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:6:7: ",
+     "inputs": [
+      {
+       "endpointID": "midiIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi in",
+       "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:8:17:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "out",
+       "endpointType": "stream",
+       "dataType": {
+        "type": "float32"
+       },
+       "purpose": "audio out",
+       "numAudioChannels": 1,
+       "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:9:19:"
+      }
+     ]
+    },
+    "sampleRate": 44100,
+    "host": "Cmajor Player"
+   }
+  },
+  {
+   "t": 111,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURESINESYNTH/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.sinesynth",
+     "version": "1.0",
+     "name": "SineSynth",
+     "description": "A simple synth using the SineOscillator",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": true,
+     "source": "SineSynth.cmajor"
+    },
+    "details": {
+     "mainProcessor": "SineSynth",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:6:7: ",
+     "inputs": [
+      {
+       "endpointID": "midiIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi in",
+       "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:8:17:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "out",
+       "endpointType": "stream",
+       "dataType": {
+        "type": "float32"
+       },
+       "purpose": "audio out",
+       "numAudioChannels": 1,
+       "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:9:19:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "loaded": true,
+    "status": "Loading: SineSynth.cmajorpatch",
+    "log": "Total build time: 107.81 ms\nload: 18.02 ms, compile: 19.16 ms, link: 70.63 ms"
+   }
+  },
+  {
+   "t": 111,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURESINESYNTH/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.sinesynth",
+     "version": "1.0",
+     "name": "SineSynth",
+     "description": "A simple synth using the SineOscillator",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": true,
+     "source": "SineSynth.cmajor"
+    },
+    "details": {
+     "mainProcessor": "SineSynth",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:6:7: ",
+     "inputs": [
+      {
+       "endpointID": "midiIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi in",
+       "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:8:17:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "out",
+       "endpointType": "stream",
+       "dataType": {
+        "type": "float32"
+       },
+       "purpose": "audio out",
+       "numAudioChannels": 1,
+       "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:9:19:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "loaded": true,
+    "status": "Loaded: SineSynth",
+    "log": "Total build time: 107.81 ms\nload: 18.02 ms, compile: 19.16 ms, link: 70.63 ms"
+   }
+  },
+  {
+   "t": 205,
+   "type": "session_status",
+   "message": {
+    "httpRootURL": "http://127.0.0.1:51078/session_CAPTURESINESYNTH/",
+    "playing": true,
+    "manifestFile": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajorpatch",
+    "manifest": {
+     "CmajorVersion": 1,
+     "ID": "dev.cmajor.examples.sinesynth",
+     "version": "1.0",
+     "name": "SineSynth",
+     "description": "A simple synth using the SineOscillator",
+     "manufacturer": "Cmajor Software Ltd",
+     "isInstrument": true,
+     "source": "SineSynth.cmajor"
+    },
+    "details": {
+     "mainProcessor": "SineSynth",
+     "mainProcessorLocation": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:6:7: ",
+     "inputs": [
+      {
+       "endpointID": "midiIn",
+       "endpointType": "event",
+       "dataType": {
+        "type": "object",
+        "class": "Message",
+        "members": {
+         "message": {
+          "type": "int32"
+         }
+        }
+       },
+       "purpose": "midi in",
+       "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:8:17:"
+      }
+     ],
+     "outputs": [
+      {
+       "endpointID": "out",
+       "endpointType": "stream",
+       "dataType": {
+        "type": "float32"
+       },
+       "purpose": "audio out",
+       "numAudioChannels": 1,
+       "source": "${CMAJOR_ROOT}/examples/patches/SineSynth/SineSynth.cmajor:9:19:"
+      }
+     ]
+    },
+    "codeGenTargets": [
+     "cpp",
+     "llvm",
+     "llvm-arm64",
+     "llvm-x86_64",
+     "llvm-wasm32"
+    ],
+    "loaded": true,
+    "status": "Loaded: SineSynth",
+    "log": "Total build time: 107.81 ms\nload: 18.02 ms, compile: 19.16 ms, link: 70.63 ms"
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9452644
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9453668
+   }
+  },
+  {
+   "t": 211,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 9454436
+   }
+  },
+  {
+   "t": 218,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.5573672
+    ],
+    "max": [
+     0.54057777
+    ]
+   }
+  },
+  {
+   "t": 224,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.3182788
+    ],
+    "max": [
+     2.193366
+    ]
+   }
+  },
+  {
+   "t": 236,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.2679372
+    ],
+    "max": [
+     0.73062897
+    ]
+   }
+  },
+  {
+   "t": 242,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.2524545
+    ],
+    "max": [
+     2.157506
+    ]
+   }
+  },
+  {
+   "t": 254,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.1063979
+    ],
+    "max": [
+     1.6613386
+    ]
+   }
+  },
+  {
+   "t": 261,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.1490693
+    ],
+    "max": [
+     2.0834253
+    ]
+   }
+  },
+  {
+   "t": 273,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.011017
+    ],
+    "max": [
+     1.9732728
+    ]
+   }
+  },
+  {
+   "t": 280,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.4873232
+    ],
+    "max": [
+     1.3462086
+    ]
+   }
+  },
+  {
+   "t": 292,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.8421845
+    ],
+    "max": [
+     1.8302267
+    ]
+   }
+  },
+  {
+   "t": 298,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.6869488
+    ],
+    "max": [
+     1.5621389
+    ]
+   }
+  },
+  {
+   "t": 311,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.8658888
+    ],
+    "max": [
+     1.6583817
+    ]
+   }
+  },
+  {
+   "t": 317,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.4362919
+    ],
+    "max": [
+     1.7600168
+    ]
+   }
+  },
+  {
+   "t": 324,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.0183632
+    ],
+    "max": [
+     1.934036
+    ]
+   }
+  },
+  {
+   "t": 336,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.215247
+    ],
+    "max": [
+     1.2586324
+    ]
+   }
+  },
+  {
+   "t": 342,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.138181
+    ],
+    "max": [
+     2.0784853
+    ]
+   }
+  },
+  {
+   "t": 354,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.2219715
+    ],
+    "max": [
+     1.7230129
+    ]
+   }
+  },
+  {
+   "t": 360,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.2184963
+    ],
+    "max": [
+     2.1898084
+    ]
+   }
+  },
+  {
+   "t": 372,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.2673876
+    ],
+    "max": [
+     2.2646146
+    ]
+   }
+  },
+  {
+   "t": 384,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.7083828
+    ],
+    "max": [
+     0.80529726
+    ]
+   }
+  },
+  {
+   "t": 390,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.2732553
+    ],
+    "max": [
+     2.3006954
+    ]
+   }
+  },
+  {
+   "t": 397,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.483391
+    ],
+    "max": [
+     1.6414176
+    ]
+   }
+  },
+  {
+   "t": 409,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.240417
+    ],
+    "max": [
+     2.2970014
+    ]
+   }
+  },
+  {
+   "t": 426,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.1688533
+    ],
+    "max": [
+     2.253644
+    ]
+   }
+  },
+  {
+   "t": 426,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.7941658
+    ],
+    "max": [
+     1.0317762
+    ]
+   }
+  },
+  {
+   "t": 441,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.0605812
+    ],
+    "max": [
+     2.171887
+    ]
+   }
+  },
+  {
+   "t": 445,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.2072043
+    ],
+    "max": [
+     1.2787298
+    ]
+   }
+  },
+  {
+   "t": 452,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.91869
+    ],
+    "max": [
+     2.0541003
+    ]
+   }
+  },
+  {
+   "t": 465,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.7472463
+    ],
+    "max": [
+     1.9036756
+    ]
+   }
+  },
+  {
+   "t": 471,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.6062984
+    ],
+    "max": [
+     1.6440877
+    ]
+   }
+  },
+  {
+   "t": 477,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.5511594
+    ],
+    "max": [
+     1.7249079
+    ]
+   }
+  },
+  {
+   "t": 490,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.7787468
+    ],
+    "max": [
+     1.8397046
+    ]
+   }
+  },
+  {
+   "t": 496,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.5074902
+    ],
+    "max": [
+     1.5257185
+    ]
+   }
+  },
+  {
+   "t": 509,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.9233164
+    ],
+    "max": [
+     2.0104523
+    ]
+   }
+  },
+  {
+   "t": 514,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.035012
+    ],
+    "max": [
+     2.150937
+    ]
+   }
+  },
+  {
+   "t": 526,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.7111773
+    ],
+    "max": [
+     1.1076144
+    ]
+   }
+  },
+  {
+   "t": 533,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.1106765
+    ],
+    "max": [
+     2.257146
+    ]
+   }
+  },
+  {
+   "t": 545,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.6989592
+    ],
+    "max": [
+     1.4862967
+    ]
+   }
+  },
+  {
+   "t": 552,
+   "type": "cpu_info",
+   "message": {
+    "level": 0.006514566
+   }
+  },
+  {
+   "t": 552,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.1481857
+    ],
+    "max": [
+     2.3260403
+    ]
+   }
+  },
+  {
+   "t": 558,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.1470823
+    ],
+    "max": [
+     2.3556542
+    ]
+   }
+  },
+  {
+   "t": 570,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.9869001
+    ],
+    "max": [
+     1.1873845
+    ]
+   }
+  },
+  {
+   "t": 581,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.1078596
+    ],
+    "max": [
+     2.3451605
+    ]
+   }
+  },
+  {
+   "t": 587,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.7160506
+    ],
+    "max": [
+     1.2801226
+    ]
+   }
+  },
+  {
+   "t": 599,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.030834
+    ],
+    "max": [
+     2.2948961
+    ]
+   }
+  },
+  {
+   "t": 607,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.9186621
+    ],
+    "max": [
+     2.206349
+    ]
+   }
+  },
+  {
+   "t": 616,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.9358032
+    ],
+    "max": [
+     1.8892736
+    ]
+   }
+  },
+  {
+   "t": 622,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.8445315
+    ],
+    "max": [
+     2.082107
+    ]
+   }
+  },
+  {
+   "t": 634,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.2975044
+    ],
+    "max": [
+     1.4657602
+    ]
+   }
+  },
+  {
+   "t": 641,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.7189388
+    ],
+    "max": [
+     1.9257687
+    ]
+   }
+  },
+  {
+   "t": 653,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.484473
+    ],
+    "max": [
+     1.6744959
+    ]
+   }
+  },
+  {
+   "t": 660,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.6484103
+    ],
+    "max": [
+     1.8651669
+    ]
+   }
+  },
+  {
+   "t": 671,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.5594672
+    ],
+    "max": [
+     1.5376072
+    ]
+   }
+  },
+  {
+   "t": 677,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.7833952
+    ],
+    "max": [
+     2.0315375
+    ]
+   }
+  },
+  {
+   "t": 690,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.1836772
+    ],
+    "max": [
+     1.3222333
+    ]
+   }
+  },
+  {
+   "t": 697,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.8951192
+    ],
+    "max": [
+     2.1667957
+    ]
+   }
+  },
+  {
+   "t": 703,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.9519703
+    ],
+    "max": [
+     2.2670946
+    ]
+   }
+  },
+  {
+   "t": 714,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.0181017
+    ],
+    "max": [
+     1.6417623
+    ]
+   }
+  },
+  {
+   "t": 727,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.1063733
+    ],
+    "max": [
+     2.3296032
+    ]
+   }
+  },
+  {
+   "t": 733,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.6467838
+    ],
+    "max": [
+     1.1845756
+    ]
+   }
+  },
+  {
+   "t": 746,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.158619
+    ],
+    "max": [
+     2.3525758
+    ]
+   }
+  },
+  {
+   "t": 753,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.9257805
+    ],
+    "max": [
+     2.304267
+    ]
+   }
+  },
+  {
+   "t": 758,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.172052
+    ],
+    "max": [
+     2.3354158
+    ]
+   }
+  },
+  {
+   "t": 770,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.1462746
+    ],
+    "max": [
+     2.2793546
+    ]
+   }
+  },
+  {
+   "t": 776,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.8375287
+    ],
+    "max": [
+     1.5266789
+    ]
+   }
+  },
+  {
+   "t": 789,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -2.082042
+    ],
+    "max": [
+     2.185132
+    ]
+   }
+  },
+  {
+   "t": 802,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.5849491
+    ],
+    "max": [
+     1.237783
+    ]
+   }
+  },
+  {
+   "t": 808,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 8403968
+   }
+  },
+  {
+   "t": 808,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 8404992
+   }
+  },
+  {
+   "t": 808,
+   "type": "event_midiIn_capture",
+   "message": {
+    "message": 8405760
+   }
+  },
+  {
+   "t": 808,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.9812307
+    ],
+    "max": [
+     2.0553787
+    ]
+   }
+  },
+  {
+   "t": 814,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -1.091726
+    ],
+    "max": [
+     0.95865065
+    ]
+   }
+  },
+  {
+   "t": 827,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.36509264
+    ],
+    "max": [
+     0.5285511
+    ]
+   }
+  },
+  {
+   "t": 833,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.18210611
+    ],
+    "max": [
+     0.2116122
+    ]
+   }
+  },
+  {
+   "t": 839,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.09980181
+    ],
+    "max": [
+     0.10825435
+    ]
+   }
+  },
+  {
+   "t": 851,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.03959912
+    ],
+    "max": [
+     0.04547769
+    ]
+   }
+  },
+  {
+   "t": 858,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.023629315
+    ],
+    "max": [
+     0.028504431
+    ]
+   }
+  },
+  {
+   "t": 870,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.0068718474
+    ],
+    "max": [
+     0.00752716
+    ]
+   }
+  },
+  {
+   "t": 883,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.0017161332
+    ],
+    "max": [
+     0.0037821578
+    ]
+   }
+  },
+  {
+   "t": 888,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.0017407469
+    ],
+    "max": [
+     0.0019270612
+    ]
+   }
+  },
+  {
+   "t": 895,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.00043176964
+    ],
+    "max": [
+     0.0003831507
+    ]
+   }
+  },
+  {
+   "t": 907,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     -0.00041477557
+    ],
+    "max": [
+     0.00048449863
+    ]
+   }
+  },
+  {
+   "t": 914,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 926,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 933,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 946,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 951,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 964,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 970,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 976,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 987,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 994,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1006,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1016,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1023,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1034,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1040,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1052,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1058,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1071,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1077,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1101,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1112,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1112,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1115,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1122,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1135,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1141,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1147,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1159,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1172,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1178,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1191,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1197,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1204,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1217,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1223,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1235,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1242,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1254,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1261,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1267,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1280,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1286,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1292,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1304,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1315,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1322,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1334,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1340,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1352,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1358,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1371,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1377,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1389,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1395,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1408,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1414,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1421,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1433,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1440,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1452,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1458,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1472,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1478,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1484,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1497,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1503,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1514,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1527,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1534,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1539,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1552,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1558,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1571,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1577,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1584,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1596,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1609,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1615,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1626,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1633,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1639,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1652,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1658,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1671,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1677,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1684,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1696,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1702,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1714,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1720,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  },
+  {
+   "t": 1733,
+   "type": "event_out_capture",
+   "message": {
+    "min": [
+     0
+    ],
+    "max": [
+     0
+    ]
+   }
+  }
+ ]
+}

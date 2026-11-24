@@ -18,7 +18,10 @@
 
 #pragma once
 
+#include <set>
 #include "cmajor/helpers/cmaj_Patch.h"
+#include "../../../../modules/playback/include/cmaj_AudioSources.h"
+#include "../../../../modules/playback/include/cmaj_PatchPlayer.h"   // (which includes cmaj_AllocationChecker.h, which has no include guard)
 
 namespace cmaj::patch_helper_tests
 {
@@ -604,6 +607,124 @@ static void runPatchStateTests (choc::test::TestProgress& progress)
                                                                               {{ "Test.cmajor", passThroughPatchSource }}), {} }, true));
         CHOC_EXPECT_TRUE (patch.isPlayable());
         CHOC_EXPECT_FALSE (lastStatus.messageList.hasErrors());
+    }
+
+    {
+        CHOC_TEST (GraphStructureIsCachedPerBuild)
+
+        // (the external's value matters: without it, the program wouldn't load)
+        const auto manifestSource = R"({
+            "CmajorVersion": 1,
+            "ID": "dev.cmajor.tests.graph_structure",
+            "version": "1.0",
+            "name": "Test",
+            "description": "Test",
+            "category": "effect",
+            "manufacturer": "Cmajor Software Ltd",
+            "isInstrument": false,
+            "source": ["Test.cmajor"],
+            "externals": { "Gain::scale": 0.5 }
+        })";
+
+        const auto createSource = [] (const std::string& extraNode)
+        {
+            return R"(
+                processor Gain
+                {
+                    input stream float32 in;
+                    output stream float32 out;
+                    external float32 scale;
+
+                    void main() { loop { out <- in * scale; advance(); } }
+                }
+
+                graph Test [[ main ]]
+                {
+                    input stream float32 in;
+                    output stream float32 out;
+
+                    node first = Gain;
+                    )" + extraNode + R"(
+
+                    connection in -> first.in;
+                    connection first.out -> out;
+                }
+            )";
+        };
+
+        const auto load = [&] (Patch& p, const std::string& source)
+        {
+            return p.loadPatch ({ createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", source }}), {} }, true);
+        };
+
+        const auto hasNode = [] (const std::string& json, std::string_view path)
+        {
+            auto graph = choc::json::parse (json);
+
+            for (auto node : graph["root"]["nodes"])
+                if (node["path"].toString() == path)
+                    return true;
+
+            return false;
+        };
+
+        // it's off by default
+        {
+            Patch patch;
+            initTestPatch (patch);
+            patch.setPlaybackParams ({ 4, 4, 1, 1 });
+            CHOC_EXPECT_TRUE (load (patch, createSource ({})));
+            CHOC_EXPECT_TRUE (patch.getGraphStructure().empty());
+            CHOC_EXPECT_TRUE (patch.getGraphStructureVersion().empty());
+        }
+
+        Patch patch;
+        initTestPatch (patch);
+        patch.generateGraphStructure = true;
+        patch.setPlaybackParams ({ 4, 4, 1, 1 });
+
+        if (! load (patch, createSource ({})))
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        auto firstGraph = patch.getGraphStructure();
+        auto firstVersion = patch.getGraphStructureVersion();
+        CHOC_EXPECT_FALSE (firstGraph.empty());
+        CHOC_EXPECT_FALSE (firstVersion.empty());
+        CHOC_EXPECT_TRUE (hasNode (firstGraph, "first"));
+        CHOC_EXPECT_FALSE (hasNode (firstGraph, "second"));
+
+        // the same as the "graph" code generation target gives
+        {
+            Patch codeGenPatch;
+            initTestPatch (codeGenPatch);
+            codeGenPatch.setPlaybackParams ({ 4, 4, 1, 1 });
+            Patch::LoadParams params;
+            params.manifest = createManifestWithInMemoryFiles (manifestSource, {{ "Test.cmajor", createSource ({}) }});
+
+            // (generateCode() refuses to run on the message thread)
+            auto generated = std::async (std::launch::async, [&] { return codeGenPatch.generateCode (params, "graph", "{}"); }).get();
+            CHOC_EXPECT_EQ (generated.generatedCode, firstGraph);
+        }
+
+        // a rebuild with an unchanged graph has the same version
+        CHOC_EXPECT_TRUE (load (patch, createSource ({})));
+        CHOC_EXPECT_EQ (patch.getGraphStructureVersion(), firstVersion);
+
+        // a change to the graph's structure gives a new version
+        CHOC_EXPECT_TRUE (load (patch, createSource ("node second = Gain;")));
+        CHOC_EXPECT_TRUE (hasNode (patch.getGraphStructure(), "second"));
+        CHOC_EXPECT_NE (patch.getGraphStructureVersion(), firstVersion);
+
+        // a failed build has none
+        CHOC_EXPECT_FALSE (load (patch, createSource ("this won't compile")));
+        CHOC_EXPECT_TRUE (patch.getGraphStructure().empty());
+        CHOC_EXPECT_TRUE (patch.getGraphStructureVersion().empty());
+
+        CHOC_EXPECT_TRUE (load (patch, createSource ({})));
+        CHOC_EXPECT_EQ (patch.getGraphStructureVersion(), firstVersion);
     }
 
     {
@@ -1470,6 +1591,792 @@ static void runPatchProcessingTests (choc::test::TestProgress& progress)
 }
 
 //==============================================================================
+/// Copies everything that arrives at its timeline inputs to output channels, along with a
+/// count of each kind of event, so that the tests can see what a PatchPlayer sent it.
+static constexpr const char* timelineRecorderPatchSource = R"(
+    processor Test [[ main ]]
+    {
+        input event std::timeline::Tempo tempoIn;
+        input event std::timeline::TimeSignature timeSigIn;
+        input event std::timeline::TransportState transportIn;
+        input event std::timeline::Position positionIn;
+
+        output stream float32 bpmOut, tempoCountOut, timeSigOut, timeSigCountOut,
+                              transportFlagsOut, transportCountOut, frameOut, quarterNoteOut, barStartOut;
+
+        float32 bpm, timeSig, flags, frame, quarterNote, barStart;
+        float32 tempoCount, timeSigCount, transportCount;
+
+        event tempoIn (std::timeline::Tempo t)              { bpm = t.bpm; tempoCount += 1.0f; }
+        event timeSigIn (std::timeline::TimeSignature t)    { timeSig = float32 (t.numerator) * 100.0f + float32 (t.denominator); timeSigCount += 1.0f; }
+        event transportIn (std::timeline::TransportState t) { flags = float32 (t.flags); transportCount += 1.0f; }
+
+        event positionIn (std::timeline::Position p)
+        {
+            frame = float32 (p.frameIndex);
+            quarterNote = float32 (p.quarterNote);
+            barStart = float32 (p.barStartQuarterNote);
+        }
+
+        void main()
+        {
+            loop
+            {
+                bpmOut <- bpm;                  tempoCountOut <- tempoCount;
+                timeSigOut <- timeSig;          timeSigCountOut <- timeSigCount;
+                transportFlagsOut <- flags;     transportCountOut <- transportCount;
+                frameOut <- frame;              quarterNoteOut <- quarterNote;      barStartOut <- barStart;
+                advance();
+            }
+        }
+    }
+)";
+
+/// Drives a PatchPlayer's audio callback directly (as an audio device would), with the
+/// timeline recorder patch loaded.
+struct TimelineTestPlayer
+{
+    enum Channel { bpm, tempoCount, timeSig, timeSigCount, transportFlags, transportCount, frame, quarterNote, barStart, numChannels };
+
+    static constexpr double sampleRate = 44100.0;   // (the PatchPlayer's own default, so it never rebuilds)
+    static constexpr uint32_t blockSize = 256;
+
+    bool load()
+    {
+        callback.sampleRateChanged (sampleRate);
+
+        Patch::PlaybackParams params;
+        params.blockSize = blockSize;
+        params.sampleRate = sampleRate;
+        params.numInputChannels = 0;
+        params.numOutputChannels = numChannels;
+        player.patch.setPlaybackParams (params);
+
+        return player.patch.loadPatch ({ createManifestWithInMemoryFiles (createBasicManifest(), {{ "Test.cmajor", timelineRecorderPatchSource }}), {} }, true)
+                && player.patch.isPlayable();
+    }
+
+    void renderBlocks (uint32_t numBlocks = 1)
+    {
+        const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn noMIDI = [] (auto&&...) {};
+
+        for (uint32_t i = 0; i < numBlocks; ++i)
+        {
+            std::array<float*, numChannels> channels {};
+
+            for (size_t c = 0; c < numChannels; ++c)
+                channels[c] = output[c].data();
+
+            auto inputs = choc::buffer::createChannelArrayView (static_cast<const float* const*> (nullptr), 0u, blockSize);
+            auto outputs = choc::buffer::createChannelArrayView (channels.data(), static_cast<uint32_t> (numChannels), blockSize);
+
+            callback.startBlock();
+            callback.processSubBlock ({ inputs, outputs, {}, noMIDI }, true);
+            callback.endBlock();
+        }
+    }
+
+    /// The value that the patch was outputting at the end of the last block.
+    double get (Channel c) const    { return output[c][blockSize - 1]; }
+
+    PatchPlayer player { choc::value::Value(), BuildSettings(), false };
+    choc::audio::io::AudioMIDICallback& callback = player;
+    std::array<std::array<float, blockSize>, numChannels> output {};
+};
+
+static void runPatchPlayerTransportTests (choc::test::TestProgress& progress)
+{
+    CHOC_CATEGORY (PatchPlayer);
+
+    constexpr auto block = static_cast<double> (TimelineTestPlayer::blockSize);
+    constexpr auto oneSecond = static_cast<int64_t> (TimelineTestPlayer::sampleRate);
+
+    {
+        CHOC_TEST (TransportDefaults)
+
+        // a player that's never told about a transport behaves as it always has: the
+        // position counts up, and nothing else is sent
+        TimelineTestPlayer t;
+
+        if (! t.load())
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        t.renderBlocks (3);
+        CHOC_EXPECT_NEAR (t.get (t.frame), 2 * block, 0.001);
+        CHOC_EXPECT_NEAR (t.get (t.quarterNote), 0.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.tempoCount), 0.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.timeSigCount), 0.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.transportCount), 0.0, 0.0001);
+
+        auto info = t.player.getTransportInfo();
+        CHOC_EXPECT_TRUE (info.playing);
+        CHOC_EXPECT_EQ (info.frame, static_cast<int64_t> (3 * block));
+        CHOC_EXPECT_EQ (info.tempo, 0.0f);
+        CHOC_EXPECT_EQ (info.sampleRate, TimelineTestPlayer::sampleRate);
+    }
+
+    {
+        CHOC_TEST (FrameAdvancesOnlyWhilePlaying)
+
+        TimelineTestPlayer t;
+
+        if (! t.load())
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        t.player.setTempo (120.0f);
+        t.player.setTimeSig (4, 4);
+        t.player.setTransportState (true, false);
+
+        t.renderBlocks (4);
+        CHOC_EXPECT_NEAR (t.get (t.frame), 3 * block, 0.001);
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 1.0, 0.0001);
+        CHOC_EXPECT_EQ (t.player.getTransportInfo().frame, static_cast<int64_t> (4 * block));
+
+        t.player.setTransportPlaying (false);
+        t.renderBlocks (3);
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 0.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.frame), 4 * block, 0.001);
+        CHOC_EXPECT_EQ (t.player.getTransportInfo().frame, static_cast<int64_t> (4 * block));
+        CHOC_EXPECT_FALSE (t.player.getTransportInfo().playing);
+
+        // ...while the total keeps counting
+        CHOC_EXPECT_EQ (t.player.totalFramesRendered, static_cast<uint64_t> (7 * block));
+
+        t.player.setTransportPlaying (true);
+        t.renderBlocks (2);
+        CHOC_EXPECT_NEAR (t.get (t.frame), 5 * block, 0.001);
+        CHOC_EXPECT_EQ (t.player.getTransportInfo().frame, static_cast<int64_t> (6 * block));
+    }
+
+    {
+        CHOC_TEST (SetPosition)
+
+        TimelineTestPlayer t;
+
+        if (! t.load())
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        t.player.setTempo (120.0f);
+        t.player.setTimeSig (4, 4);
+        t.player.setTransportState (false, false);
+        t.renderBlocks (2);
+
+        // one second at 120 bpm is 2 quarter-notes, in the first 4/4 bar
+        t.player.setPosition (oneSecond);
+        auto info = t.player.getTransportInfo();     // (reported before the audio thread has seen it)
+        CHOC_EXPECT_EQ (info.frame, oneSecond);
+        CHOC_EXPECT_NEAR (info.quarterNote, 2.0, 0.0001);
+        CHOC_EXPECT_NEAR (info.barStartQuarterNote, 0.0, 0.0001);
+
+        t.renderBlocks (2);
+        CHOC_EXPECT_NEAR (t.get (t.frame), static_cast<double> (oneSecond), 0.001);
+        CHOC_EXPECT_NEAR (t.get (t.quarterNote), 2.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.barStart), 0.0, 0.0001);
+        CHOC_EXPECT_EQ (t.player.getTransportInfo().frame, oneSecond);
+
+        // 3 seconds is 6 quarter-notes, in the bar that starts at 4
+        t.player.setPosition (3 * oneSecond);
+        t.renderBlocks();
+        CHOC_EXPECT_NEAR (t.get (t.quarterNote), 6.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.barStart), 4.0, 0.0001);
+
+        // playing carries on from the new position
+        t.player.setTransportPlaying (true);
+        t.renderBlocks (2);
+        CHOC_EXPECT_NEAR (t.get (t.frame), static_cast<double> (3 * oneSecond) + block, 0.5);
+
+        t.player.rewind();
+        CHOC_EXPECT_EQ (t.player.getTransportInfo().frame, static_cast<int64_t> (0));
+        t.renderBlocks();
+        CHOC_EXPECT_NEAR (t.get (t.frame), 0.0, 0.001);
+
+        t.player.setPosition (-100);
+        CHOC_EXPECT_EQ (t.player.getTransportInfo().frame, static_cast<int64_t> (0));
+    }
+
+    {
+        CHOC_TEST (RecordingDoesNotClearPlaying)
+
+        TimelineTestPlayer t;
+
+        if (! t.load())
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        t.player.setTransportState (true, true);
+        t.renderBlocks (2);
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 3.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.frame), block, 0.001);
+
+        auto info = t.player.getTransportInfo();
+        CHOC_EXPECT_TRUE (info.playing);
+        CHOC_EXPECT_TRUE (info.recording);
+
+        // ...and recording doesn't imply playing
+        t.player.setTransportState (false, true);
+        t.renderBlocks (2);
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 2.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.frame), 2 * block, 0.001);
+        CHOC_EXPECT_FALSE (t.player.getTransportInfo().playing);
+        CHOC_EXPECT_TRUE (t.player.getTransportInfo().recording);
+
+        t.player.setTransportRecording (false);
+        t.player.setTransportPlaying (true);
+        t.renderBlocks();
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 1.0, 0.0001);
+    }
+
+    {
+        CHOC_TEST (LoopingIsReported)
+
+        TimelineTestPlayer t;
+
+        if (! t.load())
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        t.player.setTransportState (true, false, true);
+        t.renderBlocks();
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 5.0, 0.0001);
+        CHOC_EXPECT_TRUE (t.player.getTransportInfo().looping);
+
+        // the two-flag version leaves the looping flag alone
+        t.player.setTransportState (true, true);
+        t.renderBlocks();
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 7.0, 0.0001);
+
+        t.player.setTransportLooping (false);
+        t.renderBlocks();
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 3.0, 0.0001);
+        CHOC_EXPECT_FALSE (t.player.getTransportInfo().looping);
+    }
+
+    {
+        CHOC_TEST (TempoAndTimeSigReachThePatch)
+
+        TimelineTestPlayer t;
+
+        if (! t.load())
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        t.player.setTempo (120.0f);
+        t.player.setTimeSig (4, 4);
+        t.player.setTransportState (false, false);
+        t.renderBlocks (3);
+        CHOC_EXPECT_NEAR (t.get (t.bpm), 120.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.timeSig), 404.0, 0.0001);
+
+        // each is only sent when it changes
+        CHOC_EXPECT_NEAR (t.get (t.tempoCount), 1.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.timeSigCount), 1.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.transportCount), 1.0, 0.0001);
+
+        t.player.setTempo (90.0f);
+        t.player.setTimeSig (7, 8);
+        t.player.setPosition (oneSecond * 4);   // 6 quarter-notes at 90 bpm; 7/8 bars are 3.5 long
+        t.renderBlocks (2);
+        CHOC_EXPECT_NEAR (t.get (t.bpm), 90.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.timeSig), 708.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.tempoCount), 2.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.timeSigCount), 2.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.quarterNote), 6.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.barStart), 3.5, 0.0001);
+
+        auto info = t.player.getTransportInfo();
+        CHOC_EXPECT_EQ (info.tempo, 90.0f);
+        CHOC_EXPECT_EQ (info.numerator, 7u);
+        CHOC_EXPECT_EQ (info.denominator, 8u);
+        CHOC_EXPECT_NEAR (info.quarterNote, 6.0, 0.0001);
+        CHOC_EXPECT_NEAR (info.barStartQuarterNote, 3.5, 0.0001);
+    }
+
+    {
+        CHOC_TEST (ResetAndSampleRateChangeResendTheInfo)
+
+        TimelineTestPlayer t;
+
+        if (! t.load())
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        t.player.setTempo (100.0f);
+        t.player.setTimeSig (3, 4);
+        t.player.setTransportState (true, false);
+        t.renderBlocks (2);
+        CHOC_EXPECT_NEAR (t.get (t.tempoCount), 1.0, 0.0001);
+
+        // the device reporting its rate (again) sends everything again
+        t.callback.sampleRateChanged (TimelineTestPlayer::sampleRate);
+        t.renderBlocks (2);
+        CHOC_EXPECT_NEAR (t.get (t.tempoCount), 2.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.timeSigCount), 2.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.transportCount), 2.0, 0.0001);
+
+        // a reset patch forgets everything, so it's all sent again
+        RecordingPatchView view (t.player.patch);
+        CHOC_EXPECT_TRUE (t.player.handleClientMessage (view, choc::json::parse (R"({ "type": "req_reset" })")));
+        t.renderBlocks (2);
+        CHOC_EXPECT_NEAR (t.get (t.tempoCount), 1.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.timeSigCount), 1.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.transportCount), 1.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.bpm), 100.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.timeSig), 304.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 1.0, 0.0001);
+
+        // ...as does a rebuild, which carries on from the same position
+        auto frameBeforeRebuild = t.player.getTransportInfo().frame;
+        t.player.patch.rebuild (true);
+        CHOC_EXPECT_TRUE (t.player.patch.isPlayable());
+        t.renderBlocks();
+        CHOC_EXPECT_NEAR (t.get (t.tempoCount), 1.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.bpm), 100.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.timeSig), 304.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.transportFlags), 1.0, 0.0001);
+        CHOC_EXPECT_NEAR (t.get (t.frame), static_cast<double> (frameBeforeRebuild), 0.5);
+    }
+}
+
+//==============================================================================
+using audio_utils::SignalGeneratorSource;
+
+/// Renders a generator's output in blocks, returning its first channel, and checking
+/// that every other channel is the same. The reads happen under the allocation tracker
+/// that the PatchPlayer uses on its audio thread (which only checks in debug builds).
+static std::vector<float> renderGenerator (SignalGeneratorSource& source, uint32_t numFrames,
+                                           uint32_t numChannels = 1, bool* channelsMatch = nullptr,
+                                           bool* allocated = nullptr)
+{
+    constexpr uint32_t blockSize = 512;
+    choc::buffer::InterleavedBuffer<float> block (numChannels, blockSize);
+    std::vector<float> result;
+    result.reserve (numFrames);
+
+    if (channelsMatch != nullptr)
+        *channelsMatch = true;
+
+    for (uint32_t start = 0; start < numFrames; start += blockSize)
+    {
+        auto view = block.getView().getStart (std::min (blockSize, numFrames - start));
+
+        try
+        {
+            cmaj::ScopedAllocationTracker allocationTracker;
+            source.read (view);
+        }
+        catch (...)
+        {
+            if (allocated != nullptr)
+                *allocated = true;
+        }
+
+        for (uint32_t frame = 0; frame < view.getNumFrames(); ++frame)
+        {
+            result.push_back (view.getSample (0, frame));
+
+            for (uint32_t channel = 1; channel < numChannels; ++channel)
+                if (channelsMatch != nullptr && view.getSample (channel, frame) != view.getSample (0, frame))
+                    *channelsMatch = false;
+        }
+    }
+
+    return result;
+}
+
+static std::shared_ptr<SignalGeneratorSource> createGenerator (const char* settingsJSON, double sampleRate)
+{
+    SignalGeneratorSource::Settings settings;
+    settings.applyChanges (choc::json::parse (settingsJSON));
+    auto source = std::make_shared<SignalGeneratorSource> (settings);
+    source->prepare (sampleRate);
+    return source;
+}
+
+static double getRMS (const std::vector<float>& samples, size_t start, size_t end)
+{
+    double sum = 0;
+
+    for (auto i = start; i < end; ++i)
+        sum += static_cast<double> (samples[i]) * static_cast<double> (samples[i]);
+
+    return std::sqrt (sum / static_cast<double> (end - start));
+}
+
+/// The biggest difference between neighbouring samples in [start, end)
+static double getMaxStep (const std::vector<float>& samples, size_t start, size_t end)
+{
+    double maxStep = 0;
+
+    for (auto i = std::max (start, size_t (1)); i < end; ++i)
+        maxStep = std::max (maxStep, std::abs (static_cast<double> (samples[i]) - static_cast<double> (samples[i - 1])));
+
+    return maxStep;
+}
+
+/// Estimates the frequency of a sine from its rising zero crossings in [start, end)
+static double getZeroCrossingFrequency (const std::vector<float>& samples, size_t start, size_t end, double sampleRate)
+{
+    uint32_t numCrossings = 0;
+
+    for (auto i = std::max (start, size_t (1)); i < end; ++i)
+        if (samples[i - 1] < 0 && samples[i] >= 0)
+            ++numCrossings;
+
+    return numCrossings * sampleRate / static_cast<double> (end - start);
+}
+
+static void runSignalGeneratorTests (choc::test::TestProgress& progress)
+{
+    CHOC_CATEGORY (SignalGenerator);
+
+    constexpr double rate = 48000.0;
+    constexpr auto oneSecond = static_cast<uint32_t> (rate);
+    auto at = [&] (double seconds) { return static_cast<size_t> (seconds * rate); };
+
+    {
+        CHOC_TEST (Settings)
+
+        SignalGeneratorSource source;
+        CHOC_EXPECT_EQ (source.getName(), "generator");
+
+        auto defaults = source.getSettings().toValue();
+        CHOC_EXPECT_EQ (choc::json::toString (defaults),
+                        choc::json::toString (choc::json::parse (R"({ "type": "sine", "level": -12.0, "frequency": 440.0, "startFrequency": 20.0, "endFrequency": 20000.0, "sweepSeconds": 5.0, "impulseRate": 2.0 })")));
+
+        // partial changes are merged
+        source.applyChanges (choc::json::parse (R"({ "type": "sweep", "endFrequency": 5000 })"));
+        auto s = source.getSettings();
+        CHOC_EXPECT_TRUE (s.type == SignalGeneratorSource::SignalType::sweep);
+        CHOC_EXPECT_EQ (s.endFrequency, 5000.0);
+        CHOC_EXPECT_EQ (s.frequency, 440.0);
+        CHOC_EXPECT_EQ (s.level, -12.0);
+
+        // out-of-range values are clamped, and bad ones ignored
+        source.applyChanges (choc::json::parse (R"({ "type": "nonsense", "level": 6, "frequency": -5, "startFrequency": 1e7,
+                                                     "sweepSeconds": 0, "impulseRate": 100000, "endFrequency": "loud" })"));
+        s = source.getSettings();
+        CHOC_EXPECT_TRUE (s.type == SignalGeneratorSource::SignalType::sweep);
+        CHOC_EXPECT_EQ (s.level, 0.0);
+        CHOC_EXPECT_EQ (s.frequency, SignalGeneratorSource::Settings::minFrequency);
+        CHOC_EXPECT_EQ (s.startFrequency, SignalGeneratorSource::Settings::maxFrequency);
+        CHOC_EXPECT_EQ (s.endFrequency, 5000.0);
+        CHOC_EXPECT_EQ (s.sweepSeconds, SignalGeneratorSource::Settings::minSweepSeconds);
+        CHOC_EXPECT_EQ (s.impulseRate, SignalGeneratorSource::Settings::maxImpulseRate);
+
+        source.applyChanges (choc::json::parse (R"({ "level": -200 })"));
+        CHOC_EXPECT_EQ (source.getSettings().level, SignalGeneratorSource::Settings::minLevel);
+
+        // every type name round-trips
+        for (auto name : { "sine", "sweep", "white", "pink", "impulse", "silence" })
+        {
+            source.applyChanges (choc::json::create ("type", std::string (name)));
+            CHOC_EXPECT_EQ (source.getSettings().toValue()["type"].toString(), name);
+        }
+    }
+
+    {
+        CHOC_TEST (CreateOrUpdate)
+
+        auto first = SignalGeneratorSource::createOrUpdate ({}, choc::json::parse (R"({ "frequency": 1000 })"));
+        CHOC_EXPECT_EQ (first->getSettings().frequency, 1000.0);
+
+        // an existing generator is updated in place, keeping its other settings
+        auto second = SignalGeneratorSource::createOrUpdate (first, choc::json::parse (R"({ "level": -3 })"));
+        CHOC_EXPECT_TRUE (second == first);
+        CHOC_EXPECT_EQ (second->getSettings().frequency, 1000.0);
+        CHOC_EXPECT_EQ (second->getSettings().level, -3.0);
+
+        // any other source is replaced, with the changes merged into the base settings
+        SignalGeneratorSource::Settings base;
+        base.type = SignalGeneratorSource::SignalType::pink;
+        base.level = -30.0;
+
+        Patch::CustomAudioSourcePtr mute = std::make_shared<audio_utils::MuteAudioSource>();
+        auto third = SignalGeneratorSource::createOrUpdate (mute, choc::json::parse (R"({ "level": -6 })"), base);
+        CHOC_EXPECT_TRUE (third != nullptr && third.get() != static_cast<void*> (mute.get()));
+        CHOC_EXPECT_TRUE (third->getSettings().type == SignalGeneratorSource::SignalType::pink);
+        CHOC_EXPECT_EQ (third->getSettings().level, -6.0);
+    }
+
+    {
+        CHOC_TEST (SineFrequencyAndLevel)
+
+        auto source = createGenerator (R"({ "type": "sine", "frequency": 1000, "level": -6 })", rate);
+        bool channelsMatch = false, allocated = false;
+        auto out = renderGenerator (*source, oneSecond, 2, std::addressof (channelsMatch), std::addressof (allocated));
+
+        CHOC_EXPECT_TRUE (channelsMatch);
+        CHOC_EXPECT_FALSE (allocated);
+
+        // (it fades in when it starts, so skip the beginning)
+        CHOC_EXPECT_NEAR (getZeroCrossingFrequency (out, at (0.2), at (1.0), rate), 1000.0, 2.0);
+        CHOC_EXPECT_NEAR (getRMS (out, at (0.2), at (1.0)), std::pow (10.0, -6.0 / 20.0) / std::sqrt (2.0), 0.002);
+        CHOC_EXPECT_TRUE (std::abs (out.front()) < 0.01f);
+
+        // the double version renders the same signal
+        auto doubleSource = createGenerator (R"({ "type": "sine", "frequency": 1000, "level": -6 })", rate);
+        choc::buffer::InterleavedBuffer<double> doubleBlock (1, 512);
+        renderGenerator (*doubleSource, oneSecond - 512);
+        doubleSource->read (doubleBlock.getView());
+        CHOC_EXPECT_NEAR (doubleBlock.getSample (0, 100), static_cast<double> (out[oneSecond - 512 + 100]), 0.0001);
+
+        // a frequency change is smoothed towards the new frequency
+        source->applyChanges (choc::json::parse (R"({ "frequency": 250 })"));
+        out = renderGenerator (*source, oneSecond);
+        CHOC_EXPECT_NEAR (getZeroCrossingFrequency (out, at (0.2), at (1.0), rate), 250.0, 2.0);
+        CHOC_EXPECT_TRUE (getMaxStep (out, 0, at (0.2)) < 0.07);
+
+        // a frequency above Nyquist is held just below it (rather than aliasing: 30kHz would sound at 18kHz)
+        source->applyChanges (choc::json::parse (R"({ "frequency": 30000 })"));
+        out = renderGenerator (*source, oneSecond);
+        CHOC_EXPECT_NEAR (getZeroCrossingFrequency (out, at (0.5), at (1.0), rate), rate * 0.49, 50.0);
+    }
+
+    {
+        CHOC_TEST (LevelChangesAreSmoothed)
+
+        auto source = createGenerator (R"({ "type": "sine", "frequency": 50, "level": -40 })", rate);
+        renderGenerator (*source, at (0.3));
+
+        // jumping from -40 to 0 dB would be a step of up to ~1 without smoothing
+        source->applyChanges (choc::json::parse (R"({ "level": 0 })"));
+        auto out = renderGenerator (*source, oneSecond);
+
+        // a 50Hz sine at full level moves by up to 0.0065 per sample
+        CHOC_EXPECT_TRUE (getMaxStep (out, 0, out.size()) < 0.01);
+        CHOC_EXPECT_TRUE (std::abs (out[0]) < 0.03f);
+        CHOC_EXPECT_NEAR (getRMS (out, at (0.5), at (1.0)), 1.0 / std::sqrt (2.0), 0.002);
+    }
+
+    {
+        CHOC_TEST (TypeChangesCrossfade)
+
+        auto source = createGenerator (R"({ "type": "sine", "frequency": 50, "level": 0 })", rate);
+        auto before = renderGenerator (*source, at (0.505));   // (stops near the sine's peak)
+        CHOC_EXPECT_TRUE (std::abs (before.back()) > 0.9f);
+
+        source->applyChanges (choc::json::parse (R"({ "type": "silence" })"));
+        auto out = renderGenerator (*source, at (0.1));
+
+        CHOC_EXPECT_TRUE (std::abs (static_cast<double> (out[0]) - static_cast<double> (before.back())) < 0.01);
+        CHOC_EXPECT_TRUE (getMaxStep (out, 0, out.size()) < 0.01);
+
+        // once the crossfade has finished, silence is exactly zero
+        auto fadeEnd = at (SignalGeneratorSource::crossfadeSeconds) + 1;
+        CHOC_EXPECT_TRUE (std::all_of (out.begin() + static_cast<std::ptrdiff_t> (fadeEnd), out.end(), [] (float s) { return s == 0.0f; }));
+
+        // noise fades in rather than starting abruptly
+        source->applyChanges (choc::json::parse (R"({ "type": "sine" })"));
+        before = renderGenerator (*source, at (0.505));
+        source->applyChanges (choc::json::parse (R"({ "type": "white" })"));
+        out = renderGenerator (*source, at (0.1));
+        CHOC_EXPECT_TRUE (std::abs (static_cast<double> (out[0]) - static_cast<double> (before.back())) < 0.01);
+        CHOC_EXPECT_TRUE (getMaxStep (out, 0, 16) < 0.05);
+        CHOC_EXPECT_TRUE (getMaxStep (out, at (0.05), at (0.1)) > 0.5);
+    }
+
+    {
+        CHOC_TEST (Sweep)
+
+        auto source = createGenerator (R"({ "type": "sweep", "startFrequency": 100, "endFrequency": 10000, "sweepSeconds": 2, "level": 0 })", rate);
+        auto out = renderGenerator (*source, 3 * oneSecond);
+
+        // log sweep: f(t) = 100 * 100^(t / 2)
+        auto expectedAt = [] (double t) { return 100.0 * std::pow (100.0, t / 2.0); };
+        auto early = getZeroCrossingFrequency (out, at (0.1), at (0.3), rate);
+        auto middle = getZeroCrossingFrequency (out, at (0.95), at (1.05), rate);
+        auto late = getZeroCrossingFrequency (out, at (1.85), at (1.95), rate);
+        auto restarted = getZeroCrossingFrequency (out, at (2.1), at (2.3), rate);
+
+        CHOC_EXPECT_NEAR (early, expectedAt (0.2), 15.0);
+        CHOC_EXPECT_NEAR (middle, expectedAt (1.0), 50.0);
+        CHOC_EXPECT_NEAR (late, expectedAt (1.9), 300.0);
+        CHOC_EXPECT_NEAR (restarted, expectedAt (0.2), 15.0);
+
+        // the phase carries on across the restart, so no step is bigger than a 10kHz sine's
+        CHOC_EXPECT_TRUE (getMaxStep (out, at (1.99), at (2.01)) < 2.0 * std::sin (3.14159265 * 10000.0 / rate) + 0.01);
+        CHOC_EXPECT_TRUE (getMaxStep (out, at (2.0) + 5, at (2.0) + 200) < 0.05);
+    }
+
+    {
+        CHOC_TEST (WhiteAndPinkNoise)
+
+        auto white = renderGenerator (*createGenerator (R"({ "type": "white", "level": 0 })", rate), 2 * oneSecond);
+        auto pink = renderGenerator (*createGenerator (R"({ "type": "pink", "level": 0 })", rate), 2 * oneSecond);
+
+        auto whiteRMS = getRMS (white, at (0.2), at (2.0));
+        auto pinkRMS = getRMS (pink, at (0.2), at (2.0));
+
+        // uniform noise in [-1, 1] has an RMS of 1 / sqrt (3), and pink is normalised to match
+        CHOC_EXPECT_NEAR (whiteRMS, 1.0 / std::sqrt (3.0), 0.01);
+        CHOC_EXPECT_NEAR (20.0 * std::log10 (pinkRMS / whiteRMS), 0.0, 1.0);
+
+        auto countDistinct = [] (const std::vector<float>& v) { return std::set<float> (v.begin(), v.end()).size(); };
+        CHOC_EXPECT_TRUE (countDistinct (white) > 10000);
+        CHOC_EXPECT_TRUE (countDistinct (pink) > 10000);
+
+        // pink has more energy at low frequencies than high: compare a crude low-pass (the mean
+        // of 16 samples) with a crude high-pass (the difference between neighbours)
+        auto getLowToHighRatio = [&] (const std::vector<float>& v)
+        {
+            double low = 0, high = 0;
+
+            for (auto i = at (0.2); i + 16 < v.size(); ++i)
+            {
+                double mean = 0;
+
+                for (size_t j = 0; j < 16; ++j)
+                    mean += static_cast<double> (v[i + j]) / 16.0;
+
+                auto diff = static_cast<double> (v[i + 1]) - static_cast<double> (v[i]);
+                low += mean * mean;
+                high += diff * diff;
+            }
+
+            return low / high;
+        };
+
+        auto whiteRatio = getLowToHighRatio (white);
+        auto pinkRatio = getLowToHighRatio (pink);
+        CHOC_EXPECT_TRUE (pinkRatio > 1.0);
+        CHOC_EXPECT_TRUE (whiteRatio < 0.1);
+        CHOC_EXPECT_TRUE (pinkRatio > 20.0 * whiteRatio);
+    }
+
+    {
+        CHOC_TEST (ImpulseTrain)
+
+        auto source = createGenerator (R"({ "type": "impulse", "impulseRate": 10, "level": 0 })", rate);
+        auto out = renderGenerator (*source, 2 * oneSecond);
+
+        std::vector<size_t> impulses;
+
+        for (size_t i = 0; i < out.size(); ++i)
+            if (out[i] != 0.0f)
+                impulses.push_back (i);
+
+        CHOC_EXPECT_EQ (impulses.size(), size_t (20));
+        CHOC_EXPECT_TRUE (! impulses.empty() && impulses.front() == 0);
+
+        for (size_t i = 1; i < impulses.size(); ++i)
+            CHOC_EXPECT_NEAR (static_cast<double> (impulses[i] - impulses[i - 1]), rate / 10.0, 1.0);
+
+        CHOC_EXPECT_NEAR (out[impulses.back()], 1.0f, 0.001f);
+
+        // a rate that doesn't divide the sample rate still averages out correctly
+        source->applyChanges (choc::json::parse (R"({ "impulseRate": 7 })"));
+        out = renderGenerator (*source, 2 * oneSecond);
+        auto numImpulses = std::count_if (out.begin(), out.end(), [] (float s) { return s != 0.0f; });
+        CHOC_EXPECT_TRUE (numImpulses == 14 || numImpulses == 15);
+    }
+
+    {
+        CHOC_TEST (Silence)
+
+        bool allocated = false;
+        auto out = renderGenerator (*createGenerator (R"({ "type": "silence", "level": 0 })", rate), oneSecond, 2, nullptr, std::addressof (allocated));
+        CHOC_EXPECT_TRUE (std::all_of (out.begin(), out.end(), [] (float s) { return s == 0.0f; }));
+        CHOC_EXPECT_FALSE (allocated);
+    }
+
+    {
+        CHOC_TEST (ChangingSettingsDoesNotAllocateOnTheAudioThread)
+
+        auto source = createGenerator (R"({ "type": "sine" })", rate);
+        bool allocated = false;
+
+        for (auto change : { R"({ "type": "sweep" })", R"({ "type": "white", "level": -3 })", R"({ "type": "pink" })",
+                             R"({ "type": "impulse", "impulseRate": 50 })", R"({ "type": "silence" })", R"({ "type": "sine", "frequency": 80 })" })
+        {
+            source->applyChanges (choc::json::parse (change));
+            renderGenerator (*source, at (0.05), 2, nullptr, std::addressof (allocated));
+        }
+
+        // ...including a sample-rate change
+        source->prepare (96000.0);
+        renderGenerator (*source, at (0.05), 2, nullptr, std::addressof (allocated));
+        CHOC_EXPECT_FALSE (allocated);
+    }
+
+    {
+        CHOC_TEST (SampleRateChange)
+
+        auto source = createGenerator (R"({ "type": "sine", "frequency": 1000, "level": 0 })", 44100.0);
+        renderGenerator (*source, 44100);
+        source->prepare (96000.0);
+        auto out = renderGenerator (*source, 96000);
+        CHOC_EXPECT_NEAR (getZeroCrossingFrequency (out, 0, out.size(), 96000.0), 1000.0, 2.0);
+    }
+
+    {
+        CHOC_TEST (GeneratorAsPatchInputSurvivesRebuild)
+
+        Patch patch;
+        initTestPatch (patch);
+
+        auto inputID = EndpointID::create (std::string_view ("in"));
+        auto source = createGenerator (R"({ "type": "sine", "frequency": 1000, "level": 0 })", rate);
+        patch.setCustomAudioSourceForInput (inputID, source);
+
+        if (! loadTestPatch (patch, createBasicManifest(), passThroughPatchSource, 512, rate, 1, 1))
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        std::vector<float> inputBacking (512, 0.0f), outputBacking (512, 0.0f), output;
+        std::array<const float*, 1> inputBuffers { { inputBacking.data() } };
+        std::array<float*, 1> outputBuffers { { outputBacking.data() } };
+        const choc::audio::AudioMIDIBlockDispatcher::HandleMIDIMessageFn noMIDI = [] (auto&&...) {};
+
+        auto render = [&] (uint32_t numBlocks)
+        {
+            output.clear();
+
+            for (uint32_t i = 0; i < numBlocks; ++i)
+            {
+                auto inputs = choc::buffer::createChannelArrayView (inputBuffers.data(), 1u, 512u);
+                auto outputs = choc::buffer::createChannelArrayView (outputBuffers.data(), 1u, 512u);
+                patch.process ({ inputs, outputs, {}, noMIDI }, true);
+                output.insert (output.end(), outputBacking.begin(), outputBacking.end());
+            }
+        };
+
+        render (100);
+        CHOC_EXPECT_NEAR (getZeroCrossingFrequency (output, output.size() / 2, output.size(), rate), 1000.0, 5.0);
+        CHOC_EXPECT_NEAR (getRMS (output, output.size() / 2, output.size()), 1.0 / std::sqrt (2.0), 0.01);
+
+        // an in-place update and a rebuild keep the same source and its settings
+        source->applyChanges (choc::json::parse (R"({ "frequency": 500 })"));
+        patch.rebuild (true);
+        CHOC_EXPECT_TRUE (patch.isPlayable());
+        CHOC_EXPECT_TRUE (patch.getCustomAudioSourceForInput (inputID) == source);
+        CHOC_EXPECT_EQ (source->getSettings().frequency, 500.0);
+
+        render (100);
+        CHOC_EXPECT_NEAR (getZeroCrossingFrequency (output, output.size() / 2, output.size(), rate), 500.0, 5.0);
+        CHOC_EXPECT_NEAR (getRMS (output, output.size() / 2, output.size()), 1.0 / std::sqrt (2.0), 0.01);
+    }
+}
+
+//==============================================================================
 static void runPatchClientMessageTests (choc::test::TestProgress& progress)
 {
     CHOC_CATEGORY (PatchUtilities);
@@ -1650,6 +2557,331 @@ static void runPatchAsyncTests (choc::test::TestProgress& progress)
     }
 
     {
+        CHOC_TEST (EventListenersChangeWhileEventsAreDelivered)
+
+        // Output events reach the views on the message thread, while a client's own thread adds
+        // and removes its event listeners (as the server's does): the message thread must never
+        // see the list of listeners half-changed (this used to crash, reading a null monitor)
+        const auto eventSource = R"(
+            processor Test [[ main ]]
+            {
+                output stream float out;
+                output event float32 eventOut;
+
+                void main()
+                {
+                    loop
+                    {
+                        eventOut <- 1.0f;
+                        advance();
+                    }
+                }
+            }
+        )";
+
+        Patch patch;
+
+        if (! initAndLoadTestPatch (patch, eventSource, 16, 48000, 0, 1))
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        RecordingPatchView view (patch);
+        auto eventOut = EndpointID::create (std::string_view ("eventOut"));
+        std::atomic<bool> finished { false };
+
+        std::thread audioThread ([&]
+        {
+            std::array<float, 16> backing {};
+            std::array<float*, 1> buffers { { backing.data() } };
+
+            while (! finished)
+            {
+                patch.process (buffers.data(), 16, [] (auto&&...) {});
+                std::this_thread::sleep_for (std::chrono::milliseconds (1));
+            }
+        });
+
+        std::thread clientThread ([&]
+        {
+            for (uint32_t i = 0; ! finished; ++i)
+            {
+                auto replyType = "events" + std::to_string (i % 8);
+
+                if (! patch.stopEndpointData (view, eventOut, replyType))
+                    patch.startEndpointData (view, eventOut, replyType, 0, false);
+            }
+        });
+
+        runMessageLoopUntil ([] { return false; }, 1500);
+        finished = true;
+        audioThread.join();
+        clientThread.join();
+        runMessageLoopUntil ([] { return false; }, 200);
+
+        size_t numEvents = 0;
+
+        for (int i = 0; i < 8; ++i)
+            numEvents += view.countMessagesOfType ("events" + std::to_string (i));
+
+        CHOC_EXPECT_TRUE (numEvents > 0);
+    }
+
+    {
+        CHOC_TEST (AudioDataMessagesCarryTheirFrame)
+
+        // (outputs the index of each frame it renders, so a chunk's data says where it came from)
+        const auto rampSource = R"(
+            processor Test [[ main ]]
+            {
+                output stream float32 out;
+                float32 n;
+                void main() { loop { out <- n; n += 1.0f; advance(); } }
+            }
+        )";
+
+        Patch patch;
+
+        if (! initAndLoadTestPatch (patch, rampSource, 512, 48000, 0, 1))
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        RecordingPatchView view (patch);
+        auto out = EndpointID::create (std::string_view ("out"));
+        uint64_t framesRendered = 0;
+
+        // renders in blocks whose sizes don't divide any of the granularities, including one
+        // that's longer than the performer's maximum block, so that it gets split up
+        const auto render = [&] (uint32_t totalFrames)
+        {
+            static constexpr std::array<uint32_t, 4> blockSizes { 100, 37, 700, 1 };
+            std::vector<float> samples (1024);
+            std::array<float*, 1> buffers { { samples.data() } };
+
+            for (size_t i = 0; totalFrames != 0; ++i)
+            {
+                auto numFrames = std::min (totalFrames, blockSizes[i % blockSizes.size()]);
+                patch.process (buffers.data(), numFrames, [] (auto&&...) {});
+                totalFrames -= numFrames;
+                framesRendered += numFrames;
+            }
+        };
+
+        const auto getMessages = [&] (std::string_view type)
+        {
+            std::vector<choc::value::Value> result;
+
+            for (auto& m : view.messages)
+                if (m["type"].toString() == type)
+                    result.push_back (choc::value::Value (m["message"]));
+
+            return result;
+        };
+
+        // checks that each chunk starts where the last one ended, beginning at firstFrame, and
+        // that its data is the patch's output for the frames it says (offset by rampStart)
+        const auto checkChunks = [&] (std::string_view type, uint32_t granularity, uint64_t firstFrame,
+                                      uint64_t endFrame, uint64_t rampStart, bool fullData)
+        {
+            auto messages = getMessages (type);
+            CHOC_EXPECT_EQ (messages.size(), static_cast<size_t> ((endFrame - firstFrame) / granularity));
+            auto expectedFrame = firstFrame;
+
+            for (auto& m : messages)
+            {
+                CHOC_EXPECT_TRUE (m["frame"].isFloat64());
+                auto frame = static_cast<uint64_t> (m["frame"].getWithDefault<double> (-1.0));
+                CHOC_EXPECT_EQ (frame, expectedFrame);
+
+                if (fullData)
+                {
+                    auto data = m["data"];
+                    CHOC_EXPECT_EQ (data.size(), 1u);
+                    CHOC_EXPECT_EQ (data[0].size(), granularity);
+                    bool dataMatchesFrame = true;
+
+                    for (uint32_t i = 0; i < data[0].size(); ++i)
+                        if (static_cast<uint64_t> (data[0][i].getWithDefault<float> (-1.0f)) + rampStart != frame + i)
+                            dataMatchesFrame = false;
+
+                    CHOC_EXPECT_TRUE (dataMatchesFrame);
+                }
+                else
+                {
+                    CHOC_EXPECT_EQ (static_cast<uint64_t> (m["min"][0].getWithDefault<float> (-1.0f)) + rampStart, frame);
+                    CHOC_EXPECT_EQ (static_cast<uint64_t> (m["max"][0].getWithDefault<float> (-1.0f)) + rampStart, frame + granularity - 1);
+                }
+
+                expectedFrame = frame + granularity;
+            }
+        };
+
+        const auto dispatch = [&] (size_t expectedTotal)
+        {
+            return runMessageLoopUntil ([&] { return view.messages.size() >= expectedTotal; });
+        };
+
+        const auto chunksBetween = [] (uint64_t start, uint64_t end, uint32_t granularity)
+        {
+            return static_cast<size_t> ((end - start) / granularity);
+        };
+
+        // the frames count from the start of the patch's rendering, not from when a listener is added
+        render (150);
+        auto firstListenerStart = framesRendered;
+        CHOC_EXPECT_TRUE (patch.startEndpointData (view, out, "wide", 256, true));
+        CHOC_EXPECT_TRUE (patch.startEndpointData (view, out, "narrow", 100, true));
+        CHOC_EXPECT_TRUE (patch.startEndpointData (view, out, "levels", 64, false));
+
+        render (1000);
+        auto lateListenerStart = framesRendered;
+        CHOC_EXPECT_TRUE (patch.startEndpointData (view, out, "late", 64, true));
+
+        render (2000);
+        CHOC_EXPECT_TRUE (dispatch (chunksBetween (firstListenerStart, framesRendered, 256)
+                                     + chunksBetween (firstListenerStart, framesRendered, 100)
+                                     + chunksBetween (firstListenerStart, framesRendered, 64)
+                                     + chunksBetween (lateListenerStart, framesRendered, 64)));
+
+        checkChunks ("wide",   256, firstListenerStart, framesRendered, 0, true);
+        checkChunks ("narrow", 100, firstListenerStart, framesRendered, 0, true);
+        checkChunks ("levels",  64, firstListenerStart, framesRendered, 0, false);
+        checkChunks ("late",    64, lateListenerStart,  framesRendered, 0, true);
+
+        CHOC_EXPECT_TRUE (patch.stopEndpointData (view, out, "narrow"));
+        CHOC_EXPECT_TRUE (patch.stopEndpointData (view, out, "levels"));
+        CHOC_EXPECT_TRUE (patch.stopEndpointData (view, out, "late"));
+
+        // a reset keeps counting (the patch's own output restarts from zero, though)
+        view.clearMessages();
+        patch.resetToInitialState();
+        auto resetStart = framesRendered;
+        CHOC_EXPECT_TRUE (patch.startEndpointData (view, out, "wide", 256, true));
+        render (600);
+        CHOC_EXPECT_TRUE (dispatch (chunksBetween (resetStart, framesRendered, 256)));
+        checkChunks ("wide", 256, resetStart, framesRendered, resetStart, true);
+
+        // a rebuild re-creates the listeners, and its frames carry on from the last build's
+        view.clearMessages();
+        auto rebuildStart = framesRendered;
+        CHOC_EXPECT_TRUE (loadTestPatch (patch, createBasicManifest(), rampSource, 512, 48000, 0, 1));
+        render (600);
+        CHOC_EXPECT_TRUE (dispatch (chunksBetween (rebuildStart, framesRendered, 256)));
+        checkChunks ("wide", 256, rebuildStart, framesRendered, rebuildStart, true);
+    }
+
+    {
+        CHOC_TEST (EndpointMonitorsSurviveRebuilds)
+
+        const auto createSource = [] (bool withEventInput)
+        {
+            return std::string (R"(
+                processor Test [[ main ]]
+                {
+                    input stream float32 in;
+                    output stream float32 out;
+                    )") + (withEventInput ? "input event float32 rawEvent;" : "") + R"(
+
+                    void main() { loop { out <- in; advance(); } }
+                }
+            )";
+        };
+
+        Patch patch;
+        initTestPatch (patch);
+
+        cmaj::Patch::PlaybackParams params;
+        params.blockSize = 64;
+        params.sampleRate = 48000;
+        params.numInputChannels = 1;
+        params.numOutputChannels = 1;
+        patch.setPlaybackParams (params);
+
+        const auto load = [&] (const std::string& source)
+        {
+            return patch.loadPatch ({ createManifestWithInMemoryFiles (createBasicManifest(), {{ "Test.cmajor", source }}), {} }, true);
+        };
+
+        if (! load (createSource (true)))
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        RecordingPatchView view (patch);
+        auto out = EndpointID::create (std::string_view ("out"));
+        auto rawEvent = EndpointID::create (std::string_view ("rawEvent"));
+
+        // processes one granularity-sized block (sending an event first, if there's an input for
+        // it), and returns how many "levels", "levels2" and "events" messages arrive
+        const auto countMessages = [&] () -> std::array<size_t, 3>
+        {
+            view.clearMessages();
+            patch.sendEventOrValueToPatch (rawEvent, choc::value::createFloat32 (0.5f), -1, 0);
+
+            std::array<float, 64> samples {};
+            std::array<float*, 1> buffers { { samples.data() } };
+            patch.process (buffers.data(), 64, [] (auto&&...) {});
+
+            runMessageLoopUntil ([] { return false; }, 200);
+            return { view.countMessagesOfType ("levels"), view.countMessagesOfType ("levels2"), view.countMessagesOfType ("events") };
+        };
+
+        using Counts = std::array<size_t, 3>;
+        auto firstBuild = patch.getBuildNumber();
+
+        CHOC_EXPECT_TRUE (patch.startEndpointData (view, out, "levels", 64, false));
+        CHOC_EXPECT_TRUE (patch.startEndpointData (view, rawEvent, "events", 0, false));
+        CHOC_EXPECT_TRUE (countMessages() == (Counts { 1, 0, 1 }));
+
+        // asking again replaces the monitor rather than adding another one
+        CHOC_EXPECT_TRUE (patch.startEndpointData (view, out, "levels", 64, false));
+        CHOC_EXPECT_TRUE (countMessages() == (Counts { 1, 0, 1 }));
+
+        // a rebuild keeps them
+        CHOC_EXPECT_TRUE (load (createSource (true)));
+        CHOC_EXPECT_EQ (patch.getBuildNumber(), firstBuild + 1);
+        CHOC_EXPECT_TRUE (countMessages() == (Counts { 1, 0, 1 }));
+
+        // so does a failed build in between, and one asked for while it has failed arrives
+        // with the next good build
+        CHOC_EXPECT_FALSE (load ("this won't compile"));
+        CHOC_EXPECT_EQ (patch.getBuildNumber(), firstBuild + 2);
+        CHOC_EXPECT_TRUE (patch.startEndpointData (view, out, "levels2", 64, false));
+        CHOC_EXPECT_TRUE (load (createSource (true)));
+        CHOC_EXPECT_TRUE (countMessages() == (Counts { 1, 1, 1 }));
+
+        // one that's removed while the build has failed doesn't come back
+        CHOC_EXPECT_FALSE (load ("this won't compile"));
+        patch.stopEndpointData (view, out, "levels2");
+        CHOC_EXPECT_TRUE (load (createSource (true)));
+        CHOC_EXPECT_TRUE (countMessages() == (Counts { 1, 0, 1 }));
+
+        // a build without its endpoint drops it, and it stays dropped when the endpoint returns
+        CHOC_EXPECT_TRUE (load (createSource (false)));
+        CHOC_EXPECT_TRUE (countMessages() == (Counts { 1, 0, 0 }));
+        CHOC_EXPECT_TRUE (load (createSource (true)));
+        CHOC_EXPECT_TRUE (countMessages() == (Counts { 1, 0, 0 }));
+
+        // a view that's gone doesn't leave any behind
+        {
+            RecordingPatchView temporaryView (patch);
+            CHOC_EXPECT_TRUE (patch.startEndpointData (temporaryView, out, "levels", 64, false));
+        }
+
+        CHOC_EXPECT_TRUE (load (createSource (true)));
+        CHOC_EXPECT_TRUE (countMessages() == (Counts { 1, 0, 0 }));
+
+        // unloading removes them all
+        patch.unload();
+        CHOC_EXPECT_TRUE (load (createSource (true)));
+        CHOC_EXPECT_TRUE (countMessages() == (Counts { 0, 0, 0 }));
+    }
+
+    {
         CHOC_TEST (ParameterChangesDeliveredToViews)
 
         Patch patch;
@@ -1715,6 +2947,8 @@ static void runPatchAsyncTests (choc::test::TestProgress& progress)
 
         auto cpuInfo = view.findLastMessageOfType ("cpu_info");
         CHOC_EXPECT_TRUE (cpuInfo.isObject() && cpuInfo.hasObjectMember ("level"));
+        CHOC_EXPECT_TRUE (cpuInfo.hasObjectMember ("peak"));
+        CHOC_EXPECT_TRUE (cpuInfo["peak"].getWithDefault<float> (-1.0f) >= 0.0f);
 
         // setting the rate to zero should stop the callbacks
         patch.setCPUInfoMonitorChunkSize (0);
@@ -1723,6 +2957,56 @@ static void runPatchAsyncTests (choc::test::TestProgress& progress)
 
         runMessageLoopUntil ([] { return false; }, 200);
         CHOC_EXPECT_EQ (view.countMessagesOfType ("cpu_info"), 0u);
+    }
+
+    {
+        CHOC_TEST (CPUMonitorPeak)
+
+        // 480 frames at 48kHz gives each block a 10ms budget
+        CPUMonitor monitor;
+        monitor.reset (48000.0);
+        monitor.framesPerCallback = 480;
+
+        std::vector<std::pair<float, float>> reports;
+        monitor.handleCPULevelAndPeak = [&] (float level, float peak) { reports.push_back ({ level, peak }); };
+
+        // a block that takes twice its budget: the peak shows the spike, the smoothed level doesn't
+        monitor.startProcess();
+        std::this_thread::sleep_for (std::chrono::milliseconds (20));
+        monitor.endProcess (480);
+
+        CHOC_EXPECT_EQ (reports.size(), size_t (1));
+
+        if (reports.size() == 1)
+        {
+            CHOC_EXPECT_TRUE (reports[0].second >= 1.9f);
+            CHOC_EXPECT_TRUE (reports[0].second >= reports[0].first);
+            CHOC_EXPECT_TRUE (reports[0].first < 0.5f);
+        }
+
+        // the peak is reset after each report, so a fast block reports a small peak
+        // (the level is still decaying from the spike, so it changes enough to be sent)
+        monitor.startProcess();
+        monitor.endProcess (480);
+
+        CHOC_EXPECT_EQ (reports.size(), size_t (2));
+
+        if (reports.size() == 2)
+        {
+            CHOC_EXPECT_TRUE (reports[1].second < 0.5f);
+            CHOC_EXPECT_TRUE (reports[1].first > 0.0f);
+        }
+
+        // with only the older callback set, it still gets the level
+        CPUMonitor oldStyle;
+        oldStyle.reset (48000.0);
+        oldStyle.framesPerCallback = 480;
+        float lastLevel = -1.0f;
+        oldStyle.handleCPULevel = [&] (float level) { lastLevel = level; };
+        oldStyle.startProcess();
+        std::this_thread::sleep_for (std::chrono::milliseconds (5));
+        oldStyle.endProcess (480);
+        CHOC_EXPECT_TRUE (lastLevel > 0.0f);
     }
 
     {
@@ -2856,6 +4140,8 @@ static bool runUnitTests (choc::test::TestProgress& progress)
     runPatchViewTests (progress);
     runPatchParameterTests (progress);
     runPatchProcessingTests (progress);
+    runPatchPlayerTransportTests (progress);
+    runSignalGeneratorTests (progress);
     runPatchClientMessageTests (progress);
     runPatchAsyncTests (progress);
 

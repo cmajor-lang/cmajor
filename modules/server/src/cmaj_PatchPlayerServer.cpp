@@ -43,17 +43,21 @@ struct PatchPlayerServer
     {
         checkForSinglePatchMode();
 
+        setAudioDevicePropsFn = [this] (const choc::value::ValueView& v) { setAudioDeviceProperties (v); };
+        broadcastAudioDevicePropsFn = [this] { broadcastAudioDeviceProperties(); };
+        audioDeviceOptionsChangedFn = [this] { handleAudioDeviceOptionsChanged(); };
+
+        // The device is opened before any client can connect: opening it can take a couple
+        // of seconds (e.g. when CoreAudio has to switch the device to the requested rate),
+        // and a client that asked for the device properties in the meantime would be told
+        // there's no device, with no later update to correct it
+        openAudioPlayer (audioOptions);
+
         if (httpServer.open (serverOptions.address, serverOptions.port, 0,
                              [this] { return std::make_unique<ClientRequestHandler> (*this); },
                              [this] (const std::string& error) { handleServerError (error); }))
         {
-            setAudioDevicePropsFn = [this] (const choc::value::ValueView& v) { setAudioDeviceProperties (v); };
-
             writeToConsole ("\nCmajor server active: " + httpServer.getHTTPAddress() + "\n\n");
-
-            audioPlayer = createAudioMIDIPlayer (audioOptions);
-            audioPlayer->options.midiClientName = midiClientName;
-            refreshAllSessionAudioDevices();
         }
         else
         {
@@ -64,6 +68,8 @@ struct PatchPlayerServer
     ~PatchPlayerServer()
     {
         setAudioDevicePropsFn.reset();
+        broadcastAudioDevicePropsFn.reset();
+        audioDeviceOptionsChangedFn.reset();
         httpServer.close();
     }
 
@@ -147,6 +153,54 @@ struct PatchPlayerServer
         choc::messageloop::postMessage ([f = setAudioDevicePropsFn, o = std::move (options)] { f (o); });
     }
 
+    /// Sends the device properties to every client, from the message thread (which is the
+    /// only one that replaces the audio player). This can be called from any thread.
+    void postAudioDevicePropertiesBroadcast()
+    {
+        choc::messageloop::postMessage ([f = broadcastAudioDevicePropsFn] { f(); });
+    }
+
+    /// Creates the audio player (falling back to the default device), and points every
+    /// session's patch player at it. The device itself can change its options, e.g. when
+    /// another app changes a CoreAudio device's rate: see handleAudioDeviceOptionsChanged().
+    void openAudioPlayer (const choc::audio::io::AudioDeviceOptions& options)
+    {
+        audioPlayer = createAudioMIDIPlayer (options);
+
+        if (audioPlayer == nullptr)
+            audioPlayer = createAudioMIDIPlayer ({});
+
+        if (audioPlayer != nullptr)
+        {
+            audioPlayer->options.midiClientName = midiClientName;
+            // (the player is shared with the patch players, so this mustn't refer to the server)
+            audioPlayer->deviceOptionsChanged = [f = audioDeviceOptionsChangedFn]
+            {
+                choc::messageloop::postMessage ([f] { f(); });
+            };
+        }
+
+        refreshAllSessionAudioDevices();
+    }
+
+    /// Called on the message thread after the device changed its own options (its rate).
+    /// AudioMIDIPlayer::updateSampleRate only tells the patch players that are registered
+    /// with it, i.e. those that are playing a patch, so a stopped or empty player is brought
+    /// up to date here (which rebuilds a stopped patch at the new rate, and does nothing to
+    /// one that has already heard about it). Then every client is told.
+    void handleAudioDeviceOptionsChanged()
+    {
+        {
+            std::scoped_lock sl (activeSessionLock);
+
+            for (auto& s : activeSessions)
+                if (s.second->patchPlayer != nullptr)
+                    s.second->patchPlayer->updatePlaybackParams (false);
+        }
+
+        broadcastAudioDeviceProperties();
+    }
+
     void setAudioDeviceProperties (const choc::value::ValueView& options)
     {
         if (audioPlayer == nullptr || ! options.isObject())
@@ -170,12 +224,7 @@ struct PatchPlayerServer
         {
             audioPlayer = nullptr;
             refreshAllSessionAudioDevices();
-            audioPlayer = createAudioMIDIPlayer (newOptions);
-
-            if (audioPlayer == nullptr)
-                audioPlayer = createAudioMIDIPlayer ({});
-
-            refreshAllSessionAudioDevices();
+            openAudioPlayer (newOptions);
             broadcastAudioDeviceProperties();
         }
     }
@@ -223,7 +272,10 @@ struct PatchPlayerServer
             if (newSession != currentSession)
             {
                 if (currentSession != nullptr)
+                {
+                    currentSession->removeTransportInfoRequest (*this);
                     currentSession->activeClientList.remove (*this);
+                }
 
                 currentSession = newSession;
 
@@ -345,15 +397,16 @@ struct PatchPlayerServer
             catchAllErrors (messageList, [&]
             {
                 if (currentSession != nullptr)
-                    if (currentSession->handleMessageFromClient (message))
+                    if (currentSession->handleMessageFromClient (message, this))
                         return;
 
                 if (auto typeMember = message["type"]; typeMember.isString())
                 {
                     auto type = typeMember.getString();
 
+                    // (handled on the message thread, which owns the audio player)
                     if (type == "req_audio_device_props")
-                        owner.broadcastAudioDeviceProperties();
+                        owner.postAudioDevicePropertiesBroadcast();
                     else if (type == "set_audio_device_props")
                         owner.sendAudioDeviceProperties (choc::value::Value (message["properties"]));
                 }
@@ -438,6 +491,8 @@ struct PatchPlayerServer
 
         ~Session()
         {
+            // (no lock: there are no clients left to change it by now)
+            transportInfoTimer.clear();
             pingTimer.clear();
             codeGenThread.stop();
             patchFileScanThread.stop();
@@ -456,7 +511,8 @@ struct PatchPlayerServer
             return fileCache.handleMessageFromClientConcurrently (message);
         }
 
-        bool handleMessageFromClient (const choc::value::ValueView& message)
+        /// The sender is only used to tell the clients' transport info rate requests apart.
+        bool handleMessageFromClient (const choc::value::ValueView& message, const ClientRequestHandler* sender = nullptr)
         {
             createPlayer();
 
@@ -505,6 +561,13 @@ struct PatchPlayerServer
                         return true;
                     }
 
+                    if (type == "req_graph")
+                    {
+                        enableGraphStructure();
+                        sendGraphStructure (message["replyType"].toString());
+                        return true;
+                    }
+
                     if (type == "set_audio_playback_active")
                     {
                         setAudioPlaybackActive (message["active"].getWithDefault<bool> (true));
@@ -517,9 +580,33 @@ struct PatchPlayerServer
                         return true;
                     }
 
+                    if (type == "req_audio_input_generator")
+                    {
+                        sendAudioInputGeneratorSettings (cmaj::EndpointID::create (message["endpoint"].toString()));
+                        return true;
+                    }
+
                     if (type == "set_custom_audio_input")
                     {
                         setAudioEndpointSource (cmaj::EndpointID::create (message["endpoint"].toString()), message);
+                        return true;
+                    }
+
+                    if (type == "set_transport")
+                    {
+                        setTransport (message);
+                        return true;
+                    }
+
+                    if (type == "req_transport_state")
+                    {
+                        sendTransportState();
+                        return true;
+                    }
+
+                    if (type == "set_transport_info_rate")
+                    {
+                        setTransportInfoRate (sender, getFiniteNumber (message["intervalMs"]).value_or (0));
                         return true;
                     }
                 }
@@ -544,8 +631,28 @@ struct PatchPlayerServer
                                                      "message", message));
         }
 
+        /// A path that starts with a version folder, e.g. "/~v3/ui/view.js", is served as if it
+        /// were "/ui/view.js". The panel asks for its patch's files under a new one after they
+        /// change, so the browser loads fresh copies, including of the modules that they import
+        /// by relative paths.
+        static std::string_view removeVersionFolder (std::string_view path)
+        {
+            if (choc::text::startsWith (path, "/~v"))
+            {
+                auto end = path.find ('/', 3);
+
+                if (end != std::string_view::npos && end > 3
+                     && std::all_of (path.begin() + 3, path.begin() + static_cast<std::ptrdiff_t> (end), [] (char c) { return c >= '0' && c <= '9'; }))
+                    return path.substr (end);
+            }
+
+            return path;
+        }
+
         choc::network::HTTPContent serveHTTPRequest (std::string_view path)
         {
+            path = removeVersionFolder (path);
+
             if (path == "/cmaj-patch-chooser.html")  return choc::network::HTTPContent::forHTML (createPatchChooserPage());
             if (path == "/cmaj-patch-runner.html")   return choc::network::HTTPContent::forHTML (createPatchRunnerPage());
 
@@ -577,7 +684,14 @@ struct PatchPlayerServer
                     status.setMember ("manifest", manifest->manifest);
                     status.setMember ("details", patchPlayer->patch.getProgramDetails());
                     status.setMember ("codeGenTargets", owner.getAvailableCodeGenTargets());
+
+                    // (the graph itself is fetched with req_graph, when this changes)
+                    if (auto graphVersion = patchPlayer->patch.getGraphStructureVersion(); ! graphVersion.empty())
+                        status.setMember ("graphVersion", graphVersion);
                 }
+
+                // (goes up with every build, good or bad)
+                status.setMember ("buildNumber", static_cast<int64_t> (patchPlayer->patch.getBuildNumber()));
 
                 buildLog = patchPlayer->patch.getLastBuildLog();
             }
@@ -643,18 +757,27 @@ struct PatchPlayerServer
         {
             if (patchPlayer != nullptr)
             {
+                auto currentSource = patchPlayer->patch.getCustomAudioSourceForInput (endpointID);
                 Patch::CustomAudioSourcePtr source;
 
                 if (auto filename = message["file"]; filename.isString())
                     source = audio_utils::LoopingFilePlayerSource::createFromCachedFile (fileCache, filename.toString());
+                else if (auto generator = message["generator"]; generator.isObject())
+                    source = audio_utils::SignalGeneratorSource::createOrUpdate (currentSource, generator,
+                                                                                 getGeneratorSettings (endpointID));
                 else if (message["mute"].getWithDefault<bool> (false))
                     source = std::make_shared<audio_utils::MuteAudioSource>();
 
-                patchPlayer->patch.setCustomAudioSourceForInput (endpointID, source);
+                // (a generator that's already playing is updated in place, so there's no gap)
+                if (source != currentSource)
+                    patchPlayer->patch.setCustomAudioSourceForInput (endpointID, source);
+
                 sendAudioInputModeStatus (endpointID);
             }
         }
 
+        /// Sends `audio_input_mode_<endpoint>`, and if the input is playing a generator, its
+        /// settings, as `audio_input_generator_<endpoint>`.
         void sendAudioInputModeStatus (const cmaj::EndpointID& endpointID)
         {
             if (patchPlayer != nullptr)
@@ -669,13 +792,100 @@ struct PatchPlayerServer
                 }
 
                 sendMessageToClient ("audio_input_mode_" + endpointID.toString(), choc::value::createString (mode));
+
+                if (mode == "generator")
+                    sendAudioInputGeneratorSettings (endpointID);
             }
+        }
+
+        /// Sends `audio_input_generator_<endpoint>` with the settings of the endpoint's generator,
+        /// or if it isn't playing one, those of the last generator it played (or the defaults).
+        void sendAudioInputGeneratorSettings (const cmaj::EndpointID& endpointID)
+        {
+            sendMessageToClient ("audio_input_generator_" + endpointID.toString(),
+                                 getGeneratorSettings (endpointID).toValue());
+        }
+
+        /// Returns the settings of the endpoint's generator, or if it isn't playing one, those of
+        /// the last generator it played in this session (or the defaults). The panel can go back
+        /// to a generator with `generator: {}` and get the settings that it had before.
+        audio_utils::SignalGeneratorSource::Settings getGeneratorSettings (const cmaj::EndpointID& endpointID)
+        {
+            auto key = endpointID.toString();
+
+            if (patchPlayer != nullptr)
+            {
+                if (auto generator = std::dynamic_pointer_cast<audio_utils::SignalGeneratorSource> (patchPlayer->patch.getCustomAudioSourceForInput (endpointID)))
+                {
+                    auto settings = generator->getSettings();
+                    lastGeneratorSettings[key] = settings;
+                    return settings;
+                }
+            }
+
+            if (auto last = lastGeneratorSettings.find (key); last != lastGeneratorSettings.end())
+                return last->second;
+
+            return {};
+        }
+
+        /// Replies with the graph structure JSON that was made by the current build (see
+        /// Patch::generateGraphStructure), its version, which matches the status's graphVersion,
+        /// and the manifest file of the patch it's for (as the patch may have changed since the
+        /// client asked). They're all empty if there's no successful build.
+        void sendGraphStructure (const std::string& replyType)
+        {
+            std::string graph, version, manifestFile;
+
+            if (patchPlayer != nullptr)
+            {
+                graph = patchPlayer->patch.getGraphStructure();
+                version = patchPlayer->patch.getGraphStructureVersion();
+
+                if (! graph.empty())
+                    manifestFile = patchPlayer->patch.getManifestFile();
+            }
+
+            sendMessageToClient (replyType, choc::json::create ("graph", graph,
+                                                                "version", version,
+                                                                "manifestFile", manifestFile));
+        }
+
+        /// Each build only makes the graph structure (which costs a second load of the program)
+        /// once a client has shown that it wants it, by asking for a graph. From then on, every
+        /// build of this session makes it, and the status has its graphVersion. (Until then, the
+        /// graph comes from a separate code generation build, as with an older server.)
+        void enableGraphStructure()
+        {
+            wantsGraphStructure = true;
+
+            if (patchPlayer != nullptr)
+                patchPlayer->patch.generateGraphStructure = true;
         }
 
         void requestCodeGen (const std::string& type,
                              const std::string& replyType,
                              const choc::value::ValueView& options)
         {
+            if (type == "graph")
+                enableGraphStructure();
+
+            // the current build has already made the graph (with no options), so there's no
+            // need to build it again
+            bool hasOptions = options.isObject() && options.size() > 0;
+
+            if (type == "graph" && patchPlayer != nullptr && ! hasOptions)
+            {
+                if (auto graph = patchPlayer->patch.getGraphStructure(); ! graph.empty())
+                {
+                    sendMessageToClient (replyType,
+                                         choc::json::create ("code", graph,
+                                                             "mainClass", std::string(),
+                                                             "messages", choc::value::createEmptyArray()));
+                    return;
+                }
+            }
+
             if (patchPlayer != nullptr && patchPlayer->patch.isLoaded())
             {
                 if (auto manifest = patchPlayer->patch.getManifest())
@@ -723,10 +933,13 @@ struct PatchPlayerServer
             if (patchPlayer == nullptr)
             {
                 patchPlayer = std::make_unique<cmaj::PatchPlayer> (owner.engineOptions, owner.buildSettings, true);
+                patchPlayer->patch.generateGraphStructure = wantsGraphStructure.load();
 
-                patchPlayer->setTempo (120.0f);
-                patchPlayer->setTimeSig (4, 4);
-                patchPlayer->setTransportState (true, false);
+                {
+                    // (the session's transport settings outlive any player)
+                    std::scoped_lock sl (transportLock);
+                    applyTransportSettings (*patchPlayer);
+                }
 
                 patchPlayer->setAudioMIDIPlayer (owner.audioPlayer);
                 patchPlayer->startPlayback();
@@ -803,16 +1016,238 @@ struct PatchPlayerServer
             sendStatus();
         }
 
+        //==============================================================================
+        /// The session owns the transport: createPlayer() applies these settings to each new
+        /// player, so they survive it. (The position belongs to the player.)
+        struct TransportSettings
+        {
+            float tempo = 120.0f;
+            uint32_t numerator = 4, denominator = 4;
+            bool playing = true, recording = false, looping = false;
+        };
+
+        static constexpr double minTempo = 1.0, maxTempo = 999.0;
+        static constexpr uint32_t maxTimeSigNumerator = 64, maxTimeSigDenominator = 32;
+        static constexpr uint32_t minTransportInfoIntervalMs = 30, maxTransportInfoIntervalMs = 2000,
+                                  transportInfoTimerTickMs = 10;
+
+        static std::optional<double> getFiniteNumber (const choc::value::ValueView& v)
+        {
+            if (v.isInt() || v.isFloat())
+                if (auto d = v.getWithDefault<double> (0); std::isfinite (d))
+                    return d;
+
+            return {};
+        }
+
+        /// Returns the largest power of two between 1 and maxTimeSigDenominator that isn't
+        /// more than the given value (rounded).
+        static uint32_t getTimeSigDenominator (double requested)
+        {
+            auto limit = static_cast<uint32_t> (std::clamp (std::round (requested), 1.0, static_cast<double> (maxTimeSigDenominator)));
+            uint32_t denominator = 1;
+
+            while (denominator * 2 <= limit)
+                denominator *= 2;
+
+            return denominator;
+        }
+
+        // (call with transportLock held)
+        void applyTransportSettings (cmaj::PatchPlayer& player)
+        {
+            player.setTempo (transportSettings.tempo);
+            player.setTimeSig (transportSettings.numerator, transportSettings.denominator);
+            player.setTransportState (transportSettings.playing, transportSettings.recording, transportSettings.looping);
+        }
+
+        /// Handles `set_transport`, which changes only the fields that it includes, and then
+        /// broadcasts the new `transport_state`.
+        void setTransport (const choc::value::ValueView& message)
+        {
+            {
+                std::scoped_lock sl (transportLock);
+                auto& s = transportSettings;
+
+                if (auto tempo = getFiniteNumber (message["tempo"]))
+                    s.tempo = static_cast<float> (std::clamp (*tempo, minTempo, maxTempo));
+
+                if (auto numerator = getFiniteNumber (message["numerator"]))
+                    s.numerator = static_cast<uint32_t> (std::clamp (std::round (*numerator), 1.0, static_cast<double> (maxTimeSigNumerator)));
+
+                if (auto denominator = getFiniteNumber (message["denominator"]))
+                    s.denominator = getTimeSigDenominator (*denominator);
+
+                if (auto v = message["playing"]; v.isBool())     s.playing = v.getBool();
+                if (auto v = message["recording"]; v.isBool())   s.recording = v.getBool();
+                if (auto v = message["looping"]; v.isBool())     s.looping = v.getBool();
+
+                if (patchPlayer != nullptr)
+                {
+                    applyTransportSettings (*patchPlayer);
+
+                    if (message["rewind"].getWithDefault<bool> (false))
+                        patchPlayer->rewind();
+                    else if (auto position = getFiniteNumber (message["position"]))
+                        patchPlayer->setPosition (static_cast<int64_t> (std::max (0.0, std::floor (*position))));
+                }
+            }
+
+            sendTransportState();
+        }
+
+        /// Returns the `transport_state` message: the session's settings, plus the player's
+        /// position (0 if there's no player yet).
+        choc::value::Value getTransportState()
+        {
+            TransportSettings s;
+
+            {
+                std::scoped_lock sl (transportLock);
+                s = transportSettings;
+            }
+
+            int64_t frame = 0;
+            double sampleRate = 0;
+
+            if (patchPlayer != nullptr)
+            {
+                auto info = patchPlayer->getTransportInfo();
+                frame = info.frame;
+                sampleRate = info.sampleRate;
+            }
+
+            if (sampleRate <= 0 && owner.audioPlayer != nullptr)
+                sampleRate = static_cast<double> (owner.audioPlayer->options.sampleRate);
+
+            double quarterNote = 0, barStartQuarterNote = 0;
+            cmaj::PatchPlayer::calculateQuarterNotePosition (frame, sampleRate, s.tempo, s.numerator, s.denominator,
+                                                             quarterNote, barStartQuarterNote);
+
+            return choc::json::create ("tempo", static_cast<double> (s.tempo),
+                                       "numerator", static_cast<int32_t> (s.numerator),
+                                       "denominator", static_cast<int32_t> (s.denominator),
+                                       "playing", s.playing,
+                                       "recording", s.recording,
+                                       "looping", s.looping,
+                                       "frame", frame,
+                                       "quarterNote", quarterNote,
+                                       "barStartQuarterNote", barStartQuarterNote,
+                                       "sampleRate", sampleRate);
+        }
+
+        void sendTransportState()
+        {
+            sendMessageToClient ("transport_state", getTransportState());
+        }
+
+        /// Handles `set_transport_info_rate`. Each client has its own request (0 = none); the
+        /// session broadcasts at the shortest interval that any of them asks for, and forgets a
+        /// client's request when it disconnects. A non-zero request is answered straight away
+        /// with a `transport_state`.
+        void setTransportInfoRate (const ClientRequestHandler* client, double intervalMs)
+        {
+            // (lock order: transportTimerLock, then transportLock or the timer list's lock: the
+            // timer callback takes transportLock while choc holds its timer list's lock)
+            std::scoped_lock tl (transportTimerLock);
+            bool needsNewTimer = false;
+
+            {
+                std::scoped_lock sl (transportLock);
+
+                if (intervalMs > 0)
+                    transportInfoRequests[client] = static_cast<uint32_t> (std::clamp (std::round (intervalMs),
+                                                                                       static_cast<double> (minTransportInfoIntervalMs),
+                                                                                       static_cast<double> (maxTransportInfoIntervalMs)));
+                else
+                    transportInfoRequests.erase (client);
+
+                uint32_t newInterval = 0;
+
+                for (auto& r : transportInfoRequests)
+                    if (newInterval == 0 || r.second < newInterval)
+                        newInterval = r.second;
+
+                if (newInterval != transportInfoInterval)
+                {
+                    transportInfoInterval = newInterval;
+                    lastPeriodicTransportInfoTime = std::chrono::steady_clock::now();
+                    wasPlayingAtLastTransportInfo = false;
+                }
+
+                if (newInterval != 0 && ! transportInfoTimerRunning)
+                    transportInfoTimerRunning = needsNewTimer = true;
+            }
+
+            // A running choc Timer is never replaced or deleted here: on the Mac, deleting one with
+            // a callback pending can make a new one at the same address get called twice as often.
+            // Instead it ticks at a fixed rate and stops itself (by returning false) once nobody
+            // wants updates, and is only replaced after that.
+            if (needsNewTimer)
+                transportInfoTimer = choc::messageloop::Timer (transportInfoTimerTickMs, [this] { return handleTransportInfoTimerTick(); });
+
+            if (intervalMs > 0)
+                sendTransportState();
+        }
+
+        void removeTransportInfoRequest (const ClientRequestHandler& client)
+        {
+            setTransportInfoRate (std::addressof (client), 0);
+        }
+
+        /// The timer callback: every transportInfoInterval, sends the state if the transport is
+        /// playing, or if it has stopped since the last time.
+        bool handleTransportInfoTimerTick()
+        {
+            bool shouldSend = false;
+
+            {
+                std::scoped_lock sl (transportLock);
+
+                if (transportInfoInterval == 0)
+                {
+                    transportInfoTimerRunning = false;
+                    return false;
+                }
+
+                auto now = std::chrono::steady_clock::now();
+
+                if (now - lastPeriodicTransportInfoTime + std::chrono::milliseconds (transportInfoTimerTickMs / 2)
+                      >= std::chrono::milliseconds (transportInfoInterval))
+                {
+                    lastPeriodicTransportInfoTime = now;
+                    auto playing = transportSettings.playing;
+                    shouldSend = playing || wasPlayingAtLastTransportInfo;
+                    wasPlayingAtLastTransportInfo = playing;
+                }
+            }
+
+            if (shouldSend)
+                sendTransportState();
+
+            return true;
+        }
+
         PatchPlayerServer& owner;
         ActiveClientList activeClientList { *this };
         LocalFileCache<Session> fileCache { *this };
         std::unique_ptr<cmaj::PatchPlayer> patchPlayer;
         std::string sessionID, httpRootURL, httpPath, statusMessage, errorMessage;
+        std::atomic<bool> wantsGraphStructure { false };   // (see enableGraphStructure())
+        std::unordered_map<std::string, audio_utils::SignalGeneratorSource::Settings> lastGeneratorSettings;
         choc::threading::TaskThread codeGenThread, patchFileScanThread;
         choc::messageloop::Timer pingTimer;
         std::chrono::steady_clock::time_point creationTime { std::chrono::steady_clock::now() };
         std::chrono::steady_clock::time_point lastMessageTime { std::chrono::steady_clock::now() };
         std::string lastBuildLog;
+
+        std::mutex transportLock, transportTimerLock;
+        TransportSettings transportSettings;                                            // (transportLock)
+        std::unordered_map<const ClientRequestHandler*, uint32_t> transportInfoRequests;  // (transportLock)
+        uint32_t transportInfoInterval = 0;                                             // (transportLock)
+        bool transportInfoTimerRunning = false, wasPlayingAtLastTransportInfo = false;  // (transportLock)
+        std::chrono::steady_clock::time_point lastPeriodicTransportInfoTime;            // (transportLock)
+        choc::messageloop::Timer transportInfoTimer;                                    // (transportTimerLock)
 
         //==============================================================================
         struct ProxyPatchView  : public cmaj::PatchView
@@ -1014,6 +1449,7 @@ private:
     CreateAudioMIDIPlayerFn createAudioMIDIPlayer;
 
     choc::threading::ThreadSafeFunctor<std::function<void(const choc::value::ValueView&)>> setAudioDevicePropsFn;
+    choc::threading::ThreadSafeFunctor<std::function<void()>> broadcastAudioDevicePropsFn, audioDeviceOptionsChangedFn;
     std::shared_ptr<choc::audio::io::AudioMIDIPlayer> audioPlayer;
     choc::network::HTTPServer httpServer;
 
@@ -1132,6 +1568,13 @@ namespace
             (void) length;
         }
 
+        /// Acts like a device whose rate is changed from outside (as a CoreAudio device's is,
+        /// when another app changes it), which a real player reports on one of its own threads
+        void simulateDeviceRateChange (uint32_t newRate)
+        {
+            updateSampleRate (newRate);
+        }
+
     private:
         CallHistory& callHistory;
     };
@@ -1225,6 +1668,97 @@ namespace
             return choc::json::parse (messageText);
         }
 
+        /// For requests that cause several messages: sends one, and waits for the message of
+        /// the given type which should be the last that it causes. Returns an object holding the
+        /// message part of each message that arrived until then, keyed by type (or a void value
+        /// if the last one never came).
+        choc::value::Value sendRequestAndCollectReplies (std::string text, std::string_view lastReplyType, uint32_t timeoutMs = 1000)
+        {
+            {
+                std::unique_lock<std::mutex> lock (mutex);
+                receivedMessages.clear();
+            }
+
+            ws.write (boost::asio::buffer (text));
+
+            std::unique_lock<std::mutex> lock (mutex);
+            auto replies = choc::value::createObject ({});
+
+            auto gotLastReply = condition.wait_for (lock, std::chrono::milliseconds (timeoutMs), [&]
+            {
+                for (auto& m : receivedMessages)
+                    if (choc::json::parse (m)["type"].toString() == lastReplyType)
+                        return true;
+
+                return false;
+            });
+
+            if (! gotLastReply)
+                return {};
+
+            for (auto& m : receivedMessages)
+            {
+                auto message = choc::json::parse (m);
+                auto type = message["type"].toString();
+                replies.setMember (type, message["message"]);
+
+                if (type == lastReplyType)
+                    break;
+            }
+
+            return replies;
+        }
+
+        /// Forgets the messages received so far, waits for the given time, and returns how many
+        /// messages of the given type arrived meanwhile.
+        size_t countMessagesDuring (std::string_view type, uint32_t milliseconds)
+        {
+            {
+                std::unique_lock<std::mutex> lock (mutex);
+                receivedMessages.clear();
+            }
+
+            std::this_thread::sleep_for (std::chrono::milliseconds (milliseconds));
+            return countReceivedMessages (type);
+        }
+
+        size_t countReceivedMessages (std::string_view type)
+        {
+            std::unique_lock<std::mutex> lock (mutex);
+            size_t total = 0;
+
+            for (auto& m : receivedMessages)
+                if (choc::json::parse (m)["type"].toString() == type)
+                    ++total;
+
+            return total;
+        }
+
+        void clearReceivedMessages()
+        {
+            std::unique_lock<std::mutex> lock (mutex);
+            receivedMessages.clear();
+        }
+
+        /// Waits for a message of the given type to arrive (since the last clear), without
+        /// sending anything, and returns its message part (void if none came in time).
+        choc::value::Value waitForMessage (std::string_view type, uint32_t timeoutMs = 1000)
+        {
+            std::unique_lock<std::mutex> lock (mutex);
+            choc::value::Value result;
+
+            condition.wait_for (lock, std::chrono::milliseconds (timeoutMs), [&]
+            {
+                for (auto& m : receivedMessages)
+                    if (auto message = choc::json::parse (m); message["type"].toString() == type)
+                        result = choc::value::Value (message["message"]);
+
+                return ! result.isVoid();
+            });
+
+            return result;
+        }
+
         boost::asio::io_context ioc;
         boost::asio::ip::tcp::resolver resolver { ioc };
         boost::beast::websocket::stream<boost::asio::ip::tcp::socket> ws { ioc };
@@ -1261,6 +1795,7 @@ namespace
                 if (text != "{\"type\": \"ping\"}")
                 {
                     messageText = text;
+                    receivedMessages.push_back (text);
                     condition.notify_all();
                 }
             }
@@ -1270,6 +1805,7 @@ namespace
         std::condition_variable condition;
 
         std::string messageText;
+        std::vector<std::string> receivedMessages;
     };
 
     void testServer (choc::test::TestProgress& progress)
@@ -1375,6 +1911,469 @@ namespace
                 CHOC_EXPECT_EQ (response["type"].toString(), "audio_device_properties");
                 CHOC_EXPECT_EQ (response["message"]["rate"].get<int32_t>(), 44100);
                 CHOC_EXPECT_EQ (response["message"]["blockSize"].get<int32_t>(), 64);
+            }
+            catch (boost::system::system_error&)
+            {
+                CHOC_FAIL ("Failed to connect to server");
+            }
+            catch (choc::value::Error&)
+            {
+                CHOC_FAIL ("Invalid choc value");
+            }
+
+            choc::messageloop::stop();
+        });
+
+        choc::messageloop::run();
+
+        t.join();
+    }
+
+    static bool isAnythingListeningOn (const std::string& address, uint16_t port)
+    {
+        try
+        {
+            boost::asio::io_context ioc;
+            boost::asio::ip::tcp::socket socket (ioc);
+            socket.connect ({ boost::asio::ip::make_address (address), port });
+            return true;
+        }
+        catch (const std::exception&) {}
+
+        return false;
+    }
+
+    /// Checks that the clients always know the device's real rate: the device is opened before
+    /// any client can connect (opening one can take seconds, and a client used to be told there
+    /// was no device, then never updated), and a rate change made by the device itself (e.g.
+    /// another app changing a CoreAudio device's rate) is broadcast to every client, and reaches
+    /// the transport state
+    void testServerDeviceRate (choc::test::TestProgress& progress)
+    {
+        CHOC_TEST (deviceRate);
+
+        choc::value::Value engineOptions;
+        cmaj::BuildSettings buildSettings;
+        choc::audio::io::AudioDeviceOptions audioOptions;
+        audioOptions.sampleRate = 44100;
+        audioOptions.blockSize = 128;
+
+        CallHistory callHistory;
+        cmaj::ServerOptions serverOptions;
+        serverOptions.address = "127.0.0.1";
+        serverOptions.port    = 8084;
+
+        // (if something else has the port, the server will use another, and this can't be checked)
+        auto portWasFree = ! isAnythingListeningOn (serverOptions.address, serverOptions.port);
+        auto listeningWhileDeviceOpened = false;
+        StubAudioMidiPlayer* stub = nullptr;
+
+        PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions,
+                                  [&] (const choc::audio::io::AudioDeviceOptions& options)
+                                  {
+                                      listeningWhileDeviceOpened = isAnythingListeningOn (serverOptions.address, serverOptions.port);
+                                      auto player = std::make_unique<StubAudioMidiPlayer> (callHistory, options);
+                                      stub = player.get();
+                                      return player;
+                                  });
+
+        if (! server.isOpen())
+        {
+            CHOC_FAIL ("Failed to start the server");
+            return;
+        }
+
+        if (portWasFree)
+            CHOC_EXPECT_FALSE (listeningWhileDeviceOpened);
+
+        auto serverPort = server.getPort();
+        CHOC_EXPECT_TRUE (stub != nullptr);
+
+        auto t = std::thread ([&]
+        {
+            try
+            {
+                TestClient client1 (serverOptions.address, serverPort, "rateClient1");
+                TestClient client2 (serverOptions.address, serverPort, "rateClient2");
+
+                auto getTransportRate = [&]
+                {
+                    auto replies = client1.sendRequestAndCollectReplies (R"({ "type": "req_transport_state" })", "transport_state");
+                    return replies.isObject() ? replies["transport_state"]["sampleRate"].getWithDefault<double> (0) : 0.0;
+                };
+
+                // the first request, straight after connecting, gets the open device's rate
+                auto response = client1.sendRequest (R"({ "type": "req_audio_device_props" })");
+                CHOC_EXPECT_EQ (response["type"].toString(), "audio_device_properties");
+                CHOC_EXPECT_EQ (response["message"]["rate"].getWithDefault<int32_t> (0), 44100);
+                CHOC_EXPECT_EQ (response["message"]["blockSize"].getWithDefault<int32_t> (0), 128);
+                CHOC_EXPECT_NEAR (getTransportRate(), 44100.0, 0.0001);
+
+                // the device changes its own rate, on a thread of its own: every client is told
+                client1.clearReceivedMessages();
+                client2.clearReceivedMessages();
+
+                if (stub != nullptr)
+                    stub->simulateDeviceRateChange (48000);
+
+                CHOC_EXPECT_EQ (client1.waitForMessage ("audio_device_properties")["rate"].getWithDefault<int32_t> (0), 48000);
+                CHOC_EXPECT_EQ (client2.waitForMessage ("audio_device_properties")["rate"].getWithDefault<int32_t> (0), 48000);
+                CHOC_EXPECT_NEAR (getTransportRate(), 48000.0, 0.0001);
+
+                // and anyone asking now is told the new rate
+                response = client2.sendRequest (R"({ "type": "req_audio_device_props" })");
+                CHOC_EXPECT_EQ (response["message"]["rate"].getWithDefault<int32_t> (0), 48000);
+            }
+            catch (boost::system::system_error&)
+            {
+                CHOC_FAIL ("Failed to connect to server");
+            }
+            catch (choc::value::Error&)
+            {
+                CHOC_FAIL ("Invalid choc value");
+            }
+
+            choc::messageloop::stop();
+        });
+
+        choc::messageloop::run();
+
+        t.join();
+    }
+
+    /// Checks the `set_custom_audio_input { generator }` messages: installing a generator,
+    /// merging partial updates into it, the settings that are broadcast, the request for
+    /// them, and that mute and clearing the input still work alongside it
+    void testServerAudioInputGenerator (choc::test::TestProgress& progress)
+    {
+        CHOC_TEST (audioInputGenerator);
+
+        choc::value::Value engineOptions;
+        cmaj::BuildSettings buildSettings;
+        choc::audio::io::AudioDeviceOptions audioOptions;
+        CallHistory callHistory;
+        cmaj::ServerOptions serverOptions;
+
+        serverOptions.address = "127.0.0.1";
+        serverOptions.port    = 8082;
+
+        PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions,
+                                  [&] (const choc::audio::io::AudioDeviceOptions& options)
+                                  {
+                                      return std::make_unique<StubAudioMidiPlayer> (callHistory, options);
+                                  });
+
+        if (! server.isOpen())
+        {
+            CHOC_FAIL ("Failed to start the server");
+            return;
+        }
+
+        auto serverPort = server.getPort();
+
+        auto t = std::thread ([&]
+        {
+            try
+            {
+                TestClient client (serverOptions.address, serverPort, "generatorClient");
+
+                // each change replies with the input's mode, followed by the generator's settings if it has one
+                auto setInput = [&] (const std::string& fields, std::string_view lastReplyType = "audio_input_generator_in")
+                {
+                    return client.sendRequestAndCollectReplies (R"({ "type": "set_custom_audio_input", "endpoint": "in")" + fields + " }", lastReplyType);
+                };
+
+                auto replies = setInput (R"(, "generator": { "type": "sine", "frequency": 1000 })");
+                CHOC_EXPECT_EQ (replies["audio_input_mode_in"].toString(), "generator");
+
+                choc::value::Value settings (replies["audio_input_generator_in"]);
+                CHOC_EXPECT_EQ (settings["type"].toString(), "sine");
+                CHOC_EXPECT_NEAR (settings["frequency"].get<double>(), 1000.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["level"].get<double>(), -12.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["startFrequency"].get<double>(), 20.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["endFrequency"].get<double>(), 20000.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["sweepSeconds"].get<double>(), 5.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["impulseRate"].get<double>(), 2.0, 0.0001);
+
+                // a partial update is merged into the current settings
+                replies = setInput (R"(, "generator": { "level": -6 })");
+                CHOC_EXPECT_EQ (replies["audio_input_mode_in"].toString(), "generator");
+                settings = replies["audio_input_generator_in"];
+                CHOC_EXPECT_EQ (settings["type"].toString(), "sine");
+                CHOC_EXPECT_NEAR (settings["frequency"].get<double>(), 1000.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["level"].get<double>(), -6.0, 0.0001);
+
+                // ...and clamped, ignoring unknown types and non-numeric values
+                settings = setInput (R"(, "generator": { "type": "banana", "frequency": 1e9, "level": 20, "sweepSeconds": "x" })")["audio_input_generator_in"];
+                CHOC_EXPECT_EQ (settings["type"].toString(), "sine");
+                CHOC_EXPECT_NEAR (settings["frequency"].get<double>(), 48000.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["level"].get<double>(), 0.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["sweepSeconds"].get<double>(), 5.0, 0.0001);
+
+                settings = setInput (R"(, "generator": { "type": "pink", "frequency": 500 })")["audio_input_generator_in"];
+                CHOC_EXPECT_EQ (settings["type"].toString(), "pink");
+
+                // the settings can be asked for, and are replayed after the mode
+                settings = client.sendRequestAndCollectReplies (R"({ "type": "req_audio_input_generator", "endpoint": "in" })", "audio_input_generator_in")["audio_input_generator_in"];
+                CHOC_EXPECT_EQ (settings["type"].toString(), "pink");
+                CHOC_EXPECT_NEAR (settings["frequency"].get<double>(), 500.0, 0.0001);
+
+                replies = client.sendRequestAndCollectReplies (R"({ "type": "req_audio_input_mode", "endpoint": "in" })", "audio_input_generator_in");
+                CHOC_EXPECT_EQ (replies["audio_input_mode_in"].toString(), "generator");
+                CHOC_EXPECT_EQ (replies["audio_input_generator_in"]["type"].toString(), "pink");
+
+                // mute still works, and replaces the generator (with no settings message)...
+                replies = setInput (R"(, "mute": true)", "audio_input_mode_in");
+                CHOC_EXPECT_EQ (replies["audio_input_mode_in"].toString(), "mute");
+                CHOC_EXPECT_FALSE (replies.hasObjectMember ("audio_input_generator_in"));
+
+                // ...whose settings are remembered, and used as the base for the next one
+                settings = client.sendRequestAndCollectReplies (R"({ "type": "req_audio_input_generator", "endpoint": "in" })", "audio_input_generator_in")["audio_input_generator_in"];
+                CHOC_EXPECT_EQ (settings["type"].toString(), "pink");
+
+                replies = setInput (R"(, "generator": { "level": -20 })");
+                CHOC_EXPECT_EQ (replies["audio_input_mode_in"].toString(), "generator");
+                settings = replies["audio_input_generator_in"];
+                CHOC_EXPECT_EQ (settings["type"].toString(), "pink");
+                CHOC_EXPECT_NEAR (settings["frequency"].get<double>(), 500.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["level"].get<double>(), -20.0, 0.0001);
+
+                // a file that can't be found leaves the input live, as before
+                replies = setInput (R"(, "file": "no_such_file.wav")", "audio_input_mode_in");
+                CHOC_EXPECT_EQ (replies["audio_input_mode_in"].toString(), "live");
+
+                // clearing the input goes back to live
+                replies = setInput (R"(, "generator": {})");
+                CHOC_EXPECT_EQ (replies["audio_input_mode_in"].toString(), "generator");
+                replies = setInput ({}, "audio_input_mode_in");
+                CHOC_EXPECT_EQ (replies["audio_input_mode_in"].toString(), "live");
+
+                // an endpoint that has never had a generator reports the defaults
+                settings = client.sendRequestAndCollectReplies (R"({ "type": "req_audio_input_generator", "endpoint": "other" })", "audio_input_generator_other")["audio_input_generator_other"];
+                CHOC_EXPECT_EQ (settings["type"].toString(), "sine");
+                CHOC_EXPECT_NEAR (settings["frequency"].get<double>(), 440.0, 0.0001);
+                CHOC_EXPECT_NEAR (settings["level"].get<double>(), -12.0, 0.0001);
+            }
+            catch (boost::system::system_error&)
+            {
+                CHOC_FAIL ("Failed to connect to server");
+            }
+            catch (choc::value::Error&)
+            {
+                CHOC_FAIL ("Invalid choc value");
+            }
+
+            choc::messageloop::stop();
+        });
+
+        choc::messageloop::run();
+
+        t.join();
+    }
+
+    /// Checks the transport messages: `set_transport` partial updates and clamping, the
+    /// `transport_state` that's broadcast to every client of the session, `req_transport_state`,
+    /// the periodic updates of `set_transport_info_rate`, and that the settings outlive the player
+    void testServerTransport (choc::test::TestProgress& progress)
+    {
+        CHOC_TEST (transport);
+
+        choc::value::Value engineOptions;
+        cmaj::BuildSettings buildSettings;
+        choc::audio::io::AudioDeviceOptions audioOptions;
+        CallHistory callHistory;
+        cmaj::ServerOptions serverOptions;
+
+        serverOptions.address = "127.0.0.1";
+        serverOptions.port    = 8083;
+
+        PatchPlayerServer server (serverOptions, engineOptions, buildSettings, audioOptions,
+                                  [&] (const choc::audio::io::AudioDeviceOptions& options)
+                                  {
+                                      return std::make_unique<StubAudioMidiPlayer> (callHistory, options);
+                                  });
+
+        if (! server.isOpen())
+        {
+            CHOC_FAIL ("Failed to start the server");
+            return;
+        }
+
+        auto serverPort = server.getPort();
+
+        auto t = std::thread ([&]
+        {
+            try
+            {
+                // two clients of the same session
+                TestClient client1 (serverOptions.address, serverPort, "transportSession");
+                TestClient client2 (serverOptions.address, serverPort, "transportSession");
+
+                auto request = [&] (TestClient& client, const std::string& text)
+                {
+                    return choc::value::Value (client.sendRequestAndCollectReplies (text, "transport_state")["transport_state"]);
+                };
+
+                // (for the messages that have no reply)
+                auto post = [] (TestClient& client, const std::string& text)
+                {
+                    client.ws.write (boost::asio::buffer (text));
+                    std::this_thread::sleep_for (std::chrono::milliseconds (50));
+                };
+
+                auto setTransport = [&] (const std::string& fields)
+                {
+                    return request (client1, R"({ "type": "set_transport", )" + fields + " }");
+                };
+
+                // the defaults, before there's a patch: 120, 4/4, playing, at frame 0
+                auto state = request (client1, R"({ "type": "req_transport_state" })");
+                CHOC_EXPECT_NEAR (state["tempo"].get<double>(), 120.0, 0.0001);
+                CHOC_EXPECT_EQ (state["numerator"].get<int32_t>(), 4);
+                CHOC_EXPECT_EQ (state["denominator"].get<int32_t>(), 4);
+                CHOC_EXPECT_TRUE (state["playing"].getBool());
+                CHOC_EXPECT_FALSE (state["recording"].getBool());
+                CHOC_EXPECT_FALSE (state["looping"].getBool());
+                CHOC_EXPECT_EQ (state["frame"].get<int64_t>(), static_cast<int64_t> (0));
+                CHOC_EXPECT_NEAR (state["quarterNote"].get<double>(), 0.0, 0.0001);
+                CHOC_EXPECT_NEAR (state["barStartQuarterNote"].get<double>(), 0.0, 0.0001);
+                CHOC_EXPECT_TRUE (state.hasObjectMember ("sampleRate"));
+
+                // (gives the device a known rate)
+                client1.sendRequest (R"({ "type": "set_audio_device_props", "properties": { "rate": 44100, "blockSize": 64 } })");
+
+                // a partial update changes only what it includes...
+                state = setTransport (R"("tempo": 90)");
+                CHOC_EXPECT_NEAR (state["tempo"].get<double>(), 90.0, 0.0001);
+                CHOC_EXPECT_EQ (state["numerator"].get<int32_t>(), 4);
+                CHOC_EXPECT_TRUE (state["playing"].getBool());
+                CHOC_EXPECT_NEAR (state["sampleRate"].get<double>(), 44100.0, 0.0001);
+
+                state = setTransport (R"("numerator": 7, "denominator": 8, "recording": true)");
+                CHOC_EXPECT_NEAR (state["tempo"].get<double>(), 90.0, 0.0001);
+                CHOC_EXPECT_EQ (state["numerator"].get<int32_t>(), 7);
+                CHOC_EXPECT_EQ (state["denominator"].get<int32_t>(), 8);
+                CHOC_EXPECT_TRUE (state["recording"].getBool());
+                CHOC_EXPECT_TRUE (state["playing"].getBool());     // (recording doesn't clear it)
+
+                client2.clearReceivedMessages();
+                state = setTransport (R"("looping": true, "playing": false)");
+                CHOC_EXPECT_TRUE (state["looping"].getBool());
+                CHOC_EXPECT_FALSE (state["playing"].getBool());
+                CHOC_EXPECT_TRUE (state["recording"].getBool());
+
+                // ...and is broadcast to every client of the session
+                std::this_thread::sleep_for (std::chrono::milliseconds (100));
+                CHOC_EXPECT_EQ (client2.countReceivedMessages ("transport_state"), static_cast<size_t> (1));
+
+                // the position is in frames: 1 second at 90 bpm is 1.5 quarter-notes, and 7/8 bars are 3.5 long
+                state = setTransport (R"("position": 44100)");
+                CHOC_EXPECT_EQ (state["frame"].get<int64_t>(), static_cast<int64_t> (44100));
+                CHOC_EXPECT_NEAR (state["quarterNote"].get<double>(), 1.5, 0.0001);
+                CHOC_EXPECT_NEAR (state["barStartQuarterNote"].get<double>(), 0.0, 0.0001);
+
+                state = setTransport (R"("position": 176400)");
+                CHOC_EXPECT_NEAR (state["quarterNote"].get<double>(), 6.0, 0.0001);
+                CHOC_EXPECT_NEAR (state["barStartQuarterNote"].get<double>(), 3.5, 0.0001);
+
+                state = setTransport (R"("rewind": true, "position": 1000)");
+                CHOC_EXPECT_EQ (state["frame"].get<int64_t>(), static_cast<int64_t> (0));
+
+                // clamping, and ignoring values of the wrong type
+                state = setTransport (R"("tempo": 5000, "numerator": 0, "denominator": 12, "playing": 1, "recording": "no")");
+                CHOC_EXPECT_NEAR (state["tempo"].get<double>(), 999.0, 0.0001);
+                CHOC_EXPECT_EQ (state["numerator"].get<int32_t>(), 1);
+                CHOC_EXPECT_EQ (state["denominator"].get<int32_t>(), 8);
+                CHOC_EXPECT_FALSE (state["playing"].getBool());
+                CHOC_EXPECT_TRUE (state["recording"].getBool());
+
+                state = setTransport (R"("tempo": -3, "numerator": 1000, "denominator": 100, "position": -50)");
+                CHOC_EXPECT_NEAR (state["tempo"].get<double>(), 1.0, 0.0001);
+                CHOC_EXPECT_EQ (state["numerator"].get<int32_t>(), 64);
+                CHOC_EXPECT_EQ (state["denominator"].get<int32_t>(), 32);
+                CHOC_EXPECT_EQ (state["frame"].get<int64_t>(), static_cast<int64_t> (0));
+
+                state = setTransport (R"("tempo": "fast", "denominator": 0.4)");
+                CHOC_EXPECT_NEAR (state["tempo"].get<double>(), 1.0, 0.0001);
+                CHOC_EXPECT_EQ (state["denominator"].get<int32_t>(), 1);
+
+                setTransport (R"("tempo": 120, "numerator": 4, "denominator": 4, "recording": false, "looping": false)");
+
+                // periodic updates: an immediate reply, then nothing while stopped...
+                state = request (client1, R"({ "type": "set_transport_info_rate", "intervalMs": 50 })");
+                CHOC_EXPECT_FALSE (state["playing"].getBool());
+                CHOC_EXPECT_EQ (client1.countMessagesDuring ("transport_state", 400), static_cast<size_t> (0));
+
+                // ...then every interval while playing, to every client...
+                setTransport (R"("playing": true)");
+                auto numWhilePlaying = client2.countMessagesDuring ("transport_state", 600);
+                CHOC_EXPECT_TRUE (numWhilePlaying >= 5 && numWhilePlaying <= 14);
+
+                // ...and once more when it stops (after the reply to the change)
+                client1.clearReceivedMessages();
+                setTransport (R"("playing": false)");
+                std::this_thread::sleep_for (std::chrono::milliseconds (300));
+                auto numAfterStopping = client1.countReceivedMessages ("transport_state");
+                CHOC_EXPECT_TRUE (numAfterStopping >= 2 && numAfterStopping <= 3);
+                CHOC_EXPECT_EQ (client1.countMessagesDuring ("transport_state", 300), static_cast<size_t> (0));
+
+                // the clients' requests combine as the shortest interval; 0 withdraws one, and
+                // intervals are clamped to 30-2000 ms
+                request (client2, R"({ "type": "set_transport_info_rate", "intervalMs": 1000 })");
+                post (client1, R"({ "type": "set_transport_info_rate", "intervalMs": 0 })");
+                setTransport (R"("playing": true)");
+                CHOC_EXPECT_TRUE (client1.countMessagesDuring ("transport_state", 600) <= 1);
+
+                request (client1, R"({ "type": "set_transport_info_rate", "intervalMs": 1 })");
+                auto numAtFastestRate = client1.countMessagesDuring ("transport_state", 600);
+                CHOC_EXPECT_TRUE (numAtFastestRate >= 8 && numAtFastestRate <= 22);
+
+                post (client1, R"({ "type": "set_transport_info_rate", "intervalMs": 0 })");
+                post (client2, R"({ "type": "set_transport_info_rate", "intervalMs": 0 })");
+                CHOC_EXPECT_EQ (client1.countMessagesDuring ("transport_state", 300), static_cast<size_t> (0));
+
+                // the settings belong to the session, so a new player gets them
+                setTransport (R"("tempo": 77, "numerator": 3, "denominator": 8, "looping": true)");
+
+                if (auto session = server.findSession ("transportSession"))
+                {
+                    std::promise<void> playerDeleted;
+
+                    choc::messageloop::postMessage ([&]
+                    {
+                        session->view.reset();
+                        session->patchPlayer.reset();
+                        playerDeleted.set_value();
+                    });
+
+                    playerDeleted.get_future().wait();
+
+                    state = request (client1, R"({ "type": "req_transport_state" })");
+                    CHOC_EXPECT_NEAR (state["tempo"].get<double>(), 77.0, 0.0001);
+                    CHOC_EXPECT_EQ (state["numerator"].get<int32_t>(), 3);
+                    CHOC_EXPECT_EQ (state["denominator"].get<int32_t>(), 8);
+                    CHOC_EXPECT_TRUE (state["looping"].getBool());
+                    CHOC_EXPECT_TRUE (state["playing"].getBool());
+
+                    if (session->patchPlayer != nullptr)
+                    {
+                        auto info = session->patchPlayer->getTransportInfo();
+                        CHOC_EXPECT_EQ (info.tempo, 77.0f);
+                        CHOC_EXPECT_EQ (info.numerator, 3u);
+                        CHOC_EXPECT_EQ (info.denominator, 8u);
+                        CHOC_EXPECT_TRUE (info.playing);
+                        CHOC_EXPECT_TRUE (info.looping);
+                        CHOC_EXPECT_FALSE (info.recording);
+                    }
+                    else
+                    {
+                        CHOC_FAIL ("Expected the session to have made a new player");
+                    }
+                }
+                else
+                {
+                    CHOC_FAIL ("Expected to find the session");
+                }
             }
             catch (boost::system::system_error&)
             {
@@ -1556,6 +2555,9 @@ void runServerUnitTests (choc::test::TestProgress& progress)
 {
     CHOC_CATEGORY (Server);
     testServer (progress);
+    testServerDeviceRate (progress);
+    testServerAudioInputGenerator (progress);
+    testServerTransport (progress);
     testServerShutdownWithLiveClients (progress);
     testServerShutdownReleasesResources (progress);
 }

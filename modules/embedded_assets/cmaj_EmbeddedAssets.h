@@ -91,6 +91,17 @@ namespace cmaj
             return content;
         }
 
+        /// Returns the names of all the embedded files (not including the cmaj_api ones)
+        static std::vector<std::string_view> getFileNames()
+        {
+            std::vector<std::string_view> names;
+
+            for (auto& file : Files::files)
+                names.push_back (file.name);
+
+            return names;
+        }
+
         static std::string getVersionModule()
         {
             return std::string ("export function getCmajorVersion() { return \"")

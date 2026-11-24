@@ -54,6 +54,8 @@
                                                             // Edges between the same ports with different kinds
                                                             // are drawn slightly apart (see offsetRoute)
         portWidth, portHeight, portSpacing,             // size and pitch of the level's own ports
+        inputSeparations, outputSeparations,            // optional: [minimum distance from each of the level's own
+                                                        // ports to the next], where some need more than portSpacing
         contentTop, portTop,    // the lowest y allowed for nodes, and for the level's own ports
         leftPadding, rightPadding, bottomPadding, minWidth, minHeight
     }
@@ -350,7 +352,10 @@ class LevelLayout
     getSeparations (items)
     {
         if (items.length > 0 && (items[0].kind === "input" || items[0].kind === "output"))
-            return items.slice (1).map (() => this.level.portSpacing);
+        {
+            const separations = items[0].kind === "input" ? this.level.inputSeparations : this.level.outputSeparations;
+            return items.slice (1).map ((_, i) => Math.max (this.level.portSpacing, separations?.[i] ?? 0));
+        }
 
         return items.slice (1).map ((item, i) => items[i].height + this.getGap (items[i], item));
     }

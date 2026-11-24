@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<!-- A stand-in for the VS Code extension's webview (cmaj_patch_runner_panel.js getFullHTML()):
+     an iframe showing the runner page, with the same postMessage plumbing. It records every
+     { messageToVScode } in window.vscodeMessages, and answers clipboard reads from
+     window.fakeClipboard. ?fixture=Name picks the recorded patch; ?theme=light|dark sends a
+     VS Code-style theme into the panel (once the panel supports it). -->
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Fake VS Code webview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #1f1f1f; }
+  iframe { width: 100%; height: 100%; position: absolute; border: none; }
+</style>
+</head>
+<body>
+<iframe id="cmaj-panel-content"></iframe>
+<script type="module">
+
+const params = new URLSearchParams (location.search);
+const fixture = params.get ("fixture") ?? "Tremolo";
+const iframe = document.getElementById ("cmaj-panel-content");
+
+window.vscodeMessages = [];
+window.fakeClipboard = "";
+
+const themes = {
+    dark:  { "--vscode-editor-background": "#1f1f1f", "--vscode-editor-foreground": "#cccccc", "--vscode-focusBorder": "#0078d4",
+             "--vscode-button-background": "#0078d4", "--vscode-button-foreground": "#ffffff",
+             "--vscode-errorForeground": "#f85149", "--vscode-editorWarning-foreground": "#cca700",
+             "--vscode-font-family": "-apple-system, BlinkMacSystemFont, sans-serif", "--vscode-editor-font-family": "Menlo, Monaco, monospace",
+             "--vscode-sideBar-background": "#181818", "--vscode-panel-border": "#2b2b2b", "--vscode-textLink-foreground": "#4daafc",
+             "--vscode-input-background": "#313131", "--vscode-dropdown-background": "#313131", "--vscode-descriptionForeground": "#9d9d9d",
+             "--vscode-panelTitle-activeBorder": "#0078d4", "--vscode-input-border": "#3c3c3c", "--vscode-toolbar-hoverBackground": "#5a5d5e50",
+             kind: "dark" },
+    light: { "--vscode-editor-background": "#ffffff", "--vscode-editor-foreground": "#3b3b3b", "--vscode-focusBorder": "#005fb8",
+             "--vscode-button-background": "#005fb8", "--vscode-button-foreground": "#ffffff",
+             "--vscode-errorForeground": "#f85149", "--vscode-editorWarning-foreground": "#bf8803",
+             "--vscode-font-family": "-apple-system, BlinkMacSystemFont, sans-serif", "--vscode-editor-font-family": "Menlo, Monaco, monospace",
+             "--vscode-sideBar-background": "#f8f8f8", "--vscode-panel-border": "#e5e5e5", "--vscode-textLink-foreground": "#005fb8",
+             "--vscode-input-background": "#ffffff", "--vscode-dropdown-background": "#ffffff", "--vscode-descriptionForeground": "#717171",
+             "--vscode-panelTitle-activeBorder": "#005fb8", "--vscode-input-border": "#cecece", "--vscode-toolbar-hoverBackground": "#b8b8b850",
+             kind: "light" }
+};
+
+window.sendToPanel = (message) => iframe.contentWindow.postMessage ({ messageFromVScode: message }, "*");
+window.setTheme = (name) => window.sendToPanel ({ theme: themes[name] });
+
+window.addEventListener ("message", event =>
+{
+    const m = event.data?.messageToVScode;
+
+    if (! m)
+        return;
+
+    window.vscodeMessages.push (m);
+
+    if (m.readClipboard)
+        window.sendToPanel ({ clipboardText: window.fakeClipboard });
+    else if (m.writeClipboard)
+        window.fakeClipboard = m.writeClipboard;
+    else if (m.saveFile)
+        handleSaveFile (m.saveFile);
+});
+
+// A fake of the extension's saveFile handler (tools/vscode/cmajor/src/cmaj_save_file.js): it joins
+// the chunks, records each file in window.savedFiles ({ name, mimeType, size, numChunks, bytes }),
+// and replies saved, with a fake path. Test hooks:
+//   window.nextSaveCancels = true      the next save replies cancelled (and isn't recorded)
+//   window.holdSaveReplies = true      replies wait in window.heldSaveReplies until
+//                                      window.releaseSaveReplies (indexes?) sends them (in that order)
+window.savedFiles = [];
+window.nextSaveCancels = false;
+window.holdSaveReplies = false;
+window.heldSaveReplies = [];
+const saveUploads = new Map();
+
+window.releaseSaveReplies = (indexes) =>
+{
+    const held = window.heldSaveReplies;
+    window.heldSaveReplies = [];
+
+    for (const i of indexes ?? held.map ((_, i) => i))
+        window.sendToPanel (held[i]);
+};
+
+function handleSaveFile (request)
+{
+    const upload = saveUploads.get (request.requestID) ?? { chunks: [], received: 0 };
+    saveUploads.set (request.requestID, upload);
+    upload.chunks[request.chunkIndex ?? 0] = Uint8Array.from (atob (request.dataBase64), c => c.charCodeAt (0));
+
+    if (++upload.received < (request.numChunks ?? 1))
+        return;
+
+    saveUploads.delete (request.requestID);
+    const bytes = new Uint8Array (upload.chunks.reduce ((n, c) => n + c.length, 0));
+    upload.chunks.reduce ((offset, c) => { bytes.set (c, offset); return offset + c.length; }, 0);
+
+    let result;
+
+    if (window.nextSaveCancels)
+    {
+        window.nextSaveCancels = false;
+        result = { saved: false, cancelled: true };
+    }
+    else
+    {
+        window.savedFiles.push ({ name: request.suggestedName, mimeType: request.mimeType, size: request.size,
+                                  numChunks: request.numChunks ?? 1, bytes });
+        result = { saved: true, path: "/fake/vscode/" + request.suggestedName };
+    }
+
+    const reply = { saveFileResult: { requestID: request.requestID, ...result } };
+
+    if (window.holdSaveReplies)
+        window.heldSaveReplies.push (reply);
+    else
+        window.sendToPanel (reply);
+}
+
+// ?server=http://127.0.0.1:port&patch=/path/x.cmajorpatch uses a real `cmaj server` instead of the mock
+const realServer = params.get ("server");
+const patchFile = params.get ("patch") ?? (await (await fetch (`/fixtures/${fixture}.json`)).json()).patchFile;
+
+iframe.onload = () =>
+{
+    iframe.onload = undefined;
+
+    // like the extension, send the patch to load as soon as the page has loaded
+    window.sendToPanel ({ patchToLoad: patchFile });
+
+    if (params.get ("theme"))
+        window.setTheme (params.get ("theme"));
+};
+
+iframe.src = realServer ? `${realServer}/session_VSCODETEST${Math.floor (Math.random() * 1e6)}/cmaj-patch-runner.html`
+                        : `/session_${fixture}/cmaj-patch-runner.html`;
+
+</script>
+</body>
+</html>

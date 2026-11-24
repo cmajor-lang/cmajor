@@ -33,6 +33,9 @@ namespace cmaj::patch_graph_html
     inline constexpr const char* moduleFolder = "panel_api/cmaj-patch-graph/";
     inline constexpr const char* templateName = "embedded_patch_graph_template.html";
 
+    /// The panel's design tokens, which the page inlines so that it looks like the panel
+    inline constexpr const char* tokensName = "panel_api/theme/tokens.css";
+
     //==============================================================================
     /// Replaces each placeholder in a template with its value, in a single pass, so that
     /// nothing in an inserted value can be mistaken for another placeholder
@@ -78,11 +81,12 @@ namespace cmaj::patch_graph_html
         for (auto name : moduleNames)
             modules.addMember (name, assets.getContent (std::string (moduleFolder) + name));
 
-        // stops any "</script>" inside the inlined text from ending the script element
+        // stops any "</script>" (or "</style>") inside the inlined text from ending its element
         auto escapeForScript = [] (const std::string& s) { return choc::text::replace (s, "</", "<\\/"); };
 
         return fillInPlaceholders (assets.getContent (templateName),
                                    {{ "PATCH_GRAPH_TITLE",   choc::text::replace (title, "&", "&amp;", "<", "&lt;", ">", "&gt;") },
+                                    { "PATCH_GRAPH_STYLES",  escapeForScript (assets.getContent (tokensName)) },
                                     { "PATCH_GRAPH_MODULES", escapeForScript (choc::json::toString (modules, false)) },
                                     { "PATCH_GRAPH_DATA",    escapeForScript (graphJSON) }});
     }

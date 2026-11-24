@@ -59,4 +59,18 @@ interface StatusMessage {
     host?: string;
     httpRootURL?: string;
     status?: string;
+    /** Changes whenever the patch's graph does (see ServerSession.requestGraph()) */
+    graphVersion?: string;
+    /** Goes up by one with each build of the patch, whether it succeeds or not */
+    buildNumber?: number;
+}
+
+/** Options for ServerSession.createPatchConnection() */
+interface PatchConnectionOptions {
+    /** Called with each address that getResourceAddress (path) would return (and the path it was
+     *  asked for); returns the address to use instead */
+    transformResourceAddress?: (address: string, path: string) => string;
+    /** Called with each message from the server before the connection delivers it; returning
+     *  false drops it */
+    filterMessage?: (message: any) => boolean;
 }
