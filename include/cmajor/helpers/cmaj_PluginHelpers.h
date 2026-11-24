@@ -185,6 +185,22 @@ inline bool addChildView (void* parent, void* child)
   #endif
 }
 
+/// This should be called before deleting a view that was added with addChildView(), as
+/// on macOS the parent retains its children, so would be left showing a dead view.
+inline bool removeFromParentView (void* view)
+{
+  #if CHOC_OSX
+    CHOC_AUTORELEASE_BEGIN
+    choc::objc::call<void> ((id) view, "removeFromSuperview");
+    CHOC_AUTORELEASE_END
+    return true;
+  #else
+    // On Windows, destroying a child window also removes it from its parent
+    (void) view;
+    return false;
+  #endif
+}
+
 inline bool setViewSize (void* view, uint32_t width, uint32_t height)
 {
   #if CHOC_OSX

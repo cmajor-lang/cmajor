@@ -342,6 +342,14 @@ private:
                 setScaleFactor (*initialScaleFactorToUse);
         }
 
+        ~ViewHolder()
+        {
+            cmaj::plugin::removeFromParentView (nativeViewHandle());
+        }
+
+        ViewHolder (const ViewHolder&) = delete;
+        ViewHolder& operator= (const ViewHolder&) = delete;
+
         struct Size
         {
             uint32_t width;
@@ -1461,13 +1469,13 @@ inline bool Plugin::Impl::clapGui_getPreferredApi (const char** api, bool* float
 
 inline bool Plugin::Impl::clapGui_create (const char*, bool)
 {
-    editor = ViewHolder (patch, cachedViewScaleFactor);
+    editor.emplace (patch, cachedViewScaleFactor);
     return true;
 }
 
 inline void Plugin::Impl::clapGui_destroy()
 {
-    editor = {};
+    editor.reset();
 }
 
 inline bool Plugin::Impl::clapGui_setScale (double scaleFactor)
