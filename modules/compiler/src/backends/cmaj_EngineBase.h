@@ -124,6 +124,9 @@ struct EngineBase  : public choc::com::ObjectWithAtomicRefCount<EngineInterface,
 
             if (auto location = mainProcessor->context.getFullLocation().getLocationDescription(); ! location.empty())
                 details.setMember ("mainProcessorLocation", location);
+
+            if (auto annotation = AST::getAnnotationAsChocValue (mainProcessor->annotation); ! annotation.isVoid())
+                details.setMember ("mainProcessorAnnotations", annotation);
         }
 
         details.setMember ("inputs",  getProgram().endpointList.inputEndpointDetails.toJSON (true));
