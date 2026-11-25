@@ -466,6 +466,43 @@ static void runPatchStateTests (choc::test::TestProgress& progress)
     }
 
     {
+        CHOC_TEST (MainProcessorAnnotations)
+
+        constexpr const char* annotatedPatchSource = R"(
+            processor Test [[ main, width: 300, height: 200, myLabel: "keys" ]]
+            {
+                input stream float32 in;
+                output stream float32 out;
+
+                void main()
+                {
+                    loop
+                    {
+                        out <- in;
+                        advance();
+                    }
+                }
+            }
+        )";
+
+        Patch patch;
+        initTestPatch (patch);
+
+        if (! loadTestPatch (patch, createBasicManifest(), annotatedPatchSource, 4, 4, 1, 1))
+        {
+            CHOC_FAIL ("Failed to load patch");
+            return;
+        }
+
+        auto details = patch.getProgramDetails();
+        CHOC_EXPECT_EQ (details["mainProcessor"].toString(), "Test");
+        CHOC_EXPECT_TRUE (details["mainProcessorAnnotations"].isObject());
+        CHOC_EXPECT_EQ (details["mainProcessorAnnotations"]["width"].getInt64(), 300);
+        CHOC_EXPECT_EQ (details["mainProcessorAnnotations"]["height"].getInt64(), 200);
+        CHOC_EXPECT_EQ (details["mainProcessorAnnotations"]["myLabel"].toString(), "keys");
+    }
+
+    {
         CHOC_TEST (EndpointQueries)
 
         Patch patch;
