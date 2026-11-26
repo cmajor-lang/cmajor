@@ -1960,7 +1960,7 @@ using audio_utils::SignalGeneratorSource;
 /// Renders a generator's output in blocks, returning its first channel, and checking
 /// that every other channel is the same. The reads happen under the allocation tracker
 /// that the PatchPlayer uses on its audio thread (which only checks in debug builds).
-static std::vector<float> renderGenerator (SignalGeneratorSource& source, uint32_t numFrames,
+static std::vector<float> renderGenerator (SignalGeneratorSource& source, size_t numFrames,
                                            uint32_t numChannels = 1, bool* channelsMatch = nullptr,
                                            bool* allocated = nullptr)
 {
@@ -1972,9 +1972,10 @@ static std::vector<float> renderGenerator (SignalGeneratorSource& source, uint32
     if (channelsMatch != nullptr)
         *channelsMatch = true;
 
-    for (uint32_t start = 0; start < numFrames; start += blockSize)
+    for (size_t start = 0; start < numFrames; start += blockSize)
     {
-        auto view = block.getView().getStart (std::min (blockSize, numFrames - start));
+        auto numThisBlock = static_cast<choc::buffer::FrameCount> (std::min (static_cast<size_t> (blockSize), numFrames - start));
+        auto view = block.getView().getStart (numThisBlock);
 
         try
         {
