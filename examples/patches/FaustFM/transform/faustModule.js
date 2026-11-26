@@ -5712,7 +5712,7 @@ var require_libfaust_wasm = __commonJS({
           }, "%S": function(date2) {
             return leadingNulls(date2.tm_sec, 2);
           }, "%t": function() {
-            return "	";
+            return "    ";
           }, "%u": function(date2) {
             return date2.tm_wday || 7;
           }, "%U": function(date2) {
@@ -7626,7 +7626,7 @@ var FaustWasmInstantiator_default = FaustWasmInstantiator;
 var FaustSensors = class _FaustSensors {
   /**
    * Function to convert a number to an axis type
-   * 
+   *
    * @param value number
    * @returns axis type
    */
@@ -7645,7 +7645,7 @@ var FaustSensors = class _FaustSensors {
   }
   /**
    * Function to convert a number to a curve type
-   * 
+   *
    * @param value number
    * @returns curve type
    */
@@ -7896,7 +7896,7 @@ var WasmAllocator = class {
    * Allocates a block of memory of the specified size, returning the pointer to the
    * beginning of the block. The block is allocated at the current offset and the
    * offset is incremented by the size of the block.
-   * 
+   *
    * @param sizeInBytes The size of the block to allocate in bytes.
    * @returns The offset (pointer) to the beginning of the allocated block.
    */
@@ -7914,7 +7914,7 @@ var WasmAllocator = class {
   }
   /**
    * Returns the underlying buffer object.
-   * 
+   *
    * @returns The buffer object.
    */
   getBuffer() {
@@ -7922,7 +7922,7 @@ var WasmAllocator = class {
   }
   /**
    * Returns the Int32 view of the underlying buffer object.
-   * 
+   *
    * @returns The view of the memory buffer as Int32Array.
    */
   getInt32Array() {
@@ -7930,7 +7930,7 @@ var WasmAllocator = class {
   }
   /**
    * Returns the Int64 view of the underlying buffer object.
-   * 
+   *
    * @returns The view of the memory buffer as BigInt64Array.
    */
   getInt64Array() {
@@ -7938,7 +7938,7 @@ var WasmAllocator = class {
   }
   /**
    * Returns the Float32 view of the underlying buffer object.
-   * 
+   *
    * @returns The view of the memory buffer as Float32Array.
    */
   getFloat32Array() {
@@ -7946,7 +7946,7 @@ var WasmAllocator = class {
   }
   /**
    * Returns the Float64 view of the underlying buffer object..
-   * 
+   *
    * @returns The view of the memory buffer as Float64Array.
    */
   getFloat64Array() {
@@ -8304,9 +8304,9 @@ var FaustBaseWebAudioDsp = class _FaustBaseWebAudioDsp {
   /**
    * Load a soundfile possibly containing several parts in the DSP struct.
    * Soundfile pointers are located at 'index' offset, to be read in the JSON file.
-   * The DSP struct is located at baseDSP in the wasm memory, 
+   * The DSP struct is located at baseDSP in the wasm memory,
    * either a monophonic DSP, or a voice in a polyphonic context.
-   * 
+   *
    * @param allocator : the wasm memory allocator
    * @param baseDSP : the base DSP in the wasm memory
    * @param name : the name of the soundfile
@@ -8370,9 +8370,9 @@ var FaustBaseWebAudioDsp = class _FaustBaseWebAudioDsp {
     soundfile.shareBuffers(curChan, maxChan);
     return soundfile;
   }
-  /** 
+  /**
    * Init soundfiles memory.
-   * 
+   *
    * @param allocator : the wasm memory allocator
    * @param sfReader : the soundfile reader
    * @param baseDSP : the DSP struct (either a monophonic DSP of polyphonic voice) base DSP in the wasm memory
@@ -9710,7 +9710,7 @@ var SoundfileReader = class {
   }
   /**
    * Convert an audio buffer to audio data.
-   * 
+   *
    * @param audioBuffer : the audio buffer to convert
    * @returns : the audio data
    */
@@ -9723,7 +9723,7 @@ var SoundfileReader = class {
   }
   /**
    * Extract the URLs from the metadata.
-   * 
+   *
    * @param dspMeta : the metadata
    * @returns : the URLs
    */
@@ -9740,7 +9740,7 @@ var SoundfileReader = class {
   }
   /**
    * Check if the file exists.
-   * 
+   *
    * @param url : the url of the file to check
    * @returns : true if the file exists, otherwise false
    */
@@ -9757,7 +9757,7 @@ var SoundfileReader = class {
   }
   /**
    * Fetch the soundfile.
-   * 
+   *
    * @param url : the url of the soundfile
    * @param audioCtx : the audio context
    * @returns : the audio data
@@ -9773,7 +9773,7 @@ var SoundfileReader = class {
   }
   /**
    * Load the soundfile.
-   * 
+   *
    * @param filename : the filename
    * @param metaUrls : the metadata URLs
    * @param soundfiles : the soundfiles
@@ -9791,7 +9791,7 @@ var SoundfileReader = class {
   }
   /**
    * Load the soundfiles, public API.
-   * 
+   *
    * @param dspMeta : the metadata
    * @param soundfilesIn : the soundfiles
    * @param audioCtx : the audio context
@@ -10642,7 +10642,7 @@ process = dsp_code.process : adaptor(dsp_code.process);
 `;
         const effectCode = `// Inputs
 adaptIn(1,1,1) = _;
-adaptIn(1,1,2) = _,_ :> _;  
+adaptIn(1,1,2) = _,_ :> _;
 adaptIn(1,2,1) = _,_;
 adaptIn(1,2,2) = _,_;
 adaptIn(2,1,1) = _,_ :> _;

@@ -164,7 +164,7 @@ class FilterEQGUI extends HTMLElement
                     min-width: 50px;
                     text-align: center;
                 }
-                
+
                 .param-value[data-param*="Frequency"], .param-value[data-param*="Q"], .param-value[data-param*="Gain"] {
                     cursor: ns-resize;
                 }
@@ -380,7 +380,7 @@ class FilterEQGUI extends HTMLElement
         const delta = -(event.clientY - this.dragStartY);
 
         let newValue;
-        
+
         if (this.dragParam.includes('Frequency')) {
             // Use exponential response for frequency parameters
             newValue = this.calculateExponentialFrequency(this.dragParam, delta);
@@ -411,10 +411,10 @@ class FilterEQGUI extends HTMLElement
         const rect = this.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
-        
+
         // Find if we clicked on a handle
         const clickedHandle = this.findHandleAtPosition(x, y);
-        
+
         if (clickedHandle) {
             event.preventDefault();
             this.isHandleDragging = true;
@@ -423,7 +423,7 @@ class FilterEQGUI extends HTMLElement
             this.dragStartY = event.clientY;
             this.dragStartFrequency = this.getFilterFrequency(clickedHandle);
             this.dragStartGain = this.getFilterGain(clickedHandle);
-            
+
             document.body.style.cursor = 'move';
         }
     }
@@ -436,7 +436,7 @@ class FilterEQGUI extends HTMLElement
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
             const hoveredHandle = this.findHandleAtPosition(x, y);
-            
+
             this.canvas.style.cursor = hoveredHandle ? 'move' : 'crosshair';
             return;
         }
@@ -445,17 +445,17 @@ class FilterEQGUI extends HTMLElement
         const rect = this.canvas.getBoundingClientRect();
         const canvasWidth = rect.width;
         const canvasHeight = rect.height;
-        
+
         const currentX = event.clientX - rect.left;
         const currentY = event.clientY - rect.top;
-        
+
         // Convert mouse position to frequency and gain
         const newFrequency = this.xToFrequency(currentX, canvasWidth);
         const newGain = this.yToGain(currentY, canvasHeight);
-        
+
         // Update parameters based on filter type
         this.updateHandleParameters(this.dragHandle, newFrequency, newGain);
-        
+
         this.drawFrequencyResponse();
     }
 
@@ -546,22 +546,22 @@ class FilterEQGUI extends HTMLElement
             'peak3Frequency': [20, 20000],
             'lpFrequency': [1000, 20000]
         };
-        
+
         const range = ranges[paramName];
         if (!range) return this.dragStartValue;
-        
+
         const [minFreq, maxFreq] = range;
-        
+
         // Convert current frequency to logarithmic position (0-1)
         const logMin = Math.log10(minFreq);
         const logMax = Math.log10(maxFreq);
         const currentLogPos = (Math.log10(this.dragStartValue) - logMin) / (logMax - logMin);
-        
+
         // Apply delta with exponential sensitivity
         // Smaller sensitivity for more precise control across the range
         const sensitivity = 0.003; // Adjust this value to control drag sensitivity
         const newLogPos = Math.max(0, Math.min(1, currentLogPos + (delta * sensitivity)));
-        
+
         // Convert back to frequency
         const newLogFreq = logMin + (newLogPos * (logMax - logMin));
         return Math.pow(10, newLogFreq);
@@ -617,7 +617,7 @@ class FilterEQGUI extends HTMLElement
 
         // Draw frequency and gain labels
         this.drawLabels(width, height);
-        
+
         // Draw interactive handles
         this.drawHandles(width, height);
     }
@@ -749,7 +749,7 @@ class FilterEQGUI extends HTMLElement
 
             const freq = this.getFilterFrequency(filter.name);
             const gain = filter.hasGain ? this.getFilterGain(filter.name) : 0;
-            
+
             const x = this.frequencyToX(freq, width);
             const y = this.gainToY(gain, height);
 
@@ -757,7 +757,7 @@ class FilterEQGUI extends HTMLElement
             this.ctx.fillStyle = filter.color;
             this.ctx.strokeStyle = '#ffffff';
             this.ctx.lineWidth = 2;
-            
+
             this.ctx.beginPath();
             this.ctx.arc(x, y, handleRadius, 0, 2 * Math.PI);
             this.ctx.fill();
@@ -798,25 +798,25 @@ class FilterEQGUI extends HTMLElement
         const handleRadius = 8; // Slightly larger for easier clicking
         const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
         const canvasHeight = this.canvas.height / (window.devicePixelRatio || 1);
-        
+
         const filters = ['hp', 'peak1', 'peak2', 'peak3', 'lp'];
-        
+
         for (const filterName of filters) {
             if (!this.isFilterEnabled(filterName)) continue;
-            
+
             const freq = this.getFilterFrequency(filterName);
             const gain = filterName.includes('peak') ? this.getFilterGain(filterName) : 0;
-            
+
             const handleX = this.frequencyToX(freq, canvasWidth);
             const handleY = this.gainToY(gain, canvasHeight);
-            
+
             const distance = Math.sqrt((x - handleX) ** 2 + (y - handleY) ** 2);
-            
+
             if (distance <= handleRadius) {
                 return filterName;
             }
         }
-        
+
         return null;
     }
 
@@ -830,22 +830,22 @@ class FilterEQGUI extends HTMLElement
             'peak3': [20, 20000],
             'lp': [1000, 20000]
         };
-        
+
         const freqRange = frequencyRanges[filterName];
         if (freqRange) {
             frequency = Math.max(freqRange[0], Math.min(freqRange[1], frequency));
         }
-        
+
         // Clamp gain for peak filters
         if (filterName.includes('peak')) {
             gain = Math.max(-20, Math.min(20, gain));
         }
-        
+
         // Update frequency parameter
         const freqParamName = filterName + 'Frequency';
         this.updateParameterValue(freqParamName, frequency);
         this.sendParameterUpdate(freqParamName, frequency);
-        
+
         // Update gain parameter for peak filters
         if (filterName.includes('peak')) {
             const gainParamName = filterName + 'Gain';

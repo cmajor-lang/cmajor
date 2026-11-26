@@ -296,7 +296,7 @@ static inline void transformSlices (AST::Program& program)
 
         static constexpr std::string_view getSliceOfSliceFunctionName()  { return "_createSliceOfSlice"; }
 
-        
+
         AST::Function& getOrCreateReadSliceElementFunction (const AST::TypeBase& sliceType)
         {
             CMAJ_ASSERT (sliceType.isSlice());

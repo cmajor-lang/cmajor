@@ -47,4 +47,3 @@ export class ControllerMappings
           patchConnection.sendEventOrValue (entry.parameter, entry.min + ((entry.max - entry.min) * value / 127))
     }
 }
-

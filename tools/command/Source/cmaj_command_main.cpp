@@ -76,7 +76,7 @@ cmaj <command> [options]    Runs the given command. Options can include the foll
     --eventBufferSize=n     Set the max number of events per buffer
     --engine=<type>         Use the specified engine - e.g. llvm, webview, cpp
                             When using cpp, the additional options --overrideCompiler=<v>,
-                            --extraCompileArgs=<v> and --extraLinkerArgs=<v> can be specified to 
+                            --extraCompileArgs=<v> and --extraLinkerArgs=<v> can be specified to
                             alter the compiler and arguments used
     --simd                  WASM generation uses SIMD/non-SIMD at runtime (default)
     --no-simd               WASM generation does not emit SIMD
