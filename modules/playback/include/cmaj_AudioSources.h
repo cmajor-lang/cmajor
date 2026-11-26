@@ -358,7 +358,7 @@ struct SignalGeneratorSource : public NamedAudioSource
     void prepare (double newSampleRate) override
     {
         if (newSampleRate > 0)
-            pendingSampleRate.store (newSampleRate);
+            pendingSampleRate.store (static_cast<float> (newSampleRate));
     }
 
     void read (choc::buffer::InterleavedView<float> dest) override   { readAnyType (dest); }
@@ -408,17 +408,17 @@ private:
     void publishSettings()
     {
         targetType.store (static_cast<int32_t> (settings.type));
-        targetLevel.store (settings.level);
-        targetFrequency.store (settings.frequency);
-        targetStartFrequency.store (settings.startFrequency);
-        targetEndFrequency.store (settings.endFrequency);
-        targetSweepSeconds.store (settings.sweepSeconds);
-        targetImpulseRate.store (settings.impulseRate);
+        targetLevel.store (static_cast<float> (settings.level));
+        targetFrequency.store (static_cast<float> (settings.frequency));
+        targetStartFrequency.store (static_cast<float> (settings.startFrequency));
+        targetEndFrequency.store (static_cast<float> (settings.endFrequency));
+        targetSweepSeconds.store (static_cast<float> (settings.sweepSeconds));
+        targetImpulseRate.store (static_cast<float> (settings.impulseRate));
     }
 
     void updateSampleRate()
     {
-        auto newRate = pendingSampleRate.load();
+        auto newRate = static_cast<double> (pendingSampleRate.load());
 
         if (newRate != sampleRate)
         {
@@ -432,15 +432,15 @@ private:
     BlockTargets getBlockTargets() const
     {
         auto maxLogFrequency = std::log (0.49 * sampleRate);
-        auto getLogFrequency = [&] (const std::atomic<double>& f) { return std::min (std::log (f.load()), maxLogFrequency); };
+        auto getLogFrequency = [&] (const std::atomic<float>& f) { return std::min (std::log (static_cast<double> (f.load())), maxLogFrequency); };
 
         return { static_cast<SignalType> (targetType.load()),
-                 std::pow (10.0, targetLevel.load() / 20.0),
+                 std::pow (10.0, static_cast<double> (targetLevel.load()) / 20.0),
                  getLogFrequency (targetFrequency),
                  getLogFrequency (targetStartFrequency),
                  getLogFrequency (targetEndFrequency),
-                 targetSweepSeconds.load(),
-                 targetImpulseRate.load() };
+                 static_cast<double> (targetSweepSeconds.load()),
+                 static_cast<double> (targetImpulseRate.load()) };
     }
 
     template <typename Type>
@@ -573,10 +573,11 @@ private:
     Settings settings;
 
     std::atomic<int32_t> targetType { static_cast<int32_t> (SignalType::sine) };
-    std::atomic<double> targetLevel { -12.0 }, targetFrequency { 440.0 },
-                        targetStartFrequency { 20.0 }, targetEndFrequency { 20000.0 },
-                        targetSweepSeconds { 5.0 }, targetImpulseRate { 2.0 };
-    std::atomic<double> pendingSampleRate { 44100.0 };
+
+    std::atomic<float> targetLevel { -12.0f }, targetFrequency { 440.0f },
+                       targetStartFrequency { 20.0f }, targetEndFrequency { 20000.0f },
+                       targetSweepSeconds { 5.0f }, targetImpulseRate { 2.0f };
+    std::atomic<float> pendingSampleRate { 44100.0f };
 
     // Everything below here belongs to the audio thread
     double sampleRate = 0, smoothingCoeff = 0;
@@ -586,7 +587,7 @@ private:
     double currentGain = 0, currentLogFrequency = 0;
     uint64_t randomState = 0x9e3779b97f4a7c15ull;
 
-    // static_assert (std::atomic<double>::is_always_lock_free && std::atomic<int32_t>::is_always_lock_free);
+    static_assert (std::atomic<float>::is_always_lock_free && std::atomic<int32_t>::is_always_lock_free);
 };
 
 } // namespace cmaj::audio_utils
