@@ -458,7 +458,7 @@ private:
             auto plugin = std::make_unique<::llvm::orc::ELFDebugObjectPlugin> (session, true, true, error);
 
             if (error)
-                return std::move (error);
+                return error;
 
             layer->addPlugin (std::move (plugin));
         }
