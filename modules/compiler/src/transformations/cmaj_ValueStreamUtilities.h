@@ -39,7 +39,7 @@ struct StreamUtilities
         return std::string (endpointDeclaration.getName());
     }
 
-    static AST::Statement& createAccumulateOrAssign (AST::Object& parent, AST::ValueBase& target, AST::Object& source, bool accumulate)
+    static AST::Statement& createAccumulateOrAssign (AST::Object& parent, AST::ValueBase& target, AST::Object& source, bool accumulate, CodeLocation location = {})
     {
         if (accumulate)
         {
@@ -47,7 +47,7 @@ struct StreamUtilities
             // components
             if (target.getResultType()->isStructType())
             {
-                auto& block = parent.allocateChild<AST::ScopeBlock>();
+                auto& block = parent.allocateChild<AST::ScopeBlock> (location);
 
                 auto& targetReal = parent.allocateChild<AST::GetStructMember>();
                 targetReal.object.referTo (target);
@@ -82,7 +82,7 @@ struct StreamUtilities
             }
             else
             {
-                auto& plusEquals = parent.allocateChild<AST::InPlaceOperator>();
+                auto& plusEquals = parent.allocateChild<AST::InPlaceOperator> (location);
                 plusEquals.target.referTo (target);
                 plusEquals.source.referTo (source);
                 plusEquals.op = AST::BinaryOpTypeEnum::Enum::add;
@@ -92,7 +92,7 @@ struct StreamUtilities
         }
         else
         {
-            auto& assignment = parent.allocateChild<AST::Assignment>();
+            auto& assignment = parent.allocateChild<AST::Assignment> (location);
             assignment.target.referTo (target);
             assignment.source.referTo (source);
 

@@ -21,6 +21,7 @@
 #include "choc/memory/choc_Endianness.h"
 #include "../../codegen/cmaj_CodeGenHelpers.h"
 #include "../../validation/cmaj_ValidationUtilities.h"
+#include "cmaj_LLVMDebugInfo.h"
 
 namespace cmaj::llvm
 {
@@ -79,9 +80,19 @@ struct LLVMCodeGenerator
         CodeGenerator<LLVMCodeGenerator> codeGen (*this, program.getMainProcessor());
         codeGenerator = codeGen;
 
+        if (shouldGenerateDebugInfo (buildSettings, ::llvm::Triple (targetModule->getTargetTriple())))
+            debugInfo = std::make_unique<DebugInfoGenerator<LLVMCodeGenerator>> (*this, *targetModule,
+                                                                                 getOptimisationLevelWithDefault (buildSettings.getOptimisationLevel()) != 0);
+
         codeGen.emitTypes();
         codeGen.emitGlobals();
         codeGen.emitFunctions();
+
+        if (debugInfo != nullptr)
+        {
+            debugInfo->finalise();
+            debugInfo.reset();
+        }
 
        #if CMAJ_LLVM_RUN_VERIFIER
         if (verifyModule (*targetModule))
@@ -209,6 +220,16 @@ struct LLVMCodeGenerator
         return level >= 0 && level <= 4 ? level : defaultOptimisationLevel;
     }
 
+    /// DWARF is only emitted for targets that the JIT is able to hand over to a debugger,
+    /// which rules out COFF and also 32-bit targets, as JITLink isn't usable on them. The
+    /// JIT also uses this to decide how to link, so that the two can't disagree.
+    static bool shouldGenerateDebugInfo (const BuildSettings& settings, const ::llvm::Triple& targetTriple)
+    {
+        return settings.shouldEmitDebugSymbols()
+                && targetTriple.isArch64Bit()
+                && (targetTriple.isOSBinFormatMachO() || targetTriple.isOSBinFormatELF());
+    }
+
     //==============================================================================
     const AST::Program& program;
     const choc::value::Value& engineOptions;
@@ -225,6 +246,7 @@ struct LLVMCodeGenerator
 
     std::unique_ptr<::llvm::LLVMContext> context;
     std::unique_ptr<::llvm::Module> targetModule;
+    std::unique_ptr<DebugInfoGenerator<LLVMCodeGenerator>> debugInfo;
 
     ::llvm::Function* currentFunction = nullptr;
     Block currentBlock = nullptr, functionStartBlock = nullptr;
@@ -601,7 +623,21 @@ struct LLVMCodeGenerator
             currentBlockBuilder->setFastMathFlags (flags);
         }
 
+        if (debugInfo != nullptr)
+            currentBlockBuilder->SetCurrentDebugLocation (debugInfo->getCurrentLocation());
+
         currentBlock = block;
+    }
+
+    void setSourceLocation (const AST::Object& statement)
+    {
+        if (debugInfo != nullptr)
+        {
+            debugInfo->setStatementLocation (statement);
+
+            if (currentBlockBuilder != nullptr)
+                currentBlockBuilder->SetCurrentDebugLocation (debugInfo->getCurrentLocation());
+        }
     }
 
     void resetCurrentBlock()
@@ -793,6 +829,9 @@ struct LLVMCodeGenerator
                                                   initialiser, std::string (name));
 
         globalVariables[std::addressof (v)] = global;
+
+        if (debugInfo != nullptr)
+            debugInfo->declareGlobalVariable (v, type, *global);
     }
 
     bool isExportedFunction (const AST::Function& f) const
@@ -913,6 +952,10 @@ struct LLVMCodeGenerator
         {
             currentFunction->addFnAttr ("wasm-export-name", currentFunction->getName());
         }
+
+        // A debugger needs frame pointers to walk the stack, as the JIT doesn't register any unwind info
+        if (debugInfo != nullptr)
+            currentFunction->addFnAttr ("frame-pointer", "all");
     }
 
     void beginFunction (const AST::Function& fn, std::string_view, const AST::TypeBase&)
@@ -924,6 +967,13 @@ struct LLVMCodeGenerator
 
         functionEntryBlockBuilder = std::make_unique<::llvm::IRBuilder<>> (createBlock());
         functionStartBlock = createBlock();
+
+        if (debugInfo != nullptr)
+        {
+            debugInfo->beginFunction (fn, *currentFunction);
+            functionEntryBlockBuilder->SetCurrentDebugLocation (debugInfo->getCurrentLocation());
+        }
+
         setCurrentBlock (functionStartBlock);
 
         unsigned index = 0;
@@ -977,7 +1027,9 @@ struct LLVMCodeGenerator
             }
             else if (! isReference)
             {
-                if (codeGenerator->variableMustHaveAddress (param)
+                // when debugging, these all need a stack slot for the debugger to read them from
+                if (debugInfo != nullptr
+                     || codeGenerator->variableMustHaveAddress (param)
                      || validation::isVariableWrittenWithinFunction (fn, param))
                 {
                     auto newLocal = functionEntryBlockBuilder->CreateAlloca (getLLVMType (paramType));
@@ -987,9 +1039,32 @@ struct LLVMCodeGenerator
             }
 
             localVariables[std::addressof (param)] = paramVariable;
+
+            if (debugInfo != nullptr)
+                addParameterDebugInfo (param, paramType, paramVariable, paramIndex);
+
             ++index;
             ++paramIndex;
         }
+    }
+
+    void addParameterDebugInfo (const AST::VariableDeclaration& param, const AST::TypeBase& paramType,
+                                ::llvm::Value* paramVariable, unsigned paramIndex)
+    {
+        auto isPointerArgument = ::llvm::isa<::llvm::Argument> (paramVariable) && paramVariable->getType()->isPointerTy();
+
+        // An argument that's a pointer will only be in a register, which is soon going
+        // to be reused, so keep a copy of it on the stack for the debugger to find
+        if (isPointerArgument)
+        {
+            auto slot = functionEntryBlockBuilder->CreateAlloca (paramVariable->getType());
+            functionEntryBlockBuilder->CreateStore (paramVariable, slot);
+            paramVariable = slot;
+        }
+
+        debugInfo->declareParameter (param, paramType, paramIndex + 1, paramVariable,
+                                     isPointerArgument && ! paramType.isReference(),
+                                     *functionEntryBlockBuilder->GetInsertBlock());
     }
 
     void endFunction()
@@ -1170,6 +1245,10 @@ struct LLVMCodeGenerator
             CMAJ_ASSERT (! type->isPointerTy());
             auto pointer = functionEntryBlockBuilder->CreateAlloca (type);
             localVariables[std::addressof (v)] = pointer;
+
+            if (debugInfo != nullptr)
+                debugInfo->declareLocalVariable (v, pointer, *functionEntryBlockBuilder->GetInsertBlock());
+
             return pointer;
         }
 

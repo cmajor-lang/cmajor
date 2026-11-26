@@ -34,14 +34,22 @@
 
 #include "choc/platform/choc_DisableAllWarnings.h"
 
+#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/ExecutionEngine/JITLink/JITLinkMemoryManager.h"
+#include "llvm/ExecutionEngine/Orc/Debugging/DebuggerSupportPlugin.h"
+#include "llvm/ExecutionEngine/Orc/Debugging/ELFDebugObjectPlugin.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/ExecutionEngine/Orc/InProcessMemoryAccess.h"
+#include "llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h"
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
+#include "llvm/ExecutionEngine/Orc/TargetProcess/JITLoaderGDB.h"
+#include "llvm/ExecutionEngine/Orc/Shared/OrcRTBridge.h"
+#include "llvm/ExecutionEngine/Orc/Shared/WrapperFunctionUtils.h"
 #include "llvm/ExecutionEngine/RTDyldMemoryManager.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/Support/Process.h"
@@ -56,6 +64,7 @@
 #include "llvm/MC/TargetRegistry.h"
 
 #include "choc/platform/choc_ReenableAllWarnings.h"
+#include <mutex>
 #include "choc/memory/choc_AlignedMemoryBlock.h"
 #include "choc/text/choc_Files.h"
 #include "choc/text/choc_OpenSourceLicenseList.h"
@@ -103,6 +112,13 @@ public:
         this->PageSize                = static_cast<unsigned> (::llvm::sys::Process::getPageSizeEstimate());
         this->JDI.JITDispatchFunction = ::llvm::orc::ExecutorAddr::fromPtr (&jitDispatchViaWrapperFunctionManager);
         this->JDI.JITDispatchContext  = ::llvm::orc::ExecutorAddr::fromPtr (this);
+
+        // LLJIT insists on finding these if it's given an ObjectLinkingLayer
+        auto& unwindInfoRegistrar = ::llvm::orc::rt::orc_rt_MachOUnwindInfoRegistrarSPSSymbols;
+        this->BootstrapSymbols[unwindInfoRegistrar.RegisterSectionsName]                     = ::llvm::orc::ExecutorAddr::fromPtr (&ignoreUnwindInfo);
+        this->BootstrapSymbols[unwindInfoRegistrar.DeregisterSectionsName]                   = ::llvm::orc::ExecutorAddr::fromPtr (&ignoreUnwindInfo);
+        this->BootstrapSymbols[::llvm::orc::rt_alt::UnwindInfoManagerRegisterActionName]   = ::llvm::orc::ExecutorAddr::fromPtr (&ignoreUnwindInfo);
+        this->BootstrapSymbols[::llvm::orc::rt_alt::UnwindInfoManagerDeregisterActionName] = ::llvm::orc::ExecutorAddr::fromPtr (&ignoreUnwindInfo);
     }
 
     ::llvm::Expected<int32_t> runAsMain (::llvm::orc::ExecutorAddr mainAddr, ::llvm::ArrayRef<std::string> args) override
@@ -193,13 +209,115 @@ private:
         return {};
     }
 
+    // Stands in for the real unwind info manager, which is the thing we need to avoid. The
+    // caller expects a serialised SPSError back, and a single zero byte means success.
+    static ::llvm::orc::shared::CWrapperFunctionBuffer ignoreUnwindInfo (const char*, size_t)
+    {
+        char success = 0;
+        return ::llvm::orc::shared::WrapperFunctionBuffer::copyFrom (std::addressof (success), 1).release();
+    }
 };
 #endif
 
 //==============================================================================
+// This is the interface through which GDB and LLDB learn about JIT-compiled code: a debugger
+// finds these two symbols by name, and puts a breakpoint on the function.
+//
+// LLVM has an implementation of this, but we can't use it. Its rendezvous function is empty,
+// so in a release build the linker folds it into any other empty function, and the debugger
+// then stops at every call to all of them. It also leaves the action flag set afterwards,
+// so each of those stops looks like a new registration, and it can't deregister anything.
+//
+// Since LLVM 23, SelfExecutorProcessControl refers to llvm_orc_registerJITLoaderGDBAllocAction
+// as a default bootstrap symbol, which would drag LLVM's JITLoaderGDB object in from the static
+// library, and its copies of these symbols would then clash with ours. Defining that function
+// here too means the linker never needs LLVM's version, and it also means that the ELF debug
+// plugin, which finds its registration function by that bootstrap name, ends up calling ours.
+extern "C"
+{
+    LLVM_ATTRIBUTE_USED LLVM_ATTRIBUTE_NOINLINE void __jit_debug_register_code()
+    {
+        static volatile int numCalls = 0;
+        numCalls = numCalls + 1; // gives this function a body which is unique
+    }
+
+    LLVM_ATTRIBUTE_USED jit_descriptor __jit_debug_descriptor = { 1, JIT_NOACTION, nullptr, nullptr };
+}
+
+struct DebuggerRegistry
+{
+    using Entries = std::vector<jit_code_entry*>;
+
+    static std::mutex& getLock()
+    {
+        static std::mutex lock;
+        return lock;
+    }
+
+    /// The linker calls this function when it has an object ready for the debugger. It has no
+    /// way of saying which JIT that belongs to, so while getLock() is held by a JIT that's
+    /// loading some code, anything that gets registered is added to this list for it to claim.
+    static Entries& getNewEntries()
+    {
+        static Entries entries;
+        return entries;
+    }
+
+    static ::llvm::orc::shared::CWrapperFunctionBuffer registerObject (const char* data, size_t size)
+    {
+        using namespace ::llvm::orc::shared;
+
+        return WrapperFunction<SPSError (SPSExecutorAddrRange, bool)>::handle (data, size, [] (::llvm::orc::ExecutorAddrRange range, bool)
+        {
+            auto entry = new jit_code_entry { __jit_debug_descriptor.first_entry, nullptr, range.Start.toPtr<const char*>(), range.size() };
+
+            if (entry->next_entry != nullptr)
+                entry->next_entry->prev_entry = entry;
+
+            __jit_debug_descriptor.first_entry = entry;
+            getNewEntries().push_back (entry);
+            notifyDebugger (JIT_REGISTER_FN, entry);
+            return ::llvm::Error::success();
+        }).release();
+    }
+
+    /// This must be called while the code is still loaded, because a debugger will
+    /// otherwise be left with breakpoints in memory that may get used for something else.
+    static void unregisterObjects (const Entries& entries)
+    {
+        std::lock_guard<std::mutex> lock (getLock());
+
+        for (auto entry : entries)
+        {
+            (entry->prev_entry != nullptr ? entry->prev_entry->next_entry : __jit_debug_descriptor.first_entry) = entry->next_entry;
+
+            if (entry->next_entry != nullptr)
+                entry->next_entry->prev_entry = entry->prev_entry;
+
+            notifyDebugger (JIT_UNREGISTER_FN, entry);
+            delete entry;
+        }
+    }
+
+private:
+    static void notifyDebugger (jit_actions_t action, jit_code_entry* entry)
+    {
+        __jit_debug_descriptor.action_flag = action;
+        __jit_debug_descriptor.relevant_entry = entry;
+        __jit_debug_register_code();
+        __jit_debug_descriptor.action_flag = JIT_NOACTION;
+    }
+};
+
+extern "C" ::llvm::orc::shared::CWrapperFunctionBuffer llvm_orc_registerJITLoaderGDBAllocAction (const char* data, size_t size)
+{
+    return DebuggerRegistry::registerObject (data, size);
+}
+
+//==============================================================================
 struct LLJITHolder
 {
-    LLJITHolder (int optimisationLevel)
+    LLJITHolder (const BuildSettings& buildSettings)
     {
         ::llvm::sys::DynamicLibrary::LoadLibraryPermanently (nullptr);
 
@@ -209,7 +327,8 @@ struct LLJITHolder
             auto& opts = machineBuilder->getOptions();
             opts.ExceptionModel = ::llvm::ExceptionHandling::None;
 
-            machineBuilder->setCodeGenOptLevel (getCodeGenOptLevel (optimisationLevel));
+            usesDebugInfo = LLVMCodeGenerator::shouldGenerateDebugInfo (buildSettings, targetTriple);
+            machineBuilder->setCodeGenOptLevel (getCodeGenOptLevel (buildSettings.getOptimisationLevel(), usesDebugInfo));
 
             ::llvm::orc::LLJITBuilder builder;
             builder.setJITTargetMachineBuilder (machineBuilder.get());
@@ -228,30 +347,46 @@ struct LLJITHolder
             }
            #endif
 
-            if (auto jit = builder.create())
-            {
-                if (auto e = jit.takeError())
-                    throwError (Errors::failedToJit (toString (std::move (e))));
+            if (usesDebugInfo)
+                builder.setObjectLinkingLayerCreator (createDebuggableLinkingLayer);
 
-                lljit = std::move (*jit);
+            auto jit = builder.create();
 
-                if (auto gen = ::llvm::orc::DynamicLibrarySearchGenerator
-                                    ::GetForCurrentProcess (lljit->getDataLayout().getGlobalPrefix()))
-                    lljit->getMainJITDylib().addGenerator (std::move (*gen));
+            if (! jit)
+                throwError (Errors::failedToJit (toString (jit.takeError())));
 
-                return;
-            }
+            lljit = std::move (*jit);
+
+            if (auto gen = ::llvm::orc::DynamicLibrarySearchGenerator
+                                ::GetForCurrentProcess (lljit->getDataLayout().getGlobalPrefix()))
+                lljit->getMainJITDylib().addGenerator (std::move (*gen));
+
+            return;
         }
 
         CMAJ_ASSERT_FALSE;
     }
 
+    ~LLJITHolder()
+    {
+        if (! debuggerEntries.empty())
+            DebuggerRegistry::unregisterObjects (debuggerEntries);
+    }
+
     void load (::llvm::orc::ThreadSafeModule&& module)
     {
-        auto err = lljit->addIRModule (std::move (module));
-        CMAJ_ASSERT (! err);
-        err = lljit->initialize (lljit->getMainJITDylib());
-        CMAJ_ASSERT (! err);
+        if (! usesDebugInfo)
+            return addModule (std::move (module));
+
+        std::lock_guard<std::mutex> lock (DebuggerRegistry::getLock());
+
+        addModule (std::move (module));
+
+        // Linking is lazy, so look something up to make it happen while we hold the lock
+        findSymbol (LLVMCodeGenerator::getInitFunctionName());
+
+        debuggerEntries = std::move (DebuggerRegistry::getNewEntries());
+        DebuggerRegistry::getNewEntries().clear();
     }
 
     void addExternalFunctionSymbols (const std::unordered_map<std::string, void*>& functionPointers)
@@ -292,15 +427,55 @@ struct LLJITHolder
 
 private:
     std::unique_ptr<::llvm::orc::LLJIT> lljit;
+    bool usesDebugInfo = false;
+    DebuggerRegistry::Entries debuggerEntries;
 
-    static ::llvm::CodeGenOptLevel getCodeGenOptLevel (int level)
+    void addModule (::llvm::orc::ThreadSafeModule&& module)
+    {
+        auto err = lljit->addIRModule (std::move (module));
+        CMAJ_ASSERT (! err);
+        err = lljit->initialize (lljit->getMainJITDylib());
+        CMAJ_ASSERT (! err);
+    }
+
+    // Only JITLink can pass debug info to a debugger for all our targets: on MacOS the
+    // RTDyld layer quietly ignores any attempt to register a Mach-O object.
+    static ::llvm::Expected<std::unique_ptr<::llvm::orc::ObjectLayer>> createDebuggableLinkingLayer (::llvm::orc::ExecutionSession& session,
+                                                                                                     ::llvm::jitlink::JITLinkMemoryManager& memoryManager)
+    {
+        auto layer = std::make_unique<::llvm::orc::ObjectLinkingLayer> (session, memoryManager);
+
+        if (session.getTargetTriple().isOSBinFormatMachO())
+        {
+            auto registerObject = ::llvm::orc::ExecutorAddr::fromPtr (&DebuggerRegistry::registerObject);
+            layer->addPlugin (std::make_unique<::llvm::orc::GDBJITDebugInfoRegistrationPlugin> (registerObject));
+        }
+        else
+        {
+            // This finds the registration function via the executor's bootstrap symbols,
+            // where it will be our llvm_orc_registerJITLoaderGDBAllocAction
+            ::llvm::Error error = ::llvm::Error::success();
+            auto plugin = std::make_unique<::llvm::orc::ELFDebugObjectPlugin> (session, true, true, error);
+
+            if (error)
+                return std::move (error);
+
+            layer->addPlugin (std::move (plugin));
+        }
+
+        return layer;
+    }
+
+    static ::llvm::CodeGenOptLevel getCodeGenOptLevel (int level, bool isDebugging)
     {
         switch (LLVMCodeGenerator::getOptimisationLevelWithDefault (level))
         {
             // NB: If we skip optimisation altogether, then some large array alloca operations
             // spew out millions of instructions and cause llvm to meltdown.. so if asked for -O0,
             // we'll actually do -O1, which seems to mitigate the troublesome examples we've found.
-            case 0:    return ::llvm::CodeGenOptLevel::Less;
+            // But that reorders the code enough for a debugger to show stale values, so when
+            // debugging we need the real thing.
+            case 0:    return isDebugging ? ::llvm::CodeGenOptLevel::None : ::llvm::CodeGenOptLevel::Less;
             case 1:    return ::llvm::CodeGenOptLevel::Less;
             case 2:    return ::llvm::CodeGenOptLevel::Default;
             case 3:    return ::llvm::CodeGenOptLevel::Aggressive;
@@ -338,7 +513,7 @@ struct LLVMEngine
     {
         LinkedCode (LLVMEngine& llvmEngine, bool isSingleFrameOnly, double latencyToUse,
                     CacheDatabaseInterface* cache, const char* cacheKey)
-           : lljit (llvmEngine.engine.buildSettings.getOptimisationLevel()),
+           : lljit (llvmEngine.engine.buildSettings),
              latency (latencyToUse)
         {
             LLVMCodeGenerator codeGen (*llvmEngine.engine.program,
@@ -849,20 +1024,28 @@ std::string generateAssembler (const cmaj::ProgramInterface& p,
                                const cmaj::BuildSettings& buildSettings,
                                const choc::value::Value& options)
 {
+    initialiseLLVM();
+
     std::unique_ptr<::llvm::TargetMachine> targetMachine;
 
     if (! options.hasObjectMember ("targetTriple"))
     {
-        if (auto machineBuilder = ::llvm::orc::JITTargetMachineBuilder::detectHost())
-        {
-            auto& opts = machineBuilder->getOptions();
-            opts.ExceptionModel = ::llvm::ExceptionHandling::None;
+        auto machineBuilder = ::llvm::orc::JITTargetMachineBuilder::detectHost();
 
-            machineBuilder->setCodeGenOptLevel (LLVMCodeGenerator::getCodeGenOptLevel (buildSettings.getOptimisationLevel()));
+        if (! machineBuilder)
+            return "Failed to create target machine: " + toString (machineBuilder.takeError());
 
-            if (auto t = machineBuilder->createTargetMachine())
-                targetMachine = std::move (*t);
-        }
+        auto& opts = machineBuilder->getOptions();
+        opts.ExceptionModel = ::llvm::ExceptionHandling::None;
+
+        machineBuilder->setCodeGenOptLevel (LLVMCodeGenerator::getCodeGenOptLevel (buildSettings.getOptimisationLevel()));
+
+        auto newTargetMachine = machineBuilder->createTargetMachine();
+
+        if (! newTargetMachine)
+            return "Failed to create target machine: " + toString (newTargetMachine.takeError());
+
+        targetMachine = std::move (*newTargetMachine);
     }
     else
     {
@@ -911,6 +1094,8 @@ void addTargetIfAvailable (std::vector<std::string>& targets, std::string target
 
 std::vector<std::string> getAssemberTargets()
 {
+    initialiseLLVM();
+
     std::vector<std::string> result;
 
     result.push_back ("llvm");

@@ -126,6 +126,28 @@ processor P
 }
 ```
 
+### `## testBreakpointLines()`
+
+This checks that a debugger would be able to put a breakpoint on each line of the code chunk that is marked with a `//@break` comment. It builds the code with debug symbols (as with `cmaj -g`) at `-O0`, generates LLVM assembly for the host, and fails if the debug line table has no entry for any marked line. The test only runs with the `llvm` engine, and is reported as unsupported for other engines, or where the host can't have debug info (e.g. on Windows). e.g.
+
+```
+## testBreakpointLines()
+
+processor P [[ main ]]
+{
+    output stream float out;
+
+    void main()
+    {
+        loop
+        {
+            out <- 1.0f;    //@break
+            advance();      //@break
+        }
+    }
+}
+```
+
 ### `## expectError ("<expected error message>")`
 
 This wraps the chunk of code in a dummy namespace (to allow you to easily write free functions without any boilerplate) and attempts to compile it. If the compiler error matches the one specified in the test directive, it's a pass. If there's no error, or the error doesn't match, it's a fail.

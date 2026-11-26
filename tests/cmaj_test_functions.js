@@ -643,6 +643,124 @@ function testConsole (expectedConsoleMsg, options)
     }
 }
 
+//==============================================================================
+/*  This test checks that a debugger would be able to put a breakpoint on each line
+    which is marked with a //@break comment.
+
+    It builds the code with debug symbols enabled, generates LLVM assembly for it,
+    and checks that the line table contains an entry for every marked line. It's
+    only run with the llvm engine, and is reported as unsupported for other engines,
+    or if no debug info can be generated for the host (e.g. on Windows).
+
+    Unless the options give an optimisationLevel, the code is built with -O0, as
+    that's what should be used when debugging.
+
+    e.g.
+    ## testBreakpointLines()
+
+    processor P [[ main ]]
+    {
+        output stream float out;
+
+        void main()
+        {
+            loop
+            {
+                out <- 1.0f;    //@break
+                advance();      //@break
+            }
+        }
+    }
+*/
+function testBreakpointLines (options)
+{
+    if (options == undefined)
+        options = {};
+
+    let testSection = getCurrentTestSection();
+
+    // This always generates LLVM code, so running it with other engines would just repeat the same test
+    if (getEngineName() != "llvm")
+    {
+        testSection.reportUnsupported ("engine type " + getEngineName() + " not supported");
+        return;
+    }
+
+    let marker = "//@break";
+    let sourceLines = testSection.source.split ("\n");
+    let markedLines = [];
+
+    for (let i = 0; i < sourceLines.length; ++i)
+        if (sourceLines[i].includes (marker))
+            markedLines.push (i + 1);
+
+    if (markedLines.length == 0)
+    {
+        testSection.reportFail ("No lines are marked with " + marker);
+        return;
+    }
+
+    let engine = createEngine (options);
+    let buildSettings = engine.getBuildSettings();
+    buildSettings.debugSymbols = true;
+    buildSettings.optimisationLevel = 0;
+    engine.setBuildSettings (buildSettings);
+
+    let timingInfo = {};
+    engine = buildEngineWithLoadedProgram (testSection, options, timingInfo, engine);
+
+    if (isError (engine, options))
+    {
+        testSection.reportFail (engine);
+        return;
+    }
+
+    // Any endpoints that nothing asks for get optimised away, along with their handlers
+    for (let endpoint of engine.getInputEndpoints())
+        engine.getEndpointHandle (endpoint.endpointID);
+
+    for (let endpoint of engine.getOutputEndpoints())
+        engine.getEndpointHandle (endpoint.endpointID);
+
+    let result = engine.generateCode ("llvm", {});
+
+    if (isError (result.messages))
+    {
+        testSection.reportFail (result.messages);
+        return;
+    }
+
+    // Each row of the line table appears in the assembly as: .loc <file> <line> <column> [flags]
+    let linesWithCode = new Set();
+
+    for (let match of result.output.matchAll (/^\s*\.loc\s+\d+\s+(\d+)\s/gm))
+        linesWithCode.add (parseInt (match[1]));
+
+    linesWithCode.delete (0);
+
+    if (linesWithCode.size == 0)
+    {
+        testSection.reportUnsupported ("No debug info was generated for this target");
+        return;
+    }
+
+    // The test's source starts on the line after its header
+    let firstLine = testSection.lineNum != undefined ? testSection.lineNum : 0;
+    let missing = [];
+
+    for (let line of markedLines)
+        if (! linesWithCode.has (line))
+            missing.push ("line " + (firstLine + line) + ": " + sourceLines[line - 1].trim());
+
+    if (missing.length != 0)
+    {
+        testSection.reportFail ("No line table entry for:\n" + missing.join ("\n"));
+        return;
+    }
+
+    testSection.reportSuccess();
+}
+
 
 //==============================================================================
 /*

@@ -262,9 +262,10 @@ static inline Assignment& createAssignment (const ObjectContext& context, Expres
     return a;
 }
 
-static inline void addAssignment (ScopeBlock& scope, Expression& target, Expression& source, int insertIndex = -1)
+static inline void addAssignment (ScopeBlock& scope, Expression& target, Expression& source, int insertIndex = -1,
+                                  CodeLocation location = {})
 {
-    auto& a = scope.allocateChild<Assignment>();
+    auto& a = scope.allocateChild<Assignment> (location);
     a.target.setChildObject (target);
     a.source.setChildObject (source);
     scope.addStatement (a, insertIndex);
@@ -521,9 +522,9 @@ static inline void addReturnStatement (ScopeBlock& scope, ValueBase& value, int 
     scope.addStatement (ret, insertIndex);
 }
 
-static inline void addReturnStatement (ScopeBlock& scope, int insertIndex = -1)
+static inline void addReturnStatement (ScopeBlock& scope, int insertIndex = -1, CodeLocation location = {})
 {
-    scope.addStatement (scope.allocateChild<ReturnStatement>(), insertIndex);
+    scope.addStatement (scope.allocateChild<ReturnStatement> (location), insertIndex);
 }
 
 static inline ValueBase& createCast (const TypeBase& destType, ValueBase& value)

@@ -1323,6 +1323,8 @@ struct EndpointInfo
         currentLoop = {};
     }
 
+    void setSourceLocation (const AST::Object&) {}
+
     //==============================================================================
     void beginBlock()
     {

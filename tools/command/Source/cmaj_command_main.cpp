@@ -67,6 +67,10 @@ https://cmajor.dev
 cmaj <command> [options]    Runs the given command. Options can include the following:
 
     -O0|1|2|3|4             Set the optimisation level to the given value
+    -g                      With the llvm engine, include debug info so that the running code can
+                            be debugged. Use -O0 as well, or variables and stepping won't be
+                            reliable. On MacOS, LLDB needs this enabling with the command:
+                            settings set plugin.jit-loader.gdb.enable on
     --debug                 Turn on debug output from the performer
     --sessionID=n           Set the session id to the given value
     --eventBufferSize=n     Set the max number of events per buffer
@@ -220,6 +224,9 @@ static cmaj::BuildSettings parseBuildArgs (choc::ArgumentList& args)
 
     if (args.removeIfFound ("-debug") || args.removeIfFound ("--debug"))
         buildSettings.setDebugFlag (true);
+
+    if (args.removeIfFound ("-g"))
+        buildSettings.setEmitDebugSymbols (true);
 
     if (auto sessID = args.removeIntValue<int32_t> ("--sessionID"))
         buildSettings.setSessionID (*sessID);

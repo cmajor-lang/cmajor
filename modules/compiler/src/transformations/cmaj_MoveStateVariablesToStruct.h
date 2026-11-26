@@ -343,14 +343,16 @@ struct MoveStateVariablesToStruct  : public AST::NonParameterisedObjectVisitor
             return StreamUtilities::createAccumulateOrAssign (w,
                                                               AST::createGetElement (w.context, structMember, w.targetIndex),
                                                               *value,
-                                                              accumulate);
+                                                              accumulate,
+                                                              w.context.location);
         }
 
 
         return StreamUtilities::createAccumulateOrAssign (w,
                                                           structMember,
                                                           *value,
-                                                          accumulate);
+                                                          accumulate,
+                                                          w.context.location);
     }
 
     AST::Statement& transformWriteToEndpoint (const AST::WriteToEndpoint& w,

@@ -45,6 +45,7 @@ struct BuildSettings
     bool         shouldIgnoreWarnings() const              { return getWithDefault (ignoreWarningsMember, false); }
     bool         shouldDumpDebugInfo() const               { return getWithDefault (debugMember, false); }
     bool         isDebugFlagSet() const                    { return getWithDefault (debugMember, false); }
+    bool         shouldEmitDebugSymbols() const            { return getWithDefault (debugSymbolsMember, false); }
     bool         shouldUseFastMaths() const                { return getOptimisationLevel() >= 4; }
     std::string  getMainProcessor() const                  { return getWithDefault (mainProcessorMember, ""); }
     double       getTransformTimeout() const               { return getWithDefault (transformTimeoutMember, defaultTransformTimeout); }
@@ -59,6 +60,7 @@ struct BuildSettings
     BuildSettings& setOptimisationLevel (int level)        { setProperty (optimisationLevelMember, level); return *this; }
     BuildSettings& setSessionID (int32_t id)               { setProperty (sessionIDMember, id); return *this; }
     BuildSettings& setDebugFlag (bool b)                   { setProperty (debugMember, b); return *this; }
+    BuildSettings& setEmitDebugSymbols (bool b)            { setProperty (debugSymbolsMember, b); return *this; }
     BuildSettings& setMainProcessor (std::string_view s)   { setProperty (mainProcessorMember, s); return *this; }
     BuildSettings& setTransformTimeout (double f)          { setProperty (transformTimeoutMember, f); return *this; }
 
@@ -133,6 +135,7 @@ private:
     static constexpr auto sessionIDMember          = "sessionID";
     static constexpr auto ignoreWarningsMember     = "ignoreWarnings";
     static constexpr auto debugMember              = "debug";
+    static constexpr auto debugSymbolsMember       = "debugSymbols";
     static constexpr auto mainProcessorMember      = "mainProcessor";
     static constexpr auto transformTimeoutMember   = "transformTimeout";
 

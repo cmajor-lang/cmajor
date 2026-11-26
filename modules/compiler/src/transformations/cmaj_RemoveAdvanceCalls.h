@@ -89,7 +89,7 @@ struct RemoveAdvanceCalls  : public AST::NonParameterisedObjectVisitor
         auto mainFunction      = processor->findMainFunction();
         auto advancingFunction = advance.findParentFunction();
         auto& stateParam       = AST::createVariableReference (mainFunction->context, advancingFunction->getParameter (advance.getStrings()._state));
-        auto& block            = mainFunction->allocateChild<AST::ScopeBlock>();
+        auto& block            = mainFunction->allocateChild<AST::ScopeBlock> (advance.context.location);
         auto ioMemberName      = advance.getStringPool().get (std::string (nodeName.get()) + "_io");
         auto& ioStructMember   = AST::createGetStructMember (block.context, stateParam, ioMemberName);
 
@@ -184,8 +184,9 @@ struct RemoveAdvanceCalls  : public AST::NonParameterisedObjectVisitor
 
         for (auto advanceCall : advanceCalls)
         {
-            auto& block = AST::castToRef<AST::ScopeBlock> (advanceCall->getParentScope());
+            auto& block      = AST::castToRef<AST::ScopeBlock> (advanceCall->getParentScope());
             auto insertIndex = block.findIndexOfStatementContaining (advanceCall);
+            auto location    = advanceCall->context.location;
 
             // If the advance is the last statement in an infinite loop, and does nothing on iteration, make it resume
             // at the start of the loop, not the end..
@@ -198,12 +199,12 @@ struct RemoveAdvanceCalls  : public AST::NonParameterisedObjectVisitor
                         // if we'd be adding a jump that goes straight to the start of the function, then skip it
                         if (advanceIndex == 1 && ! mainBlock.statements.empty() && parentLoop == mainBlock.statements.front().getObjectRef())
                         {
-                            block.setStatement (static_cast<size_t> (insertIndex), block.allocateChild<AST::ReturnStatement>()); // replace advance call
+                            block.setStatement (static_cast<size_t> (insertIndex), block.allocateChild<AST::ReturnStatement> (location)); // replace advance call
                             continue;
                         }
 
-                        setResumeIndexToValue (block, resumeIndexRef, advanceIndex, insertIndex++);
-                        block.setStatement (static_cast<size_t> (insertIndex), block.allocateChild<AST::ReturnStatement>()); // replace advance call
+                        setResumeIndexToValue (block, resumeIndexRef, advanceIndex, insertIndex++, location);
+                        block.setStatement (static_cast<size_t> (insertIndex), block.allocateChild<AST::ReturnStatement> (location)); // replace advance call
 
                         auto& loopParent = AST::castToRef<AST::ScopeBlock> (parentLoop->getParentScopeRef());
                         auto loopIndex = loopParent.findIndexOfStatementContaining (*parentLoop);
@@ -223,8 +224,8 @@ struct RemoveAdvanceCalls  : public AST::NonParameterisedObjectVisitor
                 }
             }
 
-            setResumeIndexToValue (block, resumeIndexRef, advanceIndex, insertIndex++);
-            AST::addReturnStatement (block, insertIndex++);
+            setResumeIndexToValue (block, resumeIndexRef, advanceIndex, insertIndex++, location);
+            AST::addReturnStatement (block, insertIndex++, location);
 
             auto& resumeBlock = createResumeBlock (block, advanceIndex++);
             forwardBranchStatement.targetBlocks.addReference (resumeBlock);
@@ -262,12 +263,13 @@ struct RemoveAdvanceCalls  : public AST::NonParameterisedObjectVisitor
         return resumeBlock;
     }
 
-    void setResumeIndexToValue (AST::ScopeBlock& block, AST::VariableReference& resumeIndexRef, int32_t index, int32_t insertIndex = -1)
+    void setResumeIndexToValue (AST::ScopeBlock& block, AST::VariableReference& resumeIndexRef, int32_t index, int32_t insertIndex = -1, CodeLocation location = {})
     {
         AST::addAssignment (block,
                             resumeIndexRef,
                             block.context.allocator.createConstantInt32 (index),
-                            insertIndex);
+                            insertIndex,
+                            location);
     }
 
     //==============================================================================
@@ -335,12 +337,12 @@ struct RemoveAdvanceCalls  : public AST::NonParameterisedObjectVisitor
         auto statementIndex = block.findIndexOfStatementContaining (advance);
         CMAJ_ASSERT (statementIndex >= 0);
 
-        auto& assignNewResumeIndex = block.allocateChild<AST::Assignment>();
+        auto& assignNewResumeIndex = block.allocateChild<AST::Assignment> (advance.context.location);
         assignNewResumeIndex.target.referTo (AST::createVariableReference (block.context, stateResumeIndex));
         assignNewResumeIndex.source.createConstant (advanceNumber);
 
         block.setStatement (static_cast<size_t> (statementIndex), assignNewResumeIndex);
-        block.addStatement (block.allocateChild<AST::ReturnStatement>(), statementIndex + 1);
+        block.addStatement (block.allocateChild<AST::ReturnStatement> (advance.context.location), statementIndex + 1);
     }
 
     void recursivelyAddConditionToBlocks (AST::VariableDeclaration& resumeIndex,

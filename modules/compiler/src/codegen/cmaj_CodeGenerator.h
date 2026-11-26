@@ -291,6 +291,7 @@ private:
     void emitStatement (const AST::Object& statement)
     {
         CMAJ_ASSERT (postStatementOperationStack.empty());
+        builder.setSourceLocation (statement);
         emitStatementInstructions (statement);
         flushPostStatementOps();
     }

@@ -112,7 +112,7 @@ struct Object
     virtual Object& allocateClone (ObjectContext) const = 0;
 
     template <typename Type>
-    Type& allocateChild()               { return context.allocator.getContextWithoutLocation (*this).allocate<Type>(); }
+    Type& allocateChild (CodeLocation location = {})    { return context.allocator.getContext (location, *this).allocate<Type>(); }
 
     const Strings& getStrings() const   { return context.allocator.strings; }
     StringPool& getStringPool() const   { return context.allocator.strings.stringPool; }

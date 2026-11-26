@@ -1044,6 +1044,7 @@ function TestSection (ts)
     this.source = ts.source;
     this.globalSource = ts.globalSource;
     this.header = ts.header;
+    this.lineNum = ts.lineNum;
 
     this.reportFail         = function (msg)     { return _testReportFail (msg); }
     this.reportSuccess      = function (msg)     { return _testReportSuccess (msg); }
