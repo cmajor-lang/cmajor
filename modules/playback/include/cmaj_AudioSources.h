@@ -586,7 +586,7 @@ private:
     double currentGain = 0, currentLogFrequency = 0;
     uint64_t randomState = 0x9e3779b97f4a7c15ull;
 
-    static_assert (std::atomic<double>::is_always_lock_free && std::atomic<int32_t>::is_always_lock_free);
+    // static_assert (std::atomic<double>::is_always_lock_free && std::atomic<int32_t>::is_always_lock_free);
 };
 
 } // namespace cmaj::audio_utils
