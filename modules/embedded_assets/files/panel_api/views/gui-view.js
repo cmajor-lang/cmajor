@@ -34,7 +34,9 @@ import { el, Disposer } from "../core/dom.js";
     reloaded, once, as the old panel always did.
 
     ctx: the panel context (store, settings, ...)
-    options: { fill: true to stretch the view to the container (floating window) }
+    options: { fill: true to always stretch the view to the container (floating window). If it's
+               not given, views whose manifest says they're resizable are stretched, and others are
+               shown at their natural size }
 */
 export class PatchGUIView
 {
@@ -53,7 +55,7 @@ export class PatchGUIView
         this.banner = el ("div", { class: "cp-gui-banner", role: "status", hidden: true });
         this.element = el ("div", { class: ["cp-gui-view", options.fill && "cp-gui-fill"] }, this.holder, this.message, this.banner);
 
-        this.disposer.add (ctx.store.subscribe (["connection", "guiGeneration", "loaded", "error", "statusText", "connected", "guiViewType"],
+        this.disposer.add (ctx.store.subscribe (["connection", "guiGeneration", "loaded", "error", "statusText", "connected", "guiViewType", "manifest"],
                                                 () => this.update(), true));
     }
 
@@ -77,6 +79,10 @@ export class PatchGUIView
         const patchConnection = s.connection?.patchConnection;
         const viewType = s.guiViewType || undefined;
         const key = patchConnection ? `${s.guiGeneration}|${viewType}` : null;
+
+        // (a resizable view fits itself to the pane, by filling it or scaling itself to fit, so it
+        // needs the pane's size; a fixed-size one is centred, with scrollbars if it doesn't fit)
+        this.element.classList.toggle ("cp-gui-fill", this.options.fill ?? s.manifest?.view?.resizable === true);
 
         if (! patchConnection)
             this.removeView();

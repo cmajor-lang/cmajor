@@ -14950,7 +14950,9 @@ struct Files
         "    reloaded, once, as the old panel always did.\n"
         "\n"
         "    ctx: the panel context (store, settings, ...)\n"
-        "    options: { fill: true to stretch the view to the container (floating window) }\n"
+        "    options: { fill: true to always stretch the view to the container (floating window). If it's\n"
+        "               not given, views whose manifest says they're resizable are stretched, and others are\n"
+        "               shown at their natural size }\n"
         "*/\n"
         "export class PatchGUIView\n"
         "{\n"
@@ -14969,7 +14971,7 @@ struct Files
         "        this.banner = el (\"div\", { class: \"cp-gui-banner\", role: \"status\", hidden: true });\n"
         "        this.element = el (\"div\", { class: [\"cp-gui-view\", options.fill && \"cp-gui-fill\"] }, this.holder, this.message, this.banner);\n"
         "\n"
-        "        this.disposer.add (ctx.store.subscribe ([\"connection\", \"guiGeneration\", \"loaded\", \"error\", \"statusText\", \"connected\", \"guiViewType\"],\n"
+        "        this.disposer.add (ctx.store.subscribe ([\"connection\", \"guiGeneration\", \"loaded\", \"error\", \"statusText\", \"connected\", \"guiViewType\", \"manifest\"],\n"
         "                                                () => this.update(), true));\n"
         "    }\n"
         "\n"
@@ -14993,6 +14995,10 @@ struct Files
         "        const patchConnection = s.connection?.patchConnection;\n"
         "        const viewType = s.guiViewType || undefined;\n"
         "        const key = patchConnection ? `${s.guiGeneration}|${viewType}` : null;\n"
+        "\n"
+        "        // (a resizable view fits itself to the pane, by filling it or scaling itself to fit, so it\n"
+        "        // needs the pane's size; a fixed-size one is centred, with scrollbars if it doesn't fit)\n"
+        "        this.element.classList.toggle (\"cp-gui-fill\", this.options.fill ?\? s.manifest?.view?.resizable === true);\n"
         "\n"
         "        if (! patchConnection)\n"
         "            this.removeView();\n"
@@ -22423,7 +22429,7 @@ struct Files
         File { "panel_api/views/console-view.js", std::string_view (panel_api_views_consoleview_js, 11697) },
         File { "panel_api/views/graph-live.js", std::string_view (panel_api_views_graphlive_js, 19462) },
         File { "panel_api/views/graph-view.js", std::string_view (panel_api_views_graphview_js, 8032) },
-        File { "panel_api/views/gui-view.js", std::string_view (panel_api_views_guiview_js, 7402) },
+        File { "panel_api/views/gui-view.js", std::string_view (panel_api_views_guiview_js, 7886) },
         File { "panel_api/views/inspector-view.js", std::string_view (panel_api_views_inspectorview_js, 16018) },
         File { "panel_api/views/io-view.js", std::string_view (panel_api_views_ioview_js, 6846) },
         File { "panel_api/views/recordings-view.js", std::string_view (panel_api_views_recordingsview_js, 40712) },
