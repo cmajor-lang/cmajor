@@ -605,7 +605,11 @@ cmaj-patch-panel .cp-match {
     background: none;
 }
 
-cmaj-patch-panel .cp-palette-glyph { font-size: var(--cp-icon); line-height: 1; }
+cmaj-patch-panel :is(.cp-palette-glyph, .cp-button-glyph) { font-size: var(--cp-icon-lg); line-height: 1; }
+
+/* some glyphs draw below the middle of their box (measured in the system font), so they're raised to look centred */
+cmaj-patch-panel .cp-button-glyph.cp-glyph-arrow { transform: translateY(-0.11em); }   /* ⟲ ⟳ */
+cmaj-patch-panel .cp-button-glyph.cp-glyph-gear  { transform: translateY(-0.06em); }   /* ⚙ */
 
 /* an endpoint's widget, when the palette jumps to it */
 cmaj-patch-panel .cp-ew.cp-revealed { animation: cp-reveal var(--cp-duration-slow) var(--cp-ease) 2 alternate; border-radius: var(--cp-radius-sm); }
@@ -1866,6 +1870,7 @@ cmaj-patch-panel .cp-export-button:disabled { opacity: var(--cp-disabled-opacity
     cmaj-patch-panel .cp-transport-tempo,
     cmaj-patch-panel .cp-capture-memory { display: none; }
     cmaj-patch-panel .cp-transport { margin-right: 0; }
+    cmaj-patch-panel .cp-topbar :is(.cp-palette-button, .cp-settings-button) { width: var(--cp-control-h); padding: 0; }
 }
 
 @container cp-panel (max-width: 560px) {

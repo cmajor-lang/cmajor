@@ -75,12 +75,14 @@ export class TopBar
 
         this.audioButton = el ("button", { class: "cp-button cp-audio-button", title: "Start or stop audio (Space)", "aria-pressed": "false",
                                            onclick: () => ctx.actions.toggleAudio() });
-        this.resetButton = el ("button", { class: "cp-button", title: "Reset the patch to its initial state (R)", onclick: () => ctx.actions.reset() }, "⟲ Reset");
+        this.resetButton = el ("button", { class: "cp-button", title: "Reset the patch to its initial state (R)", onclick: () => ctx.actions.reset() },
+                               el ("span", { class: "cp-button-glyph cp-glyph-arrow", "aria-hidden": "true" }, "⟲"), "Reset");
 
         this.settingsPopover = new Popover (settingsView.element, () => settingsView.refresh());
         this.disposer.add (() => this.settingsPopover.dispose());
-        this.settingsButton = el ("button", { class: "cp-button cp-icon-button", title: "Audio and display settings", "aria-haspopup": "dialog",
-                                              onclick: () => this.settingsPopover.toggle (this.settingsButton) }, "⚙");
+        this.settingsButton = el ("button", { class: "cp-button cp-settings-button", title: "Audio and display settings", "aria-haspopup": "dialog",
+                                              onclick: () => this.settingsPopover.toggle (this.settingsButton) },
+                                  el ("span", { class: "cp-button-glyph cp-glyph-gear", "aria-hidden": "true" }, "⚙"), el ("span", { class: "cp-button-label" }, "Settings"));
 
         this.themeButton = el ("button", { class: "cp-button cp-icon-button", title: "Switch between light and dark", onclick: () => ctx.actions.cycleTheme() }, "◐");
 

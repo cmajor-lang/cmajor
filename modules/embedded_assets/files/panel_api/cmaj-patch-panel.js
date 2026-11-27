@@ -243,8 +243,9 @@ export default class PatchPanel  extends HTMLElement
     {
         const select = el ("select", { class: "cp-select", "aria-label": "View type", title: "Which of the patch's views to show",
                                        onchange: () => this.store.set ({ guiViewType: select.value === "default" ? "" : select.value }) });
-        const reloadButton = el ("button", { class: "cp-button", title: "Re-create the patch's GUI (picking up changes to its files)",
-                                             onclick: () => this.reloadGUI() }, "⟳");
+        const reloadButton = el ("button", { class: "cp-button cp-icon-button", title: "Re-create the patch's GUI (picking up changes to its files)",
+                                             "aria-label": "Reload the GUI", onclick: () => this.reloadGUI() },
+                                 el ("span", { class: "cp-button-glyph cp-glyph-arrow", "aria-hidden": "true" }, "⟳"));
         const toolbar = el ("div", { class: "cp-tab-tools" }, select, reloadButton);
 
         this.disposer.add (this.store.subscribe (["connection", "manifest"], () =>

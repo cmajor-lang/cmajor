@@ -216,6 +216,7 @@
     --cp-topbar-h:      44px;
     --cp-tabbar-h:      34px;
     --cp-icon:          14px;
+    --cp-icon-lg:       22px;       /* glyphs in the top bar's buttons and the GUI reload button */
     --cp-dot:           7px;        /* status dots */
     --cp-kind-mark:     6px;        /* the endpoint-kind square, as on the graph's ports */
     --cp-track:         4px;        /* slider tracks */
