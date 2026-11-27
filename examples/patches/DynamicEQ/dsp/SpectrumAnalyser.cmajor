@@ -1,0 +1,205 @@
+/*
+    The spectrum analyser for the DynamicEQ patch's GUI.
+*/
+
+namespace DynamicEQ
+{
+    /// The spectrum sent to the GUI: levels in dBFS at numDisplayPoints frequencies,
+    /// logarithmically spaced from minDisplayFrequency to maxDisplayFrequency.
+    let numDisplayPoints = 256;
+    let minDisplayFrequency = 20.0;
+    let maxDisplayFrequency = 20000.0;
+
+    /// How many spectra are sent to the GUI per second
+    let spectrumUpdateRate = 30;
+
+    struct Spectrum
+    {
+        float[numDisplayPoints] pre, post;
+    }
+
+    /// Runs an FFT of the input and output signals about 30 times a second.
+    /// Both real signals are analysed with a single complex FFT: the pre-EQ signal goes
+    /// into the real part and the post-EQ signal into the imaginary part, and the two
+    /// spectra are separated afterwards using the FFT's conjugate symmetry.
+    processor SpectrumAnalyser
+    {
+        input stream float<2> in;
+        output event Spectrum spectrum;
+
+        let fftOrder = 12;
+        let fftSize = 1 << fftOrder;
+        let numBins = fftSize / 2 + 1;
+        let framesPerUpdate = int (processor.frequency / spectrumUpdateRate);
+
+        float<2>[fftSize] history;
+        wrap<fftSize> writePosition;
+
+        float[fftSize] window, real, imag;
+        float[fftSize / 2] twiddleReal, twiddleImag;
+        int[fftSize] bitReversedIndex;
+        float[numBins] prePower, postPower;
+
+        // How each display point is taken from the FFT bins: a power mean of the bins
+        // between firstBin and lastBin, or an interpolation at binPosition if there are
+        // no bins in that range (which happens at low frequencies)
+        int[numDisplayPoints] firstBin, lastBin;
+        float[numDisplayPoints] binPosition;
+
+        // The exponent of that power mean, i.e. (mean of power^p)^(1/p). At high frequencies
+        // a display point covers up to ~50 bins, and this is a compromise between the two
+        // obvious choices: the plain average (p = 1) shows white noise flat, but makes a
+        // pure tone read low by up to ~14dB because its energy is spread over the whole
+        // range, while the loudest bin shows tones at their true level, but makes noise
+        // read ~5dB high because it picks out the random peaks. With p = 3, white noise reads
+        // about 2dB high at the top, and tones read up to ~5dB low.
+        let binCombiningExponent = 3.0;
+
+        float64 getDisplayFrequency (float64 index)
+        {
+            return minDisplayFrequency * pow (maxDisplayFrequency / minDisplayFrequency, index / (numDisplayPoints - 1));
+        }
+
+        void init()
+        {
+            for (wrap<fftSize> i)
+                window[i] = float (0.5 - 0.5 * cos (twoPi * i / fftSize));
+
+            for (wrap<fftSize / 2> i)
+            {
+                twiddleReal[i] = float (cos (-twoPi * i / fftSize));
+                twiddleImag[i] = float (sin (-twoPi * i / fftSize));
+            }
+
+            for (int i = 0; i < fftSize; ++i)
+            {
+                var reversed = 0;
+                var remaining = i;
+
+                for (int bit = 0; bit < fftOrder; ++bit)
+                {
+                    reversed = (reversed << 1) | (remaining & 1);
+                    remaining >>= 1;
+                }
+
+                bitReversedIndex.at (i) = reversed;
+            }
+
+            let binWidth = processor.frequency / fftSize;
+
+            for (wrap<numDisplayPoints> i)
+            {
+                let index = float64 (i);
+                let lowerEdge = getDisplayFrequency (index - 0.5) / binWidth;
+                let upperEdge = getDisplayFrequency (index + 0.5) / binWidth;
+
+                firstBin[i] = int (ceil (lowerEdge));
+                lastBin[i] = min (int (floor (upperEdge)), numBins - 1);
+                binPosition[i] = float (min (getDisplayFrequency (index) / binWidth, numBins - 2.0));
+            }
+        }
+
+        void performFFT()
+        {
+            // The oldest sample is at writePosition
+            for (wrap<fftSize> i)
+            {
+                let sample = history.at (writePosition + i) * window[i];
+                let target = bitReversedIndex[i];
+                real.at (target) = sample[0];
+                imag.at (target) = sample[1];
+            }
+
+            for (int size = 2; size <= fftSize; size *= 2)
+            {
+                let halfSize = size / 2;
+                let twiddleStep = fftSize / size;
+
+                for (int start = 0; start < fftSize; start += size)
+                {
+                    for (int j = 0; j < halfSize; ++j)
+                    {
+                        let wr = twiddleReal.at (j * twiddleStep);
+                        let wi = twiddleImag.at (j * twiddleStep);
+                        let a = start + j;
+                        let b = a + halfSize;
+
+                        let tr = real.at (b) * wr - imag.at (b) * wi;
+                        let ti = real.at (b) * wi + imag.at (b) * wr;
+
+                        real.at (b) = real.at (a) - tr;
+                        imag.at (b) = imag.at (a) - ti;
+                        real.at (a) += tr;
+                        imag.at (a) += ti;
+                    }
+                }
+            }
+
+            // Separate the two spectra: Pre[k] = (X[k] + conj X[N-k]) / 2, Post[k] = (X[k] - conj X[N-k]) / 2j
+            // A full-scale sine has a peak magnitude of fftSize / 4 with a Hann window.
+            let scale = (4.0f / fftSize) * (4.0f / fftSize) * 0.25f;
+
+            for (int k = 0; k < numBins; ++k)
+            {
+                let n = (fftSize - k) & (fftSize - 1);
+                let sumReal  = real.at (k) + real.at (n);
+                let diffReal = real.at (k) - real.at (n);
+                let sumImag  = imag.at (k) + imag.at (n);
+                let diffImag = imag.at (k) - imag.at (n);
+
+                prePower.at (k)  = (sumReal * sumReal + diffImag * diffImag) * scale;
+                postPower.at (k) = (sumImag * sumImag + diffReal * diffReal) * scale;
+            }
+        }
+
+        float toDecibels (float power)
+        {
+            return 10.0f * log10 (power + 1.0e-12f);
+        }
+
+        float getPower (const float[numBins]& power, wrap<numDisplayPoints> point)
+        {
+            if (lastBin[point] >= firstBin[point])
+            {
+                var sum = 0.0;
+
+                for (var bin = firstBin[point]; bin <= lastBin[point]; ++bin)
+                    sum += pow (float64 (power.at (bin)), binCombiningExponent);
+
+                return float (pow (sum / (lastBin[point] - firstBin[point] + 1), 1.0 / binCombiningExponent));
+            }
+
+            let lowerBin = int (binPosition[point]);
+            let proportion = binPosition[point] - lowerBin;
+            return power.at (lowerBin) + proportion * (power.at (lowerBin + 1) - power.at (lowerBin));
+        }
+
+        void sendSpectrum()
+        {
+            Spectrum result;
+
+            for (wrap<numDisplayPoints> i)
+            {
+                result.pre[i]  = toDecibels (getPower (prePower, i));
+                result.post[i] = toDecibels (getPower (postPower, i));
+            }
+
+            spectrum <- result;
+        }
+
+        void main()
+        {
+            loop
+            {
+                loop (framesPerUpdate)
+                {
+                    history[writePosition++] = in;
+                    advance();
+                }
+
+                performFFT();
+                sendSpectrum();
+            }
+        }
+    }
+}

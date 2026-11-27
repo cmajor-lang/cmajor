@@ -1,0 +1,20 @@
+{
+    "CmajorVersion":    1,
+    "ID":               "dev.cmajor.examples.dynamiceq",
+    "version":          "1.0",
+    "name":             "Dynamic EQ",
+    "description":      "A six band floating-band dynamic EQ with mid/side bands, split or wide sidechains, and a spectrum analyser overlay",
+    "category":         "eq",
+    "manufacturer":     "Cmajor Software Ltd",
+    "isInstrument":     false,
+
+    "source":           [ "DynamicEQ.cmajor", "dsp/Equaliser.cmajor", "dsp/SpectrumAnalyser.cmajor" ],
+
+    "view":
+    {
+        "src":          "ui/index.js",
+        "width":        1000,
+        "height":       640,
+        "resizable":    false
+    }
+}

@@ -1,0 +1,35 @@
+/*
+    DynamicEQ - a six band floating-band dynamic equaliser, in the style of the Waves F6.
+
+    Each of the six bands is a bell or shelf filter with a static gain, plus a dynamic
+    section which adds up to "range" dB of extra gain (negative range = cut, positive
+    range = boost) when the band's sidechain level rises above its threshold.
+
+    - Each band's sidechain is filtered to the band's own frequency ("Split" mode, a
+      band-pass for bells, low/high-pass for shelves) or uses the full-band input ("Wide").
+    - Each band can process stereo, mid only, or side only. The EQ runs in the mid/side
+      domain so that a band can apply different coefficients to the M and S channels.
+    - Low cut / high cut filters with 12 or 24 dB/oct slopes, and an output gain.
+    - Soloing a band lets you hear its sidechain signal.
+
+    The patch also runs a spectrum analyser on the input and output, and sends that plus
+    the live per-band gain changes to the GUI, which overlays them on the EQ curves.
+*/
+
+namespace DynamicEQ
+{
+    /// The patch's top-level graph. The DSP lives in dsp/Equaliser.cmajor and the
+    /// spectrum analyser for the GUI in dsp/SpectrumAnalyser.cmajor.
+    graph DynamicEQ [[ main ]]
+    {
+        input eq.*;
+        output eq.audioOut;
+        output eq.bandState;
+        output analyser.spectrum;
+
+        node eq       = Equaliser;
+        node analyser = SpectrumAnalyser;
+
+        connection eq.analyserFeed -> analyser.in;
+    }
+}

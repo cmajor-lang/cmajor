@@ -1,0 +1,215 @@
+//
+// Tests for the DynamicEQ patch.
+//
+// The level tests play a sine wave through the Equaliser with band 3 (a bell) moved
+// to 1kHz, and check the steady-state output peak level. The analyser tests check the
+// levels and pre/post separation of the spectrum that's sent to the GUI, and that white
+// noise and impulses give a flat spectrum.
+//
+// LevelTest arguments: sineFrequency, amplitudeDb, antiPhase, gain, threshold, range, ratio,
+//                      channel (0 = stereo, 1 = mid, 2 = side), lowCut24, outputGain,
+//                      expectedDb, tolerance
+//
+// Run with: cmaj test DynamicEQ.cmajtest
+//
+
+// Like the built-in testProcessor(), but keeps rendering until the processor emits -1,
+// because these tests need to run for a second or so to let the filters and dynamics settle.
+function testLongProcessor()
+{
+    let testSection = getCurrentTestSection();
+    let engine = buildEngineWithLoadedProgram (testSection, undefined, {});
+
+    if (isError (engine))
+        return testSection.reportFail (engine);
+
+    let resultHandle = engine.getEndpointHandle (engine.getOutputEndpoints()[0].endpointID);
+    let error = engine.link();
+
+    if (isError (error))
+        return testSection.reportFail (error);
+
+    let performer = engine.createPerformer();
+    let blockSize = 512;
+    let successes = 0, fails = 0;
+    performer.setBlockSize (blockSize);
+
+    for (let block = 0; block < 1000; ++block)
+    {
+        error = performer.advance();
+
+        if (isError (error))
+            return testSection.reportFail (error);
+
+        for (const e of performer.getOutputEvents (resultHandle))
+        {
+            if (e.event < 0)
+                return (successes > 0 && fails == 0) ? testSection.reportSuccess()
+                                                     : testSection.reportFail ("Processor test failed");
+
+            if (e.event > 0) ++successes; else ++fails;
+        }
+    }
+
+    testSection.reportFail ("Timed out waiting for the test to finish");
+}
+
+## global ("../dsp", "TestHarness.cmajor")
+
+## testLongProcessor()
+// With the default settings the EQ is transparent
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -20.0f, false, 0.0f, -20.0f, 0.0f, 3.0f, 0, false, 0.0f, -20.0f, 0.05f);  connection t -> out; }
+
+## testLongProcessor()
+// Static +12dB bell at the sine's frequency
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -20.0f, false, 12.0f, 0.0f, 0.0f, 3.0f, 0, false, 0.0f, -8.0f, 0.1f);  connection t -> out; }
+
+## testLongProcessor()
+// Static -6dB bell
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -20.0f, false, -6.0f, 0.0f, 0.0f, 3.0f, 0, false, 0.0f, -26.0f, 0.1f);  connection t -> out; }
+
+## testLongProcessor()
+// A bell at 1kHz barely affects a 100Hz tone
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (100.0f, -20.0f, false, 12.0f, 0.0f, 0.0f, 3.0f, 0, false, 0.0f, -20.0f, 0.5f);  connection t -> out; }
+
+## testLongProcessor()
+// Dynamic cut: 20dB above the threshold with a high ratio, so the full -12dB range is applied
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -10.0f, false, 0.0f, -30.0f, -12.0f, 20.0f, 0, false, 0.0f, -22.0f, 0.2f);  connection t -> out; }
+
+## testLongProcessor()
+// Dynamic cut: a signal well below the threshold is left alone
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -40.0f, false, 0.0f, -30.0f, -12.0f, 20.0f, 0, false, 0.0f, -40.0f, 0.1f);  connection t -> out; }
+
+## testLongProcessor()
+// Dynamic boost: positive range raises the band when the level goes above the threshold
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -10.0f, false, 0.0f, -30.0f, 6.0f, 20.0f, 0, false, 0.0f, -4.0f, 0.2f);  connection t -> out; }
+
+## testLongProcessor()
+// Ratio: 10dB over the threshold at 2:1 gives about 5dB of cut (the range isn't reached)
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -10.0f, false, 0.0f, -20.0f, -18.0f, 2.0f, 0, false, 0.0f, -15.0f, 1.0f);  connection t -> out; }
+
+## testLongProcessor()
+// Static and dynamic gain add together: +6dB static, then -12dB dynamic
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -16.0f, false, 6.0f, -40.0f, -12.0f, 20.0f, 0, false, 0.0f, -22.0f, 0.2f);  connection t -> out; }
+
+## testLongProcessor()
+// A mid-only band doesn't touch a pure side (anti-phase) signal
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -20.0f, true, 12.0f, 0.0f, 0.0f, 3.0f, 1, false, 0.0f, -20.0f, 0.05f);  connection t -> out; }
+
+## testLongProcessor()
+// A side-only band boosts a pure side signal
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -20.0f, true, 12.0f, 0.0f, 0.0f, 3.0f, 2, false, 0.0f, -8.0f, 0.1f);  connection t -> out; }
+
+## testLongProcessor()
+// A side-only band doesn't touch a mono signal
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -20.0f, false, 12.0f, 0.0f, 0.0f, 3.0f, 2, false, 0.0f, -20.0f, 0.05f);  connection t -> out; }
+
+## testLongProcessor()
+// 24dB/oct low cut at 1kHz: a 100Hz tone is attenuated by about 80dB
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (100.0f, -20.0f, false, 0.0f, 0.0f, 0.0f, 3.0f, 0, true, 0.0f, -100.0f, 3.0f);  connection t -> out; }
+
+## testLongProcessor()
+// 24dB/oct low cut is -3dB at its cutoff frequency
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -20.0f, false, 0.0f, 0.0f, 0.0f, 3.0f, 0, true, 0.0f, -23.01f, 0.1f);  connection t -> out; }
+
+## testLongProcessor()
+// Output gain
+graph G [[ main ]] { output event int out;  node t = tests::LevelTest (1000.0f, -20.0f, false, 0.0f, 0.0f, 0.0f, 3.0f, 0, false, 6.0f, -14.0f, 0.05f);  connection t -> out; }
+
+// The response tests check that the DSP matches the curves drawn by the GUI. ResponseTest arguments:
+// type (0 = low shelf, 1 = bell, 2 = high shelf), band frequency, gain, Q, sine frequency, and the
+// expected gain as calculated by getBandCoefficients() and getSVFMagnitudeDb() in ui/index.js at 44.1kHz
+
+## testLongProcessor()
+// +12dB bell at 1kHz, Q 1, measured an octave below
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (1, 1000.0f,  12.0f, 1.0f, 500.0f,   3.954f);  connection t -> out; }
+
+## testLongProcessor()
+// +12dB bell at 1kHz, Q 1, measured an octave above
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (1, 1000.0f,  12.0f, 1.0f, 2000.0f,  3.925f);  connection t -> out; }
+
+## testLongProcessor()
+// -9dB narrow bell, measured just off centre
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (1, 1000.0f,  -9.0f, 3.0f, 1150.0f, -5.193f);  connection t -> out; }
+
+## testLongProcessor()
+// +6dB wide bell, measured two octaves below
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (1, 1000.0f,   6.0f, 0.5f, 250.0f,   1.370f);  connection t -> out; }
+
+## testLongProcessor()
+// +6dB low shelf, measured well below the corner
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (0, 200.0f,    6.0f, 0.7f, 50.0f,    5.967f);  connection t -> out; }
+
+## testLongProcessor()
+// +6dB low shelf, measured at the corner (half the gain)
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (0, 200.0f,    6.0f, 0.7f, 200.0f,   3.000f);  connection t -> out; }
+
+## testLongProcessor()
+// -10dB resonant low shelf, measured at its overshoot above the corner
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (0, 200.0f,  -10.0f, 2.0f, 400.0f,   2.656f);  connection t -> out; }
+
+## testLongProcessor()
+// +8dB high shelf, measured well above the corner
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (2, 5000.0f,   8.0f, 0.7f, 15000.0f, 7.977f);  connection t -> out; }
+
+## testLongProcessor()
+// +8dB high shelf, measured at the corner (half the gain)
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (2, 5000.0f,   8.0f, 0.7f, 5000.0f,  4.000f);  connection t -> out; }
+
+## testLongProcessor()
+// -6dB resonant high shelf, measured at its overshoot below the corner
+graph G [[ main ]] { output event int out;  node t = tests::ResponseTest (2, 5000.0f,  -6.0f, 1.5f, 3000.0f,  1.504f);  connection t -> out; }
+
+## testLongProcessor()
+// The analyser reports the right level for each signal, and keeps the pre and post spectra apart
+graph G [[ main ]]
+{
+    output event int out;
+
+    node source   = tests::AnalyserSource (-6.0f, -20.0f);
+    node analyser = DynamicEQ::SpectrumAnalyser;
+    node checker  = tests::SpectrumChecker;
+
+    connection source -> analyser -> checker -> out;
+}
+
+## testLongProcessor()
+// White noise gives a flat spectrum (on average), not one that slopes upwards with frequency.
+// The tolerance allows for the ~2dB that the analyser's power mean adds at high frequencies
+// (see binCombiningExponent in SpectrumAnalyser.cmajor); taking the loudest bin gave ~5dB.
+graph G [[ main ]]
+{
+    output event int out;
+
+    node source   = tests::NoiseSource;
+    node analyser = DynamicEQ::SpectrumAnalyser;
+    node checker  = tests::FlatnessChecker (2.5f);
+
+    connection source -> analyser -> checker -> out;
+}
+
+## testLongProcessor()
+// An impulse gives a flat spectrum
+graph G [[ main ]]
+{
+    output event int out;
+
+    node source   = tests::ImpulseSource;
+    node analyser = DynamicEQ::SpectrumAnalyser;
+    node checker  = tests::FlatnessChecker (0.1f);
+
+    connection source -> analyser -> checker -> out;
+}
+
+## testLongProcessor()
+// Silence gives a spectrum at the -120dB floor rather than NaNs or infinities
+graph G [[ main ]]
+{
+    output event int out;
+
+    node source   = tests::AnalyserSource (-400.0f, -400.0f);
+    node analyser = DynamicEQ::SpectrumAnalyser;
+    node checker  = tests::SilenceChecker;
+
+    connection source -> analyser -> checker -> out;
+}

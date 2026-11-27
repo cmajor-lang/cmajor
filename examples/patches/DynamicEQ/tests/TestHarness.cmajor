@@ -1,0 +1,369 @@
+/*
+    Test helpers for DynamicEQ.cmajtest
+*/
+
+namespace tests
+{
+    //==============================================================================
+    // Equaliser level tests
+
+    /// Plays a sine and configures band 3 (and optionally the cut filters and output gain)
+    processor Driver (float sineFrequency, float amplitudeDb, bool antiPhase,
+                      float gain, float threshold, float range, float ratio, int channel,
+                      bool lowCut24, float outGain)
+    {
+        output stream float<2> audio;
+
+        output event
+        {
+            float bandFrequency, bandGain, bandThreshold, bandRange, bandRatio;
+            int bandChannel;
+            bool lowCutEnable;
+            float lowCutFrequency;
+            int lowCutSlope;
+            float outputGain;
+        }
+
+        void main()
+        {
+            bandFrequency <- 1000.0f;
+            bandGain <- gain;
+            bandThreshold <- threshold;
+            bandRange <- range;
+            bandRatio <- ratio;
+            bandChannel <- channel;
+            outputGain <- outGain;
+
+            if (lowCut24)
+            {
+                lowCutEnable <- true;
+                lowCutFrequency <- 1000.0f;
+                lowCutSlope <- 1;
+            }
+
+            let amplitude = std::levels::dBtoGain (amplitudeDb);
+            float64 phase;
+
+            loop
+            {
+                let s = float (amplitude * sin (phase));
+                audio <- float<2> (s, antiPhase ? -s : s);
+                phase = addModulo2Pi (phase, twoPi * sineFrequency / processor.frequency);
+                advance();
+            }
+        }
+    }
+
+    /// Waits for things to settle, then checks the output peak level of both channels
+    processor LevelChecker (float expectedDb, float tolerance)
+    {
+        input stream float<2> in;
+        output event int out;
+
+        void main()
+        {
+            loop (int (processor.frequency))
+                advance();
+
+            float<2> peak;
+
+            loop (int (processor.frequency * 0.25))
+            {
+                peak = max (peak, abs (in));
+                advance();
+            }
+
+            let levelDb = std::levels::gainTodB (max (peak[0], peak[1]));
+            console <- "expected " <- expectedDb <- " dB, got " <- levelDb <- " dB\n";
+
+            out <- (abs (levelDb - expectedDb) <= tolerance ? 1 : 0);
+            out <- -1;
+            advance();
+        }
+    }
+
+    graph LevelTest (float sineFrequency, float amplitudeDb, bool antiPhase,
+                     float gain, float threshold, float range, float ratio, int channel,
+                     bool lowCut24, float outGain,
+                     float expectedDb, float tolerance)
+    {
+        output event int out;
+
+        node driver  = Driver (sineFrequency, amplitudeDb, antiPhase, gain, threshold, range, ratio, channel, lowCut24, outGain);
+        node eq      = DynamicEQ::Equaliser;
+        node checker = LevelChecker (expectedDb, tolerance);
+
+        connection
+        {
+            driver.audio            -> eq.audioIn;
+            driver.bandFrequency    -> eq.band3Frequency;
+            driver.bandGain         -> eq.band3Gain;
+            driver.bandThreshold    -> eq.band3Threshold;
+            driver.bandRange        -> eq.band3Range;
+            driver.bandRatio        -> eq.band3Ratio;
+            driver.bandChannel      -> eq.band3Channel;
+            driver.lowCutEnable     -> eq.lowCutEnable;
+            driver.lowCutFrequency  -> eq.lowCutFrequency;
+            driver.lowCutSlope      -> eq.lowCutSlope;
+            driver.outputGain       -> eq.outputGain;
+            eq.audioOut             -> checker.in;
+            checker.out             -> out;
+        }
+    }
+
+    //==============================================================================
+    // Response tests: these check the gain of band 3 at a frequency away from its centre,
+    // against values calculated with the GUI's response functions (ui/index.js), to make
+    // sure that the curves drawn in the GUI match what the DSP really does.
+
+    processor ResponseDriver (int type, float bandFrequency, float gain, float q, float sineFrequency)
+    {
+        output stream float<2> audio;
+        output event int bandType;
+        output event float bandFrequencyOut, bandGain, bandQ;
+
+        void main()
+        {
+            bandType <- type;
+            bandFrequencyOut <- bandFrequency;
+            bandGain <- gain;
+            bandQ <- q;
+
+            let amplitude = std::levels::dBtoGain (-20.0f);
+            float64 phase;
+
+            loop
+            {
+                let s = float (amplitude * sin (phase));
+                audio <- float<2> (s, s);
+                phase = addModulo2Pi (phase, twoPi * sineFrequency / processor.frequency);
+                advance();
+            }
+        }
+    }
+
+    graph ResponseTest (int type, float bandFrequency, float gain, float q, float sineFrequency, float expectedGainDb)
+    {
+        output event int out;
+
+        node driver  = ResponseDriver (type, bandFrequency, gain, q, sineFrequency);
+        node eq      = DynamicEQ::Equaliser;
+        node checker = LevelChecker (-20.0f + expectedGainDb, 0.05f);
+
+        connection
+        {
+            driver.audio            -> eq.audioIn;
+            driver.bandType         -> eq.band3Type;
+            driver.bandFrequencyOut -> eq.band3Frequency;
+            driver.bandGain         -> eq.band3Gain;
+            driver.bandQ            -> eq.band3Q;
+            eq.audioOut             -> checker.in;
+            checker.out             -> out;
+        }
+    }
+
+    //==============================================================================
+    // Spectrum analyser tests
+
+    /// The analyser's FFT size is 4096, so these sit exactly on bins 10 (~108Hz) and
+    /// 40 (~431Hz) and don't suffer from any scalloping loss. At 44.1kHz each of them is
+    /// the only bin in its display point's range, so the power mean that combines bins at
+    /// higher frequencies doesn't affect the level shown.
+    let preTestBin  = 10;
+    let postTestBin = 40;
+
+    /// Plays two sines (or silence) into the analyser's pre and post inputs
+    processor AnalyserSource (float preLevelDb, float postLevelDb)
+    {
+        output stream float<2> audio;
+
+        void main()
+        {
+            let preGain  = std::levels::dBtoGain (preLevelDb);
+            let postGain = std::levels::dBtoGain (postLevelDb);
+            let binWidth = processor.frequency / 4096;
+            float64 prePhase, postPhase;
+
+            loop
+            {
+                audio <- float<2> (float (preGain * sin (prePhase)), float (postGain * sin (postPhase)));
+                prePhase  = addModulo2Pi (prePhase,  twoPi * binWidth * preTestBin / processor.frequency);
+                postPhase = addModulo2Pi (postPhase, twoPi * binWidth * postTestBin / processor.frequency);
+                advance();
+            }
+        }
+    }
+
+    /// Checks that each sine shows up at the right level, and only in its own spectrum
+    processor SpectrumChecker
+    {
+        input event DynamicEQ::Spectrum spectrumIn;
+        output event int out;
+
+        int numSpectraReceived = 0;
+
+        int getDisplayIndex (int bin)
+        {
+            let frequency = bin * processor.frequency / 4096;
+            let position = (DynamicEQ::numDisplayPoints - 1) * log (frequency / DynamicEQ::minDisplayFrequency)
+                             / log (DynamicEQ::maxDisplayFrequency / DynamicEQ::minDisplayFrequency);
+            return int (position + 0.5);
+        }
+
+        float getPeak (const float[DynamicEQ::numDisplayPoints]& levels, int centre)
+        {
+            var peak = -1000.0f;
+
+            for (var i = centre - 1; i <= centre + 1; ++i)
+                peak = max (peak, levels.at (i));
+
+            return peak;
+        }
+
+        event spectrumIn (DynamicEQ::Spectrum s)
+        {
+            // wait until the FFT window is full of signal
+            if (++numSpectraReceived != 3)
+                return;
+
+            let preIndex  = getDisplayIndex (preTestBin);
+            let postIndex = getDisplayIndex (postTestBin);
+
+            let preAtPre   = getPeak (s.pre,  preIndex);
+            let postAtPost = getPeak (s.post, postIndex);
+            let preAtPost  = getPeak (s.pre,  postIndex);
+            let postAtPre  = getPeak (s.post, preIndex);
+
+            console <- "pre at 108Hz: " <- preAtPre <- ", post at 431Hz: " <- postAtPost
+                    <- ", pre at 431Hz: " <- preAtPost <- ", post at 108Hz: " <- postAtPre <- "\n";
+
+            out <- (abs (preAtPre + 6.0f) < 0.1f ? 1 : 0);
+            out <- (abs (postAtPost + 20.0f) < 0.1f ? 1 : 0);
+            out <- (preAtPost < -100.0f ? 1 : 0);
+            out <- (postAtPre < -100.0f ? 1 : 0);
+            out <- -1;
+        }
+    }
+
+    /// Plays white noise into both of the analyser's inputs
+    processor NoiseSource
+    {
+        output stream float<2> audio;
+
+        void main()
+        {
+            std::random::RNG rng;
+            rng.seed (12345);
+
+            loop
+            {
+                audio <- float<2> (0.5f * rng.getBipolar(), 0.5f * rng.getBipolar());
+                advance();
+            }
+        }
+    }
+
+    /// Plays a unit impulse every 8192 frames into both of the analyser's inputs. That's
+    /// longer than the FFT, so each spectrum sees at most one impulse.
+    processor ImpulseSource
+    {
+        output stream float<2> audio;
+
+        void main()
+        {
+            loop
+            {
+                audio <- float<2> (1.0f);
+                advance();
+
+                loop (8191)
+                    advance();
+            }
+        }
+    }
+
+    /// Checks that a signal with a flat spectrum (white noise or an impulse) gives a flat
+    /// spectrum: the power at each display point is averaged over a couple of seconds' worth
+    /// of spectra, and the mean levels of a low, mid and high frequency band must agree to
+    /// within the tolerance.
+    processor FlatnessChecker (float tolerance)
+    {
+        input event DynamicEQ::Spectrum spectrumIn;
+        output event int out;
+
+        let numSpectraToAverage = 60;
+
+        int numSpectraReceived = 0;
+        float64[DynamicEQ::numDisplayPoints] preSum, postSum;
+
+        int getDisplayIndex (float64 frequency)
+        {
+            let position = (DynamicEQ::numDisplayPoints - 1) * log (frequency / DynamicEQ::minDisplayFrequency)
+                             / log (DynamicEQ::maxDisplayFrequency / DynamicEQ::minDisplayFrequency);
+            return int (position + 0.5);
+        }
+
+        float64 getBandLevel (const float64[DynamicEQ::numDisplayPoints]& powerSum, float64 lowFrequency, float64 highFrequency)
+        {
+            let first = getDisplayIndex (lowFrequency);
+            let last  = getDisplayIndex (highFrequency);
+            var total = 0.0;
+
+            for (var i = first; i <= last; ++i)
+                total += 10.0 * log10 (powerSum.at (i) / numSpectraToAverage);
+
+            return total / (last - first + 1);
+        }
+
+        bool checkFlat (string name, const float64[DynamicEQ::numDisplayPoints]& powerSum)
+        {
+            let low  = getBandLevel (powerSum, 40.0, 160.0);
+            let mid  = getBandLevel (powerSum, 500.0, 2000.0);
+            let high = getBandLevel (powerSum, 5000.0, 16000.0);
+
+            console <- name <- ": low " <- low <- " dB, mid " <- mid <- " dB, high " <- high <- " dB\n";
+
+            let spread = max (low, max (mid, high)) - min (low, min (mid, high));
+            return spread <= tolerance && mid > -100.0;
+        }
+
+        event spectrumIn (DynamicEQ::Spectrum s)
+        {
+            // skip the first couple, before the FFT window is full of signal
+            if (++numSpectraReceived <= 2)
+                return;
+
+            for (wrap<DynamicEQ::numDisplayPoints> i)
+            {
+                preSum[i]  += pow (10.0, s.pre[i] * 0.1);
+                postSum[i] += pow (10.0, s.post[i] * 0.1);
+            }
+
+            if (numSpectraReceived == 2 + numSpectraToAverage)
+            {
+                out <- (checkFlat ("pre", preSum) ? 1 : 0);
+                out <- (checkFlat ("post", postSum) ? 1 : 0);
+                out <- -1;
+            }
+        }
+    }
+
+    /// Checks that silence gives a spectrum at the -120dB floor, rather than NaNs or infinities
+    processor SilenceChecker
+    {
+        input event DynamicEQ::Spectrum spectrumIn;
+        output event int out;
+
+        event spectrumIn (DynamicEQ::Spectrum s)
+        {
+            var ok = true;
+
+            for (wrap<DynamicEQ::numDisplayPoints> i)
+                ok = ok && s.pre[i] > -125.0f && s.pre[i] < -115.0f
+                        && s.post[i] > -125.0f && s.post[i] < -115.0f;
+
+            out <- (ok ? 1 : 0);
+            out <- -1;
+        }
+    }
+}

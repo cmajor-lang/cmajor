@@ -1,0 +1,667 @@
+/*
+    The DSP for the DynamicEQ patch: six dynamic bell/shelf bands with per-band
+    sidechain detection and mid/side processing, plus low/high cut filters.
+    See DynamicEQ.cmajor for an overview.
+*/
+
+namespace DynamicEQ
+{
+    let numBands = 6;
+
+    /// Number of frames between updates of the filter coefficients and dynamics
+    let controlInterval = 16;
+
+    /// Time constant used to smooth parameter changes, in seconds
+    let parameterSmoothingTime = 0.02;
+
+    /// How many times per second the band state is sent to the GUI
+    let guiUpdateRate = 30;
+
+    namespace BandType   { let lowShelf = 0;  let bell = 1;  let highShelf = 2; }
+    namespace Channel    { let stereo = 0;    let mid = 1;   let side = 2; }
+    namespace Sidechain  { let split = 0;     let wide = 1; }
+
+    /// Live state of the dynamics, sent to the GUI
+    struct BandState
+    {
+        float[numBands] dynamicGain;      // dB of gain currently added by the dynamics
+        float[numBands] sidechainLevel;   // dB level seen by each band's detector
+        float sampleRate;
+    }
+
+    //==============================================================================
+    /// Coefficients for one channel of a Simper state-variable filter.
+    /// The output is m0 * input + m1 * band + m2 * low.
+    struct Coefficients
+    {
+        float a1, a2, a3, m0, m1, m2;
+    }
+
+    /// Calculates bell/shelf coefficients, following
+    /// https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
+    /// The GUI's response plot uses the same equations, so keep the two in sync.
+    Coefficients calculateCoefficients (int type, float64 g, float64 k, float64 gainDb)
+    {
+        let A = pow (10.0, gainDb / 40.0);
+        var filterG = g;
+        var filterK = k;
+        var m0 = 1.0;
+        var m1 = 0.0;
+        var m2 = 0.0;
+
+        if (type == BandType::lowShelf)
+        {
+            filterG = g / sqrt (A);
+            m1 = k * (A - 1.0);
+            m2 = A * A - 1.0;
+        }
+        else if (type == BandType::highShelf)
+        {
+            filterG = g * sqrt (A);
+            m0 = A * A;
+            m1 = k * (1.0 - A) * A;
+            m2 = 1.0 - A * A;
+        }
+        else
+        {
+            // dividing k by A keeps the bandwidth symmetrical for boosts and cuts
+            filterK = k / A;
+            m1 = filterK * (A * A - 1.0);
+        }
+
+        let a1 = 1.0 / (1.0 + filterG * (filterG + filterK));
+
+        Coefficients c;
+        c.a1 = float (a1);
+        c.a2 = float (filterG * a1);
+        c.a3 = float (filterG * filterG * a1);
+        c.m0 = float (m0);
+        c.m1 = float (m1);
+        c.m2 = float (m2);
+        return c;
+    }
+
+    float64 getPrewarpedFrequency (float64 frequency, float64 sampleRate)
+    {
+        return tan (pi * clamp (frequency, 10.0, sampleRate * 0.48) / sampleRate);
+    }
+
+    /// Moves a value towards its target in the log domain (for frequencies and Q)
+    float smoothLog (float current, float target, float smoothing)
+    {
+        return current * float (exp (smoothing * log (target / current)));
+    }
+
+    //==============================================================================
+    struct SVFOutputs
+    {
+        float<2> low, band, high;
+    }
+
+    /// A stereo state-variable filter that produces low, band and high outputs.
+    /// Used for the sidechain detectors and the low/high cut filters.
+    struct SVF
+    {
+        float<2> ic1eq, ic2eq;
+        float a1, a2, a3, k;
+
+        void setCoefficients (float64 g, float64 k)
+        {
+            let a1 = 1.0 / (1.0 + g * (g + k));
+            this.k  = float (k);
+            this.a1 = float (a1);
+            this.a2 = float (g * a1);
+            this.a3 = float (g * g * a1);
+        }
+
+        void reset()
+        {
+            this.ic1eq = 0;
+            this.ic2eq = 0;
+        }
+
+        SVFOutputs process (float<2> v0)
+        {
+            let v3 = v0 - this.ic2eq;
+            let v1 = this.a1 * this.ic1eq + this.a2 * v3;
+            let v2 = this.ic2eq + this.a2 * this.ic1eq + this.a3 * v3;
+            this.ic1eq = 2.0f * v1 - this.ic1eq;
+            this.ic2eq = 2.0f * v2 - this.ic2eq;
+
+            SVFOutputs result;
+            result.low  = v2;
+            result.band = v1;
+            result.high = v0 - this.k * v1 - v2;
+            return result;
+        }
+    }
+
+    //==============================================================================
+    /// One dynamic EQ band. Signals are (mid, side) pairs.
+    struct Band
+    {
+        // Parameter values
+        bool enabled, solo;
+        int type, channel, sidechain;
+        float frequency, gain, q, threshold, range, ratio, attackMs, releaseMs;
+
+        // Smoothed values which the filters actually use
+        float currentFrequency, currentGain, currentQ, currentEnable;
+
+        // Dynamics
+        float envelope, attackCoeff, releaseCoeff;
+        float sidechainLevel, dynamicGain;
+
+        // The EQ filter has separate coefficients for the mid and side channels
+        float<2> ic1eq, ic2eq, a1, a2, a3, m0, m1, m2;
+
+        SVF detector;
+
+        void initialise (int type, float frequency, float q)
+        {
+            this.enabled = true;
+            this.solo = false;
+            this.type = type;
+            this.channel = Channel::stereo;
+            this.sidechain = Sidechain::split;
+            this.frequency = frequency;
+            this.gain = 0;
+            this.q = q;
+            this.threshold = -20.0f;
+            this.range = 0;
+            this.ratio = 3.0f;
+            this.attackMs = 10.0f;
+            this.releaseMs = 150.0f;
+
+            this.currentFrequency = frequency;
+            this.currentGain = 0;
+            this.currentQ = q;
+            this.currentEnable = 1.0f;
+
+            this.envelope = 0;
+            this.sidechainLevel = -100.0f;
+            this.dynamicGain = 0;
+            this.m0 = 1.0f;
+        }
+
+        void reset()
+        {
+            this.ic1eq = 0;
+            this.ic2eq = 0;
+            this.envelope = 0;
+            this.detector.reset();
+        }
+
+        /// Called every controlInterval frames to run the gain computer and update the coefficients.
+        void update (float64 sampleRate, float smoothing)
+        {
+            this.currentFrequency = smoothLog (this.currentFrequency, this.frequency, smoothing);
+            this.currentQ         = smoothLog (this.currentQ, this.q, smoothing);
+            this.currentGain     += smoothing * (this.gain - this.currentGain);
+            this.currentEnable   += smoothing * ((this.enabled ? 1.0f : 0.0f) - this.currentEnable);
+
+            this.attackCoeff  = float (1.0 - exp (-1000.0 / (max (this.attackMs, 0.01f) * sampleRate)));
+            this.releaseCoeff = float (1.0 - exp (-1000.0 / (max (this.releaseMs, 0.01f) * sampleRate)));
+
+            // Soft-knee gain computer: above the threshold the level is reduced (or raised)
+            // by the ratio, but never by more than the range.
+            this.sidechainLevel = float (20.0 * log10 (max (this.envelope, 1.0e-5f)));
+
+            let knee = 6.0f;
+            let overshoot = this.sidechainLevel - this.threshold;
+            var excess = 0.0f;
+
+            if (overshoot >= knee * 0.5f)
+                excess = overshoot;
+            else if (overshoot > -knee * 0.5f)
+                excess = (overshoot + knee * 0.5f) * (overshoot + knee * 0.5f) / (2.0f * knee);
+
+            let amount = excess * (1.0f - 1.0f / max (this.ratio, 1.0f));
+            this.dynamicGain = this.range < 0 ? max (-amount, this.range)
+                                              : min (amount, this.range);
+
+            // A disabled band fades its gain to 0dB, which makes the filter transparent
+            let totalGain = float64 (this.currentEnable * (this.currentGain + this.dynamicGain));
+            let g = getPrewarpedFrequency (this.currentFrequency, sampleRate);
+            let k = 1.0 / this.currentQ;
+
+            let mid  = calculateCoefficients (this.type, g, k, this.channel == Channel::side ? 0.0 : totalGain);
+            let side = calculateCoefficients (this.type, g, k, this.channel == Channel::mid  ? 0.0 : totalGain);
+
+            this.a1 = float<2> (mid.a1, side.a1);
+            this.a2 = float<2> (mid.a2, side.a2);
+            this.a3 = float<2> (mid.a3, side.a3);
+            this.m0 = float<2> (mid.m0, side.m0);
+            this.m1 = float<2> (mid.m1, side.m1);
+            this.m2 = float<2> (mid.m2, side.m2);
+
+            // Shelves are detected with a Butterworth low/high-pass at the corner frequency
+            this.detector.setCoefficients (g, this.type == BandType::bell ? k : 1.41421356);
+        }
+
+        float<2> processEQ (float<2> v0)
+        {
+            let v3 = v0 - this.ic2eq;
+            let v1 = this.a1 * this.ic1eq + this.a2 * v3;
+            let v2 = this.ic2eq + this.a2 * this.ic1eq + this.a3 * v3;
+            this.ic1eq = 2.0f * v1 - this.ic1eq;
+            this.ic2eq = 2.0f * v2 - this.ic2eq;
+
+            return this.m0 * v0 + this.m1 * v1 + this.m2 * v2;
+        }
+
+        /// Filters the input to give the signal that this band listens to
+        float<2> processSidechain (float<2> signal)
+        {
+            let filtered = this.detector.process (signal);
+
+            if (this.sidechain == Sidechain::wide)     return signal;
+            if (this.type == BandType::lowShelf)       return filtered.low;
+            if (this.type == BandType::highShelf)      return filtered.high;
+
+            // scaling the band output by k gives a band-pass with unity gain at its peak
+            return filtered.band * this.detector.k;
+        }
+
+        /// Removes the channel which this band doesn't affect (used for soloing)
+        float<2> selectChannels (float<2> signal)
+        {
+            if (this.channel == Channel::mid)   return float<2> (signal[0], 0.0f);
+            if (this.channel == Channel::side)  return float<2> (0.0f, signal[1]);
+
+            return signal;
+        }
+
+        void followEnvelope (float<2> sidechainSignal)
+        {
+            // For stereo, |M| + |S| == max (|L|, |R|)
+            let level = this.channel == Channel::mid  ? abs (sidechainSignal[0])
+                      : this.channel == Channel::side ? abs (sidechainSignal[1])
+                                                      : abs (sidechainSignal[0]) + abs (sidechainSignal[1]);
+
+            let coeff = level > this.envelope ? this.attackCoeff : this.releaseCoeff;
+            this.envelope += coeff * (level - this.envelope);
+        }
+    }
+
+    //==============================================================================
+    /// A low or high cut filter with a 12 or 24 dB/octave Butterworth slope
+    struct CutFilter
+    {
+        bool enabled, isHighPass, is24dB;
+        float frequency, currentFrequency;
+        SVF stage1, stage2;
+
+        void initialise (bool isHighPass, float frequency)
+        {
+            this.enabled = false;
+            this.isHighPass = isHighPass;
+            this.is24dB = false;
+            this.frequency = frequency;
+            this.currentFrequency = frequency;
+        }
+
+        void reset()
+        {
+            this.stage1.reset();
+            this.stage2.reset();
+        }
+
+        void update (float64 sampleRate, float smoothing)
+        {
+            this.currentFrequency = smoothLog (this.currentFrequency, this.frequency, smoothing);
+            let g = getPrewarpedFrequency (this.currentFrequency, sampleRate);
+
+            if (this.is24dB)
+            {
+                // A 4th order Butterworth is two 2nd order stages with Q = 1.3066 and 0.5412
+                this.stage1.setCoefficients (g, 0.76536686);
+                this.stage2.setCoefficients (g, 1.84775907);
+            }
+            else
+            {
+                this.stage1.setCoefficients (g, 1.41421356);
+            }
+        }
+
+        float<2> processStage (SVF& stage, float<2> signal)
+        {
+            let result = stage.process (signal);
+            return this.isHighPass ? result.high : result.low;
+        }
+
+        float<2> process (float<2> signal)
+        {
+            if (! this.enabled)
+                return signal;
+
+            let firstStage = this.processStage (this.stage1, signal);
+            return this.is24dB ? this.processStage (this.stage2, firstStage) : firstStage;
+        }
+    }
+
+    //==============================================================================
+    processor Equaliser
+    {
+        input stream float<2> audioIn;
+        output stream float<2> audioOut;
+
+        /// (pre-EQ mono, post-EQ mono) for the spectrum analyser
+        output stream float<2> analyserFeed;
+
+        output event BandState bandState;
+
+        input event
+        {
+            bool  band1Enable     [[ name: "Band 1 On",         init: true,  boolean ]];
+            int   band1Type       [[ name: "Band 1 Type",       min: 0, max: 2, init: 0, text: "Low Shelf|Bell|High Shelf" ]];
+            float band1Frequency  [[ name: "Band 1 Frequency",  min: 20,   max: 20000, init: 80,    unit: "Hz" ]];
+            float band1Gain       [[ name: "Band 1 Gain",       min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band1Q          [[ name: "Band 1 Q",          min: 0.1,  max: 10,    init: 0.7 ]];
+            float band1Threshold  [[ name: "Band 1 Threshold",  min: -60,  max: 0,     init: -20,   unit: "dB" ]];
+            float band1Range      [[ name: "Band 1 Range",      min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band1Ratio      [[ name: "Band 1 Ratio",      min: 1,    max: 20,    init: 3 ]];
+            float band1Attack     [[ name: "Band 1 Attack",     min: 0.1,  max: 500,   init: 10,    unit: "ms" ]];
+            float band1Release    [[ name: "Band 1 Release",    min: 5,    max: 5000,  init: 150,   unit: "ms" ]];
+            int   band1Channel    [[ name: "Band 1 Channel",    min: 0, max: 2, init: 0, text: "Stereo|Mid|Side" ]];
+            int   band1Sidechain  [[ name: "Band 1 Sidechain",  min: 0, max: 1, init: 0, text: "Split|Wide" ]];
+            bool  band1Solo       [[ name: "Band 1 Solo",       init: false, boolean ]];
+
+            bool  band2Enable     [[ name: "Band 2 On",         init: true,  boolean ]];
+            int   band2Type       [[ name: "Band 2 Type",       min: 0, max: 2, init: 1, text: "Low Shelf|Bell|High Shelf" ]];
+            float band2Frequency  [[ name: "Band 2 Frequency",  min: 20,   max: 20000, init: 200,   unit: "Hz" ]];
+            float band2Gain       [[ name: "Band 2 Gain",       min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band2Q          [[ name: "Band 2 Q",          min: 0.1,  max: 10,    init: 1 ]];
+            float band2Threshold  [[ name: "Band 2 Threshold",  min: -60,  max: 0,     init: -20,   unit: "dB" ]];
+            float band2Range      [[ name: "Band 2 Range",      min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band2Ratio      [[ name: "Band 2 Ratio",      min: 1,    max: 20,    init: 3 ]];
+            float band2Attack     [[ name: "Band 2 Attack",     min: 0.1,  max: 500,   init: 10,    unit: "ms" ]];
+            float band2Release    [[ name: "Band 2 Release",    min: 5,    max: 5000,  init: 150,   unit: "ms" ]];
+            int   band2Channel    [[ name: "Band 2 Channel",    min: 0, max: 2, init: 0, text: "Stereo|Mid|Side" ]];
+            int   band2Sidechain  [[ name: "Band 2 Sidechain",  min: 0, max: 1, init: 0, text: "Split|Wide" ]];
+            bool  band2Solo       [[ name: "Band 2 Solo",       init: false, boolean ]];
+
+            bool  band3Enable     [[ name: "Band 3 On",         init: true,  boolean ]];
+            int   band3Type       [[ name: "Band 3 Type",       min: 0, max: 2, init: 1, text: "Low Shelf|Bell|High Shelf" ]];
+            float band3Frequency  [[ name: "Band 3 Frequency",  min: 20,   max: 20000, init: 600,   unit: "Hz" ]];
+            float band3Gain       [[ name: "Band 3 Gain",       min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band3Q          [[ name: "Band 3 Q",          min: 0.1,  max: 10,    init: 1 ]];
+            float band3Threshold  [[ name: "Band 3 Threshold",  min: -60,  max: 0,     init: -20,   unit: "dB" ]];
+            float band3Range      [[ name: "Band 3 Range",      min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band3Ratio      [[ name: "Band 3 Ratio",      min: 1,    max: 20,    init: 3 ]];
+            float band3Attack     [[ name: "Band 3 Attack",     min: 0.1,  max: 500,   init: 10,    unit: "ms" ]];
+            float band3Release    [[ name: "Band 3 Release",    min: 5,    max: 5000,  init: 150,   unit: "ms" ]];
+            int   band3Channel    [[ name: "Band 3 Channel",    min: 0, max: 2, init: 0, text: "Stereo|Mid|Side" ]];
+            int   band3Sidechain  [[ name: "Band 3 Sidechain",  min: 0, max: 1, init: 0, text: "Split|Wide" ]];
+            bool  band3Solo       [[ name: "Band 3 Solo",       init: false, boolean ]];
+
+            bool  band4Enable     [[ name: "Band 4 On",         init: true,  boolean ]];
+            int   band4Type       [[ name: "Band 4 Type",       min: 0, max: 2, init: 1, text: "Low Shelf|Bell|High Shelf" ]];
+            float band4Frequency  [[ name: "Band 4 Frequency",  min: 20,   max: 20000, init: 2000,  unit: "Hz" ]];
+            float band4Gain       [[ name: "Band 4 Gain",       min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band4Q          [[ name: "Band 4 Q",          min: 0.1,  max: 10,    init: 1 ]];
+            float band4Threshold  [[ name: "Band 4 Threshold",  min: -60,  max: 0,     init: -20,   unit: "dB" ]];
+            float band4Range      [[ name: "Band 4 Range",      min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band4Ratio      [[ name: "Band 4 Ratio",      min: 1,    max: 20,    init: 3 ]];
+            float band4Attack     [[ name: "Band 4 Attack",     min: 0.1,  max: 500,   init: 10,    unit: "ms" ]];
+            float band4Release    [[ name: "Band 4 Release",    min: 5,    max: 5000,  init: 150,   unit: "ms" ]];
+            int   band4Channel    [[ name: "Band 4 Channel",    min: 0, max: 2, init: 0, text: "Stereo|Mid|Side" ]];
+            int   band4Sidechain  [[ name: "Band 4 Sidechain",  min: 0, max: 1, init: 0, text: "Split|Wide" ]];
+            bool  band4Solo       [[ name: "Band 4 Solo",       init: false, boolean ]];
+
+            bool  band5Enable     [[ name: "Band 5 On",         init: true,  boolean ]];
+            int   band5Type       [[ name: "Band 5 Type",       min: 0, max: 2, init: 1, text: "Low Shelf|Bell|High Shelf" ]];
+            float band5Frequency  [[ name: "Band 5 Frequency",  min: 20,   max: 20000, init: 5000,  unit: "Hz" ]];
+            float band5Gain       [[ name: "Band 5 Gain",       min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band5Q          [[ name: "Band 5 Q",          min: 0.1,  max: 10,    init: 1 ]];
+            float band5Threshold  [[ name: "Band 5 Threshold",  min: -60,  max: 0,     init: -20,   unit: "dB" ]];
+            float band5Range      [[ name: "Band 5 Range",      min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band5Ratio      [[ name: "Band 5 Ratio",      min: 1,    max: 20,    init: 3 ]];
+            float band5Attack     [[ name: "Band 5 Attack",     min: 0.1,  max: 500,   init: 10,    unit: "ms" ]];
+            float band5Release    [[ name: "Band 5 Release",    min: 5,    max: 5000,  init: 150,   unit: "ms" ]];
+            int   band5Channel    [[ name: "Band 5 Channel",    min: 0, max: 2, init: 0, text: "Stereo|Mid|Side" ]];
+            int   band5Sidechain  [[ name: "Band 5 Sidechain",  min: 0, max: 1, init: 0, text: "Split|Wide" ]];
+            bool  band5Solo       [[ name: "Band 5 Solo",       init: false, boolean ]];
+
+            bool  band6Enable     [[ name: "Band 6 On",         init: true,  boolean ]];
+            int   band6Type       [[ name: "Band 6 Type",       min: 0, max: 2, init: 2, text: "Low Shelf|Bell|High Shelf" ]];
+            float band6Frequency  [[ name: "Band 6 Frequency",  min: 20,   max: 20000, init: 12000, unit: "Hz" ]];
+            float band6Gain       [[ name: "Band 6 Gain",       min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band6Q          [[ name: "Band 6 Q",          min: 0.1,  max: 10,    init: 0.7 ]];
+            float band6Threshold  [[ name: "Band 6 Threshold",  min: -60,  max: 0,     init: -20,   unit: "dB" ]];
+            float band6Range      [[ name: "Band 6 Range",      min: -18,  max: 18,    init: 0,     unit: "dB" ]];
+            float band6Ratio      [[ name: "Band 6 Ratio",      min: 1,    max: 20,    init: 3 ]];
+            float band6Attack     [[ name: "Band 6 Attack",     min: 0.1,  max: 500,   init: 10,    unit: "ms" ]];
+            float band6Release    [[ name: "Band 6 Release",    min: 5,    max: 5000,  init: 150,   unit: "ms" ]];
+            int   band6Channel    [[ name: "Band 6 Channel",    min: 0, max: 2, init: 0, text: "Stereo|Mid|Side" ]];
+            int   band6Sidechain  [[ name: "Band 6 Sidechain",  min: 0, max: 1, init: 0, text: "Split|Wide" ]];
+            bool  band6Solo       [[ name: "Band 6 Solo",       init: false, boolean ]];
+
+            bool  lowCutEnable    [[ name: "Low Cut On",        init: false, boolean ]];
+            float lowCutFrequency [[ name: "Low Cut Frequency", min: 20,   max: 2000,  init: 30,    unit: "Hz" ]];
+            int   lowCutSlope     [[ name: "Low Cut Slope",     min: 0, max: 1, init: 0, text: "12 dB/oct|24 dB/oct" ]];
+            bool  highCutEnable   [[ name: "High Cut On",       init: false, boolean ]];
+            float highCutFrequency[[ name: "High Cut Frequency",min: 1000, max: 20000, init: 18000, unit: "Hz" ]];
+            int   highCutSlope    [[ name: "High Cut Slope",    min: 0, max: 1, init: 0, text: "12 dB/oct|24 dB/oct" ]];
+            float outputGain      [[ name: "Output Gain",       min: -24,  max: 24,    init: 0,     unit: "dB" ]];
+        }
+
+        event band1Enable    (bool v)   { bands[0].enabled = v; }
+        event band1Type      (int v)    { bands[0].type = v; }
+        event band1Frequency (float v)  { bands[0].frequency = v; }
+        event band1Gain      (float v)  { bands[0].gain = v; }
+        event band1Q         (float v)  { bands[0].q = v; }
+        event band1Threshold (float v)  { bands[0].threshold = v; }
+        event band1Range     (float v)  { bands[0].range = v; }
+        event band1Ratio     (float v)  { bands[0].ratio = v; }
+        event band1Attack    (float v)  { bands[0].attackMs = v; }
+        event band1Release   (float v)  { bands[0].releaseMs = v; }
+        event band1Channel   (int v)    { bands[0].channel = v; }
+        event band1Sidechain (int v)    { bands[0].sidechain = v; }
+        event band1Solo      (bool v)   { bands[0].solo = v; }
+
+        event band2Enable    (bool v)   { bands[1].enabled = v; }
+        event band2Type      (int v)    { bands[1].type = v; }
+        event band2Frequency (float v)  { bands[1].frequency = v; }
+        event band2Gain      (float v)  { bands[1].gain = v; }
+        event band2Q         (float v)  { bands[1].q = v; }
+        event band2Threshold (float v)  { bands[1].threshold = v; }
+        event band2Range     (float v)  { bands[1].range = v; }
+        event band2Ratio     (float v)  { bands[1].ratio = v; }
+        event band2Attack    (float v)  { bands[1].attackMs = v; }
+        event band2Release   (float v)  { bands[1].releaseMs = v; }
+        event band2Channel   (int v)    { bands[1].channel = v; }
+        event band2Sidechain (int v)    { bands[1].sidechain = v; }
+        event band2Solo      (bool v)   { bands[1].solo = v; }
+
+        event band3Enable    (bool v)   { bands[2].enabled = v; }
+        event band3Type      (int v)    { bands[2].type = v; }
+        event band3Frequency (float v)  { bands[2].frequency = v; }
+        event band3Gain      (float v)  { bands[2].gain = v; }
+        event band3Q         (float v)  { bands[2].q = v; }
+        event band3Threshold (float v)  { bands[2].threshold = v; }
+        event band3Range     (float v)  { bands[2].range = v; }
+        event band3Ratio     (float v)  { bands[2].ratio = v; }
+        event band3Attack    (float v)  { bands[2].attackMs = v; }
+        event band3Release   (float v)  { bands[2].releaseMs = v; }
+        event band3Channel   (int v)    { bands[2].channel = v; }
+        event band3Sidechain (int v)    { bands[2].sidechain = v; }
+        event band3Solo      (bool v)   { bands[2].solo = v; }
+
+        event band4Enable    (bool v)   { bands[3].enabled = v; }
+        event band4Type      (int v)    { bands[3].type = v; }
+        event band4Frequency (float v)  { bands[3].frequency = v; }
+        event band4Gain      (float v)  { bands[3].gain = v; }
+        event band4Q         (float v)  { bands[3].q = v; }
+        event band4Threshold (float v)  { bands[3].threshold = v; }
+        event band4Range     (float v)  { bands[3].range = v; }
+        event band4Ratio     (float v)  { bands[3].ratio = v; }
+        event band4Attack    (float v)  { bands[3].attackMs = v; }
+        event band4Release   (float v)  { bands[3].releaseMs = v; }
+        event band4Channel   (int v)    { bands[3].channel = v; }
+        event band4Sidechain (int v)    { bands[3].sidechain = v; }
+        event band4Solo      (bool v)   { bands[3].solo = v; }
+
+        event band5Enable    (bool v)   { bands[4].enabled = v; }
+        event band5Type      (int v)    { bands[4].type = v; }
+        event band5Frequency (float v)  { bands[4].frequency = v; }
+        event band5Gain      (float v)  { bands[4].gain = v; }
+        event band5Q         (float v)  { bands[4].q = v; }
+        event band5Threshold (float v)  { bands[4].threshold = v; }
+        event band5Range     (float v)  { bands[4].range = v; }
+        event band5Ratio     (float v)  { bands[4].ratio = v; }
+        event band5Attack    (float v)  { bands[4].attackMs = v; }
+        event band5Release   (float v)  { bands[4].releaseMs = v; }
+        event band5Channel   (int v)    { bands[4].channel = v; }
+        event band5Sidechain (int v)    { bands[4].sidechain = v; }
+        event band5Solo      (bool v)   { bands[4].solo = v; }
+
+        event band6Enable    (bool v)   { bands[5].enabled = v; }
+        event band6Type      (int v)    { bands[5].type = v; }
+        event band6Frequency (float v)  { bands[5].frequency = v; }
+        event band6Gain      (float v)  { bands[5].gain = v; }
+        event band6Q         (float v)  { bands[5].q = v; }
+        event band6Threshold (float v)  { bands[5].threshold = v; }
+        event band6Range     (float v)  { bands[5].range = v; }
+        event band6Ratio     (float v)  { bands[5].ratio = v; }
+        event band6Attack    (float v)  { bands[5].attackMs = v; }
+        event band6Release   (float v)  { bands[5].releaseMs = v; }
+        event band6Channel   (int v)    { bands[5].channel = v; }
+        event band6Sidechain (int v)    { bands[5].sidechain = v; }
+        event band6Solo      (bool v)   { bands[5].solo = v; }
+
+        event lowCutEnable (bool v)
+        {
+            if (v && ! lowCut.enabled)
+                lowCut.reset();
+
+            lowCut.enabled = v;
+        }
+
+        event highCutEnable (bool v)
+        {
+            if (v && ! highCut.enabled)
+                highCut.reset();
+
+            highCut.enabled = v;
+        }
+
+        event lowCutFrequency (float v)     { lowCut.frequency = v; }
+        event lowCutSlope (int v)           { lowCut.is24dB = (v != 0); }
+        event highCutFrequency (float v)    { highCut.frequency = v; }
+        event highCutSlope (int v)          { highCut.is24dB = (v != 0); }
+        event outputGain (float v)          { targetOutputGain = std::levels::dBtoGain (v); }
+
+        //==============================================================================
+        Band[numBands] bands;
+        CutFilter lowCut, highCut;
+
+        float targetOutputGain = 1.0f, currentOutputGain = 1.0f;
+
+        let controlSmoothing = float (1.0 - exp (-controlInterval / (parameterSmoothingTime * processor.frequency)));
+        let gainSmoothing    = float (1.0 - exp (-1.0 / (parameterSmoothingTime * processor.frequency)));
+        let controlBlocksPerGuiUpdate = max (1, int (processor.frequency / (guiUpdateRate * controlInterval)));
+
+        void init()
+        {
+            bands[0].initialise (BandType::lowShelf,  80.0f,    0.7f);
+            bands[1].initialise (BandType::bell,      200.0f,   1.0f);
+            bands[2].initialise (BandType::bell,      600.0f,   1.0f);
+            bands[3].initialise (BandType::bell,      2000.0f,  1.0f);
+            bands[4].initialise (BandType::bell,      5000.0f,  1.0f);
+            bands[5].initialise (BandType::highShelf, 12000.0f, 0.7f);
+
+            lowCut.initialise (true, 30.0f);
+            highCut.initialise (false, 18000.0f);
+        }
+
+        void reset()
+        {
+            for (wrap<numBands> i)
+                bands[i].reset();
+
+            lowCut.reset();
+            highCut.reset();
+        }
+
+        void updateControls()
+        {
+            for (wrap<numBands> i)
+                bands[i].update (processor.frequency, controlSmoothing);
+
+            lowCut.update (processor.frequency, controlSmoothing);
+            highCut.update (processor.frequency, controlSmoothing);
+        }
+
+        void sendBandState()
+        {
+            BandState state;
+            state.sampleRate = float (processor.frequency);
+
+            for (wrap<numBands> i)
+            {
+                state.dynamicGain[i]    = bands[i].dynamicGain * bands[i].currentEnable;
+                state.sidechainLevel[i] = bands[i].sidechainLevel;
+            }
+
+            bandState <- state;
+        }
+
+        float<2> toMidSide (float<2> leftRight)    { return float<2> (leftRight[0] + leftRight[1], leftRight[0] - leftRight[1]) * 0.5f; }
+        float<2> toLeftRight (float<2> midSide)    { return float<2> (midSide[0] + midSide[1], midSide[0] - midSide[1]); }
+
+        void processFrame()
+        {
+            let dry = audioIn;
+            let drySignal = toMidSide (dry);
+            var wet = drySignal;
+            float<2> soloSignal;
+            bool anySoloed = false;
+
+            for (wrap<numBands> i)
+            {
+                // Every band detects from the unprocessed input, so the bands don't interact
+                let sidechainSignal = bands[i].processSidechain (drySignal);
+                bands[i].followEnvelope (sidechainSignal);
+
+                if (bands[i].solo)
+                {
+                    soloSignal += bands[i].selectChannels (sidechainSignal);
+                    anySoloed = true;
+                }
+
+                wet = bands[i].processEQ (wet);
+            }
+
+            wet = highCut.process (lowCut.process (wet));
+
+            if (anySoloed)
+                wet = soloSignal;
+
+            currentOutputGain += gainSmoothing * (targetOutputGain - currentOutputGain);
+            let result = toLeftRight (wet) * currentOutputGain;
+
+            audioOut <- result;
+            analyserFeed <- float<2> (drySignal[0], (result[0] + result[1]) * 0.5f);
+        }
+
+        void main()
+        {
+            loop
+            {
+                loop (controlBlocksPerGuiUpdate)
+                {
+                    updateControls();
+
+                    loop (controlInterval)
+                    {
+                        processFrame();
+                        advance();
+                    }
+                }
+
+                sendBandState();
+            }
+        }
+    }
+}
