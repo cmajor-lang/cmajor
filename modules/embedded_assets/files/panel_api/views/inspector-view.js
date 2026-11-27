@@ -205,7 +205,7 @@ export class InspectorView  extends ConnectionView
                                                             onclick: (e) => { e.stopPropagation(); this.showAutomation (endpoint.endpointID); },
                                                             ondblclick: (e) => e.stopPropagation(),
                                                             onkeydown: (e) => e.stopPropagation() },
-                                                el ("span", { "aria-hidden": "true" }, "∿"))
+                                                el ("span", { class: "cp-button-glyph cp-glyph-wave", "aria-hidden": "true" }, "∿"))
                                           : null;
             const row = el ("div", { class: ["cp-param-row", model.isHidden && "cp-param-hidden"], role: "listitem", tabindex: 0,
                                      title: `${endpoint.endpointID}${model.isHidden ? " (hidden in the patch's GUI)" : ""}\nDouble-click (or Backspace) to reset to ${model.format (model.init)}`,

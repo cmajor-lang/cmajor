@@ -26,7 +26,7 @@ import { el, Disposer, setPressed, trackPointer } from "../core/dom.js";
     (ctx.settings.patchOrGlobal).
     When the panel is narrow, the inspector becomes an overlay that slides in from the right.
 
-    A tab is { id, label, key (shortcut hint), view }, where view has .element, optionally
+    A tab is { id, label, key (optional shortcut hint), view }, where view has .element, optionally
     .toolbar (shown in the tab bar while that tab is active), setActive (bool) and dispose().
     The inspector view's setActive() follows whether the inspector is open.
 */

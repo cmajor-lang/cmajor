@@ -610,6 +610,8 @@ cmaj-patch-panel :is(.cp-palette-glyph, .cp-button-glyph) { font-size: var(--cp-
 /* some glyphs draw below the middle of their box (measured in the system font), so they're raised to look centred */
 cmaj-patch-panel .cp-button-glyph.cp-glyph-arrow { transform: translateY(-0.11em); }   /* ⟲ ⟳ */
 cmaj-patch-panel .cp-button-glyph.cp-glyph-gear  { transform: translateY(-0.06em); }   /* ⚙ */
+cmaj-patch-panel .cp-button-glyph.cp-glyph-wave  { transform: translateY(-0.17em); }   /* ∿ */
+cmaj-patch-panel .cp-button-glyph.cp-glyph-die   { transform: translateY(-0.09em); }   /* ⚄ */
 
 /* an endpoint's widget, when the palette jumps to it */
 cmaj-patch-panel .cp-ew.cp-revealed { animation: cp-reveal var(--cp-duration-slow) var(--cp-ease) 2 alternate; border-radius: var(--cp-radius-sm); }
@@ -1393,7 +1395,6 @@ cmaj-patch-panel .cp-button-row .cp-button { flex: 1; }
   popover, and the mark on an automated parameter */
 
 cmaj-patch-panel .cp-fuzz-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cp-space-3); min-width: 0; }
-cmaj-patch-panel .cp-fuzz-glyph   { font-size: var(--cp-icon); line-height: 1; }
 cmaj-patch-panel .cp-fuzz-snapshot { gap: var(--cp-space-2); padding: 0 var(--cp-space-3); }
 cmaj-patch-panel .cp-fuzz-snapshot .cp-dot { background: var(--cp-accent); }
 cmaj-patch-panel .cp-fuzz-compact .cp-fuzz-snapshot { padding: 0 var(--cp-space-2); background: none; }
@@ -1420,10 +1421,15 @@ cmaj-patch-panel .cp-insp-fuzz .cp-fuzz-toolbar { gap: var(--cp-space-2); }
 cmaj-patch-panel .cp-param-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 cmaj-patch-panel .cp-param-tools { display: inline-flex; flex: none; align-items: center; gap: var(--cp-space-3); }
 
+/* (a full-size button, with negative margins so it doesn't make the row any taller) */
 cmaj-patch-panel .cp-param-automate {
-    width: var(--cp-control-h-xs);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--cp-control-h);
+    height: var(--cp-control-h);
+    margin-block: calc((var(--cp-control-h-xs) - var(--cp-control-h)) / 2);
     padding: 0;
-    font-size: var(--cp-text-sm);
     line-height: 1;
     color: var(--cp-fg-muted);
     cursor: pointer;

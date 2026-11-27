@@ -163,9 +163,9 @@ export default class PatchPanel  extends HTMLElement
                                "⧉", el ("span", { class: "cp-button-label" }, "Float GUI"), el ("kbd", null, "G"));
 
         this.workspace = new Workspace (this.ctx, {
-            mainTabs: [{ id: "gui", label: "GUI", key: "1", view: this.guiView },
-                       { id: "graph", label: "Graph", key: "2", view: this.graphView },
-                       { id: "io", label: "I/O", key: "3", view: this.ioView }],
+            mainTabs: [{ id: "gui", label: "GUI", view: this.guiView },
+                       { id: "graph", label: "Graph", view: this.graphView },
+                       { id: "io", label: "I/O", view: this.ioView }],
             mainTools: [this.floatButton],
             inspector: this.inspectorView,
             drawerTabs: [{ id: "console", label: "Console", view: this.consoleView },

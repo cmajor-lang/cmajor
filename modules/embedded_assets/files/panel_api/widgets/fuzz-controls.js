@@ -50,10 +50,10 @@ export class FuzzToolbar
 
         this.randomiseButton = el ("button", { class: [...buttonClass, "cp-fuzz-randomise"], "aria-label": "Randomise all parameters",
                                                onclick: () => this.fuzzer.randomiseAll() },
-                                   el ("span", { class: "cp-fuzz-glyph", "aria-hidden": "true" }, "⚄"), label ("Randomise"));
+                                   el ("span", { class: "cp-button-glyph cp-glyph-die", "aria-hidden": "true" }, "⚄"), label ("Randomise"));
         this.restoreButton = el ("button", { class: [...buttonClass, "cp-fuzz-restore"], "aria-label": "Restore the parameters from before fuzzing",
                                              onclick: () => this.fuzzer.restore() },
-                                 el ("span", { class: "cp-fuzz-glyph", "aria-hidden": "true" }, "↺"), label ("Restore"));
+                                 el ("span", { class: "cp-button-glyph", "aria-hidden": "true" }, "↺"), label ("Restore"));
         this.snapshotChip = el ("span", { class: "cp-chip cp-fuzz-snapshot", hidden: true },
                                 el ("span", { class: "cp-dot", "aria-hidden": "true" }), compact ? null : "Snapshot");
         this.countText = el ("span", { class: "cp-fuzz-count", "aria-live": "polite" });
