@@ -4,12 +4,20 @@
     "ID":               "dev.cmajor.examples.ConvolutionReverb",
     "version":          "1.0",
     "name":             "reverb",
-    "description":      "reverb",
-    "category":         "generator",
+    "description":      "A zero-latency convolution reverb with a fixed impulse response",
+    "category":         "effect",
     "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     false,
 
     "source":           "reverb.cmajor",
+
+    "view":
+    {
+        "src":          "view/index.js",
+        "width":        560,
+        "height":       320,
+        "resizable":    true
+    },
 
     "externals":
     {
