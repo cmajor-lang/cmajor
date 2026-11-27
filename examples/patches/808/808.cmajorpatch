@@ -3,12 +3,21 @@
     "ID":               "dev.cmajor.examples.808",
     "version":          "1.0",
     "name":             "808",
-    "description":      "A minimal implementation of a classic drum-machine",
+    "description":      "A classic-style drum machine with a 16-step sequencer and a 3D-rendered WebGL GUI",
     "category":         "synth",
     "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     true,
 
     "source":           "808.cmajor",
+    "worker":           "worker.js",
+
+    "view":
+    {
+        "src":       "gui/index.js",
+        "width":     1200,
+        "height":    620,
+        "resizable": true
+    },
 
     "externals":
     {

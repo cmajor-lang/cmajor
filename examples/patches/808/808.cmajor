@@ -12,73 +12,88 @@
 //  license: see LICENSE.md for more details.
 
 /**
-    A very simple drum machine example..
+    A simple sample-based drum machine, in the style of the classic analogue
+    rhythm machines of the early 80s.
+
+    It has one voice per sound (like the original hardware, where each instrument
+    was its own circuit), a 16-step sequencer with an accent track, and a set of
+    per-instrument level/tune/decay controls. The sounds can also be played via MIDI,
+    using notes 36 to 51.
+
+    The step pattern arrives as an event containing one 16-bit mask per track. The
+    patch's worker script keeps the pattern in the patch's stored state, and sends it
+    here whenever it changes.
 */
 namespace tr808
 {
+    let numSounds   = 16;
+    let numChannels = 11;
+    let numSteps    = 16;
+
+    /// The pattern has one track per sound, plus one extra track for the accents
+    let numTracks   = numSounds + 1;
+    let accentTrack = numSounds;
+
+    //==============================================================================
     graph TR808  [[ main ]]
     {
         output stream float out;
+        output sequencer.currentStep;
+
         input event std::midi::Message midiIn;
+        input sequencer.tempo;
+        input sequencer.accent;
         input gain.volume;
-
-        const int numVoices = 8;
-
-        node gain = std::levels::SmoothedGain (float, 0.1f);
-        node voices = Voice[numVoices];
-
-        connection midiIn
-                    -> std::midi::MPEConverter
-                    -> std::voices::VoiceAllocator(numVoices)
-                    -> voices
-                    -> gain.in;
-
-        connection gain -> out;
-    }
-
-    //==============================================================================
-    graph Voice
-    {
-        output stream float out;
-        input event (std::notes::NoteOn, std::notes::NoteOff) eventIn;
+        input controls.*;
+        input sequencer.run;
+        input sequencer.pattern;
 
         node
         {
-            envelope     = std::envelopes::FixedASR (0.0f, 0.3f);
-            attenuator   = std::levels::DynamicGain (float);
-            noteSelector = NoteSelector;
-            samplePlayer = std::audio_data::SamplePlayer (DrumSample::source);
+            sequencer = Sequencer;
+            router    = HitRouter;
+            controls  = ChannelControls;
+            voices    = DrumVoice[numSounds];
+            gain      = std::levels::SmoothedGain (float, 0.1f);
         }
 
         connection
         {
-            eventIn -> noteSelector -> samplePlayer.content;
-            samplePlayer -> attenuator.in;
-            eventIn -> envelope -> attenuator.gain;
-            attenuator -> out;
+            midiIn         -> router.midiIn;
+            sequencer.hits -> router.sequencerHits;
+
+            router.hits         -> voices.hit;
+            router.openHatChoke -> voices[Sound::openHat].choke;
+            controls.settings   -> voices.settings;
+
+            voices -> gain.in;
+            gain -> out;
         }
     }
 
     //==============================================================================
-    // Takes a NoteOn event, and emits an event to trigger the right drum sample in
-    // a downstream SamplePlayer
-    processor NoteSelector
+    /// The sounds, in the same order as the samples are listed in the manifest
+    namespace Sound
     {
-        input event std::notes::NoteOn eventIn;
-        output event DrumSample::source content;
-
-        event eventIn (std::notes::NoteOn e)
-        {
-            for (wrap<samples.size> i)
-            {
-                if (samples[i].note == roundToInt (e.pitch))
-                {
-                    content <- samples[i].source;
-                    break;
-                }
-            }
-        }
+        let bassDrum = 0,  rimShot = 1,   snareDrum = 2,  clap = 3,
+            closedHat = 4, lowTom = 5,    openHat = 6,    midTom = 7,
+            highTom = 8,   cymbal = 9,    cowbell = 10,   midConga = 11,
+            highConga = 12, lowConga = 13, maracas = 14,  claves = 15;
     }
+
+    /// The instrument channels, each of which has its own set of knobs. Some of the
+    /// channels are shared by two sounds, e.g. the low tom and low conga.
+    namespace Channel
+    {
+        let bassDrum = 0, snareDrum = 1, lowTom = 2, midTom = 3, highTom = 4, rimShot = 5,
+            clap = 6, cowbell = 7, cymbal = 8, openHat = 9, closedHat = 10;
+    }
+
+    /// Maps each sound to the channel whose knobs control it
+    let channelForSound = int[numSounds] (Channel::bassDrum,  Channel::rimShot, Channel::snareDrum, Channel::clap,
+                                          Channel::closedHat, Channel::lowTom,  Channel::openHat,   Channel::midTom,
+                                          Channel::highTom,   Channel::cymbal,  Channel::cowbell,   Channel::midTom,
+                                          Channel::highTom,   Channel::lowTom,  Channel::clap,      Channel::rimShot);
 
     //==============================================================================
     struct DrumSample
@@ -87,5 +102,327 @@ namespace tr808
         int note;
     }
 
-    external DrumSample[16] samples;
+    external DrumSample[numSounds] samples;
+
+    /// Tells a voice to start playing a sample
+    struct Hit
+    {
+        std::audio_data::Mono sample;
+        float velocity;
+    }
+
+    /// A sequencer step that needs to play a sound
+    struct SequencerHit
+    {
+        int sound;
+        float velocity;
+    }
+
+    /// The current knob settings for a voice
+    struct VoiceSettings
+    {
+        float gain;
+        float speed;
+        float decaySeconds;  // the time to decay by 60dB, or 0 to let the sample ring out
+    }
+
+    VoiceSettings getDefaultSettings()     { return VoiceSettings (0.64f, 1.0f, 0.0f); }
+
+    //==============================================================================
+    /// Steps through the pattern at the current tempo, emitting a hit for each sound
+    /// that's active on each step.
+    processor Sequencer
+    {
+        input event
+        {
+            float tempo   [[ name: "Tempo",  min: 40, max: 300, init: 120, step: 1, unit: "bpm" ]];
+            float accent  [[ name: "Accent", min: 0,  max: 1,   init: 0.5 ]];
+            bool run;
+            int[numTracks] pattern;
+        }
+
+        output event
+        {
+            SequencerHit hits;
+            int currentStep;   // sends the index of each step as it plays, or -1 when stopped
+        }
+
+        int[numTracks] steps;
+        bool isRunning;
+        wrap<numSteps> step;
+        float64 framesPerStep, framesUntilNextStep;
+        float accentAmount;
+
+        void init()
+        {
+            setTempo (120.0f);
+        }
+
+        void setTempo (float bpm)
+        {
+            let stepsPerBeat = 4.0;
+            framesPerStep = processor.frequency * 60.0 / (bpm * stepsPerBeat);
+        }
+
+        event tempo (float bpm)               { setTempo (bpm); }
+        event accent (float amount)           { accentAmount = amount; }
+        event pattern (int[numTracks] p)      { steps = p; }
+
+        event run (bool shouldRun)
+        {
+            if (shouldRun == isRunning)
+                return;
+
+            isRunning = shouldRun;
+            step = 0;
+            framesUntilNextStep = 0;
+
+            if (! isRunning)
+                currentStep <- -1;
+        }
+
+        bool isStepActive (int track)    { return (steps[wrap<numTracks> (track)] & (1 << step)) != 0; }
+
+        void playStep()
+        {
+            let normalVelocity = 0.6f;
+            let velocity = isStepActive (accentTrack) ? normalVelocity + (1.0f - normalVelocity) * accentAmount
+                                                      : normalVelocity;
+
+            for (wrap<numSounds> sound)
+                if (isStepActive (sound))
+                    hits <- SequencerHit (sound, velocity);
+
+            currentStep <- step;
+        }
+
+        void main()
+        {
+            loop
+            {
+                if (isRunning)
+                {
+                    if (framesUntilNextStep <= 0)
+                    {
+                        playStep();
+                        ++step;
+                        framesUntilNextStep += framesPerStep;
+                    }
+
+                    framesUntilNextStep -= 1.0;
+                }
+
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    /// Turns incoming MIDI notes and sequencer steps into hits for the voices.
+    processor HitRouter
+    {
+        input event std::midi::Message midiIn;
+        input event SequencerHit sequencerHits;
+
+        output event Hit hits[numSounds];
+        output event void openHatChoke;
+
+        event midiIn (std::midi::Message message)
+        {
+            if (message.isNoteOn())
+                for (wrap<numSounds> sound)
+                    if (samples[sound].note == message.getNoteNumber())
+                        trigger (sound, message.getFloatVelocity());
+        }
+
+        event sequencerHits (SequencerHit h)
+        {
+            trigger (wrap<numSounds> (h.sound), h.velocity);
+        }
+
+        void trigger (wrap<numSounds> sound, float velocity)
+        {
+            hits[sound] <- Hit (samples[sound].source, velocity);
+
+            // Like the real thing, a closed hi-hat cuts off an open one
+            if (sound == Sound::closedHat)
+                openHatChoke <- void;
+        }
+    }
+
+    //==============================================================================
+    /// Holds the parameters for the knobs on each channel, and sends the resulting
+    /// settings to the voices that the channel controls.
+    processor ChannelControls
+    {
+        input event
+        {
+            float bdLevel  [[ name: "Bass Drum Level",   group: "Bass Drum",     min: 0,   max: 1,  init: 0.8 ]];
+            float bdTune   [[ name: "Bass Drum Tune",    group: "Bass Drum",     min: -12, max: 12, init: 0, unit: "st" ]];
+            float bdDecay  [[ name: "Bass Drum Decay",   group: "Bass Drum",     min: 0,   max: 1,  init: 1 ]];
+            float sdLevel  [[ name: "Snare Drum Level",  group: "Snare Drum",    min: 0,   max: 1,  init: 0.8 ]];
+            float sdTune   [[ name: "Snare Drum Tune",   group: "Snare Drum",    min: -12, max: 12, init: 0, unit: "st" ]];
+            float sdDecay  [[ name: "Snare Drum Decay",  group: "Snare Drum",    min: 0,   max: 1,  init: 1 ]];
+            float ltLevel  [[ name: "Low Tom Level",     group: "Low Tom/Conga", min: 0,   max: 1,  init: 0.8 ]];
+            float ltTune   [[ name: "Low Tom Tune",      group: "Low Tom/Conga", min: -12, max: 12, init: 0, unit: "st" ]];
+            float mtLevel  [[ name: "Mid Tom Level",     group: "Mid Tom/Conga", min: 0,   max: 1,  init: 0.8 ]];
+            float mtTune   [[ name: "Mid Tom Tune",      group: "Mid Tom/Conga", min: -12, max: 12, init: 0, unit: "st" ]];
+            float htLevel  [[ name: "High Tom Level",    group: "Hi Tom/Conga",  min: 0,   max: 1,  init: 0.8 ]];
+            float htTune   [[ name: "High Tom Tune",     group: "Hi Tom/Conga",  min: -12, max: 12, init: 0, unit: "st" ]];
+            float rsLevel  [[ name: "Rim Shot Level",    group: "Rim/Claves",    min: 0,   max: 1,  init: 0.8 ]];
+            float cpLevel  [[ name: "Clap Level",        group: "Clap/Maracas",  min: 0,   max: 1,  init: 0.8 ]];
+            float cbLevel  [[ name: "Cowbell Level",     group: "Cowbell",       min: 0,   max: 1,  init: 0.8 ]];
+            float cyLevel  [[ name: "Cymbal Level",      group: "Cymbal",        min: 0,   max: 1,  init: 0.8 ]];
+            float cyTune   [[ name: "Cymbal Tune",       group: "Cymbal",        min: -12, max: 12, init: 0, unit: "st" ]];
+            float cyDecay  [[ name: "Cymbal Decay",      group: "Cymbal",        min: 0,   max: 1,  init: 1 ]];
+            float ohLevel  [[ name: "Open Hat Level",    group: "Open Hat",      min: 0,   max: 1,  init: 0.8 ]];
+            float ohDecay  [[ name: "Open Hat Decay",    group: "Open Hat",      min: 0,   max: 1,  init: 1 ]];
+            float chLevel  [[ name: "Closed Hat Level",  group: "Closed Hat",    min: 0,   max: 1,  init: 0.8 ]];
+        }
+
+        output event VoiceSettings settings[numSounds];
+
+        VoiceSettings[numChannels] channels;
+
+        void init()
+        {
+            for (wrap<numChannels> i)
+                channels[i] = getDefaultSettings();
+        }
+
+        event bdLevel (float v)   { setLevel (Channel::bassDrum, v); }
+        event bdTune  (float v)   { setTune  (Channel::bassDrum, v); }
+        event bdDecay (float v)   { setDecay (Channel::bassDrum, v); }
+        event sdLevel (float v)   { setLevel (Channel::snareDrum, v); }
+        event sdTune  (float v)   { setTune  (Channel::snareDrum, v); }
+        event sdDecay (float v)   { setDecay (Channel::snareDrum, v); }
+        event ltLevel (float v)   { setLevel (Channel::lowTom, v); }
+        event ltTune  (float v)   { setTune  (Channel::lowTom, v); }
+        event mtLevel (float v)   { setLevel (Channel::midTom, v); }
+        event mtTune  (float v)   { setTune  (Channel::midTom, v); }
+        event htLevel (float v)   { setLevel (Channel::highTom, v); }
+        event htTune  (float v)   { setTune  (Channel::highTom, v); }
+        event rsLevel (float v)   { setLevel (Channel::rimShot, v); }
+        event cpLevel (float v)   { setLevel (Channel::clap, v); }
+        event cbLevel (float v)   { setLevel (Channel::cowbell, v); }
+        event cyLevel (float v)   { setLevel (Channel::cymbal, v); }
+        event cyTune  (float v)   { setTune  (Channel::cymbal, v); }
+        event cyDecay (float v)   { setDecay (Channel::cymbal, v); }
+        event ohLevel (float v)   { setLevel (Channel::openHat, v); }
+        event ohDecay (float v)   { setDecay (Channel::openHat, v); }
+        event chLevel (float v)   { setLevel (Channel::closedHat, v); }
+
+        void setLevel (wrap<numChannels> channel, float level)
+        {
+            channels[channel].gain = level * level;
+            sendSettings (channel);
+        }
+
+        void setTune (wrap<numChannels> channel, float semitones)
+        {
+            channels[channel].speed = pow (2.0f, semitones / 12.0f);
+            sendSettings (channel);
+        }
+
+        /// Maps the 0 to 1 knob range to a decay time from 30ms to 3 seconds, with
+        /// the fully-clockwise position letting the sample play out naturally.
+        void setDecay (wrap<numChannels> channel, float decay)
+        {
+            channels[channel].decaySeconds = decay >= 0.999f ? 0.0f : 0.03f * pow (100.0f, decay);
+            sendSettings (channel);
+        }
+
+        void sendSettings (wrap<numChannels> channel)
+        {
+            for (wrap<numSounds> sound)
+                if (channelForSound[sound] == channel)
+                    settings[sound] <- channels[channel];
+        }
+
+        void main()     { advance(); }
+    }
+
+    //==============================================================================
+    /// Plays one sound, with a variable speed and an exponential decay envelope.
+    processor DrumVoice
+    {
+        output stream float out;
+
+        input event
+        {
+            Hit hit;
+            void choke;
+            VoiceSettings settings;
+        }
+
+        std::audio_data::Mono sample;
+        VoiceSettings voiceSettings;
+        float64 position, increment;
+        float velocity, envelope, envelopeMultiplier;
+        bool isPlaying, isChoked;
+
+        void init()
+        {
+            voiceSettings = getDefaultSettings();
+        }
+
+        event hit (Hit h)
+        {
+            sample = h.sample;
+            velocity = h.velocity;
+            position = 0;
+            envelope = 1.0f;
+            isPlaying = true;
+            isChoked = false;
+            updateRates();
+        }
+
+        event choke()
+        {
+            isChoked = true;
+            updateRates();
+        }
+
+        event settings (VoiceSettings newSettings)
+        {
+            voiceSettings = newSettings;
+            updateRates();
+        }
+
+        void updateRates()
+        {
+            increment = voiceSettings.speed * sample.sampleRate * processor.period;
+
+            let chokeTime = 0.005f;
+            envelopeMultiplier = getDecayMultiplier (isChoked ? chokeTime : voiceSettings.decaySeconds);
+        }
+
+        float getDecayMultiplier (float secondsToDecayBy60dB)
+        {
+            if (secondsToDecayBy60dB <= 0)
+                return 1.0f;
+
+            return pow (0.001f, float (processor.period) / secondsToDecayBy60dB);
+        }
+
+        void main()
+        {
+            loop
+            {
+                if (isPlaying)
+                {
+                    out <- velocity * voiceSettings.gain * envelope
+                             * sample.frames.readLinearInterpolated (position);
+
+                    position += increment;
+                    envelope *= envelopeMultiplier;
+
+                    if (position >= sample.frames.size || envelope < 0.0001f)
+                        isPlaying = false;
+                }
+
+                advance();
+            }
+        }
+    }
 }
