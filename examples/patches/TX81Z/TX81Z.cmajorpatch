@@ -9,5 +9,13 @@
     "manufacturer":     "Cmajor Software Ltd",
     "isInstrument":     true,
 
-    "source":           "TX81Z.cmajor"
+    "source":           "TX81Z.cmajor",
+
+    "view":
+    {
+        "src":       "gui/index.js",
+        "width":     1144,
+        "height":    614,
+        "resizable": true
+    }
 }
