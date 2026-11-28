@@ -10,6 +10,7 @@
     "isInstrument":     true,
 
     "source":           "TX81Z.cmajor",
+    "worker":           "worker/worker.js",
 
     "view":
     {

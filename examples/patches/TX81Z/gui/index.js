@@ -21,23 +21,35 @@
     - Hovering over a control shows its current value on the LCD.
     - Click an algorithm in the chart to select it.
     - Double-click the LCD to edit the voice name; Enter to keep it, Escape to cancel.
+    - The PROGRAM buttons step through the 16 voices in the preset bank, wrapping round at
+      either end.
     - Play the keyboard with the mouse (the lower down a key you click, the louder the note),
       or with the computer keyboard: A-W-S-E-D... plays from C, and Z and X change octave.
 
-    The voice name is kept in the patch's stored state, so hosts save it with the parameters.
+    The voice name and program number are kept in the patch's stored state, so hosts save
+    them with the parameters.
+
+    Voices are loaded by the patch's worker (worker/worker.js), which runs even when this GUI
+    isn't open. It responds to MIDI program changes, so the program buttons just send one of
+    those into the patch's MIDI input, as a MIDI controller would.
 */
 
 import { parameters, parametersByID, operatorCount, getOperatorParameterID, updateFromStatus,
          toNormalised, formatValue, getWaveshape } from "./params.js";
 import { DotMatrixLCD, isDisplayableCharacter } from "./lcd.js";
-import { Knob, Slider, Wheel, Keyboard } from "./controls.js";
+import { Knob, Slider, Wheel, Keyboard, PushButton } from "./controls.js";
 import { AlgorithmChart, isCarrier } from "./algorithms.js";
 import { wordmarkPath, wordmarkBounds } from "./cmajor-wordmark.js";
+import { isValidProgramNumber, getProgramNumberAfterStep } from "./presets/presetBank.js";
 
 // The panel's layout, from top to bottom: the controls end level with the bottom of the
 // algorithm chart, and the keyboard sits just below them
 const designWidth = 1430, sideMargin = 24;
 const controlsTop = 84, controlsHeight = 406;
+
+// The top parts of the master and voice sections have the same fixed height, so that the
+// PROGRAM and ALGORITHM titles below them line up whatever size the text comes out
+const upperBlockHeight = 152;
 const keybedTop = controlsTop + controlsHeight + 16, keybedHeight = 244;
 const designHeight = keybedTop + keybedHeight + 18;
 const lcdColumns = 16;
@@ -45,6 +57,10 @@ const lcdColumns = 16;
 const voiceNameLength = 10;
 const defaultVoiceName = "LatelyBass";
 const lcdHoldTime = 1800;
+
+// When a program change loads a new voice, its parameter changes arrive just afterwards, and
+// shouldn't each flash up on the LCD
+const programChangeQuietTime = 500;
 
 // The patch's MIDI converter bends by up to 48 semitones, so the wheel only uses a
 // part of its range, to give the TX81Z's default bend range of +/- 2 semitones
@@ -67,6 +83,8 @@ class TX81ZView extends HTMLElement
         this.envelopeDisplays = [];
         this.carrierTags = [];
         this.voiceName = defaultVoiceName;
+        this.currentProgram = 1;
+        this.lastProgramChangeTime = -Infinity;
         this.keyboardOctave = 0;
         this.heldComputerKeys = new Map();
         this.activeGestures = 0;
@@ -152,7 +170,7 @@ class TX81ZView extends HTMLElement
                 this.controls.get (endpointID)?.setValue (value);
                 this.updateDependentDisplays (param);
 
-                if (isChange)
+                if (isChange && ! this.isLoadingProgram())
                     this.showParameter (param, value);
             }
         };
@@ -172,6 +190,12 @@ class TX81ZView extends HTMLElement
                 this.voiceName = value.substring (0, voiceNameLength);
                 this.showIdleDisplay();
             }
+
+            if (key === "currentProgram" && isValidProgramNumber (value))
+            {
+                this.currentProgram = value;
+                this.showIdleDisplay();
+            }
         };
 
         // Light up the keys for notes that arrive from elsewhere, e.g. a MIDI keyboard
@@ -184,7 +208,20 @@ class TX81ZView extends HTMLElement
             else if (status === 0x80 || status === 0x90)
                 this.keyboard.setNoteHeld (note, "midi", false);
 
-            if (status === 0x80 || status === 0x90)
+            if (status === 0xc0)
+            {
+                // The worker is about to load the new voice, so go back to showing the
+                // program, and keep its parameter changes off the LCD
+                const programNumber = ((message >> 8) & 0x7f) + 1;
+
+                if (isValidProgramNumber (programNumber))
+                    this.currentProgram = programNumber;
+
+                this.lastProgramChangeTime = performance.now();
+                this.showIdleDisplay();
+            }
+
+            if (status === 0x80 || status === 0x90 || status === 0xc0)
                 this.flashMIDILight();
         };
 
@@ -195,6 +232,7 @@ class TX81ZView extends HTMLElement
 
         pc.requestStatusUpdate();
         pc.requestStoredStateValue ("voiceName");
+        pc.requestStoredStateValue ("currentProgram");
 
         for (const param of parameters)
             pc.requestParameterValue (param.id);
@@ -239,6 +277,22 @@ class TX81ZView extends HTMLElement
         }
 
         this.showParameter (modulationDisplay, value);
+    }
+
+    /** Asks the worker to load the program that's delta steps away from the current one. */
+    stepProgram (delta)
+    {
+        // (this updates currentProgram straight away, so that pressing a button repeatedly
+        // keeps stepping even if the worker hasn't caught up yet)
+        this.currentProgram = getProgramNumberAfterStep (this.currentProgram, delta);
+        this.lastProgramChangeTime = performance.now();
+        this.sendMIDI (0xc0, this.currentProgram - 1, 0);
+        this.showIdleDisplay();
+    }
+
+    isLoadingProgram()
+    {
+        return performance.now() - this.lastProgramChangeTime < programChangeQuietTime;
     }
 
     flashMIDILight()
@@ -295,9 +349,13 @@ class TX81ZView extends HTMLElement
         };
 
         // The master section and the wheels
-        addControl (root.querySelector ("#volume"), Slider, "volumeIn", { height: 160 });
+        addControl (root.querySelector ("#volume"), Slider, "volumeIn", { height: 99 });
         addControl (root.querySelector ("#transpose"), Knob, "pitchOffsetIn");
         this.midiLight = root.querySelector ("#midi-light");
+
+        // The program buttons
+        new PushButton (root.querySelector ("#program-previous"), { onPress: () => this.stepProgram (-1) });
+        new PushButton (root.querySelector ("#program-next"),     { onPress: () => this.stepProgram (1) });
 
         const wheels = root.querySelector ("#wheels");
         wheels.appendChild (new Wheel ({ label: "PITCH", isPitchBend: true, width: 30, onChange: v => this.sendPitchBend (v) }).element);
@@ -390,7 +448,7 @@ class TX81ZView extends HTMLElement
             });
         }
 
-        if (param.id === "volumeIn" && ! this.isShowingParameter && ! this.nameEdit)
+        if ((param.id === "volumeIn" || param.id === "algorithmIn") && ! this.isShowingParameter && ! this.nameEdit)
             this.showIdleDisplay();
 
         if (param.operator)
@@ -477,7 +535,7 @@ class TX81ZView extends HTMLElement
         const algorithm = parametersByID.get ("algorithmIn").value;
         const volume = parametersByID.get ("volumeIn").value;
 
-        this.lcd.setText ("I01  " + this.voiceName,
+        this.lcd.setText ("I" + String (this.currentProgram).padStart (2, "0") + "  " + this.voiceName,
                           ("ALG " + algorithm).padEnd (8) + ("VOL" + Math.round (volume) + "dB").padStart (8));
     }
 
@@ -899,6 +957,7 @@ class TX81ZView extends HTMLElement
 
     .section-title {
         font-size: 11px;
+        line-height: 13px;
         font-weight: bold;
         letter-spacing: 2px;
         padding: 3px 8px;
@@ -919,7 +978,8 @@ class TX81ZView extends HTMLElement
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 22px;
+        justify-content: space-between;
+        gap: 8px;
         padding-top: 8px;
     }
 
@@ -941,6 +1001,58 @@ class TX81ZView extends HTMLElement
     #midi-light.lit {
         background: #ff3b24;
         box-shadow: 0 0 6px 2px rgba(255, 70, 40, 0.6), inset 0 -1px 2px #a0180c;
+    }
+
+    /* The program section takes up the space above the wheels, with its buttons centred in it */
+    .upper-block {
+        flex: none;
+        height: ${upperBlockHeight}px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #program {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #program .section-title { margin-bottom: 0; }
+
+    .program-buttons {
+        flex: 1;
+        align-items: center;
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    /* Square buttons like the hardware's, which move down when pressed */
+    .program-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        border-radius: 3px;
+        outline: none;
+        cursor: pointer;
+        background: linear-gradient(180deg, #4b4641 0%, #34302c 60%, #2a2724 100%);
+        box-shadow: 0 2px 0 #0d0c0b, 0 3px 5px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    }
+
+    .program-button svg {
+        width: 11px;
+        height: 11px;
+        fill: var(--print);
+    }
+
+    .program-button.pressed {
+        transform: translateY(2px);
+        background: linear-gradient(180deg, #3b3733 0%, #2d2a26 60%, #252220 100%);
+        box-shadow: 0 0 0 #0d0c0b, 0 1px 2px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(0, 0, 0, 0.45);
     }
 
     #wheels {
@@ -971,7 +1083,7 @@ class TX81ZView extends HTMLElement
 
     .lcd-caption {
         align-self: center;
-        margin: 6px 0 14px;
+        margin-top: 6px;
         font-size: 9px;
         letter-spacing: 2px;
         color: var(--print-dim);
@@ -1086,6 +1198,7 @@ class TX81ZView extends HTMLElement
     .control-label {
         margin-top: 2px;
         font-size: 10px;
+        line-height: 12px;
         font-weight: bold;
         letter-spacing: 1px;
         white-space: nowrap;
@@ -1291,21 +1404,32 @@ class TX81ZView extends HTMLElement
 
     <div class="controls">
         <section class="master">
-            <div class="section-title">MASTER</div>
-            <div class="master-controls">
-                <div id="volume"></div>
-                <div class="master-right">
-                    <div id="transpose"></div>
-                    <div class="midi-indicator"><div id="midi-light"></div><div class="control-label">MIDI</div></div>
+            <div class="upper-block">
+                <div class="section-title">MASTER</div>
+                <div class="master-controls">
+                    <div id="volume"></div>
+                    <div class="master-right">
+                        <div id="transpose"></div>
+                        <div class="midi-indicator"><div id="midi-light"></div><div class="control-label">MIDI</div></div>
+                    </div>
+                </div>
+            </div>
+            <div id="program">
+                <div class="section-title">PROGRAM</div>
+                <div class="program-buttons">
+                    <button type="button" tabindex="-1" class="program-button" id="program-previous" aria-label="Previous program"><svg viewBox="0 0 10 10"><polygon points="7.5,1.5 7.5,8.5 2,5"></polygon></svg></button>
+                    <button type="button" tabindex="-1" class="program-button" id="program-next" aria-label="Next program"><svg viewBox="0 0 10 10"><polygon points="2.5,1.5 2.5,8.5 8,5"></polygon></svg></button>
                 </div>
             </div>
             <div id="wheels"></div>
         </section>
 
         <section class="centre">
-            <div class="section-title">VOICE</div>
-            <div id="lcd-window"><canvas id="lcd"></canvas></div>
-            <div class="lcd-caption">DOUBLE-CLICK DISPLAY TO NAME VOICE</div>
+            <div class="upper-block">
+                <div class="section-title">VOICE</div>
+                <div id="lcd-window"><canvas id="lcd"></canvas></div>
+                <div class="lcd-caption">DOUBLE-CLICK DISPLAY TO NAME VOICE</div>
+            </div>
             <div class="section-title">ALGORITHM</div>
             <div id="algorithm-chart"></div>
         </section>

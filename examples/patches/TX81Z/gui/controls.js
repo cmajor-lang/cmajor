@@ -120,6 +120,28 @@ function addDragHandler (element, { onStart, onMove, onEnd, allowMultiplePointer
 }
 
 //==============================================================================
+/** A momentary push-button that looks pressed while it's held down, and calls onPress when
+    it goes down, like the buttons on the hardware.
+*/
+export class PushButton
+{
+    constructor (element, { onPress } = {})
+    {
+        this.element = element;
+
+        addDragHandler (element,
+        {
+            onStart: () =>
+            {
+                element.classList.add ("pressed");
+                onPress?.();
+            },
+            onEnd: () => element.classList.remove ("pressed")
+        });
+    }
+}
+
+//==============================================================================
 class ParameterControl
 {
     constructor (param, listener, className)
