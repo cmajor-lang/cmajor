@@ -207,9 +207,15 @@ export class Knob extends ParameterControl
 
         const area = createElement ("div", "knob-area", this.element);
         const scale = createSVGElement ("svg", { class: "knob-scale", viewBox: "-30 -30 60 60" }, area);
+        // The ridged skirt and the pointer turn with the knob, but the lighting on the skirt
+        // and the highlight on the cap stay where they are, as the light source doesn't move
         const knob = createElement ("div", "knob", area);
-        this.cap = createElement ("div", "knob-cap", knob);
-        createElement ("div", "knob-pointer", this.cap);
+        const grip = createElement ("div", "knob-grip", knob);
+        createElement ("div", "knob-grip-lighting", knob);
+        createElement ("div", "knob-cap", knob);
+        const pointerRotor = createElement ("div", "knob-pointer-rotor", knob);
+        createElement ("div", "knob-pointer", pointerRotor);
+        this.rotatingParts = [grip, pointerRotor];
         this.addLabel (this.element);
 
         // Stepped knobs with only a few positions get a tick for each one
@@ -234,7 +240,10 @@ export class Knob extends ParameterControl
 
     update()
     {
-        this.cap.style.transform = `rotate(${-135 + 270 * this.normalised}deg)`;
+        const transform = `rotate(${-135 + 270 * this.normalised}deg)`;
+
+        for (const part of this.rotatingParts)
+            part.style.transform = transform;
     }
 }
 

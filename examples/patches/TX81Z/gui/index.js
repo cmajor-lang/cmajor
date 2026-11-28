@@ -41,8 +41,9 @@ const controlsTop = 84, controlsHeight = 406;
 const keybedTop = controlsTop + controlsHeight + 16, keybedHeight = 244;
 const designHeight = keybedTop + keybedHeight + 18;
 const lcdColumns = 16;
+// Voice names are up to 10 characters, as on the hardware
 const voiceNameLength = 10;
-const defaultVoiceName = "INIT VOICE";
+const defaultVoiceName = "LatelyBass";
 const lcdHoldTime = 1800;
 
 // The patch's MIDI converter bends by up to 48 semitones, so the wheel only uses a
@@ -476,7 +477,7 @@ class TX81ZView extends HTMLElement
         const algorithm = parametersByID.get ("algorithmIn").value;
         const volume = parametersByID.get ("volumeIn").value;
 
-        this.lcd.setText ("I01 " + this.voiceName,
+        this.lcd.setText ("I01  " + this.voiceName,
                           ("ALG " + algorithm).padEnd (8) + ("VOL" + Math.round (volume) + "dB").padStart (8));
     }
 
@@ -641,8 +642,8 @@ class TX81ZView extends HTMLElement
 
     updateNameEditDisplay()
     {
-        this.lcd.setText ("Voice Name", " ".repeat (lcdColumns - voiceNameLength) + this.nameEdit.name);
-        this.lcd.setCursor ({ row: 1, column: lcdColumns - voiceNameLength + this.nameEdit.cursor });
+        this.lcd.setText ("Voice Name", this.nameEdit.name);
+        this.lcd.setCursor ({ row: 1, column: this.nameEdit.cursor });
     }
 
     finishNameEdit (keepChanges)
@@ -662,6 +663,7 @@ class TX81ZView extends HTMLElement
         this.showIdleDisplay();
     }
 
+    /** The cursor can go one place past the last character, so that Backspace can delete it. */
     handleNameEditKey (e)
     {
         const edit = this.nameEdit;
@@ -670,7 +672,7 @@ class TX81ZView extends HTMLElement
         if (e.key === "Enter")              this.finishNameEdit (true);
         else if (e.key === "Escape")        this.finishNameEdit (false);
         else if (e.key === "ArrowLeft")     edit.cursor = Math.max (0, edit.cursor - 1);
-        else if (e.key === "ArrowRight")    edit.cursor = Math.min (voiceNameLength - 1, edit.cursor + 1);
+        else if (e.key === "ArrowRight")    edit.cursor = Math.min (voiceNameLength, edit.cursor + 1);
         else if (e.key === "Backspace")
         {
             edit.cursor = Math.max (0, edit.cursor - 1);
@@ -682,9 +684,11 @@ class TX81ZView extends HTMLElement
         }
         else if (e.key.length === 1 && isDisplayableCharacter (e.key) && ! e.metaKey && ! e.ctrlKey)
         {
-            // Like the hardware, typing overwrites the character under the cursor
-            replaceCharacter (edit.cursor, e.key);
-            edit.cursor = Math.min (voiceNameLength - 1, edit.cursor + 1);
+            // Like the hardware, typing overwrites the character under the cursor (or, when the
+            // cursor is past the end, the last character)
+            const index = Math.min (edit.cursor, voiceNameLength - 1);
+            replaceCharacter (index, e.key);
+            edit.cursor = index + 1;
         }
         else
         {
@@ -1113,17 +1117,33 @@ class TX81ZView extends HTMLElement
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        background: repeating-conic-gradient(from 0deg, #2a2725 0deg 6deg, #171513 6deg 12deg);
         box-shadow: 0 3px 4px rgba(0, 0, 0, 0.7), 0 0 0 1px #0c0b0a;
     }
 
-    .knob-cap {
+    .knob-grip, .knob-grip-lighting, .knob-cap, .knob-pointer-rotor {
         position: absolute;
-        inset: 3px;
         border-radius: 50%;
+    }
+
+    /* The knurled skirt, which turns with the knob... */
+    .knob-grip {
+        inset: 0;
+        background: repeating-conic-gradient(from 0deg, #2a2725 0deg 6deg, #171513 6deg 12deg);
+    }
+
+    /* ...and the light falling on it from above, which doesn't */
+    .knob-grip-lighting {
+        inset: 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, transparent 45%, rgba(0, 0, 0, 0.30) 100%);
+    }
+
+    .knob-cap {
+        inset: 3px;
         background: radial-gradient(circle at 40% 30%, #4b4642 0%, #24211f 55%, #161412 100%);
         box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12);
     }
+
+    .knob-pointer-rotor { inset: 3px; }
 
     .knob-pointer {
         position: absolute;
