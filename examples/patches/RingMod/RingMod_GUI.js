@@ -40,6 +40,12 @@ class DalekView extends HTMLElement
         this.querySelector ("#playSample2").onclick = () => { this.patchConnection.sendEventOrValue ("triggerSample", 1); };
     }
 
+    disconnectedCallback()
+    {
+        // When the view is closed, we must remove any listeners that we added
+        this.patchConnection.removeStatusListener (this.statusListener);
+    }
+
     getHTML()
     {
         return `

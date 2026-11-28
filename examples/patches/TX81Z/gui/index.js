@@ -90,6 +90,8 @@ class TX81ZView extends HTMLElement
         this.carrierTags = [];
         this.voiceName = defaultVoiceName;
         this.currentProgram = 1;
+        this.requestedProgram = undefined;
+        this.lastProgramRequestTime = -Infinity;
         this.lastProgramChangeTime = -Infinity;
         this.keyboardOctave = 0;
         this.heldComputerKeys = new Map();
@@ -199,7 +201,7 @@ class TX81ZView extends HTMLElement
                 this.showIdleDisplay();
             }
 
-            if (key === "currentProgram" && isValidProgramNumber (value))
+            if (key === "currentProgram" && isValidProgramNumber (value) && this.isProgramFromPatchCurrent (value))
             {
                 this.currentProgram = value;
                 this.showIdleDisplay();
@@ -222,7 +224,7 @@ class TX81ZView extends HTMLElement
                 // program, and keep its parameter changes off the LCD
                 const programNumber = ((message >> 8) & 0x7f) + 1;
 
-                if (isValidProgramNumber (programNumber))
+                if (isValidProgramNumber (programNumber) && this.isProgramFromPatchCurrent (programNumber))
                     this.currentProgram = programNumber;
 
                 this.lastProgramChangeTime = performance.now();
@@ -296,7 +298,8 @@ class TX81ZView extends HTMLElement
         // (this updates currentProgram straight away, so that pressing a button repeatedly
         // keeps stepping even if the worker hasn't caught up yet)
         this.currentProgram = programNumber;
-        this.lastProgramChangeTime = performance.now();
+        this.requestedProgram = programNumber;
+        this.lastProgramRequestTime = this.lastProgramChangeTime = performance.now();
         this.sendMIDI (0xc0, programNumber - 1, 0);
         this.showIdleDisplay();
     }
@@ -305,6 +308,19 @@ class TX81ZView extends HTMLElement
     stepProgram (delta)
     {
         this.selectProgram (getProgramNumberAfterStep (this.currentProgram, delta));
+    }
+
+    /** Says whether a program number that comes from the patch (a program change, or the
+        worker's currentProgram) should be shown. Just after the buttons or the list have asked
+        for a program, the ones they asked for before it can still be on their way back, and
+        taking one of those would undo the steps since then, so for a moment, only the one
+        asked for is taken.
+    */
+    isProgramFromPatchCurrent (programNumber)
+    {
+        return this.requestedProgram === undefined
+                || programNumber === this.requestedProgram
+                || performance.now() - this.lastProgramRequestTime >= programChangeQuietTime;
     }
 
     isLoadingProgram()

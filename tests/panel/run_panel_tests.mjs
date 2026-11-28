@@ -1,7 +1,7 @@
-// Runs the patch panel's test suites one after another, and exits with 1 if any of them fails
-// (or can't run). This is what CI runs: see README.md.
+// Runs the test suites for the patch panel and the patches' GUIs one after another, and exits
+// with 1 if any of them fails (or can't run). This is what CI runs: see README.md.
 //
-// Usage: node cmajor/tests/panel/run_panel_tests.mjs [--cmaj=<path>] [--only=core,mock,graph,save]
+// Usage: node cmajor/tests/panel/run_panel_tests.mjs [--cmaj=<path>] [--only=core,mock,save,graph,guis]
 //
 //   --cmaj=<path>   the cmaj binary for the suites that run a real `cmaj server` (otherwise
 //                   CMAJ_BINARY, or the usual build folders: see harness/cmaj-binary.mjs)
@@ -23,6 +23,7 @@ const suites = [
     { name: "mock",  script: "test-panel-mock.mjs",     needsChrome: true,  needsCmaj: false, timeoutMinutes: 10, about: "the panel against the mock session" },
     { name: "save",  script: "test-save-file.mjs",      needsChrome: true,  needsCmaj: false, timeoutMinutes: 3,  about: "saving files, in VS Code and a browser" },
     { name: "graph", script: "test-graph-protocol.mjs", needsChrome: false, needsCmaj: true,  timeoutMinutes: 10, about: "the graph protocol of a real cmaj server" },
+    { name: "guis",  script: "test-patch-guis.mjs",     needsChrome: true,  needsCmaj: true,  timeoutMinutes: 10, about: "the example patches' custom GUIs" },
 ];
 
 const args = process.argv.slice (2);

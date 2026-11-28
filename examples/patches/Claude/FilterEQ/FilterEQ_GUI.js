@@ -325,9 +325,10 @@ class FilterEQGUI extends HTMLElement
         this.canvas.addEventListener('mouseup', (e) => this.endDrag(e));
         this.canvas.addEventListener('mouseleave', (e) => this.endDrag(e));
 
-        // Global mouse events for parameter dragging
-        document.addEventListener('mousemove', (e) => this.handleParamDrag(e));
-        document.addEventListener('mouseup', (e) => this.endParamDrag(e));
+        // Global mouse events for parameter dragging: these are added to the document only
+        // while the view is showing (see connectedCallback() and disconnectedCallback())
+        this.documentMouseMoveListener = (e) => this.handleParamDrag(e);
+        this.documentMouseUpListener = (e) => this.endParamDrag(e);
 
         // Resize observer
         const resizeObserver = new ResizeObserver(() => {
@@ -996,6 +997,9 @@ class FilterEQGUI extends HTMLElement
         // Now we can set up the canvas since the element is in the DOM
         this.setupCanvas();
 
+        document.addEventListener('mousemove', this.documentMouseMoveListener);
+        document.addEventListener('mouseup', this.documentMouseUpListener);
+
         if (this.patchConnection) {
             this.setupCmajorConnection();
         }
@@ -1017,14 +1021,28 @@ class FilterEQGUI extends HTMLElement
         this.patchConnection.addStatusListener(this.statusListener);
         this.patchConnection.requestStatusUpdate();
 
-        // Set up parameter change listener if available
-        if (this.patchConnection.addAllParameterListener) {
-            this.patchConnection.addAllParameterListener((parameterUpdates) => {
-                for (let update of parameterUpdates) {
-                    this.updateParameterValue(update.endpointID, update.value);
-                }
-                this.drawFrequencyResponse();
-            });
+        // Set up parameter change listener: it's called with one { endpointID, value } at a time
+        this.parameterListener = ({ endpointID, value }) => {
+            this.updateParameterValue(endpointID, value);
+            this.drawFrequencyResponse();
+        };
+
+        this.patchConnection.addAllParameterListener(this.parameterListener);
+    }
+
+    disconnectedCallback()
+    {
+        // Called when the view is closed: end any drag that's in progress (which puts the
+        // document's cursor back), and remove the listeners that we added
+        this.endParamDrag();
+        this.endDrag();
+
+        document.removeEventListener('mousemove', this.documentMouseMoveListener);
+        document.removeEventListener('mouseup', this.documentMouseUpListener);
+
+        if (this.patchConnection) {
+            this.patchConnection.removeStatusListener(this.statusListener);
+            this.patchConnection.removeAllParameterListener(this.parameterListener);
         }
     }
 }

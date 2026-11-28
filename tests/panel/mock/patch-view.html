@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!--
+    Shows one patch's GUI on its own, the way a host does, for the patch GUI tests (see
+    ../harness/patch-gui.mjs): /session_<Name>/patch-view.html?fixture=<Name> (served from the
+    session's folder, like the server's runner page, so that page-relative URLs work as in hosts)
+
+    The patch is a mock session (mock-server-session.js) replaying the fixture, which behaves like
+    the server: parameters remember and echo their values, MIDI sent to an input goes to that input's
+    listeners, stored state is kept, and outputs send synthesised audio. If the manifest has a worker,
+    it runs too, with its own connection, as it would in a plugin. The view is made with
+    createPatchViewHolder(), as hosts do, so it's sized and scaled the same way.
+
+    For the tests, once window.ready is true:
+        window.view           the patch's view (the custom element its index.js made)
+        window.holder         the holder around it, in #host
+        window.pc             the view's patch connection
+        window.session        the mock session, with its test hooks, e.g. session.getOpenGestures()
+        window.sent           every message the view's connection has sent, in order
+        window.hostSetsValue (endpointID, value)    as if the host (or automation) changed a parameter
+        window.receiveEvent (endpointID, value)     as if an event arrived at an input from elsewhere,
+                                                    e.g. MIDI: receiveEvent ("midiIn", { message: 0x903c64 })
+        window.getStoredState (key)
+        window.countViewListeners()                 listeners the view has attached to its connection
+        window.getPageListenersLeft()               listeners the view has added to the document or
+                                                    window and not removed, e.g. ["document.mousemove"]
+        window.removeView()                         takes it out of the page, as closing the GUI does
+        window.errors                               uncaught errors and rejections
+
+    Options (on the URL): worker=0 doesn't run the worker; workerLatency=<ms> delays everything
+    the worker is sent, like a host whose worker runs elsewhere; nocapture makes setPointerCapture()
+    a no-op, as it is in some hosts' webviews, so that code which relies on it can be tested without.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style> html, body { margin: 0; height: 100%; background: #000; overflow: hidden; } #host { width: 100vw; height: 100vh; } </style>
+</head>
+<body>
+<div id="host"></div>
+<script type="module">
+import { MockServerSession } from "/mock/mock-server-session.js";
+import { createPatchViewHolder } from "/cmaj_api/cmaj-patch-view.js";
+
+window.errors = [];
+const pageListeners = [];
+window.addEventListener ("error", e => window.errors.push (e.message));
+window.addEventListener ("unhandledrejection", e => window.errors.push ("unhandled rejection: " + (e.reason?.stack ?? e.reason)));
+
+const options = new URLSearchParams (location.search);
+const fixture = options.get ("fixture");
+
+if (options.has ("nocapture"))
+    Element.prototype.setPointerCapture = function() {};
+
+try
+{
+    const session = new MockServerSession (fixture);
+    window.session = session;
+    await session.ready;
+
+    session.sendMessageToServer ({ type: "load_patch", file: session.patchFile });
+
+    for (let i = 0; i < 100 && ! session.status?.loaded; ++i)
+        await new Promise (r => setTimeout (r, 50));
+
+    if (! session.status?.loaded)
+        throw new Error ("the mock session didn't load the patch");
+
+    const manifest = session.status.manifest;
+
+    if (manifest.worker && options.get ("worker") !== "0")
+    {
+        const workerConnection = session.createPatchConnection();
+        const workerLatency = Number (options.get ("workerLatency") ?? 0);
+
+        if (workerLatency > 0)
+        {
+            const deliver = workerConnection.deliverMessageFromServer.bind (workerConnection);
+            workerConnection.deliverMessageFromServer = (msg) => setTimeout (() => deliver (msg), workerLatency);
+        }
+
+        const workerModule = await import (workerConnection.getResourceAddress (manifest.worker));
+        await workerModule.default (workerConnection);
+        window.workerConnection = workerConnection;
+    }
+
+    const pc = session.createPatchConnection();
+    const sendMessageToServer = pc.sendMessageToServer.bind (pc);
+    window.sent = [];
+    pc.sendMessageToServer = (msg) => { window.sent.push (msg); sendMessageToServer (msg); };
+    window.pc = pc;
+
+    trackPageListeners();
+    const holder = await createPatchViewHolder (pc);
+
+    if (! holder)
+        throw new Error ("createPatchViewHolder() didn't make a view");
+
+    document.getElementById ("host").appendChild (holder);
+
+    window.holder = holder;
+    window.view = holder.view;
+    window.isCustomView = !! manifest.view?.src;
+    window.hostSetsValue = (id, value) => session.receiveValue (session.findEndpoint (id), value);
+    window.receiveEvent = (id, value) => session.receiveValue (session.findEndpoint (id), value);
+    window.getStoredState = (key) => session.storedState.get (key);
+    window.countViewListeners = () => Object.values (pc.listenersPerType).reduce ((n, list) => n + list.length, 0);
+    window.removeView = () => holder.remove();
+    window.getPageListenersLeft = () => pageListeners.map (l => `${l.target}.${l.type}`);
+    window.ready = true;
+}
+catch (e)
+{
+    window.errors.push ("couldn't open the patch view: " + (e?.stack ?? e));
+    window.failedToOpen = true;
+}
+
+// Keeps track of the listeners added to the document and window from now on (which is by the
+// view, as nothing else here adds any), so that the tests can check that it removes them all
+function trackPageListeners()
+{
+    for (const [target, name] of [[document, "document"], [window, "window"]])
+    {
+        const add = target.addEventListener.bind (target), remove = target.removeEventListener.bind (target);
+        const isCapture = (options) => typeof options === "boolean" ? options : !! options?.capture;
+
+        target.addEventListener = (type, listener, options) =>
+        {
+            add (type, listener, options);
+
+            if (listener && ! options?.once && ! pageListeners.some (l => l.target === name && l.type === type && l.listener === listener && l.capture === isCapture (options)))
+                pageListeners.push ({ target: name, type, listener, capture: isCapture (options) });
+        };
+
+        target.removeEventListener = (type, listener, options) =>
+        {
+            remove (type, listener, options);
+            const index = pageListeners.findIndex (l => l.target === name && l.type === type && l.listener === listener && l.capture === isCapture (options));
+
+            if (index >= 0)
+                pageListeners.splice (index, 1);
+        };
+    }
+}
+</script>
+</body>
+</html>

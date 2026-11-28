@@ -1,18 +1,18 @@
-# Patch panel tests
+# Patch panel and patch GUI tests
 
-Tests for the patch panel: the browser UI in `modules/embedded_assets/files/panel_api` that `cmaj server` serves, and that the VS Code extension shows. They drive headless Chrome over the DevTools protocol from Node, with no other dependencies (no npm install).
+Tests for the patch panel: the browser UI in `modules/embedded_assets/files/panel_api` that `cmaj server` serves, and that the VS Code extension shows. Also tests for the custom GUIs of the example patches in `examples/patches` (see [patch_guis/README.md](patch_guis/README.md)). They drive headless Chrome over the DevTools protocol from Node, with no other dependencies (no npm install).
 
 ## Running them
 
 ```
-$ node cmajor/tests/panel/run_panel_tests.mjs [--cmaj=<path to cmaj>] [--only=core,mock,save,graph]
+$ node cmajor/tests/panel/run_panel_tests.mjs [--cmaj=<path to cmaj>] [--only=core,mock,save,graph,guis]
 ```
 
 This runs each suite in turn, prints a summary, and exits with 1 if any of them failed. It needs:
 
 - **Node 22 or later** (the suites use Node's built-in `fetch` and `WebSocket`)
 - **Google Chrome** (or Chromium), found in the usual place for the platform, or wherever `CHROME_PATH` points
-- **a cmaj binary**, for the `graph` suite only: `--cmaj=<path>`, or `CMAJ_BINARY`, or else the first of `build/cmajor/tools/command/cmaj` and `build/cmajor/tools/command/Release/cmaj` in the repo that contains this `cmajor` folder
+- **a cmaj binary**, for the `graph` and `guis` suites only: `--cmaj=<path>`, or `CMAJ_BINARY`, or else the first of `build/cmajor/tools/command/cmaj` and `build/cmajor/tools/command/Release/cmaj` in the repo that contains this `cmajor` folder
 
 The suites:
 
@@ -22,8 +22,9 @@ The suites:
 | `mock` | `test-panel-mock.mjs` | The whole panel, in a fake VS Code webview, against a mock session that replays recorded server data (`fixtures/`) | Chrome |
 | `save` | `test-save-file.mjs` | Saving files: through the VS Code extension's handler, and as a browser download | Chrome (the extension handler checks are skipped if `tools/vscode/cmajor` isn't next to this `cmajor` folder, or set with `CMAJ_VSCODE_EXTENSION`) |
 | `graph` | `test-graph-protocol.mjs` | The graph protocol of a real `cmaj server`: versions, caching, edits and build errors, for some example patches and `patches/GraphLinks` | Chrome isn't used; cmaj |
+| `guis` | `test-patch-guis.mjs` | Every example patch's custom GUI, on its own, against the mock session with the endpoints a real `cmaj server` reports: basic checks for all of them, plus each patch's own tests in `patch_guis/` | Chrome and cmaj |
 
-Each script can also be run on its own (`node cmajor/tests/panel/test-core.mjs`, etc.). `test-panel-mock.mjs` takes a fixture name (default `Tremolo`), and saves screenshots as it goes if `PANEL_TEST_SCREENSHOTS` names a folder.
+Each script can also be run on its own (`node cmajor/tests/panel/test-core.mjs`, etc.). `test-panel-mock.mjs` takes a fixture name (default `Tremolo`), and `test-patch-guis.mjs` takes `--only=<patch names>`. Both save screenshots as they go if `PANEL_TEST_SCREENSHOTS` names a folder.
 
 The runner sets `CMAJ_SERVER_ARGS` to `--inputs=0` unless it's already set, so `cmaj server` never opens an audio input device: on macOS that can ask for microphone access, and some devices hang when opened for full-duplex use. The server still opens an audio output.
 
@@ -37,7 +38,7 @@ The macOS arm64 test job in `tools/ci/develop/Jenkinsfile` and `tools/ci/main/Je
 node cmajor/tests/panel/run_panel_tests.mjs --cmaj=./cmaj
 ```
 
-from its `test` folder, where the stashes lay out `cmajor/` like this repo (including `modules/embedded_assets/files` and `javascript/cmaj_api`, which the mock server serves), with the extension's sources in `tools/vscode/cmajor/src`. The agent needs Node 22+ and Chrome.
+from its `test` folder, where the stashes lay out `cmajor/` like this repo (including `modules/embedded_assets/files` and `javascript/cmaj_api`, which the mock server serves, and `examples`, for the patch GUIs), with the extension's sources in `tools/vscode/cmajor/src`. The agent needs Node 22+ and Chrome.
 
 ## Layout
 
@@ -46,7 +47,10 @@ from its `test` folder, where the stashes lay out `cmajor/` like this repo (incl
 - `harness/cdp.mjs` - a minimal headless Chrome driver
 - `harness/serve.mjs` - a server that lays files out the way `cmaj server` does, with the mock session in place of the websocket (run it on its own to try the panel in a browser: `node cmajor/tests/panel/harness/serve.mjs`, then open `http://127.0.0.1:51090/vscode.html?fixture=Tremolo`)
 - `harness/cmaj-binary.mjs` - finding cmaj, and a free port for its server
-- `mock/` - the mock session, the fake VS Code webview, and the core tests' page
+- `harness/cmaj-server.mjs` - running a real `cmaj server` to load patches in, and making fixtures from what it reports
+- `harness/patch-gui.mjs` - opening a patch's GUI on its own, for the patch GUI tests
+- `mock/` - the mock session, the fake VS Code webview, the core tests' page, and `patch-view.html`, which shows one patch GUI the way a host does
+- `patch_guis/` - the patch GUIs' own tests
 - `fixtures/` - what a real server sent for some example patches, which the mock session replays
 - `patches/` - patches made for these tests
 - `capture-fixtures.mjs` - re-records the fixtures

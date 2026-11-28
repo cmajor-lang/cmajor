@@ -254,9 +254,10 @@ export class MockServerSession  extends ServerSession
                     this.receiveValue (this.findEndpoint (p.name), p.value);
                 break;
 
-            case "req_state_value":         this.send ("state_key_value", { key: msg.key, value: this.storedState.get (msg.key) }); break;
-            case "send_state_value":        this.storedState.set (msg.key, msg.value);
-                                            this.send ("state_key_value", { key: msg.key, value: msg.value }); break;
+            // (a key with no value comes back as null, as the server's JSON has no undefined)
+            case "req_state_value":         this.send ("state_key_value", { key: msg.key, value: this.storedState.get (msg.key) ?? null }); break;
+            case "send_state_value":        this.storedState.set (msg.key, msg.value ?? null);
+                                            this.send ("state_key_value", { key: msg.key, value: msg.value ?? null }); break;
             case "clear_all_state_values":  this.storedState.clear(); break;
 
             case "req_graph":

@@ -15,21 +15,21 @@ class TimelineView extends HTMLElement
         this.quarterNote = "?";
         this.barQuarterNote = "?";
 
-        this.patchConnection.addEndpointListener ("timeSigOut", value =>
+        this.timeSigListener = value =>
         {
             this.timeSig = value.numerator + "/" + value.denominator;
             this.refreshDisplay();
-        });
+        };
 
-        this.patchConnection.addEndpointListener ("positionOut", value =>
+        this.positionListener = value =>
         {
             this.framePos = value.frameIndex;
             this.quarterNote = value.quarterNote;
             this.barQuarterNote = value.barStartQuarterNote;
             this.refreshDisplay();
-        });
+        };
 
-        this.patchConnection.addEndpointListener ("transportStateOut", value =>
+        this.transportStateListener = value =>
         {
             if (value.flags & 2)
                 this.transport = "Recording";
@@ -40,13 +40,30 @@ class TimelineView extends HTMLElement
 
             this.transport += "   Looping: " + ((value.flags & 4) ? "on" : "off");
             this.refreshDisplay();
-        });
+        };
 
-        this.patchConnection.addEndpointListener ("tempoOut", value =>
+        this.tempoListener = value =>
         {
             this.tempo = value.bpm;
             this.refreshDisplay();
-        });
+        };
+    }
+
+    connectedCallback()
+    {
+        this.patchConnection.addEndpointListener ("timeSigOut",        this.timeSigListener);
+        this.patchConnection.addEndpointListener ("positionOut",       this.positionListener);
+        this.patchConnection.addEndpointListener ("transportStateOut", this.transportStateListener);
+        this.patchConnection.addEndpointListener ("tempoOut",          this.tempoListener);
+    }
+
+    disconnectedCallback()
+    {
+        // When the view is closed, we must remove the listeners that we added
+        this.patchConnection.removeEndpointListener ("timeSigOut",        this.timeSigListener);
+        this.patchConnection.removeEndpointListener ("positionOut",       this.positionListener);
+        this.patchConnection.removeEndpointListener ("transportStateOut", this.transportStateListener);
+        this.patchConnection.removeEndpointListener ("tempoOut",          this.tempoListener);
     }
 
     refreshDisplay()

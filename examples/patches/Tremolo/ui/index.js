@@ -1,13 +1,33 @@
 import { createView } from "./stompbox/view.js";
 
-export default function createPatchView (patchConnection)
+// The patch's view: it makes the stompbox whenever the patch's status arrives, and listens for
+// that only while it's showing
+class TremoloPatchView extends HTMLElement
 {
-    const container = document.createElement ("div");
-    const clear = () => container.innerHTML = "";
-
-    patchConnection.addStatusListener ((status) =>
+    constructor (patchConnection)
     {
-        clear();
+        super();
+        this.patchConnection = patchConnection;
+        this.statusListener = (status) => this.showStompbox (status);
+    }
+
+    connectedCallback()
+    {
+        this.patchConnection.addStatusListener (this.statusListener);
+        this.patchConnection.requestStatusUpdate();
+    }
+
+    disconnectedCallback()
+    {
+        // When the view is closed, we must remove the listener that we added
+        this.patchConnection.removeStatusListener (this.statusListener);
+        this.innerHTML = "";
+    }
+
+    showStompbox (status)
+    {
+        const patchConnection = this.patchConnection;
+        this.innerHTML = "";
 
         const toParameter = (endpointIDToFind) =>
         {
@@ -39,10 +59,16 @@ export default function createPatchView (patchConnection)
             depth: toParameter ("depth"),
         });
 
-        container.appendChild (view);
-    });
+        this.appendChild (view);
+    }
+}
 
-    patchConnection.requestStatusUpdate();
+export default function createPatchView (patchConnection)
+{
+    const customElementName = "tremolo-patch-view";
 
-    return container;
+    if (! window.customElements.get (customElementName))
+        window.customElements.define (customElementName, TremoloPatchView);
+
+    return new (window.customElements.get (customElementName)) (patchConnection);
 }

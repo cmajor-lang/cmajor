@@ -3,6 +3,7 @@
 //
 //   /session_<Fixture>/cmaj-patch-runner.html    the real runner template (VS Code page)
 //   /session_<Fixture>/cmaj-patch-chooser.html   the real chooser template (browser page)
+//   /session_<Fixture>/patch-view.html           mock/patch-view.html: just the patch's GUI
 //   /session_<Fixture>/<file>                    files from that fixture's patch folder (patch GUIs)
 //   /cmaj-patch-server.js                        mock/cmaj-patch-server.js (MockServerSession)
 //   /panel_api/...                               cmajor/modules/embedded_assets/files/panel_api
@@ -11,7 +12,8 @@
 //   /vscode.html?fixture=Name                    a fake VS Code webview around the runner page
 //
 // The fixtures hold paths as "${CMAJOR_ROOT}/examples/...", which is replaced with the cmajor
-// folder this is running in when they're served (see loadFixture()).
+// folder this is running in when they're served (see loadFixture()). fixtureOverrides adds
+// fixtures that aren't files.
 //
 // startServer (port, { mounts }) serves extra folders too: mounts is { "/prefix/": folder }.
 // With port 0 (the default) it picks a free port; the server's url says which.
@@ -35,6 +37,7 @@ export const cmajorRoot = resolve (here, "../../..");
 const assets = join (cmajorRoot, "modules/embedded_assets/files");
 const api = join (cmajorRoot, "javascript/cmaj_api");
 const fixturePlaceholder = "${CMAJOR_ROOT}";
+const cmajVersionStub = `export function getCmajorVersion() { return "0.0.0-mock"; }`;
 
 const types = { ".js": "text/javascript", ".mjs": "text/javascript", ".html": "text/html", ".css": "text/css",
                 ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg",
@@ -46,10 +49,17 @@ const within = (root, sub) =>
     return (p === root || p.startsWith (root + sep)) ? p : null;
 };
 
+/// Fixtures to serve that aren't in the fixtures folder: name -> fixture object (e.g. one made
+/// from a status that a real server has just sent, as the patch GUI tests do)
+export const fixtureOverrides = new Map();
+
 /// A fixture's JSON text, with the placeholder replaced by this cmajor folder (with forward
 /// slashes, as the server reports paths), or null if there's no such fixture
 export async function loadFixtureText (name)
 {
+    if (fixtureOverrides.has (name))
+        return JSON.stringify (fixtureOverrides.get (name));
+
     const file = within (join (panelTestsRoot, "fixtures"), name + ".json");
 
     if (! file || ! existsSync (file))
@@ -93,6 +103,12 @@ export function startServer (port = 0, { mounts = {} } = {})
                 content = override;
                 path = rest;
             }
+            else if (rest === "/patch-view.html")
+            {
+                // (served from the session's folder, like the server's runner page, so that a GUI's
+                // page-relative URLs find its files, as they do in hosts)
+                file = join (panelTestsRoot, "mock/patch-view.html");
+            }
             else if (rest === "/cmaj-patch-runner.html" || rest === "/cmaj-patch-chooser.html")
             {
                 const template = rest.includes ("runner") ? "embedded_patch_runner_template.html" : "embedded_patch_chooser_template.html";
@@ -105,11 +121,25 @@ export function startServer (port = 0, { mounts = {} } = {})
 
                 if (patchFile)
                     file = within (dirname (resolve (patchFile)), rest);
+
+                // (like the server, which serves its own files under a session's folder too, for
+                // anything that isn't in the patch: GUIs can import "../cmaj_api/..." as they would
+                // in a plugin, where the patch's folder is the root)
+                if (! (file && existsSync (file)) && rest.startsWith ("/cmaj_api/"))
+                {
+                    file = null;
+                    path = rest;
+
+                    if (rest === "/cmaj_api/cmaj-version.js")
+                        content = cmajVersionStub;
+                    else
+                        file = within (api, rest.substring (10));
+                }
             }
         }
         else if (mount)                                         file = within (resolve (mounts[mount]), path.substring (mount.length));
         else if (path === "/cmaj-patch-server.js")             file = join (panelTestsRoot, "mock/cmaj-patch-server.js");
-        else if (path === "/cmaj_api/cmaj-version.js")         content = `export function getCmajorVersion() { return "0.0.0-mock"; }`;
+        else if (path === "/cmaj_api/cmaj-version.js")         content = cmajVersionStub;
         else if (path.startsWith ("/panel_api/"))              file = within (assets, path.substring (1));
         else if (path.startsWith ("/cmaj_api/"))               file = within (api, path.substring (10));
         else if (path.startsWith ("/mock/"))                   file = within (join (panelTestsRoot, "mock"), path.substring (6));

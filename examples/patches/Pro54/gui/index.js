@@ -196,6 +196,8 @@ class Pro54WheelElement extends Pro54ImageStrip
             // Reset the PB to 0.5 when drag ends
             this.onValueDragged (50);
         }
+
+        super.onEndDrag();
     }
 }
 
@@ -585,19 +587,19 @@ class Pro54PatchView extends HTMLElement
         for (let child of container.children)
             child.setPatchConnection?.(this.patchConnection);
 
-        this.patchConnection.addAllParameterListener (event =>
+        this.parameterListener = event =>
         {
             const element = this.shadowRoot.getElementById (event.endpointID);
-            element.setCurrentValue?.(event.value);
-        });
+            element?.setCurrentValue?.(event.value);
+        };
 
-        this.patchConnection.addEndpointListener ("midiIn", message =>
+        this.midiListener = message =>
         {
             this.keyboardElement?.handleExternalMIDI (message.message);
             this.modWheelElement?.handleExternalMIDI (message.message);
             this.pitchBendElement?.handleExternalMIDI (message.message);
             this.midiBlink?.handleExternalMIDI (message.message);
-        });
+        };
 
         this.shadowRoot.addEventListener ("contextmenu", (event) => event.preventDefault());
         this.shadowRoot.addEventListener ('touchstart',  (event) => event.preventDefault(), {passive:false});
@@ -620,6 +622,24 @@ class Pro54PatchView extends HTMLElement
         woodenPanel.onclick = () => this.showAboutBox();
 
         this.shadowRoot.getElementById ("FilterVersion").setBPFElement (this.shadowRoot.getElementById ("BPF"));
+    }
+
+    connectedCallback()
+    {
+        this.patchConnection.addAllParameterListener (this.parameterListener);
+        this.patchConnection.addEndpointListener ("midiIn", this.midiListener);
+
+        // (the controls asked for their values when they were given the connection, but if the
+        // view wasn't shown straight away, the answers may have come before this was listening)
+        for (let child of this.shadowRoot.getElementById ("main").children)
+            if (child.setPatchConnection && child.id)
+                this.patchConnection.requestParameterValue (child.id);
+    }
+
+    disconnectedCallback()
+    {
+        this.patchConnection.removeAllParameterListener (this.parameterListener);
+        this.patchConnection.removeEndpointListener ("midiIn", this.midiListener);
     }
 
     getScaleFactorLimits()
