@@ -20,6 +20,8 @@
       or use the scroll-wheel. The LCD shows the parameter and its value while you do.
     - Hovering over a control shows its current value on the LCD.
     - Click an algorithm in the chart to select it.
+    - Click the LCD to pick a voice from a list of the preset bank (Escape or clicking
+      elsewhere closes it).
     - Double-click the LCD to edit the voice name; Enter to keep it, Escape to cancel.
     - The PROGRAM buttons step through the 16 voices in the preset bank, wrapping round at
       either end.
@@ -40,7 +42,7 @@ import { DotMatrixLCD, isDisplayableCharacter } from "./lcd.js";
 import { Knob, Slider, Wheel, Keyboard, PushButton } from "./controls.js";
 import { AlgorithmChart, isCarrier } from "./algorithms.js";
 import { wordmarkPath, wordmarkBounds } from "./cmajor-wordmark.js";
-import { isValidProgramNumber, getProgramNumberAfterStep } from "./presets/presetBank.js";
+import { numPrograms, isValidProgramNumber, getProgramNumberAfterStep, getProgramName } from "./presets/presetBank.js";
 
 // The panel's layout, from top to bottom: the controls end level with the bottom of the
 // algorithm chart, and the keyboard sits just below them
@@ -61,6 +63,10 @@ const lcdHoldTime = 1800;
 // When a program change loads a new voice, its parameter changes arrive just afterwards, and
 // shouldn't each flash up on the LCD
 const programChangeQuietTime = 500;
+
+// A click on the LCD waits this long before opening the voice list, in case it turns out to
+// be the first half of a double-click, which edits the name instead
+const voiceListOpenDelay = 250;
 
 // The patch's MIDI converter bends by up to 48 semitones, so the wheel only uses a
 // part of its range, to give the TX81Z's default bend range of +/- 2 semitones
@@ -133,6 +139,8 @@ class TX81ZView extends HTMLElement
         this.releaseComputerKeys();
         clearTimeout (this.idleTimer);
         clearTimeout (this.midiLightTimer);
+        clearTimeout (this.voiceListTimer);
+        this.closeVoiceList();
         this.lcd.dispose();
     }
 
@@ -279,15 +287,24 @@ class TX81ZView extends HTMLElement
         this.showParameter (modulationDisplay, value);
     }
 
-    /** Asks the worker to load the program that's delta steps away from the current one. */
-    stepProgram (delta)
+    /** Asks the worker to load a program, by sending it a MIDI program change. */
+    selectProgram (programNumber)
     {
+        if (! isValidProgramNumber (programNumber))
+            return;
+
         // (this updates currentProgram straight away, so that pressing a button repeatedly
         // keeps stepping even if the worker hasn't caught up yet)
-        this.currentProgram = getProgramNumberAfterStep (this.currentProgram, delta);
+        this.currentProgram = programNumber;
         this.lastProgramChangeTime = performance.now();
-        this.sendMIDI (0xc0, this.currentProgram - 1, 0);
+        this.sendMIDI (0xc0, programNumber - 1, 0);
         this.showIdleDisplay();
+    }
+
+    /** Selects the program that's delta steps away from the current one. */
+    stepProgram (delta)
+    {
+        this.selectProgram (getProgramNumberAfterStep (this.currentProgram, delta));
     }
 
     isLoadingProgram()
@@ -364,7 +381,28 @@ class TX81ZView extends HTMLElement
         // The LCD
         this.lcd = new DotMatrixLCD (root.querySelector ("#lcd"), { columns: lcdColumns, rows: 2, dotPitch: 3.1 });
         const lcdWindow = root.querySelector ("#lcd-window");
-        lcdWindow.addEventListener ("dblclick", () => this.startNameEdit());
+
+        lcdWindow.addEventListener ("click", (e) =>
+        {
+            clearTimeout (this.voiceListTimer);
+
+            if (this.nameEdit || e.detail > 1)
+                return;
+
+            if (this.isVoiceListOpen())
+                this.closeVoiceList();
+            else
+                this.voiceListTimer = setTimeout (() => this.openVoiceList(), voiceListOpenDelay);
+        });
+
+        lcdWindow.addEventListener ("dblclick", () =>
+        {
+            clearTimeout (this.voiceListTimer);
+            this.closeVoiceList();
+            this.startNameEdit();
+        });
+
+        this.createVoiceList();
 
         // The algorithm chart: this isn't a ParameterControl, so it gets its own listener
         const algorithmParam = parametersByID.get ("algorithmIn");
@@ -676,6 +714,68 @@ class TX81ZView extends HTMLElement
     }
 
     //==============================================================================
+    // The voice list, which drops down from the LCD
+
+    createVoiceList()
+    {
+        this.voiceList = this.shadowRoot.querySelector ("#voice-list");
+
+        for (let programNumber = 1; programNumber <= numPrograms; ++programNumber)
+        {
+            const item = document.createElement ("button");
+            item.type = "button";
+            item.tabIndex = -1;
+            item.className = "voice-list-item";
+            item.textContent = "I" + String (programNumber).padStart (2, "0") + " " + getProgramName (programNumber);
+            item.addEventListener ("click", () =>
+            {
+                this.closeVoiceList();
+                this.selectProgram (programNumber);
+            });
+
+            this.voiceList.appendChild (item);
+        }
+    }
+
+    isVoiceListOpen()       { return this.voiceList.classList.contains ("open"); }
+
+    openVoiceList()
+    {
+        if (this.nameEdit || this.isVoiceListOpen())
+            return;
+
+        // It sits just below the LCD's bezel, over the algorithm chart
+        const lcdWindow = this.shadowRoot.querySelector ("#lcd-window");
+        this.voiceList.style.top = (lcdWindow.offsetTop + lcdWindow.offsetHeight + 4) + "px";
+
+        this.voiceList.querySelectorAll (".voice-list-item").forEach ((item, index) =>
+            item.classList.toggle ("current", index + 1 === this.currentProgram));
+
+        this.voiceList.classList.add ("open");
+
+        // Clicking anywhere except the list or the LCD closes it (the LCD's own click handler
+        // closes it when that's clicked)
+        this.voiceListClickListener = (e) =>
+        {
+            const path = e.composedPath();
+
+            if (! path.includes (this.voiceList) && ! path.includes (lcdWindow))
+                this.closeVoiceList();
+        };
+
+        this.shadowRoot.addEventListener ("pointerdown", this.voiceListClickListener);
+    }
+
+    closeVoiceList()
+    {
+        if (! this.voiceList?.classList.contains ("open"))
+            return;
+
+        this.voiceList.classList.remove ("open");
+        this.shadowRoot.removeEventListener ("pointerdown", this.voiceListClickListener);
+    }
+
+    //==============================================================================
     // Editing the voice name
 
     startNameEdit()
@@ -766,6 +866,13 @@ class TX81ZView extends HTMLElement
     {
         if (this.nameEdit)
             return this.handleNameEditKey (e);
+
+        if (e.key === "Escape" && this.isVoiceListOpen())
+        {
+            this.closeVoiceList();
+            e.preventDefault();
+            return;
+        }
 
         if (e.metaKey || e.ctrlKey || e.altKey || e.repeat)
             return;
@@ -1078,7 +1185,10 @@ class TX81ZView extends HTMLElement
         border-top: 1px solid #4a433d;
     }
 
-    .centre { width: 344px; }
+    .centre {
+        width: 344px;
+        position: relative;
+    }
 
     /* The LCD sits behind a smoked window in a black bezel */
     #lcd-window {
@@ -1087,7 +1197,7 @@ class TX81ZView extends HTMLElement
         border-radius: 4px;
         background: linear-gradient(180deg, #0c0b0a, #1d1a18);
         box-shadow: inset 0 2px 4px #000, 0 1px 0 #4a433d;
-        cursor: text;
+        cursor: pointer;
     }
 
     #lcd {
@@ -1102,6 +1212,48 @@ class TX81ZView extends HTMLElement
         font-size: 9px;
         letter-spacing: 2px;
         color: var(--print-dim);
+    }
+
+    /* The voice list looks like a bigger version of the LCD, inside the same black bezel */
+    #voice-list {
+        position: absolute;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        display: none;
+        grid-template-columns: 1fr 1fr;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(${numPrograms / 2}, auto);
+        gap: 1px 6px;
+        padding: 8px;
+        border: 9px solid #12100f;
+        border-radius: 4px;
+        background: linear-gradient(180deg, #c4d84a, #97b02a);
+        box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 6px 16px rgba(0, 0, 0, 0.7);
+    }
+
+    #voice-list.open { display: grid; }
+
+    .voice-list-item {
+        padding: 3px 6px;
+        border: none;
+        border-radius: 1px;
+        background: none;
+        outline: none;
+        cursor: pointer;
+        text-align: left;
+        white-space: pre;
+        font: bold 13px/16px Menlo, Monaco, "Courier New", monospace;
+        color: #1c2a0c;
+    }
+
+    .voice-list-item:hover { background: rgba(28, 42, 12, 0.15); }
+
+    /* The current voice is shown inverted, like a highlighted LCD character */
+    .voice-list-item.current,
+    .voice-list-item.current:hover {
+        background: #1c2a0c;
+        color: #c4d84a;
     }
 
     #algorithm-chart { align-self: center; }
@@ -1445,8 +1597,9 @@ class TX81ZView extends HTMLElement
             <div class="upper-block">
                 <div class="section-title">VOICE</div>
                 <div id="lcd-window"><canvas id="lcd"></canvas></div>
-                <div class="lcd-caption">DOUBLE-CLICK DISPLAY TO NAME VOICE</div>
+                <div class="lcd-caption">CLICK DISPLAY: VOICE LIST · DOUBLE-CLICK: NAME</div>
             </div>
+            <div id="voice-list"></div>
             <div class="section-title">ALGORITHM</div>
             <div id="algorithm-chart"></div>
         </section>
