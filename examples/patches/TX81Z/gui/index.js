@@ -1024,35 +1024,50 @@ class TX81ZView extends HTMLElement
         align-items: center;
         display: flex;
         justify-content: center;
-        gap: 12px;
     }
 
-    /* Square buttons like the hardware's, which move down when pressed */
+    /* Like the hardware, each pair of buttons sits in a black recess in the panel */
+    .program-bezel {
+        display: flex;
+        gap: 3px;
+        padding: 3px;
+        border-radius: 2px;
+        background: #0b0b0b;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 255, 255, 0.07);
+    }
+
+    /* Flat keys with nearly square corners, shaped like the hardware's. They sink into
+       the recess when pressed. */
     .program-button {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        height: 28px;
+        width: 40px;
+        height: 34px;
         padding: 0;
         border: none;
-        border-radius: 3px;
+        border-radius: 1.5px;
         outline: none;
         cursor: pointer;
         background: linear-gradient(180deg, #4b4641 0%, #34302c 60%, #2a2724 100%);
-        box-shadow: 0 2px 0 #0d0c0b, 0 3px 5px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+                    inset 1px 0 0 rgba(255, 255, 255, 0.05), inset -1px 0 0 rgba(0, 0, 0, 0.3);
     }
 
+    /* The hardware's arrows are outlines, with a stepped back edge */
     .program-button svg {
-        width: 11px;
-        height: 11px;
-        fill: var(--print);
+        width: 26px;
+        height: 26px;
+        fill: none;
+        stroke: var(--print);
+        stroke-width: 1.1px;
+        stroke-linejoin: miter;
     }
 
     .program-button.pressed {
-        transform: translateY(2px);
+        transform: translateY(1px);
         background: linear-gradient(180deg, #3b3733 0%, #2d2a26 60%, #252220 100%);
-        box-shadow: 0 0 0 #0d0c0b, 0 1px 2px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(0, 0, 0, 0.45);
+        box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.5);
     }
 
     #wheels {
@@ -1417,8 +1432,10 @@ class TX81ZView extends HTMLElement
             <div id="program">
                 <div class="section-title">PROGRAM</div>
                 <div class="program-buttons">
-                    <button type="button" tabindex="-1" class="program-button" id="program-previous" aria-label="Previous program"><svg viewBox="0 0 10 10"><polygon points="7.5,1.5 7.5,8.5 2,5"></polygon></svg></button>
-                    <button type="button" tabindex="-1" class="program-button" id="program-next" aria-label="Next program"><svg viewBox="0 0 10 10"><polygon points="2.5,1.5 2.5,8.5 8,5"></polygon></svg></button>
+                    <div class="program-bezel">
+                        <button type="button" tabindex="-1" class="program-button" id="program-previous" aria-label="Previous program"><svg viewBox="0 0 20 20"><polygon points="17,5.6 15.5,5.6 15.5,3.2 3,10 15.5,16.8 15.5,14.4 17,14.4"></polygon></svg></button>
+                        <button type="button" tabindex="-1" class="program-button" id="program-next" aria-label="Next program"><svg viewBox="0 0 20 20"><polygon points="3,5.6 4.5,5.6 4.5,3.2 17,10 4.5,16.8 4.5,14.4 3,14.4"></polygon></svg></button>
+                    </div>
                 </div>
             </div>
             <div id="wheels"></div>
